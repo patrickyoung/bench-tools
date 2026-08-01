@@ -110,9 +110,15 @@ func (v *view) Check(r Result) {
 	v.Result(r)
 }
 
+// oneline fits a command on a line of a terminal. A check can be a
+// paragraph of shell, and the header that names it is a label, not the
+// record — the record is argv and the log, and both keep it whole.
 func oneline(s string) string {
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i] + " ..."
+		s = s[:i]
+	}
+	if len(s) > 64 {
+		s = strings.TrimRight(s[:64], " ") + "..."
 	}
 	return s
 }

@@ -261,6 +261,22 @@ ask replay -json "$s" | jq -r 'select(.type=="assistant")
 | it costs more than it should | `-turns`, and a smaller toolbox: fewer wrong turns are available |
 | you want a cheaper model | `-m anthropic/claude-haiku-4-5-20251001`, or `$ASK_MODEL` |
 
+## The check is also a tool
+
+The system prompt tells the model, verbatim, what command decides. With
+`-sh` — or with the check's program in the toolbox — the model can therefore
+run it itself, and it does: in a six-turn run that documented a small shell
+tool, the model called the same `ask` judge three times of its own accord
+before it was willing to stop, and `ply` ran it twice more — once before the
+first turn, and once at the end.
+
+That is worth knowing for two reasons. It converges faster than the cycle
+loop alone, so a good check pays for itself twice. And your check will run
+more often than `-cycles` suggests, so if it is slow, expensive, or has side
+effects, either make it cheap or keep its program out of the toolbox.
+
+## Tuning, continued
+
 The single highest-leverage tuning knob is the check's failure output. It is
 the only feedback the loop has that nobody wrote by hand, and a check that
 prints `FAIL` teaches the model nothing that a check printing
