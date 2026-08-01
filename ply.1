@@ -1,0 +1,416 @@
+.TH PLY 1 "2026-08-01" "ply 0.1.0" "General Commands Manual"
+.SH NAME
+ply \- work a goal with a toolbox until a check says it is done
+.SH SYNOPSIS
+.B ply
+.RI [ flags ]
+.I goal
+.br
+.B ply tools
+.RI [ flags ]
+.br
+.B ply system
+.RI [ flags ]
+.RI [ goal ]
+.br
+.B ply version
+.br
+.B ply help
+.SH DESCRIPTION
+.B ply
+is an agent loop built as a filter. It sends a goal to a language model,
+runs the shell commands the model writes, hands back what they printed, and
+repeats until the model stops \(em then runs a check, and hands its failure
+back if it failed. The answer is standard output, the typescript is
+standard error, and the exit status says what happened.
+.PP
+It holds no provider code, no credentials, no session format and no
+catalogue. When it needs a model it runs
+.BR ask (1);
+when it needs a procedure it runs
+.BR brief (1);
+and a tool is a program, so the toolbox is
+.BR PATH .
+.SS The protocol
+The model runs a command by writing a fenced shell block, and every fenced
+shell block it writes is executed:
+.PP
+.RS
+.nf
+\(ga\(ga\(gaply
+go test ./... 2>&1 | tail \-20
+\(ga\(ga\(ga
+.fi
+.RE
+.PP
+The block is a shell script, so pipes, redirection, loops and here\-documents
+all work. Its output comes back as the next message, laid out the way a
+terminal would have shown it: the command echoed with
+.B $
+and
+.BR > ,
+standard output and standard error interleaved, and the exit status when it
+is not zero. A block fenced with
+.BR ply ,
+.BR sh ,
+.BR bash ,
+.B shell
+or
+.B zsh
+is a command; an indented one is not, which is how the model quotes shell
+without running it. A reply with no block at all ends the run, and that
+reply is the answer.
+.PP
+Because the protocol is text, it needs no tool\-use API and works with any
+model
+.BR ask (1)
+can reach.
+.SS The toolbox
+A tool is a program, and the toolbox is a directory of them.
+.B \-t
+makes
+.B PATH
+that directory alone, so the model reaches the programs put there and cannot
+name one that was not. Build one the old way, and add to it with
+.BR ln (1):
+.PP
+.RS
+.nf
+mkdir tools && ln \-s $(which ls grep sed git go) tools/
+.fi
+.RE
+.PP
+A program says what it is in the first comment after its shebang, and that
+line is the catalogue the model is given.
+.B ply tools
+prints it. What a program does beyond that is
+.BR "name \-h" ,
+and beyond that, running it: the three levels of progressive disclosure,
+which programs have always had.
+.PP
+.B \-sh
+hands over every program on the machine instead. With both, the toolbox
+comes first on
+.BR PATH .
+.PP
+The toolbox aims the model; it does not sandbox it.
+.BR sh (1)
+has builtins, and a redirect opens a file with no program involved. The
+security boundary is the process \(em its user, its container, its
+.BR chroot (2)
+\(em as it always was.
+.SS Done
+.B \-check
+takes a shell command. It runs after the model stops, and the run ends only
+when it exits zero; a failure goes back to the model, which keeps working.
+It also runs before the first turn, so a goal already met costs nothing and
+leaves no session behind. Without
+.BR \-check ,
+exit 0 means only that the model stopped.
+.PP
+The check is the caller's program, not the model's, so it runs with the
+caller's
+.B PATH
+and the toolbox merely first on it. Scoping it to the toolbox would mean
+.B go test ./...
+needed a toolbox holding
+.BR go ,
+.B git
+and a linker.
+.PP
+When the judgment needs a model rather than a program, the mechanism does
+not change, because
+.BR ask (1)
+is a program:
+.PP
+.RS
+.nf
+ply \-sh \-check 'ask \-q "does README cover install? yes/no" \\
+      < README.md | grep \-qi yes' "document the installer"
+.fi
+.RE
+.SS The log
+The conversation is an
+.BR ask (1)
+session: the commands are in the assistant turns and their output is in the
+user turns, so the file is the whole record and
+.B ask replay \-check
+proves it.
+.B ply
+keeps no log of its own.
+.SH COMMANDS
+.TP
+.B ply \fR[\fIflags\fR] \fIgoal\fR
+Work the goal. Piped standard input rides with it, or is the goal when
+there is no other. Input past 64 KB is written beside the session as a
+.B .stdin
+file and the model is told the path, so a large log is something to grep
+rather than a cost on every request. Past 16 MB is an error naming the
+limit, never a truncation.
+.TP
+.B ply tools \fR[\fIflags\fR]
+Print the catalogue the model would be given, and the
+.B PATH
+its commands would run with. Takes
+.B \-t
+and
+.BR \-sh .
+.TP
+.B ply system \fR[\fIflags\fR] [\fIgoal\fR]
+Print the system prompt that would be sent, skills included. It is a value,
+not a secret, so extending it is ordinary shell rather than a config format:
+.B \-S "$(ply system; cat house.md)"
+\&. Takes the flags that shape it:
+.BR \-t ,
+.BR \-sh ,
+.BR \-C ,
+.BR \-check ,
+.BR \-timeout ,
+.B \-cap
+and
+.BR \-s .
+A goal may follow, because
+.B \-s \-
+asks brief to choose a skill for one.
+.TP
+.B ply version
+Print the version.
+.B \-V
+and
+.B \-\-version
+do the same.
+.TP
+.B ply help
+Print the flag summary on standard output.
+.B \-h
+and
+.B \-\-help
+do the same. A usage error prints it on standard error instead.
+.PP
+Anything that is not a command is the goal.
+.B \-\-
+sends a word that is one.
+.SH OPTIONS
+.TP
+.BI \-t " dir"
+Toolbox:
+.B PATH
+becomes this directory alone. Defaults to
+.BR $PLY_TOOLS .
+Either this or
+.B \-sh
+is required; a model with no way to act is a spent call.
+.TP
+.B \-sh
+Hand the model every program on
+.BR PATH .
+With
+.BR \-t ,
+the toolbox comes first.
+.TP
+.BI \-check " cmd"
+The goal is done when this shell command exits zero.
+.TP
+.B \-B
+Work the goal even if the check already passes, as
+.BR make (1)
+takes it.
+.TP
+.BI \-cycles " n"
+Failed checks before giving up. Default 5; 0 is unbounded.
+.TP
+.BI \-turns " n"
+Model turns before giving up. Default 0, unbounded.
+.TP
+.BI \-timeout " d"
+Per\-command timeout, as a Go duration such as
+.BR 30s .
+Default 2m. A command that outlasts it is killed by process group and
+reports 124, which is
+.BR timeout (1)'s
+number.
+.TP
+.BI \-cap " n"
+Bytes of a command's output kept and shown to the model, head and tail, with
+the middle elided and the elision announced in the text the model reads.
+Default 16384.
+.TP
+.BI \-C " dir"
+Run commands in this directory. Default is the current one.
+.TP
+.BI \-m " spec"
+Provider and model, passed to
+.BR ask (1).
+Default is ask's own
+.BR $ASK_MODEL .
+.TP
+.BI \-S " text"
+System prompt, replacing the default. The protocol lives in the default, so
+.B ply system
+prints what would be dropped.
+.B \-S ""
+sends none.
+.TP
+.BI \-s " name"
+Append a
+.BR brief (1)
+skill to the system prompt. Repeats.
+.B \-s \-
+asks brief to choose one for the goal; brief refuses to guess, so nothing
+matching is reported on standard error and the run goes on without one.
+.TP
+.BI \-f " file"
+Session log to write. Default is a new one under
+.BR $PLY_DIR .
+.TP
+.B \-q
+No typescript on standard error.
+.SH ENVIRONMENT
+.TP
+.B PLY_TOOLS
+Default toolbox directory, as
+.BR \-t .
+.TP
+.B PLY_DIR
+Where sessions live. Default
+.BR ~/.ply/sessions ,
+created mode 0700.
+.TP
+.B PLY_DEPTH
+How deep this ply is inside another. It is set for every command ply runs,
+incremented each time, and a ply that finds it at 8 refuses to start: a tool
+that runs ply is the sub\-agent mechanism, and without a floor it is also a
+fork bomb with a credit card.
+.TP
+.B PLY
+The path to the running binary, set for every command ply runs, so a tool
+can start another ply on a host with nothing else installed.
+.TP
+.B ASK
+The
+.BR ask (1)
+binary to run. Default
+.BR ask ,
+found on
+.BR PATH .
+.TP
+.B BRIEF
+The
+.BR brief (1)
+binary to run, for
+.BR \-s .
+Default
+.BR brief .
+.TP
+.B NO_COLOR
+Set to any value to strip color from the typescript. Color is also stripped
+when standard error is not a terminal.
+.PP
+Models, keys and gateways belong to
+.BR ask (1).
+.B ply
+passes it
+.BR \-m ,
+.BR \-f ,
+.B \-q
+and the system prompt in
+.BR ASK_SYSTEM ,
+and nothing else.
+.SH FILES
+.TP
+.B ~/.ply/sessions
+Session logs, in
+.BR ask (1)
+format, mode 0600.
+.TP
+.B ~/.ply/sessions/*.stdin
+Piped input too large to carry in the conversation.
+.SH EXIT STATUS
+.TP
+.B 0
+Done. The check passed, or, with no check, the model stopped.
+.TP
+.B 1
+Error: bad usage, no
+.B ask
+on
+.BR PATH ,
+a provider failure.
+.TP
+.B 2
+Not done: the check is still failing, a cap was reached, or the context
+window is full. It is its own status because a supervisor has to tell "did
+not work" from "broke", or it retries the wrong one.
+.TP
+.B 130
+Interrupted.
+.SH EXAMPLES
+Work a goal against a test suite, and only then release:
+.PP
+.RS
+.nf
+ply \-sh \-check 'go test ./...' "make the tests pass" && make release
+.fi
+.RE
+.PP
+Give the model three programs and nothing else:
+.PP
+.RS
+.nf
+mkdir tools && ln \-s $(which git rg sed) tools/
+ply \-t tools \-check 'git diff \-\-quiet' "stage the obvious typo fixes"
+.fi
+.RE
+.PP
+Brief it first, then set it to work:
+.PP
+.RS
+.nf
+ply \-sh \-s web\-perf \-check './budget.sh' "get LCP under 2.5s"
+ply \-sh \-s \- "make my page load faster"
+.fi
+.RE
+.PP
+As a filter, in a pipe:
+.PP
+.RS
+.nf
+kubectl logs deploy/api | ply \-t tools "find the cause of the 500s"
+.fi
+.RE
+.PP
+Prove the run afterwards:
+.PP
+.RS
+.nf
+ask replay \-check ~/.ply/sessions/20260801\-142233\-a3f9c1e0.jsonl
+.fi
+.RE
+.SH SEE ALSO
+.BR ask (1),
+.BR brief (1),
+.BR make (1),
+.BR sh (1),
+.BR timeout (1)
+.SH HISTORY
+.B ply
+is the third of three filters carved from one agent.
+.BR ask (1)
+took the model,
+.BR brief (1)
+took the procedure, and
+.B ply
+took the loop. Each refuses to grow the other two, which is why all three
+stay small.
+.SH CAVEATS
+The toolbox is not a sandbox. It scopes what the model reaches for; it does
+not contain what the model does. Run
+.B ply
+as a user, in a container, or in a
+.BR chroot (2)
+you would be willing to hand a shell to, because that is what you are doing.
+.PP
+Without
+.BR \-check ,
+exit 0 is the model's opinion. That is a real answer for a goal no program
+can judge, and it is a weaker one than it looks.
