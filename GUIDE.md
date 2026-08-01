@@ -212,6 +212,85 @@ git diff --name-only main | xargs -P4 -n1 tools/review
 
 There is no team format and no orchestrator. `xargs` was the orchestrator.
 
+### MCP
+
+`ply` does not speak MCP and is not going to. An MCP server is a tool
+cabinet and a bridge CLI is the key — the same answer `mu` gives, for the
+same reason: the protocol lives at the edge, as an adapter, not in the loop.
+
+Install a bridge. [`mcptools`][mcptools] is one binary, no config file, all
+three transports:
+
+```
+go install github.com/f/mcptools/cmd/mcptools@latest
+```
+
+Then the whole integration is one symlink, and the cabinet is open:
+
+```
+ln -s $(which mcptools) tools/
+ply -t tools "list what the jira server offers, then file the bug I described"
+```
+
+[mcptools]: https://github.com/f/mcptools
+[mcpc]: https://github.com/apify/mcpc
+
+That is the `mu` form, and it works. But `ply` can do better, because in
+`ply` a blessing is *enforced* rather than advised — the model can only
+name what is in the directory. So make each MCP tool its own program:
+
+```sh
+#!/bin/sh
+# file a bug on the corp jira -- {"title": string, "body": string}
+exec /usr/local/bin/mcptools call create_issue --params "$1" \
+     /usr/local/bin/mcpc @jira
+```
+
+Now the model gets `create_issue` and nothing else from that server: not
+`delete_project`, not `list_users`. `ply tools` shows it beside `git` and
+`sed`, because at that point it *is* beside `git` and `sed` — once an MCP
+tool is a program, it is not a special kind of thing any more.
+
+Writing those by hand is tedium, and it is unnecessary: `tools/list` already
+returns a name, a sentence and a JSON schema, which is exactly a synopsis, a
+`-h`, and a call. [`contrib/mcpbox`](contrib/mcpbox) turns one into the
+other:
+
+```
+$ mcpbox tools/ npx -y @modelcontextprotocol/server-everything
+mcpbox: wrote 13 programs to tools
+$ rm tools/get-env                 # bless by deleting
+$ ply tools -t tools
+  echo     Echoes back the input string -- {"message": string}
+  get-sum  Returns the sum of two numbers -- {"a": number, "b": number}
+  ...
+$ tools/get-sum '{"a":17,"b":25}'
+The sum of 17 and 25 is 42.
+```
+
+The directory is the allowlist. `rm` is how you revoke.
+
+Four things that bite, three of them found the hard way:
+
+- **A server needs a `PATH` of its own.** `npx` is `#!/usr/bin/env node` and
+  `uvx` is much the same, so under `-t` — where the toolbox is the entire
+  `PATH` — the server never starts and you get `initialization timed out`.
+  `mcpbox` bakes a `PATH` into each wrapper for this. It does not leak: the
+  model still cannot name `node`, because it cannot name a program's
+  insides. This is the same rule as the check — a blessed program is the
+  caller's, not the model's.
+- **Absolute paths, always**, for the bridge and the server both. Same
+  reason.
+- **A tool error is not always a non-zero exit.** `mcptools` prints
+  `MCP error -32602: ...` and exits 0. The model reads the text and copes;
+  a `-check` written against the exit status will not. Check the artifact,
+  not the call.
+- **stdio servers spawn per call** with `mcptools`, so nothing persists
+  between them. When the integration needs a session, OAuth in the
+  keychain, or exit codes you can branch on, [`mcpc`][mcpc] is the fuller
+  key and the operator connects it once — the wrapper names only `@jira`
+  and never holds the token.
+
 ### As a filter, mid-pipe
 
 ```

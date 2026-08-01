@@ -110,6 +110,26 @@ is running it. Neither needed building, because that is how programs work.
 
 `-sh` hands over the whole machine instead, for when you mean it.
 
+### "But does it do MCP?"
+
+No, and it does not need to. An MCP server is a tool cabinet and a bridge
+CLI is the key, so MCP arrives the way everything else does — as a program:
+
+```
+$ mcpbox tools/ npx -y @modelcontextprotocol/server-everything
+mcpbox: wrote 13 programs to tools
+$ rm tools/get-env                        # bless by deleting
+$ ply -t tools "add 17 and 25, put the number in answer.txt"
+$ get-sum -h                              # ...which the model found itself
+```
+
+`tools/list` already returns a name, a sentence and a JSON schema — which
+is exactly a synopsis, a `-h`, and a call — so
+[`contrib/mcpbox`](contrib/mcpbox) turns the manifest into a directory of
+programs. After that an MCP tool sits beside `git` and `sed` and is not a
+special kind of thing any more, and `-t` makes the blessing real: the model
+cannot name what you deleted. `GUIDE.md` has the pitfalls.
+
 > **The toolbox aims the model; it does not sandbox it.** `sh` has builtins,
 > and a redirect opens a file with no program involved. The security
 > boundary is the process — its user, its container, its `chroot` — as it
