@@ -1,0 +1,278 @@
+# The ply field guide
+
+What it is good at, what it is not, the recipes, and the four things that
+will bite you. `README.md` is the pitch and `ply.1` is the reference; this
+is what you learn in the first week.
+
+## What it is good at
+
+**Anything a program can check.** This is the whole sweet spot. If you can
+write the command that decides, `ply` will work until that command is happy,
+and `&&` afterwards means what it says.
+
+```
+ply -sh -check 'go test ./...'          "make the tests pass"
+ply -sh -check 'go vet ./... && gofmt -l . | grep -q ""' "quiet the vet warnings"
+ply -sh -check 'terraform validate'     "fix the module after the provider bump"
+ply -sh -check 'curl -fsS localhost:8080/health' "get the dev server up"
+ply -sh -check 'test -f dist/app'       "get this thing to build"
+```
+
+**Narrow, repeatable jobs with a small toolbox.** A directory of six
+programs is a better agent than a shell, because the model cannot wander
+into `curl` and it cannot mistake your build for somebody's.
+
+**Work you want a transcript of.** stderr is a terminal session; the log is
+an `ask` session that replays exactly. Nothing about a run is unavailable
+afterwards.
+
+## What it is not
+
+**It is not a chat.** There is no REPL and no back-and-forth. `ply` runs
+until it is done, fails, or hits a cap. If you want to talk about the
+result, `ask` is right there — and the run is an `ask` session, so it
+already remembers:
+
+```
+$ ply -sh -check 'go test ./...' "make the tests pass"
+$ ask -f ~/.ply/sessions/20260801-142233-a3f9c1e0.jsonl "why was that failing?"
+```
+
+**It is not a sandbox.** See SECURITY.md; the short version is that `-t`
+aims the model and the process is the boundary.
+
+**It is not for goals no program can judge.** You can run them — `ply -sh
+"tidy up the docs"` works — but exit 0 then means "the model stopped", and
+you are back to reading the output yourself. That is a real mode. It is
+just a weaker one than it looks, and the default prompt tells the model as
+much.
+
+## Five things that will bite you
+
+### 1. `ask` inside a check continues *your* conversation
+
+This is the sharpest edge in the whole system, and it bit the person who
+wrote `ply`. `ask` continues the current conversation by default. A check
+like this:
+
+```
+-check 'ask -q "is this README any good? yes/no" < README.md | grep -qi yes'
+```
+
+runs inside whatever you were last asking `ask` about, appends the README to
+it, and does that once per cycle. The judgment is polluted and so is your
+conversation. Always give a model-judge its own thread:
+
+```
+-check 'ask -n -q -f /tmp/judge.jsonl "...yes or no..." < README.md | grep -qi "^yes"'
+```
+
+`-n -f` is the same trick `brief find -ask` uses, for the same reason. And
+`grep -qi "^yes"` rather than `grep -qi yes`, or "no, because yes would
+be..." passes.
+
+### 2. Without `-check`, exit 0 is an opinion
+
+Models announce success. In the run that shipped this program, the model
+wrote *"Fizzcheck passes successfully with no reported errors"* in the same
+breath as the command that would have told it otherwise — the command had
+not run yet. `fizzcheck` then exited 1 and it went back to work.
+
+That is the feature working. Without `-check`, nothing catches it.
+
+### 3. The model cannot see output it has not waited for
+
+A reply can hold several blocks; they all run, in order, before the model
+sees any of them. The prompt says so, plainly, and models still sometimes
+write four blocks and then reason about the second one's output. Two
+consequences worth knowing:
+
+- Cheap, obvious sequences in one block are fine and fast: `cd x && make`.
+- Anything where step two depends on reading step one belongs in the *next*
+  turn. You cannot force this, but `-check` makes guessing expensive rather
+  than final.
+
+### 4. One writing worker per tree
+
+Sessions are safe under concurrency; your working directory is not. Fan out
+with `-C`, one directory per worker:
+
+```
+ls -d ./services/*/ | xargs -P4 -I{} ply -sh -C {} -check 'make test' "fix the build"
+```
+
+Four `ply`s in one tree will interleave their edits and each will be
+surprised.
+
+### 5. It reads stdin, because it is a filter
+
+`ply "goal"` with something holding a pipe open on its stdin waits for that
+pipe to close, exactly as `cat` and `grep` do — the goal in argv does not
+excuse it, because `git diff | ply "fix what this shows"` has to work. If a
+run seems to be thinking for a very long time before it says anything,
+that is what is happening, and after a second it says so:
+
+```
+ply: waiting for stdin to end (^D closes it, ^C gives up)
+```
+
+Supervisors, CI runners and cron sometimes hand a program a socket that
+nobody ever writes to or closes. `< /dev/null` settles it for good, and
+belongs in any `ply` line that is not meant to read anything.
+
+## Recipes
+
+### Build a toolbox
+
+The toolbox is a directory. That is the entire format.
+
+```
+mkdir -p tools
+ln -s $(which git rg sed jq curl) tools/
+ply -t tools "find every TODO older than a year and list them by author"
+```
+
+Your own programs go in the same place, and introduce themselves in the
+first comment after the shebang:
+
+```sh
+#!/bin/sh
+# stage - deploy the current branch to staging and print the URL
+```
+
+Check what the model will actually see before you spend a call on it:
+
+```
+ply tools -t tools
+```
+
+Keep a toolbox per job and point `$PLY_TOOLS` at the one you use most.
+
+### Put it in a Makefile
+
+The pre-check is what makes this safe: a target that is already satisfied
+costs nothing.
+
+```make
+lint:
+	ply -sh -q -check 'golangci-lint run' "fix what the linter is complaining about"
+
+release: lint
+	ply -sh -q -check 'go test ./...' "make the tests pass"
+	goreleaser release
+```
+
+### Put it in a git hook
+
+```sh
+#!/bin/sh
+# .git/hooks/pre-commit
+ply -sh -q -check 'gofmt -l . | grep -q .; test $? -eq 1' "gofmt everything" || exit 1
+```
+
+### Judge with a model, when no program can
+
+Through the same hole as everything else, because `ask` is a program. Mind
+bite #1.
+
+```sh
+judge() {
+  printf '%s' "ask -n -q -f $(mktemp -t judge).jsonl '$1 Answer only yes or no.'"
+}
+ply -sh -check "$(judge 'Does this CHANGELOG entry explain the user-visible change?') \
+     < CHANGELOG.md | grep -qi '^yes'" "write the changelog entry for HEAD"
+```
+
+### Brief it, then set it to work
+
+```
+ply -sh -s web-perf -check './budget.sh' "get LCP under 2.5s"
+ply -sh -s -        -check 'wrangler deploy --dry-run' "ship this worker"
+```
+
+`-s -` asks `brief` to choose. `brief` refuses to guess, so a goal made of
+common words gets no skill and says so — which is the right answer, because
+a confidently wrong procedure is worse than none.
+
+### Sub-agents, without a sub-agent feature
+
+Every command gets `$PLY`. So a specialist is a file:
+
+```sh
+#!/bin/sh
+# review - review one file for concurrency bugs and print findings
+exec $PLY -t "$(dirname "$0")" -q "review $1 for data races and lock-order inversions"
+```
+
+Drop that in the toolbox and the outer model can hire it, or you can:
+
+```
+git diff --name-only main | xargs -P4 -n1 tools/review
+```
+
+There is no team format and no orchestrator. `xargs` was the orchestrator.
+
+### As a filter, mid-pipe
+
+```
+kubectl logs deploy/api --since=1h | ply -t tools "what is causing the 500s?" | tee triage.md
+```
+
+Big input spools to a file next to the session and the model is told the
+path, so a 40 MB log becomes something to `grep` rather than a tax on every
+request.
+
+### On a schedule
+
+```
+*/30 * * * * ply -sh -q -check '/usr/local/bin/slo-ok' "bring the error budget back"
+```
+
+The quiet runs are free: the check passes, `ply` prints nothing, exits 0,
+and never calls a model.
+
+## Reading a run afterwards
+
+```
+$ ls -t ~/.ply/sessions | head -1
+20260801-142233-a3f9c1e0.jsonl
+
+$ ask replay ~/.ply/sessions/20260801-142233-a3f9c1e0.jsonl   # for a human
+$ ask replay -json ~/.ply/sessions/...                        # for a program
+$ ask replay -check ~/.ply/sessions/...                       # prove it
+ok: 20260801-142233-a3f9c1e0.jsonl replays exactly (24 events)
+```
+
+The commands are in the assistant turns, their output is in the user turns.
+To see every command a run ran:
+
+```
+ask replay -json "$s" | jq -r 'select(.type=="assistant")
+  | .data.blocks[]? | select(.type=="text") | .text' | grep -A100 '^```ply'
+```
+
+## Tuning
+
+| symptom | flag |
+| --- | --- |
+| a command hangs on a prompt | it already gets `/dev/null`; raise `-timeout` only if it is genuinely slow |
+| the model keeps re-reading a huge file | raise `-cap`, or give it `head`/`grep` and let it narrow |
+| it churns without converging | lower `-cycles`, and make the check's *output* more specific — that text is what it reads |
+| it costs more than it should | `-turns`, and a smaller toolbox: fewer wrong turns are available |
+| you want a cheaper model | `-m anthropic/claude-haiku-4-5-20251001`, or `$ASK_MODEL` |
+
+The single highest-leverage tuning knob is the check's failure output. It is
+the only feedback the loop has that nobody wrote by hand, and a check that
+prints `FAIL` teaches the model nothing that a check printing
+`want: 3, got: 2 (ring_test.go:41)` does not teach it in one turn.
+
+## The cheapest possible sanity check
+
+Before a real run, on a real toolbox:
+
+```
+ply tools  -t tools      # what can it reach?
+ply system -t tools -check 'make test'   # what is it being told?
+```
+
+Both print exactly what the run would use. Neither calls a model.

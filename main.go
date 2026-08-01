@@ -155,7 +155,7 @@ func work(args []string) int {
 		return fail(fmt.Errorf("-cap %d: too small to be worth reading", *o.outcap))
 	}
 
-	data, err := stdinData()
+	data, err := stdinData(*o.quiet)
 	if err != nil {
 		return fail(err)
 	}
@@ -332,10 +332,21 @@ func spool(goal string, data []byte, session string) (string, error) {
 	return firstMessage(goal, "", path), nil
 }
 
-func stdinData() ([]byte, error) {
+func stdinData(quiet bool) ([]byte, error) {
 	fi, err := os.Stdin.Stat()
 	if err != nil || fi.Mode()&os.ModeCharDevice != 0 {
 		return nil, nil
+	}
+	// A filter reads its input, and an input nobody is writing blocks until
+	// somebody does. That is the shell's contract and not a bug — but a
+	// silent indefinite wait is a silent surprise, and this family does not
+	// have those. So say it, once, and only when it is actually taking a
+	// while: a pipe that was ready is never mentioned.
+	if !quiet {
+		t := time.AfterFunc(time.Second, func() {
+			fmt.Fprintln(os.Stderr, "ply: waiting for stdin to end (^D closes it, ^C gives up)")
+		})
+		defer t.Stop()
 	}
 	b, err := io.ReadAll(io.LimitReader(os.Stdin, maxStdin+1))
 	if err != nil {

@@ -41,6 +41,11 @@ export ANTHROPIC_API_KEY=...
 [ask]: https://github.com/patrickyoung/ask
 [brief]: https://github.com/patrickyoung/brief
 
+**[GUIDE.md](GUIDE.md)** is the field guide: what `ply` is good at, what it
+is not, the recipes, and the five things that will bite you — including the
+one that bit the person who wrote it (an `ask` inside a check continues
+*your* conversation unless you say `-n -f`).
+
 ## The family
 
     ask     the model         — no tools, no loop
@@ -143,9 +148,13 @@ When the judgment genuinely needs a model, nothing about the mechanism
 changes — because `ask` is a program:
 
 ```
-ply -sh -check 'ask -q "does this cover install? yes/no" < README.md | grep -qi yes' \
-    "document the installer"
+ply -sh -check 'ask -n -q -f /tmp/judge.jsonl "Does this cover install?
+    Answer only yes or no." < README.md | grep -qi "^yes"' "document the installer"
 ```
+
+(`-n -f` gives the judge its own thread — `ask` continues *your* conversation
+otherwise, which is the sharpest edge in the whole system and has its own
+section in the guide.)
 
 Without `-check`, exit 0 means only that the model stopped. That is a real
 answer for a goal no program can judge, and it is a weaker one than it

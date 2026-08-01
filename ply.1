@@ -125,10 +125,18 @@ is a program:
 .PP
 .RS
 .nf
-ply \-sh \-check 'ask \-q "does README cover install? yes/no" \\
-      < README.md | grep \-qi yes' "document the installer"
+ply \-sh \-check 'ask \-n \-q \-f /tmp/judge.jsonl \\
+      "Does README cover install? Answer only yes or no." \\
+      < README.md | grep \-qi "^yes"' "document the installer"
 .fi
 .RE
+.PP
+.B \-n \-f
+is not optional there.
+.BR ask (1)
+continues the caller's own conversation by default, so a judge without a
+thread of its own would be asked inside whatever was last discussed, once
+per cycle, and would leave the answer there.
 .SS The log
 The conversation is an
 .BR ask (1)
