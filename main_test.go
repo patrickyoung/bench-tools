@@ -449,3 +449,122 @@ func TestSystemAndToolsVerbsShowTheRealThing(t *testing.T) {
 		t.Errorf("ply tools with no toolbox: exit %d, %q", code, stderr)
 	}
 }
+
+// TestTheVerdictLandsInTheLog is the promise ply has always made in its own
+// AGENTS.md — "a command, its output, its exit status, the check's verdict"
+// goes in the conversation — and did not keep. Without it a session holds
+// every command that ran and nothing about whether the work was done, so a
+// run that passed and a run that gave up are the same shape on disk and
+// nothing reading the log afterwards can tell them apart.
+func TestTheVerdictLandsInTheLog(t *testing.T) {
+	verdict := func(t *testing.T, askdir string) (argv, text string) {
+		t.Helper()
+		return read(t, filepath.Join(askdir, "argv.log")), read(t, filepath.Join(askdir, "stdin.log"))
+	}
+
+	t.Run("passing", func(t *testing.T) {
+		work, _, askdir := sandbox(t, "```ply\ntouch built\n```", "Built it.")
+		code, _, stderr := runPly(t, "-sh", "-C", work, "-check", "test -f "+filepath.Join(work, "built"), "build it")
+		if code != 0 {
+			t.Fatalf("exit = %d\n%s", code, stderr)
+		}
+		argv, text := verdict(t, askdir)
+		if !strings.Contains(argv, "note") || !strings.Contains(argv, "-s ply") {
+			t.Errorf("ply never wrote a note:\n%s", argv)
+		}
+		if !strings.Contains(text, "the check passed") {
+			t.Errorf("the verdict is not in what was written:\n%s", text)
+		}
+	})
+
+	t.Run("failing", func(t *testing.T) {
+		work, _, askdir := sandbox(t, "done", "done", "done")
+		if code, _, _ := runPly(t, "-sh", "-C", work, "-cycles", "1", "-check", "false", "impossible"); code != 2 {
+			t.Fatalf("exit = %d, want 2", code)
+		}
+		argv, text := verdict(t, askdir)
+		if !strings.Contains(argv, "note") {
+			t.Errorf("a run that gave up recorded nothing:\n%s", argv)
+		}
+		if !strings.Contains(text, "the check did not pass") {
+			t.Errorf("the verdict is not in what was written:\n%s", text)
+		}
+	})
+
+	// No check, no verdict. "Done is a program's opinion" — with no program
+	// there is no opinion to record, and the absence is the signal: nothing
+	// reading the log later should mistake the model's word for a check.
+	t.Run("no check", func(t *testing.T) {
+		work, _, askdir := sandbox(t, "I think I am done.")
+		if code, _, _ := runPly(t, "-sh", "-C", work, "no check at all"); code != 0 {
+			t.Fatal("exit")
+		}
+		if argv, _ := verdict(t, askdir); strings.Contains(argv, "note") {
+			t.Errorf("a run with no check claimed a verdict:\n%s", argv)
+		}
+	})
+
+	// A failing check the loop carries on from is already in the
+	// conversation as the rejection the model was handed. Recording it again
+	// would say it happened twice.
+	t.Run("recovered runs record once", func(t *testing.T) {
+		work, _, askdir := sandbox(t,
+			"All done!", // the check catches the lie
+			"```ply\ntouch built\n```",
+			"Built it.",
+		)
+		if code, _, _ := runPly(t, "-sh", "-C", work, "-check", "test -f "+filepath.Join(work, "built"), "-sh", "build it"); code != 0 {
+			t.Fatal("exit")
+		}
+		_, text := verdict(t, askdir)
+		if n := strings.Count(text, "the check did not pass"); n != 0 {
+			t.Errorf("an intermediate failure was recorded %d times; it is already the rejection", n)
+		}
+		if n := strings.Count(text, "the check passed"); n != 1 {
+			t.Errorf("the verdict was recorded %d times, want 1", n)
+		}
+	})
+}
+
+// TestWhatWasLoadedLandsInTheLog closes the joint between brief and hone.
+// `brief cat` prints a body without its frontmatter, so a skill reaches the
+// system prompt as anonymous prose: what shaped a run is provable byte for
+// byte, but nothing says which of those bytes were a skill called
+// web-perf. Its name lived only on stderr, where it died with the terminal.
+func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\ntouch built\n```", "Built it.")
+	skills := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(skills, "house"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(skills, "house", "SKILL.md"),
+		"---\nname: house\ndescription: House rules. Use when working here.\n---\n\n# house\n\nUse tabs.\n", 0o644)
+	t.Setenv("BRIEF_PATH", skills)
+	briefBin := filepath.Join(t.TempDir(), "brief")
+	write(t, briefBin, "#!/bin/sh\n[ \"$1\" = cat ] && cat "+filepath.Join(skills, "$2", "SKILL.md")+"\n", 0o755)
+	t.Setenv("BRIEF", briefBin)
+
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-s", "house",
+		"-check", "test -f "+filepath.Join(work, "built"), "build it")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	argv := read(t, filepath.Join(askdir, "argv.log"))
+	if !strings.Contains(argv, "note") {
+		t.Fatalf("no note was written:\n%s", argv)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	if !strings.Contains(sent, "loaded skill house (named)") {
+		t.Errorf("the log does not say which skill was loaded:\n%s", sent)
+	}
+
+	// A run with no -s claims nothing. The absence is the signal, the same
+	// way it is for a run with no check.
+	work2, _, askdir2 := sandbox(t, "Done.")
+	if code, _, _ := runPly(t, "-sh", "-C", work2, "no skill"); code != 0 {
+		t.Fatal("exit")
+	}
+	if s := read(t, filepath.Join(askdir2, "stdin.log")); strings.Contains(s, "loaded skill") {
+		t.Errorf("a run with no -s claimed a skill:\n%s", s)
+	}
+}

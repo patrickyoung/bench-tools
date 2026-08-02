@@ -51,15 +51,22 @@ one that bit the person who wrote it (an `ask` inside a check continues
     ask     the model         — no tools, no loop
     brief   the procedure     — no model, no loop
     ply     the loop          — no model, no procedure
+    hone    the lesson        — no store, no retrieval, no format
 
 `ask` is a model and no loop. `brief` is a procedure and no model. Between
 them there was nothing that *acts*, and `ply` is that and nothing else: it
 has no provider code, no credentials, no session format and no catalogue.
 When it needs a model it runs `ask`. When it needs a procedure it runs
-`brief`. Each of the three refuses to grow the other two, which is why all
-three stay small.
+`brief`. Each refuses to grow the others, which is why all of them stay
+small.
 
-You brief it, you ask it, and it plies.
+[`hone`][hone] closes it into a circle. A `ply` run that failed, recovered,
+and was then confirmed done by the check is the one kind of run that teaches
+something — so `hone` reads the log, writes the lesson down as a `brief`
+skill, and the next run loads it with `-s`. It has no store of its own
+either: a lesson is a skill, and `brief` was already the catalogue.
+
+You brief it, you ask it, it plies, and it hones.
 
 ## A tool is a program
 
@@ -277,6 +284,39 @@ ok: 20260801-142233-a3f9c1e0.jsonl replays exactly (24 events)
 ```
 
 One log format, one replay invariant, no second pipeline to drift.
+
+The verdict goes in it too, as an `ask note` — stamped, not folded, so it
+records how the run ended without changing the conversation:
+
+```
+$ jq -r 'select(.type=="note") | "[" + .data.source + "] " + .data.text' run.jsonl
+[ply] the check passed:
+
+$ go test ./... 2>&1
+ok  	x	0.253s
+```
+
+That line is worth more than it looks. Without it a session holds every
+command that ran and nothing about whether the work was *done* — a run that
+passed and a run that gave up are the same shape on disk. It is the only
+thing in the file that a program decided, and it is what lets
+[`hone`][hone] learn from the run without guessing. A run with no `-check`
+writes none: done is a program's opinion, and with no program there is no
+opinion to record.
+
+What `ply` loaded goes in beside it, because `brief cat` prints a body
+without its frontmatter — a skill arrives as anonymous prose, and its name
+would otherwise die with the terminal:
+
+```
+[ply] loaded skill house (named)
+```
+
+That is what lets `hone -into -` put a lesson back on the procedure the run
+was following. A run that loaded a procedure and stumbled *anyway* is
+evidence that procedure is incomplete.
+
+[hone]: https://github.com/patrickyoung/hone
 
 ## Brief it first
 

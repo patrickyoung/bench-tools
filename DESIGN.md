@@ -18,9 +18,10 @@ and nothing else.
     ask     the model          — no tools, no loop
     brief   the procedure      — no model, no loop
     ply     the loop           — no model, no procedure
+    hone    the lesson         — no store, no retrieval, no format
 
-Each of the three refuses to grow the other two. That is the whole
-architecture, and it is why all three stay small.
+Each refuses to grow the others. That is the whole architecture, and it is
+why all of them stay small.
 
 ## Two decisions carry the design
 

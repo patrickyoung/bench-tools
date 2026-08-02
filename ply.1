@@ -146,6 +146,38 @@ user turns, so the file is the whole record and
 proves it.
 .B ply
 keeps no log of its own.
+.PP
+When
+.B \-check
+reaches a terminal answer, the verdict is recorded there as an
+.B ask note
+\(em stamped
+.BR ply ,
+and not folded, so it says how the run ended without changing the
+conversation. Without it a session holds every command that ran and nothing
+about whether the work was done, and a run that passed and a run that gave
+up are the same shape on disk. It is the only thing in the file that a
+program decided, and it is what
+.BR hone (1)
+learns from.
+.PP
+It is written at exactly the two points the check decides \(em passing, or
+out of cycles \(em and nowhere else: a failing check the loop carries on
+from is already in the conversation as the rejection the model was handed.
+A run with no
+.B \-check
+records no verdict at all, because done is a program's opinion and there was
+no program to have one.
+.PP
+What
+.B \-s
+loaded is recorded the same way, once the log exists:
+.BR brief (1)
+prints a skill's body without its frontmatter, so a procedure reaches the
+prompt as anonymous prose and its name would otherwise live only on standard
+error. A run that loaded none claims none. This is what
+.B hone \-into \-
+reads to put a lesson back on the procedure the run was following.
 .SH COMMANDS
 .TP
 .B ply \fR[\fIflags\fR] \fIgoal\fR
@@ -410,19 +442,33 @@ ask replay \-check ~/.ply/sessions/20260801\-142233\-a3f9c1e0.jsonl
 .SH SEE ALSO
 .BR ask (1),
 .BR brief (1),
+.BR hone (1),
 .BR make (1),
 .BR sh (1),
 .BR timeout (1)
 .SH HISTORY
 .B ply
-is the third of three filters carved from one agent.
+is the third of four filters carved from one agent.
 .BR ask (1)
 took the model,
 .BR brief (1)
-took the procedure, and
+took the procedure,
 .B ply
-took the loop. Each refuses to grow the other two, which is why all three
+took the loop, and
+.BR hone (1)
+took the lesson. Each refuses to grow the others, which is why all of them
 stay small.
+.PP
+The four close into a circle:
+.B ply
+works a goal and its check decides,
+.BR hone (1)
+reads that verdict out of the log and writes what the run taught as a
+.BR brief (1)
+skill, and the next
+.B ply
+loads it with
+.BR \-s .
 .SH CAVEATS
 The toolbox is not a sandbox. It scopes what the model reaches for; it does
 not contain what the model does. Run

@@ -185,12 +185,14 @@ func work(args []string) int {
 		}
 	})
 	v := newView(os.Stderr, *o.quiet)
+	var skills []loaded
 	if len(o.skills) > 0 {
-		s, err := brief(ctx, o.skills, goal, v)
+		s, got, err := brief(ctx, o.skills, goal, v)
 		if err != nil {
 			return fail(err)
 		}
 		system += s
+		skills = got
 	}
 
 	self, err := os.Executable()
@@ -236,6 +238,7 @@ func work(args []string) int {
 		Runner:   runner,
 		Checker:  checker,
 		Check:    *o.check,
+		Loaded:   skillNote(skills),
 		Cycles:   *o.cycles,
 		Compact:  *o.compact,
 		Compacts: *o.compacts,
@@ -288,7 +291,7 @@ func systemCmd(args []string) int {
 	}
 	out := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap)
 	if len(o.skills) > 0 {
-		s, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
+		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
 		if err != nil {
 			return fail(err)
 		}
@@ -301,30 +304,71 @@ func systemCmd(args []string) int {
 // brief loads procedures. `-s -` asks the catalogue to choose, and brief
 // refuses to guess: nothing matched is an answer, so the run goes on
 // without one and stderr says so.
-func brief(ctx context.Context, names list, goal string, v *view) (string, error) {
+// loaded is one skill that went into the system prompt, and how it got
+// there. The distinction is worth keeping: a skill somebody named is a
+// choice, and a skill brief picked is a guess that the run then tested.
+type loaded struct {
+	Name   string
+	Chosen bool // brief find picked it, rather than being named
+}
+
+func brief(ctx context.Context, names list, goal string, v *view) (string, []loaded, error) {
 	bin, err := tool("BRIEF", "brief", "-s needs brief: go install github.com/patrickyoung/brief@latest")
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	var s strings.Builder
+	var got []loaded
 	for _, name := range names {
+		chosen := false
 		if name == "-" {
 			if name, err = briefFind(ctx, bin, goal); err != nil {
-				return "", err
+				return "", nil, err
 			}
 			if name == "" {
 				v.Note("brief matched no skill for this goal; continuing without one")
 				continue
 			}
+			chosen = true
 			v.Note("brief chose %s", name)
 		}
 		body, err := briefCat(ctx, bin, name)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		s.WriteString("\n\nThe procedure below applies to this goal. Follow it.\n\n" + strings.TrimSpace(body) + "\n")
+		got = append(got, loaded{Name: name, Chosen: chosen})
 	}
-	return s.String(), nil
+	return s.String(), got, nil
+}
+
+// skillNote is what ply records about its own composition.
+//
+// The system prompt reaches the log whole and verbatim, so what shaped a
+// run is already provable byte for byte. What is not in it is where any of
+// those bytes came from: `brief cat` prints a body without its frontmatter,
+// so a skill arrives as anonymous prose and its name lives only on stderr,
+// where it dies with the terminal.
+//
+// That matters to whatever reads the log afterwards. A run that loaded a
+// procedure and stumbled anyway is not just a run that stumbled -- it is
+// evidence that procedure is incomplete, and hone(1) can only say so if
+// the log names it.
+//
+// It is ply's claim about its own composition, signed by ply, rather than
+// something ask asserts about a string it was handed. It is checkable: the
+// body is in the header, so a reader can confirm the named skill's text is
+// actually there.
+func skillNote(got []loaded) string {
+	var b strings.Builder
+	for _, l := range got {
+		how := "named"
+		if l.Chosen {
+			how = "chosen by brief find"
+		}
+		fmt.Fprintf(&b, "loaded skill %s (%s)\n", l.Name, how)
+	}
+	return b.String()
 }
 
 // spool decides what the first message says. Input past spoolOver becomes a
