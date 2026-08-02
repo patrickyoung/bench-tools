@@ -130,6 +130,40 @@ programs. After that an MCP tool sits beside `git` and `sed` and is not a
 special kind of thing any more, and `-t` makes the blessing real: the model
 cannot name what you deleted. `GUIDE.md` has the pitfalls.
 
+### "But how does it edit a file?"
+
+With a program, and for most of what a model does the program is `>`. A
+file it is writing whole is `cat > x <<'EOF'`, and a shell has always had
+that. The awkward case is the other one — three lines in the middle of
+nine hundred — where rewriting the file is not on and `sed` needs an
+expression escaped out of the very code being changed.
+
+[`contrib/edit`](contrib/edit) is that program. It replaces text by
+matching it, exactly and exactly once:
+
+```
+$ edit ring.go 'r.head = r.head + 1' 'r.head = (r.head + 1) % len(r.buf)'
+ring.go: 1 replacement
+```
+
+Nothing is fuzzy-matched, ever, and every edit in a call is located before
+any file is written — so a call that cannot be satisfied changes nothing,
+across as many files as it names. What a fuzzy matcher would have guessed
+at, this reports instead:
+
+```
+$ edit ring.go '    r.n++' '    r.n += 2'
+edit: ring.go: the search text was not found. It matches at line 6 once
+whitespace is ignored, so the difference is tabs: the file indents with
+tabs and the search text uses spaces.
+```
+
+It reads both edit dialects models actually write — `<<<<<<< SEARCH` blocks
+and `*** Begin Patch` hunks — because which one a model reaches for is
+trained in, and refusing the one it knows costs a turn and ends in a
+hand-rolled `sed`. `GUIDE.md` has the toolbox recipe and the one trap
+(`-t` means PATH is the toolbox alone, so link `python3` in beside it).
+
 > **The toolbox aims the model; it does not sandbox it.** `sh` has builtins,
 > and a redirect opens a file with no program involved. The security
 > boundary is the process — its user, its container, its `chroot` — as it
