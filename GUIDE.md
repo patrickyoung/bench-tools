@@ -264,9 +264,20 @@ $ ply tools -t tools
   echo     Echoes back the input string -- {"message": string}
   get-sum  Returns the sum of two numbers -- {"a": number, "b": number}
   ...
-$ tools/get-sum '{"a":17,"b":25}'
+$ tools/get-sum 17 25
 The sum of 17 and 25 is 42.
 ```
+
+The arguments are positional, in schema order, and typed from the schema —
+`get-sum 17 banana` says `b must be a number, not 'banana'` and exits 2. The
+JSON form still works for anything awkward:
+`get-sum '{"a":17,"b":25}'`.
+
+That is not a convenience. The first cut of `mcpbox` took JSON only, and a
+model handed `resolve-library-id` read its `-h`, saw `usage: <json>`, and
+typed `resolve-library-id zod` anyway — then did it twice more. It was
+right and the wrapper was wrong: a Unix program that takes a library name
+takes a library name. Half the run went on arguing about it.
 
 The directory is the allowlist. `rm` is how you revoke.
 

@@ -79,12 +79,58 @@ def synopsis(desc):
     return line if len(line) <= 96 else line[:93].rstrip() + "..."
 
 
-def render(name, desc, schema, bridge, server, path):
-    """One tool, as a program. Arguments are the tool's own JSON, because
-    that is the shape MCP actually has and the shape a model writes without
-    being taught a second one."""
+# BUILD maps positional arguments onto a tool's schema. It runs under the
+# interpreter mcpbox itself ran under, so the escaping is JSON's own and not
+# a shell approximation of it, and the types come from the schema rather
+# than from guessing. Written without a single quote anywhere: it is about
+# to be embedded in a single-quoted /bin/sh string.
+BUILD = """
+import json, sys
+spec = json.loads(sys.argv[1])
+names, types = spec["order"], spec["types"]
+args = sys.argv[2:]
+if len(args) > len(names):
+    sys.stderr.write("too many arguments: %s takes at most %d (%s)\\n"
+                     % (spec["tool"], len(names), ", ".join(names)))
+    sys.exit(2)
+out = {}
+for n, a in zip(names, args):
+    t = types.get(n, "string")
+    if t in ("number", "integer"):
+        try:
+            out[n] = int(a) if t == "integer" else float(a)
+        except ValueError:
+            sys.stderr.write("%s must be a %s, not %r\\n" % (n, t, a))
+            sys.exit(2)
+        if t == "number" and out[n] == int(out[n]):
+            out[n] = int(out[n])
+    elif t == "boolean":
+        out[n] = a.lower() in ("1", "true", "yes", "on")
+    elif t in ("object", "array"):
+        try:
+            out[n] = json.loads(a)
+        except ValueError:
+            sys.stderr.write("%s must be JSON, not %r\\n" % (n, a))
+            sys.exit(2)
+    else:
+        out[n] = a
+json.dump(out, sys.stdout)
+"""
+
+
+def render(name, desc, schema, bridge, server, path, python):
+    """One tool, as a program.
+
+    Arguments are positional, in schema order, because a Unix program that
+    takes a library name takes a library name -- a model handed one of
+    these reaches for `resolve-library-id zod` however loudly the usage
+    line says JSON, and it is right to. The JSON form still works for
+    anything awkward, and is what a nested object needs."""
     props = (schema or {}).get("properties") or {}
     required = set((schema or {}).get("required") or [])
+    # Required first, then optional, each in the order the server declared
+    # them: the caller can stop early and leave the optional ones off.
+    order = [k for k in props if k in required] + [k for k in props if k not in required]
 
     shape = ", ".join(
         f'"{k}": {v.get("type", "any")}' for k, v in props.items()
@@ -102,13 +148,17 @@ def render(name, desc, schema, bridge, server, path):
     # first comment after the shebang. The rest of the help is marked #:
     # so that -h can print it and nothing else -- a housekeeping comment in
     # the same file must not turn into documentation.
+    call = " ".join(f"<{k}>" if k in required else f"[{k}]" for k in order)
     lines = [
         "#!/bin/sh",
         f"# {first}",
         "#:",
-        f"#: usage: {name} '<json>'",
-        "#:",
+        f"#: usage: {name} {call}".rstrip(),
     ]
+    if props:
+        shown = ", ".join(f'"{k}": ...' for k in order)
+        lines.append(f"#:    or: {name} '{{{shown}}}'")
+    lines.append("#:")
     for para in (desc or "").strip().split("\n"):
         for wrapped in textwrap.wrap(para, 74) or [""]:
             lines.append(f"#: {wrapped}".rstrip())
@@ -133,10 +183,29 @@ def render(name, desc, schema, bridge, server, path):
         # name anything here, because it cannot name this program's insides.
         # Narrow it if the server needs less than this.
         f"PATH={quote(path)}; export PATH",
-        # Not ${1:-{}} -- sh reads the first } as the end of the expansion,
-        # and hands the tool somebody else's JSON with a brace stuck on it.
-        "[ $# -gt 0 ] || set -- '{}'",
-        f"exec {quote(bridge)} call {quote(name)} --params \"$1\" {server}",
+    ]
+    if props:
+        spec = json.dumps(
+            {
+                "tool": name,
+                "order": order,
+                "types": {k: props[k].get("type", "string") for k in order},
+            },
+            sort_keys=True,
+        )
+        lines += [
+            "case ${1-} in",
+            "  '') params='{}' ;;",
+            # A leading brace is JSON and passes straight through. Anything
+            # else is argv, and argv is what a program is normally handed.
+            '  \\{*) params=$1 ;;',
+            f"  *) params=$({quote(python)} -c {quote(BUILD)} {quote(spec)} \"$@\") || exit 2 ;;",
+            "esac",
+        ]
+    else:
+        lines.append("params='{}'")
+    lines += [
+        f"exec {quote(bridge)} call {quote(name)} --params \"$params\" {server}",
         "",
     ]
     return "\n".join(lines)
@@ -202,7 +271,7 @@ def main(argv):
                     skipped.append((name, "exists and mcpbox did not write it"))
                     continue
         with open(path, "w") as f:
-            f.write(render(name, t.get("description", ""), t.get("inputSchema"), bridge, quoted, runpath))
+            f.write(render(name, t.get("description", ""), t.get("inputSchema"), bridge, quoted, runpath, sys.executable))
         os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         written += 1
 
