@@ -56,41 +56,45 @@ func run(args []string) int {
 
 // opts is every knob, in one place, because three verbs share most of them.
 type opts struct {
-	fs      *flag.FlagSet
-	toolbox *string
-	shell   *bool
-	check   *string
-	force   *bool
-	cycles  *int
-	turns   *int
-	timeout *time.Duration
-	outcap  *int
-	dir     *string
-	spec    *string
-	sys     *string
-	skills  list
-	file    *string
-	quiet   *bool
+	fs       *flag.FlagSet
+	toolbox  *string
+	shell    *bool
+	check    *string
+	force    *bool
+	cycles   *int
+	turns    *int
+	timeout  *time.Duration
+	outcap   *int
+	dir      *string
+	spec     *string
+	sys      *string
+	skills   list
+	file     *string
+	quiet    *bool
+	compact  *bool
+	compacts *int
 }
 
 func newOpts(name string) *opts {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	o := &opts{
-		fs:      fs,
-		toolbox: fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
-		shell:   fs.Bool("sh", false, "hand the model every program on PATH"),
-		check:   fs.String("check", "", "the goal is done when this shell command exits 0"),
-		force:   fs.Bool("B", false, "work the goal even if the check already passes"),
-		cycles:  fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
-		turns:   fs.Int("turns", 0, "model turns before giving up (0 = unbounded)"),
-		timeout: fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
-		outcap:  fs.Int("cap", 16<<10, "output kept per command, head and tail"),
-		dir:     fs.String("C", "", "run commands here"),
-		spec:    fs.String("m", "", "provider/model, passed to ask"),
-		sys:     fs.String("S", "", "system prompt, replacing the default"),
-		file:    fs.String("f", "", "session log to write"),
-		quiet:   fs.Bool("q", false, "no typescript on stderr"),
+		fs:       fs,
+		toolbox:  fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
+		shell:    fs.Bool("sh", false, "hand the model every program on PATH"),
+		check:    fs.String("check", "", "the goal is done when this shell command exits 0"),
+		force:    fs.Bool("B", false, "work the goal even if the check already passes"),
+		cycles:   fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
+		turns:    fs.Int("turns", 0, "model turns before giving up (0 = unbounded)"),
+		timeout:  fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
+		outcap:   fs.Int("cap", 16<<10, "output kept per command, head and tail"),
+		dir:      fs.String("C", "", "run commands here"),
+		spec:     fs.String("m", "", "provider/model, passed to ask"),
+		sys:      fs.String("S", "", "system prompt, replacing the default"),
+		file:     fs.String("f", "", "session log to write"),
+		quiet:    fs.Bool("q", false, "no typescript on stderr"),
+		compact:  fs.Bool("compact", false, "carry on through a full context window"),
+		compacts: fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to append; repeat for more; - picks one")
 	return o
@@ -223,13 +227,15 @@ func work(args []string) int {
 
 	v.Note("%s · %s", session, describe(box, *o.check))
 	loop := &Loop{
-		Model:   Model{Bin: askBin, Session: session, Spec: *o.spec, System: system},
-		Runner:  runner,
-		Checker: checker,
-		Check:   *o.check,
-		Cycles:  *o.cycles,
-		Turns:   *o.turns,
-		View:    v,
+		Model:    Model{Bin: askBin, Session: session, Spec: *o.spec, System: system},
+		Runner:   runner,
+		Checker:  checker,
+		Check:    *o.check,
+		Cycles:   *o.cycles,
+		Compact:  *o.compact,
+		Compacts: *o.compacts,
+		Turns:    *o.turns,
+		View:     v,
 	}
 	answer, err := loop.Run(ctx, first)
 	if answer != "" && !v.Shown() {

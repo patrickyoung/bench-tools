@@ -212,6 +212,70 @@ func TestContextFullIsExitTwo(t *testing.T) {
 	}
 }
 
+// TestCompactCarriesOnThroughAFullWindow: a full context window is
+// permanent, so without -compact it ends the run at exit 2. With it, ask
+// writes a handoff note into a fresh session and the loop moves into it —
+// and re-sends the message the full session could not take, so nothing is
+// dropped on the way across.
+func TestCompactCarriesOnThroughAFullWindow(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	// A fake ask that is full until it has been compacted, and answers
+	// afterwards. `compact` prints the new session's path, as the real one
+	// does.
+	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+d=`+askdir+`
+for a in "$@"; do
+  if [ "$a" = compact ]; then echo compacted >> "$d/compacted"; echo `+fresh+`; exit 0; fi
+done
+echo "$@" >> "$d/argv.log"
+cat >> "$d/stdin.log"
+[ -f "$d/compacted" ] || { echo "ask: context window is full" >&2; exit 2; }
+echo done
+`, 0o755)
+
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "-compact", "the goal")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\n%s", code, stderr)
+	}
+	if strings.TrimSpace(stdout) != "done" {
+		t.Errorf("stdout = %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "compacted")); err != nil {
+		t.Fatal("the loop never compacted; a full window ended the run")
+	}
+	if !strings.Contains(stderr, "compacted into") {
+		t.Errorf("stderr does not report the compaction:\n%s", stderr)
+	}
+	// The turn that overflowed is sent again, into the new session.
+	if sent := read(t, filepath.Join(askdir, "stdin.log")); strings.Count(sent, "the goal") != 2 {
+		t.Errorf("the message was not re-sent after compacting:\n%s", sent)
+	}
+	if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, fresh) {
+		t.Errorf("the loop did not move into the compacted session:\n%s", argv)
+	}
+}
+
+// TestCompactionIsBounded: a goal that needs more than a few compactions
+// has outgrown one run, and the loop should say so rather than summarise
+// forever.
+func TestCompactionIsBounded(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+for a in "$@"; do
+  if [ "$a" = compact ]; then echo `+filepath.Join(t.TempDir(), "n.jsonl")+`; exit 0; fi
+done
+echo "ask: context window is full" >&2; exit 2
+`, 0o755)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-compact", "-compactions", "2", "goal")
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(stderr, "compactions") {
+		t.Errorf("stderr does not name the cap:\n%s", stderr)
+	}
+}
+
 func TestModelFailureIsExitOne(t *testing.T) {
 	work, _, _ := sandbox(t, "unused")
 	t.Setenv("FAKE_ASK_EXIT", "1")

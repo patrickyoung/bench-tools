@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -16,13 +17,15 @@ import (
 const maxStalls = 2
 
 type Loop struct {
-	Model   Model
-	Runner  Runner // the model's reach: the toolbox
-	Checker Runner // the caller's reach: the caller's own PATH
-	Check   string // shell command; empty means the model's word is the verdict
-	Cycles  int    // failed checks before giving up; 0 unbounded
-	Turns   int    // model turns before giving up; 0 unbounded
-	View    *view
+	Model    Model
+	Runner   Runner // the model's reach: the toolbox
+	Checker  Runner // the caller's reach: the caller's own PATH
+	Check    string // shell command; empty means the model's word is the verdict
+	Cycles   int    // failed checks before giving up; 0 unbounded
+	Compact  bool   // carry on through a full window by compacting
+	Compacts int    // compactions before giving up; 0 unbounded
+	Turns    int    // model turns before giving up; 0 unbounded
+	View     *view
 }
 
 // Run works the goal. The returned string is the model's final report even
@@ -31,12 +34,29 @@ type Loop struct {
 // act on than it needs to be.
 func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 	msg, last := first, ""
-	stalls, turns, cycle := 0, 0, 0
+	stalls, turns, cycle, compacts := 0, 0, 0, 0
 	for {
 		if l.Turns > 0 && turns >= l.Turns {
 			return last, fmt.Errorf("%w: %d", ErrTurns, l.Turns)
 		}
 		reply, err := l.Model.Turn(ctx, msg)
+		if errors.Is(err, ErrOverflow) && l.Compact {
+			// A full window is permanent, so the only way on is to carry
+			// less of the conversation. ask writes the handoff note and
+			// opens the new session; ply just moves into it and re-sends
+			// the message the full one could not take.
+			path, cerr := l.Model.Compact(ctx)
+			if cerr != nil {
+				return last, cerr
+			}
+			l.View.Note("context was full; compacted into %s", path)
+			l.Model.Session = path
+			compacts++
+			if l.Compacts > 0 && compacts >= l.Compacts {
+				return last, fmt.Errorf("%w after %d compactions", ErrOverflow, compacts)
+			}
+			continue
+		}
 		if err != nil {
 			return last, err
 		}

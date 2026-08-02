@@ -227,6 +227,19 @@ takes it.
 .BI \-cycles " n"
 Failed checks before giving up. Default 5; 0 is unbounded.
 .TP
+.B \-compact
+When the context window fills, carry on. A full window is permanent, so the
+run would otherwise end at exit 2; with this,
+.B ask compact
+writes a handoff note into a fresh session and the loop moves into it,
+re-sending the message the full session could not take. The note is a model
+summarising the work, so it is a lossy step taken deliberately and reported
+on standard error, never quietly.
+.TP
+.BI \-compactions " n"
+Compactions before giving up. Default 3; 0 is unbounded. A goal that needs
+more than a few has outgrown one run.
+.TP
 .BI \-turns " n"
 Model turns before giving up. Default 0, unbounded.
 .TP

@@ -42,6 +42,9 @@ flags:
   -check cmd    the goal is done when this shell command exits 0
   -B            work the goal even if the check already passes
   -cycles n     failed checks before giving up (default 5, 0 = unbounded)
+  -compact      when the context window fills, carry on: ask compact writes
+                a handoff note and the run continues in a fresh session
+  -compactions n  compactions before giving up (default 3, 0 = unbounded)
   -turns n      model turns before giving up (default 0 = unbounded)
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
@@ -60,5 +63,6 @@ env: PLY_TOOLS (-t) · PLY_DIR (sessions, default ~/.ply/sessions) · ASK
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error · 2 not done — check still failing, a cap tripped,
-      or the context window is full · 130 interrupted
+      or the context window is full and -compact was not given · 130
+      interrupted
 `

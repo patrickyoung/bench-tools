@@ -70,6 +70,29 @@ func (m Model) Turn(ctx context.Context, text string) (string, error) {
 	return strings.TrimRight(out.String(), "\n"), nil
 }
 
+// Compact starts a fresh session from a model-written handoff note and
+// returns its path. It is what a full context window costs now: one
+// summarizing call and a conversation that carries the work instead of the
+// transcript. ask owns the mechanism, as it owns the log — ply only knows
+// when to reach for it.
+func (m Model) Compact(ctx context.Context) (string, error) {
+	args := []string{"-q", "compact", m.Session}
+	if m.Spec != "" {
+		args = append(args, "-m", m.Spec)
+	}
+	cmd := exec.CommandContext(ctx, m.Bin, args...)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%s compact: %s", m.Bin, firstLine(errb.String()))
+	}
+	path := strings.TrimSpace(out.String())
+	if path == "" {
+		return "", fmt.Errorf("%s compact: no session on stdout", m.Bin)
+	}
+	return path, nil
+}
+
 // brief runs the catalogue. ply knows a skill by name and nothing else
 // about it; if ply needs a procedure, it runs brief, exactly as brief runs
 // ask when it needs a model.
