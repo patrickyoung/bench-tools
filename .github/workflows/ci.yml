@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # hone reads session logs and writes skill files, and its tests drive the
+  # program the way a shell does -- argv in, streams and an exit code out --
+  # against a fake ask that is a real program. Both platforms it claims to
+  # run on are tested on every push.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./...
+
+      # hone shells out and reads what comes back. A race there would be
+      # invisible in ordinary runs and would corrupt a skill in real ones.
+      - name: test -race
+        run: go test -race ./...
+
+      - name: build
+        run: go build ./...
+
+      # The docs tests hold the man page against the code; mandoc holds it
+      # against the format. Neither substitutes for the other.
+      - name: man page lint
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y mandoc && mandoc -Tlint hone.1
+
+  # The docs tests already prove the man page and help agree with the code.
+  # This proves the thing they cannot: that the module is installable the
+  # way the README says it is.
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - run: go install .
+      - run: hone version

@@ -1,0 +1,300 @@
+.TH HONE 1 "2026-08-01" "hone 0.1.0" "General Commands Manual"
+.SH NAME
+hone \- read a run a program judged, write down what it teaches
+.SH SYNOPSIS
+.B hone
+.RI [ flags ]
+.RI [ session ...]
+.br
+.B hone forget
+.I session-id
+.I skill
+.RI [ skill ...]
+.br
+.B hone prompt
+.RI [ flags ]
+.br
+.B hone version
+.br
+.B hone help
+.SH DESCRIPTION
+.B hone
+reads an
+.BR ask (1)
+session in which
+.BR ply (1)
+worked a goal, and writes down what the run teaches. The lesson is standard
+output, progress is standard error, and the exit status says whether
+anything was learned.
+.PP
+It is the fourth of four filters and the smallest of them:
+.PP
+.RS
+.nf
+ask     the model      \(em no tools, no loop
+brief   the procedure  \(em no model, no loop
+ply     the loop       \(em no model, no procedure
+hone    the lesson     \(em no store, no retrieval, no format
+.fi
+.RE
+.PP
+With no session named, the current conversation. A directory means every
+session in it, oldest first, which is what a batch over an archive wants.
+Flags come before sessions: after one, a word is a filename.
+.SS The rule
+.B hone
+learns from recoveries, and from nothing else.
+.PP
+A run that never failed teaches nothing \(em everything worked first try,
+so there is no counterfactual. A run that never passed proves nothing \(em
+the last thing tried might be wrong, and a lesson drawn from it is a wrong
+answer with the standing of a precedent, which is worse than no lesson at
+all. Only a run that failed and then passed teaches, and the lesson is the
+difference between the two.
+.PP
+That gate is arithmetic on exit statuses already in the log. A model is used
+to
+.I word
+a lesson and never to decide there is one, because a model asked whether a
+transcript contains a lesson will always find one.
+.PP
+Three runs in four teach nothing. That is the design working, not failing.
+.SS The verdict
+.B ply \-check
+writes how a run ended into the session as an
+.B ask note
+\(em stamped, and not folded \(em so
+.B hone
+knows the outcome without guessing. A run with no check has no verdict and
+is refused, saying so.
+.PP
+This is the whole reason it works. Everything else that learns from agent
+logs is learning from unlabelled ones, and the difference is not small: in
+published comparisons, skills distilled from verified trajectories are worth
+roughly an order of magnitude more than skills distilled from unverified
+ones.
+.SS No store
+A lesson is a skill,
+.BR brief (1)
+is the catalogue, and
+.B $BRIEF_PATH
+is where it lives. hone writes what brief reads and stops. There is no
+index, no database, no embedding, no vector store and no daemon, and
+retrieval is
+.BR "brief find" .
+.PP
+Every write is a delta. Lessons are appended under a
+.B "## Lessons"
+heading and what is already there is never regenerated: a model handed its
+own accumulated notes and asked for the next version rewrites them, and
+rewriting compresses away the specifics that made them worth keeping.
+.SS Provenance
+Every lesson carries an HTML comment naming the session it was learned from
+and the call that worded it. Both replay, so
+.B ask replay \-check
+proves either one a year later.
+.PP
+That is what makes a bad lesson something to delete rather than argue with.
+The unit is a run, because a session that taught one wrong thing usually
+taught its neighbours too \(em see
+.BR "hone forget" .
+.SH COMMANDS
+.TP
+.B hone \fR[\fIflags\fR] [\fIsession ...\fR]
+Distil what a run teaches. Standard output is the lesson, or the path
+written when
+.B \-into
+is given.
+.TP
+.B hone forget \fIsession-id skill \fR[\fIskill ...\fR]
+Remove every lesson a run taught, and the marks that named it. Exit 1 when
+there was nothing to forget, which is an answer rather than a failure.
+.IP
+It takes a session id because that is what a mark records. A skill is a
+name brief knows or a path.
+.TP
+.B hone prompt \fR[\fIflags\fR]
+Print the system prompt that words a lesson, on standard output. It is a
+value, not a secret, so extending it is ordinary shell.
+.B \-n
+prints it with the cap it would be sent with.
+.TP
+.B hone version
+Print the version.
+.B \-V
+and
+.B \-\-version
+do the same.
+.TP
+.B hone help
+Print the summary on standard output.
+.B \-h
+and
+.B \-\-help
+do the same.
+.SH FLAGS
+.TP
+.BI \-into " skill"
+Fold the lessons into this skill instead of printing them. A name
+.BR brief (1)
+knows, or a path.
+.B \-into \-
+means the skill the run was already following, read back from what
+.BR ply (1)
+recorded when it loaded it \(em a lesson learned *despite* a procedure
+belongs to that procedure. A run that loaded none, or more than one, is
+refused rather than guessed at. A skill that does not exist is created, with a
+description written for it \(em brief ranks over descriptions and never over
+bodies, so a skill described as "what was learned here" is a skill nothing
+will ever retrieve.
+.TP
+.BI \-n " N"
+The most lessons to take from one run. Default 3, and small on purpose: a
+run that appears to teach five things has usually taught one thing and four
+restatements of it.
+.TP
+.BI \-m " spec"
+.IR provider / model
+for the wording, e.g.
+.BR anthropic/claude\-sonnet\-5 .
+Defaults to whatever
+.BR ask (1)
+would use.
+.TP
+.B \-N
+Say what would be learned and write nothing.
+.TP
+.B \-why
+Print the evidence a lesson would be drawn from, and stop. No model is
+called. A lesson is a claim, and reading the evidence before paying for the
+claim is the difference between a tool you trust and one you audit
+afterwards.
+.TP
+.BI \-d " dir"
+The session directory.
+.RB ( $ASK_DIR )
+.TP
+.B \-no-verify
+Skip
+.B ask replay \-check
+on a session before reading it. The check is on by default because a log
+that does not replay is not a record of what happened, and so is not
+evidence of anything.
+.TP
+.B \-q
+No progress on standard error.
+.SH ENVIRONMENT
+.TP
+.B ASK
+The
+.BR ask (1)
+binary. Default
+.B ask
+on
+.BR $PATH ,
+and required: hone has no model of its own.
+.TP
+.B BRIEF
+The
+.BR brief (1)
+binary. Default
+.B brief
+on
+.BR $PATH ,
+and optional \(em without it hone writes a skill it cannot lint, which is a
+narrower hone rather than no hone.
+.TP
+.B ASK_DIR
+Where sessions live. Default
+.BR ~/.ask/sessions .
+.TP
+.B BRIEF_PATH
+Where skills live, searched left to right, first match wins. A new skill is
+created in the first entry. Default
+.BR .claude/skills:~/.claude/skills:~/.brief/skills ,
+which is brief's.
+.TP
+.B HONE_DIR
+Where hone keeps the sessions that worded its lessons. Default
+.BR ~/.hone/lessons .
+.SH EXIT STATUS
+.TP
+.B 0
+Something was learned.
+.TP
+.B 1
+Nothing to learn: no verdict, no recovery, nothing worth keeping, or
+already learned from this run.
+.TP
+.B 2
+Error: bad usage, an unreadable session, or
+.B ask
+failed.
+.PP
+This is
+.BR grep (1)'s
+contract rather than
+.BR ask (1)'s, because hone asks a question where no is a real answer. Most
+runs teach nothing, so a loop over an archive branches on 1 rather than
+stopping:
+.PP
+.RS
+.nf
+for s in ~/.ask/sessions/*.jsonl; do
+    hone \-into house "$s" || continue
+done
+.fi
+.RE
+.SH EXAMPLES
+What did the last run teach?
+.PP
+.RS
+.nf
+hone
+.fi
+.RE
+.PP
+Keep it, and use it next time:
+.PP
+.RS
+.nf
+hone \-into go\-house
+ply \-sh \-s go\-house \-check 'go test ./...' "add a ring buffer"
+.fi
+.RE
+.PP
+Learn, then act on what was learned \(em the loop, as a pipeline rather
+than a runtime:
+.PP
+.RS
+.nf
+ply \-sh \-s "$(brief find "$task")" \-check "$check" "$task"
+hone \-into house
+.fi
+.RE
+.PP
+Read the evidence before believing a lesson:
+.PP
+.RS
+.nf
+hone \-why
+.fi
+.RE
+.PP
+That run taught something wrong:
+.PP
+.RS
+.nf
+hone forget 20260801\-230441\-4c8100cf68ff97f5 house
+.fi
+.RE
+.SH FILES
+.TP
+.B ~/.hone/lessons/
+The sessions in which lessons were worded, one per call, kept so that
+.B ask replay \-check
+can prove any of them.
+.SH SEE ALSO
+.BR ask (1),
+.BR brief (1),
+.BR ply (1)
