@@ -22,7 +22,7 @@ func TestAddCreatesASkillAndAppends(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "house")
 	path := filepath.Join(dir, "SKILL.md")
 
-	n, err := add(dir, "house", []string{"- first thing"}, "sess-1", "by-1", noDescription)
+	n, _, err := add(dir, "house", []string{"- first thing"}, "sess-1", "by-1", noDescription)
 	if err != nil || n != 1 {
 		t.Fatalf("add = %d, %v", n, err)
 	}
@@ -33,7 +33,7 @@ func TestAddCreatesASkillAndAppends(t *testing.T) {
 		}
 	}
 
-	if n, err = add(dir, "house", []string{"- second thing"}, "sess-2", "by-2", noDescription); err != nil || n != 1 {
+	if n, _, err = add(dir, "house", []string{"- second thing"}, "sess-2", "by-2", noDescription); err != nil || n != 1 {
 		t.Fatalf("second add = %d, %v", n, err)
 	}
 	doc = read(t, path)
@@ -50,7 +50,7 @@ func TestAddCreatesASkillAndAppends(t *testing.T) {
 // failure exactly.
 func TestARunTeachesOnce(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "house")
-	if _, err := add(dir, "house", []string{"- a thing"}, "sess-1", "by-1", noDescription); err != nil {
+	if _, _, err := add(dir, "house", []string{"- a thing"}, "sess-1", "by-1", noDescription); err != nil {
 		t.Fatal(err)
 	}
 	if !taught(dir, "sess-1") {
@@ -68,11 +68,11 @@ func TestARunTeachesOnce(t *testing.T) {
 
 func TestAddDoesNotRepeatItself(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "house")
-	if _, err := add(dir, "house", []string{"- Use tabs, not spaces."}, "s1", "b1", noDescription); err != nil {
+	if _, _, err := add(dir, "house", []string{"- Use tabs, not spaces."}, "s1", "b1", noDescription); err != nil {
 		t.Fatal(err)
 	}
 	// Same words, different punctuation and case, from another run.
-	n, err := add(dir, "house", []string{"- use tabs not spaces"}, "s2", "b2", noDescription)
+	n, _, err := add(dir, "house", []string{"- use tabs not spaces"}, "s2", "b2", noDescription)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestAddDoesNotRepeatItself(t *testing.T) {
 	// Two lessons in one reply that say the same thing: the second must see
 	// the first.
 	dir2 := filepath.Join(t.TempDir(), "h2")
-	n, err = add(dir2, "h2", []string{"- Use tabs.", "- use tabs"}, "s1", "b1", noDescription)
+	n, _, err = add(dir2, "h2", []string{"- Use tabs.", "- use tabs"}, "s1", "b1", noDescription)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ description: d
 Written by a person, and it stays at the bottom.
 `), 0o644)
 
-	if _, err := add(dir, "x", []string{"- new lesson"}, "s1", "b1", noDescription); err != nil {
+	if _, _, err := add(dir, "x", []string{"- new lesson"}, "s1", "b1", noDescription); err != nil {
 		t.Fatal(err)
 	}
 	doc := read(t, path)
@@ -133,10 +133,10 @@ Written by a person, and it stays at the bottom.
 func TestForgetRemovesALessonAndItsMark(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "house")
 	path := filepath.Join(dir, "SKILL.md")
-	if _, err := add(dir, "house", []string{"- keep me"}, "good", "b1", noDescription); err != nil {
+	if _, _, err := add(dir, "house", []string{"- keep me"}, "good", "b1", noDescription); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := add(dir, "house", []string{"- wrong thing", "- also wrong"}, "bad", "b2", noDescription); err != nil {
+	if _, _, err := add(dir, "house", []string{"- wrong thing", "- also wrong"}, "bad", "b2", noDescription); err != nil {
 		t.Fatal(err)
 	}
 
@@ -213,5 +213,78 @@ func TestScaffoldSaysWhenTheDescriptionIsPoor(t *testing.T) {
 	doc = scaffold("house", "Go build conventions here; use when adding Go files.")
 	if strings.Contains(doc, "will not be found") {
 		t.Errorf("a good description was overwritten with the apology:\n%s", doc)
+	}
+}
+
+// TestTheTotalIsThePressureGauge: DESIGN.md specified `1 lesson added (4
+// total)` and the code printed only the first half, so the gauge AGENTS.md
+// describes -- a skill accumulating lessons faster than it is used is a
+// procedure missing a step -- was described and never measured. The total
+// is the count of marks, because every lesson carries one and nothing else
+// does.
+func TestTheTotalIsThePressureGauge(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "house")
+	for i, want := range []int{1, 2, 3} {
+		n, held, err := add(dir, "house",
+			[]string{"- lesson number " + string(rune('a'+i))},
+			"sess-"+string(rune('1'+i)), "by-1", noDescription)
+		if err != nil || n != 1 {
+			t.Fatalf("add = %d, %v", n, err)
+		}
+		if held != want {
+			t.Errorf("total = %d, want %d after %d writes", held, want, i+1)
+		}
+	}
+	// A lesson a human wrote by hand carries no mark and is not hone's to
+	// count. The gauge measures what hone put there.
+	path := filepath.Join(dir, "SKILL.md")
+	write(t, path, read(t, path)+"\n- a human wrote this one\n", 0o644)
+	_, held, err := add(dir, "house", []string{"- a fourth"}, "sess-9", "by-1", noDescription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if held != 4 {
+		t.Errorf("total = %d, want 4: an unmarked line was counted", held)
+	}
+}
+
+// TestASkillIsReplacedAtomically: os.WriteFile truncates and then writes, so
+// a crash between the two leaves a curated skill empty. contrib/edit in the
+// sibling repository already does this properly; the corpus this program
+// exists to keep true deserves at least as much care.
+func TestASkillIsReplacedAtomically(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "SKILL.md")
+	write(t, path, "original\n", 0o644)
+
+	// A destination that cannot be replaced must leave the original alone
+	// rather than truncating it first and failing afterwards.
+	if err := save(filepath.Join(dir, "nosuchdir", "SKILL.md"), "new"); err == nil {
+		t.Error("save into a missing directory should fail")
+	}
+	if got := read(t, path); got != "original\n" {
+		t.Errorf("the original changed: %q", got)
+	}
+
+	if err := save(path, "replaced\n"); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, path); got != "replaced\n" {
+		t.Errorf("read back %q", got)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o644 {
+		t.Errorf("mode = %v, want 0644: a skill is meant to be read", fi.Mode().Perm())
+	}
+	// The temp file must not survive as a sibling: a directory of .hone.*
+	// leftovers is litter in somebody's skills tree.
+	ents, _ := os.ReadDir(dir)
+	for _, e := range ents {
+		if strings.HasPrefix(e.Name(), ".hone.") {
+			t.Errorf("left a temp file behind: %s", e.Name())
+		}
 	}
 }

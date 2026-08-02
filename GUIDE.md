@@ -12,12 +12,26 @@ $ for s in ~/.ask/sessions/*.jsonl; do hone -q -into house "$s"; done 2>&1 | tai
 hone: 20260801-1712: no check ran, so nothing judged it but the model
 hone: 20260801-1715: the check passed and nothing ever failed
 hone: 20260801-2147: nothing worth keeping
-hone: 20260801-2304: 1 lesson(s) added
+~/.claude/skills/house/SKILL.md: 1 lesson(s) added (12 total)
 ```
 
-A skill with fifteen lessons in it after a month is a good outcome. A skill
-with three hundred is a broken tool, and the numbers behind that are in the
-README.
+That trailing count is the one number worth watching, and it is why it is
+printed. A skill with fifteen lessons in it after a month is a good outcome.
+A skill with three hundred is a broken tool, and the numbers behind that are
+in the README.
+
+It reads two ways, and the second is the useful one. Lessons accumulating
+slowly is a procedure being refined. Lessons accumulating *faster than the
+skill is used* is a procedure missing a step — the run keeps stumbling in
+the same place, and each stumble is being written down instead of fixed.
+The fix is to rewrite the procedure, which is a goal with a check, which is
+`ply`:
+
+```
+ply -check 'brief lint -strict house' "merge the duplicate lessons in house/SKILL.md"
+```
+
+There is no verb here for that, and there should not be one.
 
 ## The three refusals, and what to do about each
 

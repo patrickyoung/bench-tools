@@ -147,7 +147,7 @@ specification. So `hone` writes what `brief` reads, and stops.
 ```
 $ hone -into go-house
 hone: go-house is new; writing the line brief will find it by
-~/.claude/skills/go-house/SKILL.md: 1 lesson(s) added
+~/.claude/skills/go-house/SKILL.md: 1 lesson(s) added (1 total)
 
 $ brief find "go test package mismatch"
 go-house
@@ -181,7 +181,7 @@ called `house` lived only on stderr.
 ```
 $ hone -into -
 hone: wire: the run was following house -- the lesson belongs to it
-~/.claude/skills/house/SKILL.md: 1 lesson(s) added
+~/.claude/skills/house/SKILL.md: 1 lesson(s) added (3 total)
 ```
 
 This is the joint that makes the family a loop rather than a line. A run

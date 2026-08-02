@@ -42,6 +42,39 @@ func mark(from, by string) string {
 	return fmt.Sprintf("<!-- hone %s %s -->", from, by)
 }
 
+// total counts the lessons in a document, which is the count of marks in
+// it: every lesson hone writes carries one, and nothing else does.
+func total(doc string) int { return strings.Count(doc, "<!-- hone ") }
+
+// save replaces a skill in one step, or leaves it exactly as it was.
+//
+// os.WriteFile truncates and then writes, so a crash between the two ends
+// with somebody's curated skill empty. That is a poor trade for a file this
+// program's whole thesis says must stay true, and the fix is the one every
+// Unix program has used for this: write a sibling, rename over the target.
+// rename(2) is atomic within a directory, so a reader sees the old file or
+// the new one and never half of either.
+func save(path, doc string) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".hone.")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	defer os.Remove(tmp) // a no-op once the rename has succeeded
+	if _, err := f.WriteString(doc); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	// CreateTemp makes 0600; a skill is meant to be read.
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
 // fallbackDescription is used when a model could not be reached to write a
 // better one. It is deliberately poor and deliberately honest: brief ranks
 // over descriptions, so this skill will be hard to find, and the line says
@@ -98,24 +131,32 @@ func taught(dir, sessionID string) bool {
 	return false
 }
 
-// add folds lessons into a skill and reports how many landed. It is
-// append-only within the heading, and it reads the file whole because a
-// SKILL.md is small and a partial read is a subtler bug than it is worth
-// avoiding.
+// add folds lessons into a skill and reports how many landed and how many
+// the skill then holds. It is append-only within the heading, and it reads
+// the file whole because a SKILL.md is small and a partial read is a subtler
+// bug than it is worth avoiding.
+//
+// The total is the pressure gauge. A skill accumulating lessons faster than
+// it is used is not a richer skill, it is a procedure missing a step -- and
+// the number is free here, because add is already holding the document it
+// just wrote. Counting *uses* would be the truer signal and would need brief
+// to keep a counter, which is a cache, which brief does not have and should
+// not grow. Count the thing that costs nothing.
+//
 // describe writes the line a new skill is found by. It is called only when
 // one is being created, so an existing skill's description is never
 // touched: what a human curated stays curated.
-func add(dir, name string, lessons []string, from, by string, describe func() string) (int, error) {
+func add(dir, name string, lessons []string, from, by string, describe func() string) (int, int, error) {
 	path := filepath.Join(dir, "SKILL.md")
 	body, err := os.ReadFile(path)
 	switch {
 	case os.IsNotExist(err):
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return 0, err
+			return 0, 0, err
 		}
 		body = []byte(scaffold(name, describe()))
 	case err != nil:
-		return 0, err
+		return 0, 0, err
 	}
 
 	doc := string(body)
@@ -135,12 +176,12 @@ func add(dir, name string, lessons []string, from, by string, describe func() st
 		added++
 	}
 	if added == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
-	if err := os.WriteFile(path, []byte(doc), 0o644); err != nil {
-		return 0, err
+	if err := save(path, doc); err != nil {
+		return 0, 0, err
 	}
-	return added, nil
+	return added, total(doc), nil
 }
 
 // insert puts a lesson at the end of the lessons section, which is the end
@@ -257,7 +298,7 @@ func forget(path, sessionID string) (int, error) {
 	for strings.Contains(doc, "\n\n\n") {
 		doc = strings.ReplaceAll(doc, "\n\n\n", "\n\n")
 	}
-	return removed, os.WriteFile(path, []byte(doc), 0o644)
+	return removed, save(path, doc)
 }
 
 // isMarkFor matches a mark by its session field exactly, never as a

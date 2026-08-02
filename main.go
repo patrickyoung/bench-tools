@@ -236,7 +236,7 @@ func (g *hone) one(ctx context.Context, path string) (int, int) {
 func (g *hone) write(ctx context.Context, dir string, s *session, lessons []string, by string) (int, int) {
 	name := filepath.Base(strings.TrimRight(dir, string(filepath.Separator)))
 
-	added, err := add(dir, name, lessons, s.ID, by, func() string {
+	added, held, err := add(dir, name, lessons, s.ID, by, func() string {
 		g.say("%s is new; writing the line brief will find it by", name)
 		return g.describe(ctx, name, lessons)
 	})
@@ -251,7 +251,7 @@ func (g *hone) write(ctx context.Context, dir string, s *session, lessons []stri
 	if err := lint(ctx, g.briefBin, dir); err != nil {
 		g.say("brief lint has something to say about %s: %v", name, err)
 	}
-	fmt.Printf("%s: %d lesson(s) added\n", filepath.Join(dir, "SKILL.md"), added)
+	fmt.Printf("%s: %d lesson(s) added (%d total)\n", filepath.Join(dir, "SKILL.md"), added, held)
 	g.say("%s · ask replay -check %s", s.ID, by)
 	return added, 0
 }
