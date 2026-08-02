@@ -47,7 +47,7 @@ you are back to reading the output yourself. That is a real mode. It is
 just a weaker one than it looks, and the default prompt tells the model as
 much.
 
-## Five things that will bite you
+## Six things that will bite you
 
 ### 1. `ask` inside a check continues *your* conversation
 
@@ -120,6 +120,38 @@ Supervisors, CI runners and cron sometimes hand a program a socket that
 nobody ever writes to or closes. `< /dev/null` settles it for good, and
 belongs in any `ply` line that is not meant to read anything.
 
+### 6. Keep the session out of the work tree
+
+The default puts it in `~/.ply/sessions`, which is fine and needs no
+thought. `-f` is where this goes wrong:
+
+```
+$ ply -sh -C ./src -f ./src/run.jsonl "fix the build"     # don't
+```
+
+The session is now a file in the directory the model is working in, so an
+ordinary `grep -rn foo .` or `find . -type f` reads the transcript back
+into the conversation it is a record of. You pay for several turns of the
+model's own reasoning to tell it what it already knew, and on a provider
+that returns encrypted reasoning most of those bytes are not even legible
+— they are just bulk, and they push out the output cap for everything
+else in that command.
+
+Nothing breaks. It is a waste, and it compounds: the log grows every turn,
+so the same `grep` costs more each time round the loop. `ply` says so once
+on stderr when it notices:
+
+```
+ply: the session is inside the work tree, so a grep or a find will
+     read it back into the conversation it is a record of; -f a path
+     outside the tree keeps the record out of the work
+```
+
+`$PLY_DIR` set to somewhere inside a repository does the same thing more
+quietly, because then it is every run and not just the one you typed `-f`
+on. The same goes for large piped input, which spools next to the session
+as `<id>.stdin`.
+
 ## Recipes
 
 ### Build a toolbox
@@ -147,6 +179,82 @@ ply tools -t tools
 ```
 
 Keep a toolbox per job and point `$PLY_TOOLS` at the one you use most.
+
+A script in a toolbox brings its interpreter's name with it, and `-t` means
+PATH is the toolbox and nothing else — so the interpreter has to be in
+there too, or the tool fails with `env: python3: No such file or
+directory`, which reads like a broken tool and is not:
+
+```
+ln -s "$(command -v python3)" tools/
+```
+
+`ply tools -t tools` will not catch that one, because the program is there
+and it is executable. Run it once yourself.
+
+### Change a file without rewriting it
+
+Most of the time a model writing a file should just write it: `cat > x
+<<'EOF'` is a shell builtin and a redirect, and for a file it is producing
+whole there is nothing better. The case that needs a program is three
+lines in the middle of nine hundred, where `>` is not an option and `sed`
+means escaping regex metacharacters out of the code being edited — which
+models get wrong, and get wrong silently.
+
+[`contrib/edit`](contrib/edit) is that program:
+
+```
+ln -s "$PWD/contrib/edit" tools/
+ln -s "$(command -v python3)" tools/
+ply -t tools -check 'go test ./...' "fix the percentile bug"
+```
+
+Its one rule is that the search text must appear exactly once, matched
+byte for byte. It is never fuzzy, it never takes the first of several
+matches, and it locates every edit in a call before writing any file — so
+a call that cannot be satisfied leaves every file it named alone. When it
+cannot place an edit it does the analysis a fuzzy matcher would have done
+and reports it rather than acting on it: which line nearly matched, and
+whether the difference was tabs, spacing, CRLF, an ambiguous match wanting
+more context, or a replacement already in place because the edit already
+ran.
+
+Three ways to call it, all held to the same rule:
+
+```sh
+edit ring.go 'r.head + 1' '(r.head + 1) % len(r.buf)'   # one edit, no format
+
+edit ring.go <<'EOF'                                     # many, atomically
+<<<<<<< SEARCH
+	r.head = r.head + 1 // BUG: never wraps
+=======
+	r.head = (r.head + 1) % len(r.buf)
+>>>>>>> REPLACE
+EOF
+
+edit <<'EOF'                                             # or as a patch
+*** Begin Patch
+*** Update File: ring.go
+@@
+ func (r *Ring) Push(v int) {
+-	r.head = r.head + 1
++	r.head = (r.head + 1) % len(r.buf)
+ }
+*** End Patch
+EOF
+```
+
+Two dialects is not indulgence, it is measurement. Which edit format a
+model reaches for is trained in and a system prompt does not talk it out
+of one: on the run that shipped this, the model wrote `*** Begin Patch`,
+was refused, and spent the next turn building a `sed` pipeline with a
+temporary file — the exact thing `edit` exists to prevent. Both dialects
+say the same thing anyway.
+
+`edit -n` prints the diff and writes nothing. Exit 0 applied, 1 refused,
+2 broken — so `edit ... && go test ./...` means what it says.
+
+`sh contrib/edit_test.sh` is its test suite.
 
 ### Put it in a Makefile
 

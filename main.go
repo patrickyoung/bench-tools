@@ -226,6 +226,11 @@ func work(args []string) int {
 	}
 
 	v.Note("%s · %s", session, describe(box, *o.check))
+	if underTree(session, *o.dir) {
+		v.Note("the session is inside the work tree, so a grep or a find will\n" +
+			"     read it back into the conversation it is a record of; -f a path\n" +
+			"     outside the tree keeps the record out of the work")
+	}
 	loop := &Loop{
 		Model:    Model{Bin: askBin, Session: session, Spec: *o.spec, System: system},
 		Runner:   runner,
@@ -393,6 +398,32 @@ func descend() (int, error) {
 		return 0, fmt.Errorf("ply is %d deep inside itself; refusing to go further", n)
 	}
 	return n, nil
+}
+
+// underTree reports whether the session file sits under the directory
+// commands run in. When it does, the model's own transcript is one `grep
+// -r` away from being fed back to it — several turns of its own reasoning,
+// spent to learn what it already knew, and on a provider that returns
+// encrypted reasoning it is unreadable bulk. The default session directory
+// is never in the tree; -f and $PLY_DIR can put it there, and neither is
+// wrong often enough to refuse, so this is a note rather than an error.
+func underTree(session, dir string) bool {
+	if dir == "" {
+		dir = "."
+	}
+	d, err := filepath.Abs(dir)
+	if err != nil {
+		return false
+	}
+	s, err := filepath.Abs(session)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(d, filepath.Dir(s))
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func describe(b *Box, check string) string {
