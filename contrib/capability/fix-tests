@@ -1,0 +1,57 @@
+#!/bin/sh
+# make the Go tests in this tree pass, and prove it
+#
+# Line 2 is the synopsis, without the name on it, because ply reads it as
+# the catalogue entry and the name is already the filename. That is the
+# same place mcpbox and edit write theirs, and the same place a shell
+# script has kept its one-line description since long before any of this.
+#
+# This file is the example the field guide points at, and the point it is
+# making is that it needed nothing built. A ply invocation already carries
+# everything a job needs:
+#
+#     the goal            the argument
+#     the procedure       -s, when there is a skill for it
+#     the tool grant      -t, or -sh for the whole machine
+#     the model policy    -m
+#     the budget          -cycles, -turns, -timeout, -cap
+#     the lifecycle       -f, -compact
+#     the output contract -check
+#
+# Typed at a prompt, all of that lives in your shell history and dies
+# there. In a file it is named, versioned, diffable, reviewable, and on
+# $PATH like everything else -- which is to say it is a capability, and it
+# is also just a shell script. Both statements are true and neither
+# required a format.
+#
+# ${PLY:-ply} is the whole trick that makes one compose. Run this yourself
+# and it finds ply the usual way. Put it in a toolbox and a running ply
+# hires it as a tool, using the binary already in play rather than
+# whatever a fresh PATH lookup would find -- which matters under -t, where
+# PATH is the toolbox alone and may well not hold ply at all.
+#
+# "$@" passes your flags through to ply. That is deliberate and it is the
+# escape hatch: -B to work a goal the check already passes, -q to quiet
+# it, -m to try a cheaper model, -f to resume a particular run. A
+# capability that cannot be told anything is a capability people copy and
+# edit instead of calling.
+#
+# Two habits worth keeping when you write your own:
+#
+#   Bake the budget in. -cycles and -timeout are part of what makes this
+#   safe to hand to somebody, and leaving them out means every caller
+#   invents their own or gets the defaults by accident.
+#
+#   Keep the check honest. It runs with the caller's PATH and it is the
+#   only reason exit 0 means anything. A capability whose check is `true`
+#   is a capability that always succeeds.
+#
+# Try it without spending anything:
+#
+#     ply tools  -t contrib/capability     # the catalogue the model sees
+#     ply system -t contrib/capability     # what it would be told
+#
+# Neither calls a model.
+
+exec ${PLY:-ply} -sh -check 'go test ./...' -cycles 5 -timeout 2m \
+     "make the tests pass" "$@"

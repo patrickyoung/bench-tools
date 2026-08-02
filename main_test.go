@@ -568,3 +568,104 @@ func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
 		t.Errorf("a run with no -s claimed a skill:\n%s", s)
 	}
 }
+
+// TestResumingIsRunningItAgain pins the contract the field guide states:
+// the state of the work is the work tree, not the conversation. A killed run
+// is resumed by running it again, -f continues the conversation rather than
+// starting over, and the pre-check makes re-entry free once the work is
+// actually done. None of that is a feature -- it is three existing
+// properties that together mean there is no task record to keep. Without a
+// test they are folklore, and folklore is not a contract.
+func TestResumingIsRunningItAgain(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch "+filepath.Join(t.TempDir(), "unrelated")+"\n```",
+		"Still working on it.",
+		"should never be asked",
+	)
+	sess := filepath.Join(t.TempDir(), "run.jsonl")
+	done := filepath.Join(work, "done")
+	check := "test -f " + done
+
+	// A run that does not finish: the check never passes, the cap trips,
+	// exit 2 says not-done rather than broken.
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-f", sess,
+		"-check", check, "-cycles", "1", "finish the job")
+	if code != 2 {
+		t.Fatalf("unfinished run exit = %d, want 2\n%s", code, stderr)
+	}
+	calls := read(t, filepath.Join(askdir, "n"))
+
+	// The work gets done out of band -- by a later turn, another process, or
+	// a human. The point is that the tree changed and the transcript did not.
+	write(t, done, "", 0o644)
+
+	// Running it again is the resume. The pre-check sees the finished work,
+	// so it costs nothing: no model call, and the same session untouched.
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "-f", sess,
+		"-check", check, "-cycles", "1", "finish the job")
+	if code != 0 {
+		t.Fatalf("resumed run exit = %d, want 0\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "nothing to do") {
+		t.Errorf("stderr = %q, want the pre-check to have short-circuited it", stderr)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q, want nothing: there was no work to do", stdout)
+	}
+	if now := read(t, filepath.Join(askdir, "n")); now != calls {
+		t.Errorf("the model was called %s times, was %s: re-entry was not free", now, calls)
+	}
+}
+
+// TestResumingContinuesTheConversation: -f on an existing session appends to
+// it rather than starting a new one. That is what makes a resumed run
+// cheaper than a fresh one, and it is why ply must never pass ask -n.
+func TestResumingContinuesTheConversation(t *testing.T) {
+	work, _, askdir := sandbox(t, "First.", "Second.")
+	sess := filepath.Join(t.TempDir(), "run.jsonl")
+
+	if code, _, e := runPly(t, "-sh", "-C", work, "-f", sess, "a goal"); code != 0 {
+		t.Fatalf("exit = %d\n%s", code, e)
+	}
+	if code, _, e := runPly(t, "-sh", "-C", work, "-f", sess, "a goal"); code != 0 {
+		t.Fatalf("exit = %d\n%s", code, e)
+	}
+
+	argv := read(t, filepath.Join(askdir, "argv.log"))
+	if strings.Contains(argv, "-n ") || strings.HasSuffix(strings.TrimSpace(argv), "-n") {
+		t.Errorf("ply passed ask -n, which would start over instead of resuming:\n%s", argv)
+	}
+	if n := strings.Count(argv, "-f "+sess); n != 2 {
+		t.Errorf("named the session %d times, want 2:\n%s", n, argv)
+	}
+}
+
+// TestTheCapabilityExampleIsDiscoverable: contrib/capability/fix-tests is
+// the field guide's worked example of a capability, and the claim it makes
+// is that nothing had to be built -- a directory of scripts is a toolbox and
+// line 2 is the catalogue entry. So the example has to actually be one.
+func TestTheCapabilityExampleIsDiscoverable(t *testing.T) {
+	const dir = "contrib/capability"
+	code, stdout, stderr := runPly(t, "tools", "-t", dir)
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "fix-tests") {
+		t.Errorf("the example is not in its own catalogue:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "make the Go tests in this tree pass") {
+		t.Errorf("the example has no synopsis in the catalogue:\n%s", stdout)
+	}
+	// The name is the filename, so a synopsis that repeats it prints twice.
+	// contrib/edit says so in its own header; the example must obey it.
+	if strings.Contains(stdout, "fix-tests  fix-tests") {
+		t.Errorf("the synopsis repeats the name:\n%s", stdout)
+	}
+	fi, err := os.Stat(filepath.Join(dir, "fix-tests"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode()&0o111 == 0 {
+		t.Error("the example is not executable, so it is not a tool")
+	}
+}

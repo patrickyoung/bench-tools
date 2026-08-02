@@ -169,7 +169,7 @@ first comment after the shebang:
 
 ```sh
 #!/bin/sh
-# stage - deploy the current branch to staging and print the URL
+# deploy the current branch to staging and print the URL
 ```
 
 Check what the model will actually see before you spend a call on it:
@@ -308,7 +308,7 @@ Every command gets `$PLY`. So a specialist is a file:
 
 ```sh
 #!/bin/sh
-# review - review one file for concurrency bugs and print findings
+# review one file for concurrency bugs and print findings
 exec $PLY -t "$(dirname "$0")" -q "review $1 for data races and lock-order inversions"
 ```
 
@@ -319,6 +319,62 @@ git diff --name-only main | xargs -P4 -n1 tools/review
 ```
 
 There is no team format and no orchestrator. `xargs` was the orchestrator.
+
+### A capability is a file
+
+A `ply` invocation already carries everything a job needs: the goal, the
+procedure, the tool grant, the model, the budget, the lifecycle, and the
+program that decides it is done. Written at a prompt, all of that lives in
+your shell history and dies there.
+
+Put it in a file and it stops being anonymous:
+
+```sh
+#!/bin/sh
+# make the Go tests in this tree pass, and prove it
+exec ${PLY:-ply} -sh -check 'go test ./...' -cycles 5 -timeout 2m \
+     "make the tests pass" "$@"
+```
+
+That is a capability. It is named, it is versioned, it diffs, it takes
+review, and it is on `$PATH` like everything else. `${PLY:-ply}` is the
+whole trick that makes it compose: run it yourself and it finds `ply` the
+usual way; put it in a toolbox and a running `ply` hires it as a tool,
+because `$PLY` names the binary already in play.
+
+Nothing about it is a feature. The catalogue is the directory, discovery is
+`ls`, level 2 is `-h`, and line 2 is the synopsis `ply tools` prints — the
+same three levels every program in a toolbox has. [`contrib/capability`][cap]
+is this example as a real file, with the details written down.
+
+[cap]: contrib/capability
+
+The reason to bother is that the alternative is worse in a specific way.
+Retyped invocations drift: yesterday's had `-cycles 5` and today's has
+`-cycles 20`, and nobody can tell which run was which afterwards, because
+the flags are not in the log. A file cannot drift without a diff.
+
+### Fan out, then merge
+
+`xargs -P` fans out. The merge is `ask`, because `ask` is a program:
+
+```sh
+ls *.go | xargs -P4 -I{} sh -c 'ply -q -t tools "review {}" > {}.review'
+
+cat *.review | ask -n "Reconcile these reviews into one list of findings,
+    most severe first. Drop anything only one reviewer raised."
+```
+
+Two things worth copying from how `hone` does this. Send **what proved
+something**, not the transcripts — the findings are the evidence, and the
+typescripts would cost the window and invite a summary grounded in the parts
+that proved nothing. And use `-n`, so the merge is its own conversation
+rather than the tail of whatever you asked last.
+
+`xargs` returns 123 if any invocation failed, and which one is not in that
+number. If you need to know, have each write its own exit status next to its
+output and read them afterwards; a fan-out that hides its failures is
+answering a different question than the one you asked.
 
 ### MCP
 
@@ -448,6 +504,181 @@ request.
 
 The quiet runs are free: the check passes, `ply` prints nothing, exits 0,
 and never calls a model.
+
+## Resuming, and why there is no task record
+
+A `ply` run can be killed, lose its machine, or outlast its context window.
+There is no `ply resume`, no task file, and no daemon holding the run open,
+and that is not an omission. It is the same answer `make` gives:
+
+**The state of the work is the work tree. `-check` is how you read it.**
+
+`make` keeps no record of what it was doing either. It stats the targets.
+So the way to resume a `ply` run is to run it again:
+
+```
+$ ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass"    # killed
+$ ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass"    # carries on
+```
+
+Three properties make that correct, and all three are already true:
+
+- **The pre-check makes re-entry idempotent.** The check runs before the
+  first turn. Work that is already done costs nothing, calls no model,
+  writes no session, and exits 0.
+- **`-f` continues the conversation.** The session is an `ask` log, and
+  `ply` does not pass `-n`, so a second run picks up where the first left
+  off rather than starting over.
+- **The log survives the process.** It is append-only and locked with
+  `flock(2)`, so a writer that dies releases it on the way out and strands
+  nothing.
+
+The consequence is worth stating plainly, because it is what makes all of
+this small: **the conversation is an optimization, not the state.** It saves
+the model from rediscovering what it already knew. Lose it and the run is
+still correct — it is only more expensive. Drop `-f` entirely and a fresh
+run against the same tree still does the right thing, because the check
+reads the tree and not the transcript.
+
+So a long-lived task is `cron` and a check:
+
+```
+*/30 * * * * ply -sh -q -f /var/lib/slo.jsonl -check '/usr/local/bin/slo-ok' \
+             "bring the error budget back"
+```
+
+That sleeps most of its life, wakes on a schedule, does nothing when there
+is nothing to do, and survives a reboot. It is a durable task, and it is a
+crontab line.
+
+### Bounds are per invocation
+
+`-cycles 5` means five failed checks *in this run*, not five ever. Run it
+again and you get five more. That is deliberate: the process is the unit,
+and a session that spent its budget would otherwise be poisoned forever with
+no way to say "try again".
+
+If you want a global bound, you own it, and you already have the tools:
+
+```sh
+for i in 1 2 3; do
+    ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass" && break
+done
+```
+
+### What is in flight
+
+There is no `ply ps`, because it is a pipeline. A run that finished wrote a
+`done` event; one that was killed did not:
+
+```sh
+for s in ~/.ply/sessions/*.jsonl; do
+    tail -1 "$s" | grep -q '"type":"done"' || echo "unfinished: $s"
+done
+```
+
+### The one wart
+
+`-compact` moves the run into a **new** session when the window fills, and
+says so on stderr:
+
+```
+ply: context was full; compacted into ~/.ply/sessions/20260802-002839-86d69eae.jsonl
+```
+
+Your original `-f` path still names the full one. Resuming from it will
+overflow again immediately and compact again. Resume from the path `ply`
+last named — or drop `-f` and let a fresh conversation do the work, which
+the pre-check makes correct and merely more expensive. This is the one place
+the "conversation is an optimization" rule costs you something real, and it
+is better to know it than to discover it at three in the morning.
+
+## Putting the boundary in the operating system
+
+`SECURITY.md` says the toolbox aims the model and does not contain it, and
+that the boundary is the process — its user, its container, its `chroot`.
+That is true and it is not much help on its own, so here is the help.
+
+The reason to bother is not only safety. A run you have genuinely bounded is
+a run you can leave alone, and `-sh` inside a container you are willing to
+throw away is a freer agent than `-t` on your laptop:
+
+```sh
+podman run --rm -it \
+    -v "$PWD:/work:Z" -w /work \
+    --network=none \
+    -e ANTHROPIC_API_KEY \
+    ply-box ply -sh -check 'go test ./...' "make the tests pass"
+```
+
+Four things are doing work there:
+
+- **`-v "$PWD:/work"`** is the blast radius. The model can write what you
+  mounted and nothing else, whatever it manages to run.
+- **`--network=none`** for a run that has no business reaching out. Drop it
+  when the goal needs the network, and know that you dropped it.
+- **`-e ANTHROPIC_API_KEY`** passes one variable rather than your
+  environment. `ply` hands commands whatever it was started with, so an
+  agent-authored command can read any key that is in there. In a container
+  you get to choose, and the choice is a flag rather than a discipline.
+- **`--rm`** so the answer to "what did it leave behind" is "nothing outside
+  `/work`".
+
+For a run that should not even keep what it wrote, mount a copy:
+
+```sh
+git worktree add /tmp/try HEAD
+podman run --rm -v /tmp/try:/work:Z -w /work ply-box ply -sh ... && \
+    git -C /tmp/try diff        # inspect, then decide
+```
+
+None of this makes `-t` a sandbox, and none of it should be described that
+way. It puts the boundary where `SECURITY.md` says it belongs, and it is
+about ten lines of shell.
+
+### Proposing an effect instead of having it
+
+Sometimes what you want is not containment but a look before the change
+lands. `ply` has nothing for this, and does not need anything: commands
+inherit the environment, so a variable you set reaches every tool without
+`ply` knowing it exists.
+
+[`contrib/edit`][edit] honours `PLY_PROPOSE`:
+
+```
+$ PLY_PROPOSE=1 ply -t tools -check 'make test' "fix the ring buffer wrap"
+```
+
+```diff
+--- ring.go
++++ ring.go
+@@ -12,3 +12,3 @@
+-	r.head = r.head + 1
++	r.head = (r.head + 1) % len(r.buf)
+edit: PLY_PROPOSE is set, so nothing was written. The diff above is exactly
+what would have been applied to ring.go. Show it to whoever is running this
+and have them re-run without PLY_PROPOSE, or make a change that does not
+need approval.
+```
+
+[edit]: contrib/edit
+
+Two details carry it. The diff is **exact**, not a preview — `edit` locates
+every span in every file before it writes anything, so by the time it can
+print a diff it has already done all the work except the write. And it
+exits **1**, not 0: a tool that reports success for a file it did not write
+teaches the model the edit landed, and the next turn is built on a lie. The
+model reads the refusal on stderr, and the refusal says what to do.
+
+> **This is a convention, not a boundary.** Nothing enforces it. `sh` has
+> builtins, `>` writes a file with no program involved, and a model that
+> means to write past this can. It is worth having for the case that
+> actually happens — an edit nobody looked at — and it is worth nothing
+> against an adversary. If you need containment, it is in the section
+> above, and it is the operating system.
+
+Honouring it in your own tools is one `if`, and the rule is the same: print
+what you would have done, exit nonzero, and say why.
 
 ## Reading a run afterwards
 
