@@ -231,6 +231,40 @@ case "$(ls -l "$TMP/crlf.txt")" in
 *) no "mode survives" "$(ls -l "$TMP/crlf.txt")" ;;
 esac
 
+# --- PLY_PROPOSE ------------------------------------------------------------
+#
+# A convention, not a boundary: the caller sets it, commands inherit the
+# environment, and a tool that honours it prints what it would have done.
+# The exit status is the load-bearing part -- a proposal that reported
+# success would teach the model the edit had landed.
+
+printf 'a\nb\nc\n' >"$TMP/prop.txt"
+out=$(PLY_PROPOSE=1 $EDIT "$TMP/prop.txt" 'b' 'B' 2>/dev/null)
+want "PLY_PROPOSE refuses" 1 $?
+case "$out" in
+*-b*+B*) ok ;;
+*) no "PLY_PROPOSE prints the diff" "$out" ;;
+esac
+case "$(cat "$TMP/prop.txt")" in
+"a
+b
+c") ok ;;
+*) no "PLY_PROPOSE wrote the file anyway" "$(cat "$TMP/prop.txt")" ;;
+esac
+err=$(PLY_PROPOSE=1 $EDIT "$TMP/prop.txt" 'b' 'B' 2>&1 >/dev/null)
+case "$err" in
+*"nothing was written"*) ok ;;
+*) no "PLY_PROPOSE explains itself on stderr" "$err" ;;
+esac
+
+# -n is a person asking what would happen, and that is a successful answer.
+$EDIT -n "$TMP/prop.txt" 'b' 'B' >/dev/null
+want "-n still exits 0" 0 $?
+
+# Unset, it is not in the way at all.
+$EDIT "$TMP/prop.txt" 'b' 'B' >/dev/null
+want "without PLY_PROPOSE the edit applies" 0 $?
+
 # ---------------------------------------------------------------------------
 
 printf '%d passed, %d failed\n' "$pass" "$fail"

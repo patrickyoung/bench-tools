@@ -96,3 +96,33 @@ config file, MCP, a REPL or TUI, provider code, a session format, built-in
 tools, a permission prompt, a plugin API, a model-based verifier, parallel
 tool execution (a shell already has `&`), a team or workspace format, and any
 second way to name a tool besides putting it on `$PATH`.
+
+And the ones a reader arrives with after being told `ply` needs a task
+runtime. Each has an answer, and the answer is in `GUIDE.md`:
+
+- **a task record, or `ply resume`.** The state of the work is the work
+  tree, and `-check` is how you read it — `make` keeps no record either, it
+  stats the targets. Resuming is running it again: the pre-check makes
+  re-entry free when the work is done, `-f` continues the conversation
+  rather than starting over, and the log outlives the process. The
+  conversation is an *optimization, not the state*; lose it and the run is
+  still correct, only more expensive. Two tests pin that, and they are the
+  contract;
+- **recovering `-cycles` or `-turns` from the log.** It is derivable — turns
+  are `assistant` events, compactions are the `parent` chain — and it is
+  still wrong. Bounds are per invocation because the process is the unit;
+  recovering them would poison a session that spent its budget, with no way
+  to say "try again", which contradicts `-B` and contradicts `make`;
+- **`ply ps`.** A session that finished wrote a `done` event. Asking which
+  did not is a pipeline over a directory, and it goes in the guide as one.
+  A verb here is the first step to `ply` supervising itself;
+- **a `-sandbox` flag.** Shipping one means claiming one, and the claim is
+  what `SECURITY.md` exists to prevent. The container recipe is a recipe;
+- **a permission prompt, now with a diff.** `PLY_PROPOSE` is honoured by
+  `contrib/edit` and reaches it through the inherited environment, so `ply`
+  needs no code and gets none. It is documented as a convention tools may
+  honour and never as a boundary — a redirect writes a file with no program
+  involved, and softening that sentence is the failure this file already
+  warns about two bullets up;
+- **a merge program for fan-out.** It is one `ask` invocation, and a program
+  whose body is one invocation of another program is an alias.
