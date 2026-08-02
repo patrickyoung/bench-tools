@@ -1,9 +1,9 @@
 # Development guidance
 
-Rob Pike is the bar, and `ask` and `brief` are the siblings. `ply` is the
-third carving from one agent: `ask` took the model, `brief` took the
-procedure, and `ply` took the loop. It stays small the same way they do — by
-refusing to grow the other two.
+Rob Pike is the bar, and `ask`, `brief` and `hone` are the siblings. `ply` is
+the third of four carvings from one agent: `ask` took the model, `brief` took
+the procedure, `ply` took the loop, and `hone` took the lesson. It stays
+small the same way they do — by refusing to grow the other three.
 
 The whole program is four steps: ask the model, run what it wrote, repeat
 until it stops, then run the check and hand back the failure if it failed.
@@ -60,7 +60,18 @@ When changing `ply`:
   `ply` writes no log of its own, so `ask replay -check` proves an entire
   run. Anything worth recording — a command, its output, its exit status,
   the check's verdict — goes in the text of the conversation, where it is
-  already proven, rather than into a second file that can drift;
+  already proven, rather than into a second file that can drift. The verdict
+  is an `ask note`, written at exactly the two points the check reaches a
+  terminal answer and nowhere else: a failing check the loop carries on from
+  is already in the conversation as the rejection the model was handed, and
+  recording it twice would say it happened twice. A run with **no** check
+  writes none — done is a program's opinion, and with no program there is no
+  opinion to record. Do not weaken that into a guess: the absence is what
+  stops `hone` mistaking the model's word for a check. `ply` records what
+  it *loaded* the same way and for the same reason: `brief cat` prints a
+  body without its frontmatter, so a skill reaches the prompt as anonymous
+  prose and its name would otherwise live only on stderr. A run that loaded
+  no skill claims none;
 
 - **`ply` holds no provider code, no credentials, and no catalogue.** If it
   needs a model it runs `ask`; if it needs a procedure it runs `brief`.

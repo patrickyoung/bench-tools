@@ -93,6 +93,32 @@ func (m Model) Compact(ctx context.Context) (string, error) {
 	return path, nil
 }
 
+// Note records the check's verdict in the conversation, which is where ply
+// has always said everything worth recording goes. It did not go there: the
+// verdict lived on stderr and in an exit status, so a session held every
+// command that ran and nothing about whether the work was done, and a run
+// that passed and a run that gave up were the same shape on disk.
+//
+// It is a note rather than a message because of who it is for. A failing
+// check becomes a user message — the model has to act on it, and does. A
+// passing check is addressed to nobody, because the run is over; it is a
+// record for whoever reads the session later, which includes hone(1),
+// which refuses to learn from a run that will not say how it ended.
+//
+// Best effort, and deliberately so: a run that did the work and then could
+// not write a line about it did the work. The failure is worth a word on
+// stderr and nothing more.
+func (m Model) Note(ctx context.Context, source, text string) error {
+	cmd := exec.CommandContext(ctx, m.Bin, "note", "-q", "-s", source, "-f", m.Session)
+	cmd.Stdin = strings.NewReader(text)
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s note: %s", m.Bin, firstLine(errb.String()))
+	}
+	return nil
+}
+
 // brief runs the catalogue. ply knows a skill by name and nothing else
 // about it; if ply needs a procedure, it runs brief, exactly as brief runs
 // ask when it needs a model.
