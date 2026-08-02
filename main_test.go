@@ -178,6 +178,37 @@ func TestNothingToBeDone(t *testing.T) {
 	}
 }
 
+// TestSessionInTheWorkTreeIsSaidOutLoud: a session under the directory
+// commands run in is one `grep -r` away from being fed back to the model
+// that wrote it. The default never lands there; -f can, and does so
+// quietly, which is the kind of surprise this family does not have.
+func TestSessionInTheWorkTreeIsSaidOutLoud(t *testing.T) {
+	work, _, _ := sandbox(t, "done")
+	inside := filepath.Join(work, "run.jsonl")
+	_, _, stderr := runPly(t, "-sh", "-C", work, "-f", inside, "a goal")
+	if !strings.Contains(stderr, "inside the work tree") {
+		t.Errorf("a session at %s went unmentioned; stderr = %q", inside, stderr)
+	}
+
+	// The default session directory is not in the tree, and saying so about
+	// it would be noise on every single run.
+	_, _, stderr = runPly(t, "-sh", "-C", work, "another goal")
+	if strings.Contains(stderr, "inside the work tree") {
+		t.Errorf("the default session was called a work-tree session; stderr = %q", stderr)
+	}
+
+	// Neither is a sibling directory whose name happens to start the same
+	// way: string prefixes are not path containment.
+	outside := filepath.Join(filepath.Dir(work), filepath.Base(work)+"-logs")
+	if err := os.MkdirAll(outside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, _, stderr = runPly(t, "-sh", "-C", work, "-f", filepath.Join(outside, "run.jsonl"), "third goal")
+	if strings.Contains(stderr, "inside the work tree") {
+		t.Errorf("%s was called a work-tree session; stderr = %q", outside, stderr)
+	}
+}
+
 // TestBadInvocationLeavesNoLitter: a filter must not create a session for a
 // call that was never going to run.
 func TestBadInvocationLeavesNoLitter(t *testing.T) {

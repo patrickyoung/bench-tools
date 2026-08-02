@@ -47,7 +47,7 @@ you are back to reading the output yourself. That is a real mode. It is
 just a weaker one than it looks, and the default prompt tells the model as
 much.
 
-## Five things that will bite you
+## Six things that will bite you
 
 ### 1. `ask` inside a check continues *your* conversation
 
@@ -119,6 +119,38 @@ ply: waiting for stdin to end (^D closes it, ^C gives up)
 Supervisors, CI runners and cron sometimes hand a program a socket that
 nobody ever writes to or closes. `< /dev/null` settles it for good, and
 belongs in any `ply` line that is not meant to read anything.
+
+### 6. Keep the session out of the work tree
+
+The default puts it in `~/.ply/sessions`, which is fine and needs no
+thought. `-f` is where this goes wrong:
+
+```
+$ ply -sh -C ./src -f ./src/run.jsonl "fix the build"     # don't
+```
+
+The session is now a file in the directory the model is working in, so an
+ordinary `grep -rn foo .` or `find . -type f` reads the transcript back
+into the conversation it is a record of. You pay for several turns of the
+model's own reasoning to tell it what it already knew, and on a provider
+that returns encrypted reasoning most of those bytes are not even legible
+— they are just bulk, and they push out the output cap for everything
+else in that command.
+
+Nothing breaks. It is a waste, and it compounds: the log grows every turn,
+so the same `grep` costs more each time round the loop. `ply` says so once
+on stderr when it notices:
+
+```
+ply: the session is inside the work tree, so a grep or a find will
+     read it back into the conversation it is a record of; -f a path
+     outside the tree keeps the record out of the work
+```
+
+`$PLY_DIR` set to somewhere inside a repository does the same thing more
+quietly, because then it is every run and not just the one you typed `-f`
+on. The same goes for large piped input, which spools next to the session
+as `<id>.stdin`.
 
 ## Recipes
 

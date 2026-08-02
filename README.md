@@ -42,7 +42,7 @@ export ANTHROPIC_API_KEY=...
 [brief]: https://github.com/patrickyoung/brief
 
 **[GUIDE.md](GUIDE.md)** is the field guide: what `ply` is good at, what it
-is not, the recipes, and the five things that will bite you — including the
+is not, the recipes, and the six things that will bite you — including the
 one that bit the person who wrote it (an `ask` inside a check continues
 *your* conversation unless you say `-n -f`).
 
