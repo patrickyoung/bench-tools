@@ -1,0 +1,661 @@
+#!/bin/sh
+# design a system built from ask, brief, ply and hone -- and check it is buildable
+#
+# Line 2 is the synopsis, without the name on it, because ply reads it as
+# the catalogue entry and the name is already the filename.
+#
+# draft is the fifth verb, and it is a shell script on purpose. The other
+# four are Go programs because each of them had something genuinely hard in
+# it: provider adapters, a search path, a loop that runs what a model wrote,
+# arithmetic over exit statuses. draft has nothing hard in it. It composes,
+# and composition in this family is a file:
+#
+#     draft   the design       -- no model, no loop, no catalogue
+#     ask     the model        -- no tools, no loop
+#     brief   the procedure    -- no model, no loop
+#     ply     the loop         -- no model, no procedure
+#     hone    the lesson       -- no store, no retrieval, no format
+#
+# You draft it, you brief it, you ask it, it plies, and it hones.
+#
+# The one idea it holds is that a design nobody can falsify is not a design.
+# So DESIGN.md must name the command that decides the work is done, draft
+# check refuses a design that does not, and draft build hands exactly that
+# command to ply as -check. The document is the requirements, the procedure,
+# and the definition of done, and it is one file a human reads and edits.
+#
+# The second idea is that knowledge of the tools goes stale, so it is
+# generated rather than written. draft sync regenerates the reference from
+# the installed binaries, and draft check fails when it no longer matches
+# them. A design built against a reference that has drifted is the failure
+# this exists to stop, and staleness is therefore a program's opinion.
+
+set -u
+
+ME=draft
+VERSION=1.0.0
+
+# Where the skill lives, relative to this script, so a checkout works
+# without installing anything.
+#
+# $0 is followed through symlinks first, because the install this README
+# recommends is `ln -s "$PWD/bin/draft" ~/.local/bin/draft` -- and taking
+# dirname of the link rather than the target put the skill at
+# ~/.local/skills/draft, which does not exist. The failure was worse than
+# the absence: reference() could not write its temporary file, current()
+# read that as a difference, and draft reported the reference had "drifted
+# from the installed binaries" when the truth was that it could not find
+# its own skill. The install instructions in the README were the one path
+# nothing exercised.
+src=$0
+while [ -L "$src" ]; do
+	dir=$(CDPATH= cd -P -- "$(dirname -- "$src")" && pwd)
+	src=$(readlink "$src")
+	case $src in /*) ;; *) src="$dir/$src" ;; esac
+done
+HERE=$(CDPATH= cd -P -- "$(dirname -- "$src")/.." && pwd)
+SKILL="$HERE/skills/draft"
+REF="$SKILL/references/tools.md"
+
+ASK=${ASK:-ask}
+BRIEF=${BRIEF:-brief}
+PLY=${PLY:-ply}
+HONE=${HONE:-hone}
+
+say() { [ -n "${QUIET:-}" ] || printf '%s: %s\n' "$ME" "$*" >&2; }
+die() { printf '%s: %s\n' "$ME" "$*" >&2; exit 2; }
+
+usage() {
+	cat <<'EOF'
+draft -- design a system built from ask, brief, ply and hone
+
+  draft new <dir> [description ...]  scaffold a project and its DESIGN.md
+  draft check [dir]                  is this design buildable? (exit 1 = no)
+  draft prove [-n N] [dir]           break the code; does the check notice?
+  draft build [dir]                  build it, and let its own check decide
+  draft sync                         regenerate the tool reference
+  draft tools                        print what the family can currently do
+  draft version                      print the version
+  draft help                         print this summary
+
+A design that cannot say how you would know it worked is not a design. So
+DESIGN.md must name a check -- a shell command whose exit status is the
+verdict -- and everything here is arranged around that one requirement.
+check refuses a design without one; build hands it to ply as -check.
+
+With a description, new asks a model to fill the template first, in a
+session of its own under <dir>/.draft, so the reasoning replays later.
+Without one it writes the template and the questions, and you fill them in.
+
+  draft new hn "pull the YC feed, keep a history, report on AI topics"
+  draft check hn                    # buildable?
+  draft build hn                    # ply it into existence
+
+env: ASK BRIEF PLY HONE (the binaries) . DRAFT_MODEL (the model new uses)
+exit: 0 yes . 1 no -- not buildable, nothing to do . 2 error
+EOF
+}
+
+# ---------------------------------------------------------------- the tools
+
+# have reports which of the four are missing, all at once, because being
+# told about one at a time is four round trips through a shell.
+have() {
+	missing=
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
+		command -v "$t" >/dev/null 2>&1 || missing="$missing $t"
+	done
+	[ -z "$missing" ] && return 0
+	cat >&2 <<EOF
+$ME: not on PATH:$missing
+
+The four are the substrate, and draft is only their composition. Install
+them and try again:
+
+    go install github.com/patrickyoung/ask@latest
+    go install github.com/patrickyoung/brief@latest
+    go install github.com/patrickyoung/ply@latest
+    go install github.com/patrickyoung/hone@latest
+EOF
+	return 1
+}
+
+# reference writes what the installed binaries say about themselves. It is
+# generated and never edited, because a hand-written reference is a promise
+# to keep it true by hand, and nobody does.
+reference() {
+	cat <<EOF
+<!-- GENERATED by \`draft sync\` from the installed binaries. Do not edit. -->
+
+# The family, as installed
+
+This file is what \`ask\`, \`brief\`, \`ply\` and \`hone\` say about themselves on
+this machine. \`draft check\` regenerates it and fails when it has drifted,
+so a design is never planned against a tool that has moved on.
+
+## Versions
+
+EOF
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
+		printf '    %-6s %s\n' "$(basename "$t")" "$("$t" version 2>&1 | head -1)"
+	done
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
+		printf '\n## %s\n\n```\n' "$(basename "$t")"
+		"$t" help 2>&1
+		printf '```\n'
+	done
+	printf '\n## The default system prompts\n\n'
+	printf 'These are values, not secrets, and composing with them is ordinary\n'
+	printf 'shell: `ask -S "$(ask system; brief cat X)"`.\n'
+	printf '\n### ask system\n\n```\n'
+	"$ASK" system 2>&1
+	printf '```\n'
+}
+
+cmd_sync() {
+	have || return 2
+	mkdir -p "$(dirname "$REF")" || return 2
+	reference >"$REF.tmp" 2>/dev/null || { rm -f "$REF.tmp"; return 2; }
+	if [ -f "$REF" ] && cmp -s "$REF.tmp" "$REF"; then
+		rm -f "$REF.tmp"
+		say "the reference is already current"
+		return 0
+	fi
+	mv "$REF.tmp" "$REF" || return 2
+	say "wrote $REF from the installed binaries"
+	echo "$REF"
+}
+
+# current is the staleness check, and it is deliberately the same code path
+# sync uses: generate, compare. Two ways to decide would eventually disagree.
+current() {
+	reference >"$REF.tmp" 2>/dev/null || { rm -f "$REF.tmp"; return 1; }
+	if [ -f "$REF" ] && cmp -s "$REF.tmp" "$REF"; then
+		rm -f "$REF.tmp"
+		return 0
+	fi
+	rm -f "$REF.tmp"
+	return 1
+}
+
+cmd_tools() {
+	have || return 2
+	[ -f "$REF" ] || { say "no reference yet; run draft sync"; return 1; }
+	cat "$REF"
+}
+
+# ---------------------------------------------------------------- the design
+
+# checkof prints the first fenced block under `## Check`, which is the
+# command that decides the work is done. One place, one shape, and a
+# document a human reads rather than a config file nobody does.
+checkof() {
+	awk '
+		/^##[ \t]+Check[ \t]*$/ { inck = 1; next }
+		inck && /^##[ \t]/       { exit }
+		inck && /^```/           { if (infence) exit; infence = 1; next }
+		infence                  { print }
+	' "$1"
+}
+
+# template is read from the skill rather than embedded here, because two
+# copies of one document drift and the skill's copy is the one a model
+# reads. One source of truth, and it is the file brief already ships.
+TEMPLATE="$SKILL/references/template.md"
+template() {
+	[ -f "$TEMPLATE" ] || die "missing $TEMPLATE"
+	cat "$TEMPLATE"
+}
+
+# vacuous reports a check that cannot fail. Only the unmistakable ones:
+# whether a real command is thorough enough is judgment, and judgment is the
+# skill's job rather than a pattern match's. What is mechanical is that
+# `true` has no opinion, and a check with no opinion is worse than no check
+# -- ply drives until it exits 0, which is immediately.
+vacuous() {
+	case "$(printf '%s' "$1" | tr -d '[:space:]')" in
+	true | : | exit0 | /bin/true | /usr/bin/true | test1=1) return 0 ;;
+	esac
+	return 1
+}
+
+# ---------------------------------------------------------------- prove
+#
+# `draft check` says a design names a check. `ply -check` says the check
+# passes. Neither says the check is any *good*, and that gap is where a
+# built system's real defects live: the check is written by the same model
+# that wrote the code, so it only ever tests the states that model imagined.
+# One system built this way passed a genuinely thorough check -- syntax,
+# compile, unit tests, lint, plist validation -- and its first real run
+# downloaded 190 MB because the empty-store path was the one the fixtures
+# never created.
+#
+# So: break the code on purpose and see whether the check notices. A change
+# the check does not catch is a hole in the check, and that is a program's
+# opinion rather than anybody's judgement -- no model is called here at all.
+#
+# The mutations are deliberately few and semantic. Boundary and equality
+# flips are where off-by-one and empty-state bugs live, and they almost
+# never break syntax -- which matters, because a mutant that fails to parse
+# is killed by any check that runs a compiler, and counting those would
+# flatter a check that does nothing else. A survivor here is unambiguous.
+#
+# MUTATIONS is `pattern|replacement`, applied one occurrence at a time with
+# sed, so both halves must be BRE-safe and free of `&` and `\`.
+MUTATIONS='>=|>
+<=|<
+==|!=
+!=|==
+True|False
+False|True'
+
+# mutable lists the files worth breaking: the code, never the tests. The
+# tests are the detector, and a detector that reports its own damage
+# measures nothing.
+mutable() {
+	if git -C "$1" rev-parse --git-dir >/dev/null 2>&1; then
+		git -C "$1" ls-files
+	else
+		(cd "$1" && find . -type f | sed 's|^\./||')
+	fi | while read -r f; do
+		# An allowlist, not an exclusion list. The first version excluded
+		# .json and a .jsonl session log walked straight through it -- and
+		# mutating a data file proves nothing about a check while producing
+		# a very confident-looking report. Say what source is instead of
+		# trying to enumerate what it is not.
+		case $f in
+		test/* | tests/* | *_test.* | */test_*.py | test_*.py) continue ;;
+		*.py | *.sh | *.go | *.js | *.ts | *.rb | *.pl | *.rs | *.c | *.h) ;;
+		*.*) continue ;;                      # any other extension is data
+		*) head -1 "$1/$f" 2>/dev/null | grep -q '^#!' || continue ;;
+		esac
+		[ -f "$1/$f" ] && printf '%s\n' "$f"
+	done
+}
+
+# replace writes a file the way every other program in this family does:
+# a sibling temporary, then rename. `sed ... >"$file"` truncates the target
+# the instant the shell opens it, so a kill inside that window leaves the
+# source EMPTY -- which is exactly what happened the first time prove was
+# interrupted by a timeout, and only a commit made minutes earlier saved
+# the file. rename(2) is atomic within a directory, so a reader and a
+# corpse both see either the old content or the new, never nothing.
+#
+# The sibling must be in the target's own directory: /tmp is often another
+# filesystem, where mv degrades to copy-and-unlink and the guarantee is
+# gone. cp -p first so the temporary carries the original's mode -- these
+# are executables in bin/ as often as they are library files.
+replace() { # replace <dest> <content-file> [sed-expr]
+	rt="$(dirname "$1")/.draft-prove.$$"
+	cp -p "$1" "$rt" 2>/dev/null || : >"$rt"
+	if [ -n "${3:-}" ]; then sed "$3" "$2" >"$rt" || { rm -f "$rt"; return 1; }
+	else cat "$2" >"$rt" || { rm -f "$rt"; return 1; }
+	fi
+	mv "$rt" "$1"
+}
+
+# A rename cannot be interrupted, but SIGKILL between two of them can still
+# leave a complete mutant on disk. So the original is journalled inside the
+# project before anything is touched, and any run finding one left over
+# puts it back before doing anything else. Recoverable beats careful.
+JOURNAL=.draft-prove-restore
+
+recover() { # recover <dir>
+	[ -f "$1/$JOURNAL/path" ] || return 0
+	victim=$(cat "$1/$JOURNAL/path")
+	if [ -f "$1/$JOURNAL/orig" ] && [ -n "$victim" ]; then
+		replace "$1/$victim" "$1/$JOURNAL/orig"
+		printf '%s: restored %s from an interrupted prove\n' "$ME" "$victim" >&2
+	fi
+	rm -rf "$1/$JOURNAL"
+}
+
+# scrub removes compiled bytecode under the tree.
+#
+# This is a correctness fix, not tidiness. A mutant is compiled when the
+# check imports it, and Python invalidates a .pyc by (source mtime, source
+# size) -- but `==` -> `!=` is the same length, and mutate/run/restore all
+# happen inside one second, so the restored source can match the recorded
+# mtime and size exactly. The poisoned bytecode then survives the restore
+# and is used by the *next* mutation's check run, and by anything the
+# developer runs afterwards. It cost an hour of chasing a phantom the first
+# time it happened: source on disk read `cmd=="fetch"` while the running
+# code behaved as `!=`.
+#
+# So bytecode is cleared after every restore, not just at the end.
+scrub() {
+	find "$1" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null
+	find "$1" -name '*.pyc' -type f -delete 2>/dev/null
+	return 0
+}
+
+# bounded runs the check with a wall-clock limit, in its own process group.
+#
+# A mutant can hang rather than fail: remove a loop's termination condition
+# and the check never returns. Without a bound the whole measurement stalls
+# on the first one -- observed at ten minutes and counting, on a mutation
+# that made a cursor walk spin forever, with the surrounding test's own
+# guard never reached because the loop it guarded never exited.
+#
+# A timeout counts as KILLED, and that is a judgement rather than a
+# convenience: a change that makes the system hang is a change the check
+# detected. Counting it as survived would say the check missed something it
+# very much noticed.
+#
+# set -m puts the child in its own process group so the kill reaches what it
+# spawned. Killing only the shell leaves the python it started running,
+# which is precisely how the hang was found -- by a stray interpreter still
+# burning a core after its parent was gone.
+bounded() {
+	(
+		set -m
+		( cd "$dir" && sh -c "$ck" ) >/dev/null 2>&1 &
+		bp=$!
+		( sleep "$budget"; kill -9 -"$bp" 2>/dev/null ) >/dev/null 2>&1 &
+		wp=$!
+		wait "$bp" 2>/dev/null
+		brc=$?
+		kill "$wp" 2>/dev/null
+		exit "$brc"
+	)
+}
+
+cmd_prove() {
+	dir=. limit=40
+	while [ $# -gt 0 ]; do
+		case $1 in
+		-n) limit=${2:-40}; shift 2 ;;
+		-*) die "prove: unknown flag $1" ;;
+		*) dir=$1; shift ;;
+		esac
+	done
+	ck=$(QUIET=1 cmd_check "$dir") || {
+		printf '%s: %s/DESIGN.md is not buildable, so there is no check to prove\n' "$ME" "$dir" >&2
+		return 2
+	}
+
+	# A check that is already failing cannot report anything about a mutant,
+	# so this is refused rather than measured. Same reason ply runs its check
+	# before the first turn.
+	t0=$(date +%s)
+	if ! (cd "$dir" && sh -c "$ck") >/dev/null 2>&1; then
+		printf '%s: the check does not pass on the unmodified tree, so nothing it says about a mutation would mean anything:\n  %s\n' "$ME" "$ck" >&2
+		return 2
+	fi
+	# The bound is derived from the clean run rather than guessed: a check
+	# that takes a minute honestly needs longer than one that takes a second.
+	clean=$(( $(date +%s) - t0 )); [ "$clean" -ge 1 ] || clean=1
+	budget=$((clean * 5)); [ "$budget" -ge 15 ] || budget=15
+	say "check passes clean in ${clean}s; mutating with a ${budget}s bound"
+	recover "$dir"
+
+	killed=0 survived=0 tried=0 hung=0
+	tmp=$(mktemp -d) || return 2
+	# Whatever happens -- an interrupt, a failed sed, a check that hangs and
+	# is killed -- the file on disk goes back. A tool that rewrites source
+	# and might not put it back is not one anybody should run twice.
+	trap 'if [ -n "${cur:-}" ] && [ -f "$tmp/orig" ]; then replace "$cur" "$tmp/orig"; fi; rm -rf "$dir/$JOURNAL"; scrub "$dir"; rm -rf "$tmp"' EXIT INT TERM
+
+	# Collect every site first, then spread the sample across all of them.
+	#
+	# The first version ran files in order and stopped when it hit the cap,
+	# so `-n 30` meant "the first thirty sites I tripped over" -- which
+	# exhausted the alphabetically-first file and never reached the code the
+	# run was meant to measure. Two runs before and after a real fix scored
+	# 30% and 26% without either one touching the lines that changed. A
+	# score sampled from a prefix describes one file and calls it a project.
+	#
+	# A site is file, line, pattern, replacement. Comments are skipped here
+	# rather than later: breaking a comment proves nothing, and a survivor
+	# in one is noise that makes a real survivor harder to see.
+	printf '%s\n' "$MUTATIONS" | tr '|' '\t' >"$tmp/rules"
+	for f in $(mutable "$dir"); do
+		while IFS="$(printf '\t')" read -r pat rep; do
+			[ -n "$pat" ] || continue
+			grep -n -- "$pat" "$dir/$f" 2>/dev/null | while IFS=: read -r n rest; do
+				case $(printf '%s' "$rest" | sed 's/^[[:space:]]*//') in
+				'#'* | '//'* | '--'* | '*'* | '') continue ;;
+				esac
+				printf '%s\t%s\t%s\t%s\n' "$f" "$n" "$pat" "$rep"
+			done
+		done <"$tmp/rules"
+	done >"$tmp/sites"
+
+	total=$(wc -l <"$tmp/sites" | tr -d ' ')
+	[ "$total" -gt 0 ] || {
+		rm -rf "$dir/$JOURNAL" "$tmp"
+		say "no mutation sites found; nothing to prove"
+		return 1
+	}
+	if [ "$total" -gt "$limit" ]; then
+		# Exactly $limit sites, spread evenly over all of them.
+		#
+		# An integer stride was the obvious thing and it was wrong: with 46
+		# sites and a limit of 40 it computed a stride of 2 and measured 23,
+		# throwing away half the pool to honour a cap that was not binding.
+		# Selecting the i*total/limit'th index instead lands exactly on the
+		# limit, and because total > limit the step always exceeds one, so
+		# no two indices collide.
+		#
+		# It is deterministic, which is the property that makes a score
+		# worth anything: two runs measure the same sites, so a number can
+		# be compared with the one before it.
+		awk -v n="$limit" -v m="$total" '
+			BEGIN { for (i = 0; i < n; i++) pick[int(i * m / n) + 1] = 1 }
+			pick[NR]' "$tmp/sites" >"$tmp/picked"
+		say "$total sites; measuring $(wc -l <"$tmp/picked" | tr -d ' ') spread evenly"
+	else
+		cp "$tmp/sites" "$tmp/picked"
+		say "$total sites; measuring all of them"
+	fi
+
+	lastf=
+	while IFS="$(printf '\t')" read -r f n pat rep; do
+		cur="$dir/$f"
+		if [ "$f" != "$lastf" ]; then
+			cat "$cur" >"$tmp/orig" || continue
+			mkdir -p "$dir/$JOURNAL" && cp -p "$cur" "$dir/$JOURNAL/orig" &&
+				printf '%s\n' "$f" >"$dir/$JOURNAL/path"
+			lastf=$f
+		fi
+		line=$(sed -n "${n}p" "$tmp/orig")
+		replace "$cur" "$tmp/orig" "${n}s|$pat|$rep|" 2>/dev/null || continue
+		if cmp -s "$cur" "$tmp/orig"; then continue; fi   # nothing changed
+		tried=$((tried + 1))
+		bounded; rc=$?
+		if [ "$rc" -eq 0 ]; then
+			survived=$((survived + 1))
+			printf '%s:%s: %s -> %s survived\n' "$f" "$n" "$pat" "$rep"
+			printf '    %.100s\n' "$(printf '%s' "$line" | sed 's/^[[:space:]]*//')"
+		else
+			killed=$((killed + 1))
+			[ "$rc" -eq 137 ] && hung=$((hung + 1))
+		fi
+		replace "$cur" "$tmp/orig"
+		scrub "$dir"
+	done <"$tmp/picked"
+	cur=
+
+	trap - EXIT INT TERM
+	# The journal exists to survive a kill, so a run that finished must not
+	# leave one: a stale journal makes the next run "recover" a file that
+	# was never damaged, and a tree that is dirty after a successful run is
+	# its own kind of lie.
+	rm -rf "$dir/$JOURNAL" "$tmp"
+	[ "$tried" -gt 0 ] || {
+		say "no mutation sites found; nothing to prove"
+		return 1
+	}
+	pct=$((100 * killed / tried))
+	note=
+	[ "$hung" -gt 0 ] && note=" ($hung by hanging)"
+	say "killed $killed of $tried ($pct%)$note, $survived survived"
+	[ "$survived" -eq 0 ] || return 1
+	say "the check caught every change that was made to break it"
+}
+
+cmd_new() {
+	dir=${1:-}
+	[ -n "$dir" ] || die "usage: draft new <dir> [description ...]"
+	shift
+	desc=$*
+	[ -e "$dir/DESIGN.md" ] && die "$dir/DESIGN.md already exists"
+	mkdir -p "$dir" || return 2
+
+	if [ -z "$desc" ]; then
+		template >"$dir/DESIGN.md" || return 2
+		say "wrote the template; fill it in, then draft check $dir"
+		echo "$dir/DESIGN.md"
+		return 0
+	fi
+
+	have || return 2
+	current || say "the tool reference has drifted; draft sync would fix it"
+	command -v "$BRIEF" >/dev/null 2>&1 &&
+		doctrine=$("$BRIEF" cat draft 2>/dev/null) || doctrine=
+
+	mkdir -p "$dir/.draft" || return 2
+	# The design's provenance lives with the project and replays, because a
+	# design a model drafted is a decision it made on your behalf. -n so it
+	# never continues the conversation you were having.
+	ASK_SYSTEM="$("$ASK" system)
+$doctrine"
+	export ASK_SYSTEM
+	say "drafting $dir/DESIGN.md"
+	if template | "$ASK" -n -q ${DRAFT_MODEL:+-m "$DRAFT_MODEL"} \
+		-f "$dir/.draft/design.jsonl" \
+		"Below is a DESIGN.md template and then a description of a system to
+build. Fill the template in for that system, keeping every heading, in the
+order given. Replace the guidance under each heading with real content; do
+not restate the guidance. Be concrete and specific to this system.
+
+The Check section is the important one: name a real shell command whose exit
+status decides the work is done. Never leave it as false.
+
+Be hard about The split. Most of a working system is not an agent problem.
+
+Output only the finished markdown, with no preamble and no code fence around
+the whole document.
+
+DESCRIPTION: $desc" >"$dir/DESIGN.md.tmp"; then
+		mv "$dir/DESIGN.md.tmp" "$dir/DESIGN.md"
+	else
+		rm -f "$dir/DESIGN.md.tmp"
+		die "ask failed; nothing was written"
+	fi
+	say "ask replay -check $dir/.draft/design.jsonl"
+	say "read it, argue with it, then draft check $dir"
+	echo "$dir/DESIGN.md"
+}
+
+cmd_check() {
+	dir=${1:-.}
+	d="$dir/DESIGN.md"
+	[ -f "$d" ] || die "no $d -- draft new $dir first"
+	have || return 2
+
+	bad=0
+	current || {
+		printf '%s: the tool reference has drifted from the installed binaries; run draft sync\n' "$ME" >&2
+		bad=1
+	}
+
+	for want in "## Requirements" "## Not doing" "## The split" "## Data" "## Check"; do
+		grep -q "^$want" "$d" || {
+			printf '%s: %s: missing the "%s" section\n' "$ME" "$d" "$want" >&2
+			bad=1
+		}
+	done
+
+	ck=$(checkof "$d")
+	ck=$(printf '%s' "$ck" | sed '/^[[:space:]]*$/d')
+	if [ -z "$ck" ]; then
+		printf '%s: %s: the Check section names no command. A design that cannot say how you would know it worked is not a design.\n' "$ME" "$d" >&2
+		bad=1
+	elif [ "$ck" = "false" ]; then
+		printf '%s: %s: the Check section is still the template'"'"'s `false`\n' "$ME" "$d" >&2
+		bad=1
+	elif vacuous "$ck"; then
+		# The opposite failure to the one above, and the more expensive one.
+		# `false` is an unfinished design and says so loudly. A check that
+		# cannot fail is a finished-looking design that certifies nothing,
+		# and ply will drive straight to exit 0 having built nothing at all.
+		printf '%s: %s: the Check section cannot fail (`%s`). A check that always passes certifies nothing, and ply will exit 0 having built nothing.\n' "$ME" "$d" "$ck" >&2
+		bad=1
+	fi
+
+	if grep -qE '^\s*-\s*\[ \]\s*$' "$d"; then
+		printf '%s: %s: an empty requirement checkbox is left in the template\n' "$ME" "$d" >&2
+		bad=1
+	fi
+
+	[ "$bad" -eq 0 ] || return 1
+	say "$d is buildable"
+	printf '%s\n' "$ck"
+}
+
+cmd_build() {
+	dir=${1:-.}
+	shift 2>/dev/null || true
+	d="$dir/DESIGN.md"
+	ck=$(QUIET=1 cmd_check "$dir") || {
+		printf '%s: %s is not buildable yet; nothing was run\n' "$ME" "$d" >&2
+		return 1
+	}
+	say "check: $ck"
+	# ply owns the loop, the prompt and the toolbox from here, and draft does
+	# not second-guess any of them. An earlier version composed `ply system`
+	# output into -S and got it wrong in the way that matters: `ply system`
+	# reports the prompt for the flags it is given, so capturing it without
+	# -sh produced a prompt that told the model it had no tools, and passing
+	# that back with -S overrode the real one. The model spent its first turn
+	# explaining it could not reach a filesystem it in fact had. Two ways to
+	# build one prompt will eventually disagree; this is the disagreement.
+	#
+	# The design stays a file. The model has a shell and DESIGN.md is right
+	# there, so it reads it -- which costs one cheap turn, keeps a long
+	# design out of argv (world-readable in ps, and a design can be private),
+	# and is what a person would do.
+	#
+	# The draft skill is NOT loaded here, and that is a fix rather than an
+	# omission. It was, once. The skill is the doctrine for *designing* a
+	# system, so it explains when to reach for ply -- and a builder handed
+	# that doctrine reached for ply, spawning a nested agent with the same
+	# goal instead of writing any code. The log is unambiguous: five
+	# re-readings of DESIGN.md, then `ply -sh -check ./bin/check ...`, then a
+	# sub-agent hunting PATH for other coding agents to delegate to.
+	# Knowing when to use a tool is exactly the wrong thing to tell somebody
+	# whose job is to use it. The builder gets the design and nothing else.
+	#
+	# Saying so in the goal as well is belt and braces, and cheap: ply is on
+	# PATH under -sh, PLY_DEPTH bounds recursion at eight rather than
+	# forbidding it, and a delegating builder burns a whole run before
+	# anything downstream notices.
+	"$PLY" -sh -C "$dir" -check "$ck" "$@" \
+		"Read DESIGN.md in this directory once: it is the agreement and the
+whole specification. Then build exactly what it describes, writing real
+files, and nothing it says is not being done. Where it is silent, prefer the
+simplest thing the check would accept.
+
+You are the agent. Do not start another ply, and do not look for another
+coding agent to do this: there is none, and you are it. Write the files
+yourself with the shell you have.
+
+Work in small steps and verify as you go. Create the smallest piece that
+moves $ck closer to passing, run it, and repeat. Do not re-read DESIGN.md
+once you have it. The check is: $ck"
+}
+
+# ------------------------------------------------------------------- main
+
+case ${1:-help} in
+new)     shift; cmd_new "$@" ;;
+check)   shift; cmd_check "$@" ;;
+prove)   shift; cmd_prove "$@" ;;
+build)   shift; cmd_build "$@" ;;
+sync)    shift; cmd_sync "$@" ;;
+tools)   shift; cmd_tools "$@" ;;
+version|-V|--version) echo "$ME $VERSION" ;;
+help|-h|--help) usage ;;
+*)       usage >&2; exit 2 ;;
+esac

@@ -1,0 +1,16 @@
+# draft holds no state, so there is very little to ignore.
+#
+# skills/draft/references/tools.md IS committed, even though `draft sync`
+# generates it. A checkout should carry a working skill, and `draft check`
+# already reports when it has drifted from the installed binaries -- which
+# is information rather than a nuisance: a design planned against tools
+# that have moved on is exactly what the drift check exists to catch.
+
+# prove's crash journal. It exists only between a kill and the next run,
+# which recovers from it and removes it.
+.draft-prove-restore/
+
+*.bak
+__pycache__/
+*.pyc
+.DS_Store
