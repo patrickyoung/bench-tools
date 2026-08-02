@@ -107,6 +107,21 @@ embedding model, a vector store, an index, a database, a cache, a daemon, a
 config file, MCP, a scheduler, memory types, a consolidation pass, a
 retrieval verb, a ranking function, and any provider code at all.
 
+Two more that arrive together, from anyone who reads the gauge and wants it
+to do more:
+
+- **counting uses, not just lessons.** Lessons-per-use is the truer signal
+  and it needs `brief` to keep a counter, which is a cache, which is on
+  `brief`'s own refused list. The total is printed because `add` is already
+  holding the document it just wrote and the number is therefore free. Count
+  what costs nothing; let a human read the gauge;
+- **detecting contradiction.** Near-duplicates are already suppressed by
+  `have`, which is string comparison and stays that way. Opposite claims are
+  not, and the only way to find them is to ask a model whether two lessons
+  disagree — which is a model *deciding* something, and the first rule in
+  this file says it never does. The gauge is what points a human at a skill
+  worth rereading, and rewriting one is a goal with a check, which is `ply`.
+
 And the one that matters most: **nothing writes to a skill unless somebody
 typed a command that says to.** There is no hook, no watcher and no
 automatic learning, and adding one would not be a feature. A system that
