@@ -270,6 +270,26 @@ The sum of 17 and 25 is 42.
 
 The directory is the allowlist. `rm` is how you revoke.
 
+And the catalogue earns its keep hardest here, because an MCP description is
+written to be injected into a model's context whole, so it is routinely a
+page long. [Context7][context7] spends **2,435 bytes** describing two tools
+— one of them a 2 kB essay on how to choose a library. As a `ply` toolbox
+that is **347 bytes**:
+
+```
+$ mcpbox tools/ npx -y @upstash/context7-mcp
+$ ply tools -t tools
+  query-docs          Retrieves and queries up-to-date documentation and code exam...
+  resolve-library-id  Resolves a package/product name to a Context7-compatible lib...
+```
+
+Seven times smaller, and nothing is lost: the essay is still there, one
+`query-docs -h` away, for the model that has already decided to call it.
+This is `brief`'s argument about skills, arriving unchanged for tools —
+which is not a coincidence, because it was never an argument about prose.
+
+[context7]: https://github.com/upstash/context7
+
 Four things that bite, three of them found the hard way:
 
 - **A server needs a `PATH` of its own.** `npx` is `#!/usr/bin/env node` and
