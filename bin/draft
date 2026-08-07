@@ -342,22 +342,27 @@ scrub() {
 # detected. Counting it as survived would say the check missed something it
 # very much noticed.
 #
-# set -m puts the child in its own process group so the kill reaches what it
-# spawned. Killing only the shell leaves the python it started running,
-# which is precisely how the hang was found -- by a stray interpreter still
-# burning a core after its parent was gone.
+# The process group comes from perl's setpgrp, not from `set -m`, and pitch
+# already paid for the difference: job control puts a background job in its
+# own group in bash and does not in dash -- and the shop's container, where
+# draft also runs, has dash as /bin/sh. Under dash the `set -m` version
+# created no group, `kill -9 -$bp` named a group that did not exist, and a
+# hung mutant hung the measurement exactly where the bound mattered most.
+# setpgrp survives exec, so $bp is both the pid and the pgid; heed reaches
+# for perl the same way, for alarm(2). The kill stays SIGKILL with no TERM
+# first: 137 is how a hang is counted, and a mutant is not owed a shutdown.
 bounded() {
-	(
-		set -m
-		( cd "$dir" && sh -c "$ck" ) >/dev/null 2>&1 &
-		bp=$!
-		( sleep "$budget"; kill -9 -"$bp" 2>/dev/null ) >/dev/null 2>&1 &
-		wp=$!
-		wait "$bp" 2>/dev/null
-		brc=$?
-		kill "$wp" 2>/dev/null
-		exit "$brc"
-	)
+	perl -e 'chdir(shift @ARGV) or exit 127; setpgrp(0, 0);
+	         my $p = $ARGV[0]; exec { $p } @ARGV or exit 127' \
+		"$dir" /bin/sh -c "$ck" >/dev/null 2>&1 &
+	bp=$!
+	( sleep "$budget"; kill -9 -"$bp" 2>/dev/null ) >/dev/null 2>&1 &
+	wp=$!
+	brc=0
+	wait "$bp" 2>/dev/null || brc=$?
+	kill "$wp" 2>/dev/null
+	wait "$wp" 2>/dev/null
+	return "$brc"
 }
 
 cmd_prove() {
