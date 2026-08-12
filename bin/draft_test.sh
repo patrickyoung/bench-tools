@@ -275,6 +275,22 @@ before=$(cat "$TMP/p4/data.jsonl")
 "$DRAFT" prove -n 6 "$TMP/p4" >/dev/null 2>&1
 [ "$(cat "$TMP/p4/data.jsonl")" = "$before" ] && ok || no "prove mutated a data file"
 
+# Fixtures are never mutated either, and this is the case the data-file rule
+# above does NOT cover: a fixture server with a shebang and no extension is
+# indistinguishable from source by the extension rule, so it walked straight
+# through. Two of six survivors in a real vouch run were mutations of its
+# fixture OAuth provider -- noise wearing exactly the clothes of a finding,
+# because a survivor in the world the code is tested IN says nothing about
+# the code or the check.
+proj "$TMP/p5" "python3 -c \"import calc; assert calc.over(5,5) and not calc.over(4,5)\""
+mkdir -p "$TMP/p5/fixtures"
+printf '#!/bin/sh\n# a stub the check runs against\n[ 1 -ge 1 ] && echo ok\n' >"$TMP/p5/fixtures/stub"
+chmod +x "$TMP/p5/fixtures/stub"
+before=$(cat "$TMP/p5/fixtures/stub")
+"$DRAFT" prove -n 8 "$TMP/p5" >"$TMP/o" 2>/dev/null
+[ "$(cat "$TMP/p5/fixtures/stub")" = "$before" ] && ok || no "prove mutated a fixture"
+grep -q "fixtures/" "$TMP/o" && no "prove reported a fixture as a survivor" "$(cat "$TMP/o")" || ok
+
 # --- installed via symlink -------------------------------------------------
 #
 # The README says to install with `ln -s "$PWD/bin/draft" ~/.local/bin/draft`,

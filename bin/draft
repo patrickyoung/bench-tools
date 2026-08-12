@@ -263,7 +263,15 @@ mutable() {
 		# mutating a data file proves nothing about a check while producing
 		# a very confident-looking report. Say what source is instead of
 		# trying to enumerate what it is not.
+		# Fixtures are the third category, and the one the first version
+		# missed. The tests are the detector; the fixtures are the world the
+		# detector puts the code in. Mutating either measures the instrument
+		# rather than the thing, and a survivor there is noise wearing the
+		# same clothes as a finding -- two of six survivors in a real run
+		# were a fixture OAuth server that happens to be a shell-shebanged
+		# script with no extension, so the extension rule swept it in.
 		case $f in
+		fixtures/* | */fixtures/* | testdata/* | */testdata/*) continue ;;
 		test/* | tests/* | *_test.* | */test_*.py | test_*.py) continue ;;
 		*.py | *.sh | *.go | *.js | *.ts | *.rb | *.pl | *.rs | *.c | *.h) ;;
 		*.*) continue ;;                      # any other extension is data
