@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -214,6 +215,63 @@ func TestScaffoldSaysWhenTheDescriptionIsPoor(t *testing.T) {
 	if strings.Contains(doc, "will not be found") {
 		t.Errorf("a good description was overwritten with the apology:\n%s", doc)
 	}
+}
+
+// TestScaffoldWritesFrontmatterBriefCanRead: a lesson names the thing it is
+// about, so a description worded from one very often begins with a
+// backticked identifier -- and a YAML plain scalar may not begin with a
+// backtick. The skill landed on disk looking perfectly correct and brief
+// refused it, silently, which surfaces days later as "the agent ignores our
+// conventions". hone writes what brief reads; a file brief cannot read is
+// not a lesson, it is a leak.
+func TestScaffoldWritesFrontmatterBriefCanRead(t *testing.T) {
+	for _, desc := range []string{
+		"`plugins/INDEX` ordering and the plugin interface; use when adding one.",
+		"@here conventions; use when working in this tree.",
+		"key: value pairs in configs; use when editing one.",
+		`quotes "inside" a description; use when quoting.`,
+		`a backslash \ in a description; use when escaping.`,
+		"*globs* and #hashes; use when they appear.",
+	} {
+		// The authority on whether brief can read a skill is brief. hone has
+		// no dependencies and is not about to grow a YAML parser to hold a
+		// second opinion about one -- a model of the reader would agree with
+		// itself and miss exactly this bug.
+		brief, err := exec.LookPath(briefBin())
+		if err != nil {
+			t.Skip("brief is not on PATH; this contract is checked against the real one")
+		}
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, "house"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		doc := scaffold("house", desc)
+		if err := os.WriteFile(filepath.Join(dir, "house", "SKILL.md"), []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		out, err := exec.Command(brief, "lint", "-strict", filepath.Join(dir, "house")).CombinedOutput()
+		if err != nil {
+			t.Errorf("brief refuses the skill hone wrote for %q: %v\n%s\n%s",
+				desc, err, out, doc)
+			continue
+		}
+		out, err = exec.Command(brief, "cat", filepath.Join(dir, "house")).Output()
+		if err != nil {
+			t.Errorf("brief cannot cat it: %v", err)
+			continue
+		}
+		if len(out) == 0 {
+			t.Errorf("brief read it as empty for %q", desc)
+		}
+	}
+}
+
+// briefBin matches how hone finds brief everywhere else.
+func briefBin() string {
+	if b := os.Getenv("BRIEF"); b != "" {
+		return b
+	}
+	return "brief"
 }
 
 // TestTheTotalIsThePressureGauge: DESIGN.md specified `1 lesson added (4
