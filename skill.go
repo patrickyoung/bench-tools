@@ -83,6 +83,41 @@ const fallbackDescription = "Lessons learned from work in this tree, recorded by
 	"Use when working here. Replace this line with what the skill actually " +
 	"covers -- brief finds a skill by its description, so this one will not be found."
 
+// yamlQuote renders s as a YAML double-quoted scalar.
+//
+// A plain scalar may not begin with any of ` + " ` " + `& * ! % @ # | > { [ - ? : ,
+// and a lesson very often begins with a backticked identifier, because that
+// is how a lesson names the thing it is about. The skill then lands on disk
+// looking perfectly correct and silently never loads, since brief refuses
+// the frontmatter -- surfacing days later as "the agent ignores our
+// conventions".
+//
+// Quoting always is simpler than deciding when to quote, and it is never
+// wrong. That is the whole fix.
+func yamlQuote(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 2)
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
 // scaffold is the skill hone writes when -into names one that does not
 // exist. It passes `brief lint -strict` on the way out, because the first
 // file an author sees teaches them the shape.
@@ -103,7 +138,7 @@ session it came from and the call that worded it; `+"`ask replay -check`"+`
 proves either.
 
 %s
-`, name, description, name, lessonsHeading)
+`, name, yamlQuote(description), name, lessonsHeading)
 }
 
 // taught reports whether a skill already holds what a run taught.
