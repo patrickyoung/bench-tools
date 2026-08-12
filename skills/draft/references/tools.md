@@ -2,9 +2,13 @@
 
 # The family, as installed
 
-This file is what `ask`, `brief`, `ply` and `hone` say about themselves on
-this machine. `draft check` regenerates it and fails when it has drifted,
-so a design is never planned against a tool that has moved on.
+This file is what the installed binaries say about themselves on this
+machine. `draft check` regenerates it and fails when it has drifted, so a
+design is never planned against a tool that has moved on.
+
+`ask`, `brief`, `ply` and `hone` are required. `vouch` and `web` appear
+when they are installed: a design that needs an identity or a browser and
+cannot see one here will invent how they work.
 
 ## Versions
 
@@ -12,6 +16,8 @@ so a design is never planned against a tool that has moved on.
     brief  brief 0.1.0
     ply    ply 0.1.0
     hone   hone 0.1.0
+    vouch  vouch 0.1.0
+    web    web 1.0.0
 
 ## ask
 
@@ -281,6 +287,66 @@ exit: 0 something was learned · 1 nothing to learn · 2 error
 archive branches on it rather than stopping:
 
   for s in ~/.ask/sessions/*.jsonl; do hone "$s" -into house || continue; done
+```
+
+## vouch
+
+```
+vouch -- print one live access token on stdout
+
+  vouch <service>[:<account>]           print a token
+  vouch exec <service> -- <prog> [...]  run prog with the token in its environment
+  vouch login <service> [-from cmd...]  record a grant by importing from a CLI
+  vouch ls                              what is granted, and what scope it carries
+  vouch revoke <service>                forget a grant
+  vouch version | help
+
+  -n        print what would happen; never mint, never exec
+  -force    (login) record the grant without probing the donor first
+
+An account is a suffix, not a flag: vouch gmail:work and vouch gmail:personal
+are two grants. exec is the shape to prefer -- argv is world-readable in ps,
+and a token in a shell variable outlives the command that needed it.
+
+env:  VOUCH_HOME    where grants and the audit log live (default ~/.config/vouch)
+      VOUCH_TIMEOUT seconds to wait for a donor CLI (default 20)
+      VOUCH_CALLER  what to record in the audit log (a connector's own name)
+
+exit: 0 a token . 1 no such service, or a config nobody should trust
+      2 the donor misbehaved . 75 a human must log in, then retry
+```
+
+## web
+
+```
+web -- fetch a web page to stdout, or drive one through a plan
+
+  web get   <url>            readable Markdown to stdout
+  web text  <url>            the same, without link syntax
+  web html  <url>            the rendered HTML
+  web links <url>            label<TAB>absolute-url, one per line
+  web shot  <url> [out.png]  a full-page screenshot; prints the path
+  web run   [plan.json|-]    execute an ordered plan; JSON transcript to stdout
+  web auth  <url> <file>     open a window; you log in by hand; save the session
+  web setup                  install Playwright and a Chromium
+  web check                  the offline fixture check
+  web version | web help
+
+Render options: --wait {load,domcontentloaded,networkidle}  --profile FILE  --timeout MS
+                --attach ENDPOINT|PORT   work in a browser you started yourself
+
+Attached mode (for sites that refuse an automation-launched browser, e.g. a
+Google sign-in). Start Chrome yourself, sign in by hand, then:
+
+    chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.config/web/chrome"
+    web get --attach 9222 https://site/page
+    web auth --attach 9222 https://site ~/.config/web/site.json   # keep the session
+
+Chrome refuses --remote-debugging-port with your DEFAULT profile dir, on
+purpose, so --user-data-dir is required. web opens one tab and closes it; it
+never closes your browser and never touches a tab it did not open.
+Authenticated read:  web auth https://site/login ~/.config/web/site.json
+                     web get --profile ~/.config/web/site.json https://site/report
 ```
 
 ## The default system prompts

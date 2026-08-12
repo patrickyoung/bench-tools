@@ -61,6 +61,12 @@ ASK=${ASK:-ask}
 BRIEF=${BRIEF:-brief}
 PLY=${PLY:-ply}
 HONE=${HONE:-hone}
+# vouch and web are optional: plenty of designs need neither. But a design
+# that needs one and is planned against a reference that never mentions it
+# gets built the hard way -- or worse, gets an invented answer for how
+# credentials work. So they are reported when present, and never required.
+VOUCH=${VOUCH:-vouch}
+WEB=${WEB:-web}
 
 say() { [ -n "${QUIET:-}" ] || printf '%s: %s\n' "$ME" "$*" >&2; }
 die() { printf '%s: %s\n' "$ME" "$*" >&2; exit 2; }
@@ -98,8 +104,8 @@ EOF
 
 # ---------------------------------------------------------------- the tools
 
-# have reports which of the four are missing, all at once, because being
-# told about one at a time is four round trips through a shell.
+# have reports which of the required tools are missing, all at once, because
+# being told about one at a time is four round trips through a shell.
 have() {
 	missing=
 	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
@@ -129,17 +135,23 @@ reference() {
 
 # The family, as installed
 
-This file is what \`ask\`, \`brief\`, \`ply\` and \`hone\` say about themselves on
-this machine. \`draft check\` regenerates it and fails when it has drifted,
-so a design is never planned against a tool that has moved on.
+This file is what the installed binaries say about themselves on this
+machine. \`draft check\` regenerates it and fails when it has drifted, so a
+design is never planned against a tool that has moved on.
+
+\`ask\`, \`brief\`, \`ply\` and \`hone\` are required. \`vouch\` and \`web\` appear
+when they are installed: a design that needs an identity or a browser and
+cannot see one here will invent how they work.
 
 ## Versions
 
 EOF
-	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$VOUCH" "$WEB"; do
+		command -v "$t" >/dev/null 2>&1 || continue
 		printf '    %-6s %s\n' "$(basename "$t")" "$("$t" version 2>&1 | head -1)"
 	done
-	for t in "$ASK" "$BRIEF" "$PLY" "$HONE"; do
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$VOUCH" "$WEB"; do
+		command -v "$t" >/dev/null 2>&1 || continue
 		printf '\n## %s\n\n```\n' "$(basename "$t")"
 		"$t" help 2>&1
 		printf '```\n'
