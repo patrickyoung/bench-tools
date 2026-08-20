@@ -1,0 +1,124 @@
+.TH CAGE 1 "2026-08-19" "cage 0.1.0" "User Commands"
+.SH NAME
+cage \- confine one command with the host kernel
+.SH SYNOPSIS
+.B cage
+.RB [ \-net ]
+.RB [ \-ro | " \-w " dir ...]
+.B \--
+.I command
+.RI [ args ...]
+.br
+.B cage check
+.br
+.B cage status
+.SH DESCRIPTION
+.B cage
+runs one child process under the host operating system's filesystem and
+network boundary.
+The child may read the host filesystem.
+By default it may write the current directory and temporary directory, and
+cannot reach host networks.
+.PP
+Standard input, standard output, and standard error pass through unchanged.
+Ordinary child exit status passes through unchanged.
+A backend may represent signal termination using 128 plus the signal number;
+Cage preserves that convention.
+Backend readiness has a five-second deadline; child runtime is not limited.
+.SH OPTIONS
+.TP
+.B \-net
+Permit host networking.
+Without this option host and public networks are denied.
+Linux may retain loopback inside an isolated network namespace.
+.TP
+.B \-ro
+Do not grant write access to the current directory.
+The temporary directory remains writable.
+.TP
+.BI \-w " dir"
+Grant write access beneath an existing directory.
+May be repeated.
+Once present, the current directory is not implicitly writable.
+Cannot be combined with
+.BR \-ro .
+.TP
+.B \--
+End Cage options.
+Recommended before every command and required when its name starts with a
+hyphen.
+.SH COMMANDS
+.TP
+.B check
+Attempt workspace writes, denied outside writes, read-only and explicit-write
+modes, default network denial, deliberate networking, standard-input
+preservation, exit and signal propagation, and fail-closed setup.
+.TP
+.B status
+Write one JSON record describing platform, backend, availability, and
+enforcement completeness.
+An unavailable status is still a successful query; running a child then
+fails with 125.
+.TP
+.B version
+Print the Cage version.
+.TP
+.B help
+Print a command summary.
+.SH BACKENDS
+.SS macOS
+Uses Seatbelt through
+.BR /usr/bin/sandbox-exec .
+.SS Linux
+Uses Bubblewrap from a trusted absolute system path.
+The root is mounted read-only, selected roots are rebound read-write, and a
+private device filesystem and locked user namespace are created, capabilities
+are dropped, and a network namespace is created unless
+.B \-net
+is present.
+.SS Windows and other platforms
+Refuses with status 125 because this release has no complete native backend.
+Use Windows Sandbox or a container with explicit mounts and network policy.
+.SH EXIT STATUS
+.TP
+.B 0
+The child succeeded, or a status/help/version/check query succeeded.
+.TP
+.B 1
+At least one
+.B cage check
+assertion failed, or the child returned 1.
+.TP
+.B 2
+Cage usage error, or the child returned 2.
+.TP
+.B 125
+Confinement setup failed and the requested child did not start, or the child
+itself returned 125.
+Cage setup failures include a
+.B confinement setup
+diagnostic on standard error.
+.TP
+.B other
+The child's status.
+.SH SECURITY
+Cage restricts writes and networking, not reads, identity, CPU, memory,
+process count, elapsed time, output, human approval, or credentials.
+The temporary directory is writable.
+.B \-net
+permits all host networking and is not a destination allowlist.
+.SH ENVIRONMENT
+.TP
+.B TMPDIR
+Writable temporary directory.
+Set it before Cage to select a private scratch root.
+.SH EXAMPLES
+.nf
+cage -- go test ./...
+cage -ro -- inspector source.tar
+cage -w ./build -w ./generated -- make all
+cage -net -- curl https://example.com
+.fi
+.SH SEE ALSO
+.BR bwrap (1),
+.BR sandbox-exec (1)
