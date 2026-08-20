@@ -1,0 +1,120 @@
+.TH RULES 1 "2026-08-20" "rules 0.2.0" "User Commands"
+.SH NAME
+rules \- print applicable repository instructions
+.SH SYNOPSIS
+.B rules
+.RI [ DIR ]
+.br
+.B rules \-list
+.RI [ DIR ]
+.br
+.B rules
+.RB { help | version }
+.SH DESCRIPTION
+.B rules
+prints the bounded repository instructions that apply at a directory.
+The default directory is the current working directory.
+.PP
+The project root is the nearest ancestor containing a
+.B .git
+directory or regular
+.B .git
+file.
+Rules walks from that root to the target directory.
+At each level it reads
+.B AGENTS.md
+before
+.BR CLAUDE.md .
+Thus broader files precede narrower files.
+.PP
+Every applicable logical path is considered.
+When multiple paths have the same fully resolved path, its body is written
+only at the first path's position.
+Later paths remain visible under
+.B \-list
+and are identified as aliases on standard error.
+Distinct files are not deduplicated by content.
+.PP
+Instruction text is standard output.
+Root, source paths, resolved symlink targets, byte counts, and errors are
+standard error.
+Rules reads and validates the complete set before writing standard output.
+It never truncates or emits a partial set after a refusal.
+.SH OPTIONS
+.TP
+.B \-list
+Write one applicable logical path per line instead of instruction text.
+The files and limits are still validated.
+.TP
+.BR \-h , " " \--help , " " help
+Print a command summary.
+.TP
+.BR \-V , " " \--version , " " version
+Print the Rules version.
+.TP
+.B \--
+End option parsing, permitting a directory beginning with a hyphen.
+.SH LIMITS
+The unique applicable fully resolved file bodies may contain at most 32 KiB in
+total, so one file is subject to the same bound.
+The limit is fixed and has no configuration or environment override.
+An empty set is valid and writes empty standard output.
+.SH SYMLINKS
+The target directory is canonicalized before root discovery.
+An instruction symlink is fully resolved and accepted only when its target
+remains inside the canonical project root.
+The logical path is printed by
+.BR \-list ;
+standard error shows the resolved path.
+A common
+.B CLAUDE.md
+link to
+.B AGENTS.md
+therefore keeps both logical names without repeating the body.
+A symbolic
+.B .git
+entry is not a root marker.
+.SH COMPOSITION
+Rules does not modify a model prompt or invoke another program.
+Composition is explicit in the shell, for example:
+.PP
+.nf
+ASK_SYSTEM="$(ask system; rules)" \
+  ply -sh -check 'go test ./...' 'fix it'
+.fi
+.PP
+In an unattended script, check each producer before starting the agent:
+.PP
+.nf
+system=$(ask system) &&
+workspace=$(rules) &&
+ASK_SYSTEM="$system
+$workspace" ply -sh -check 'go test ./...' 'fix it'
+.fi
+.PP
+The separate assignments make a Rules exit of 1 or 2 stop the chain.
+.PP
+Repository instructions are guidance, not authorization.
+Their prompt position must not grant secrets, network access, filesystem
+access, approvals, or destructive capabilities; those remain runner and
+operator decisions.
+.SH EXIT STATUS
+.TP
+.B 0
+The complete set was printed, including an empty set.
+.TP
+.B 1
+No project root was found, or an instruction was refused.
+.TP
+.B 2
+The invocation was invalid, an I/O operation failed, or stdout failed.
+.SH FILES
+.TP
+.B AGENTS.md
+First instruction name at each directory level.
+.TP
+.B CLAUDE.md
+Second instruction name at each directory level.
+.SH SEE ALSO
+.BR ask (1),
+.BR ply (1)
