@@ -1,0 +1,135 @@
+.TH TRAIL 1 "2026-08-18" "trail 0.1.0" "User Commands"
+.SH NAME
+trail \- read Ask session logs as JSONL
+.SH SYNOPSIS
+.B trail ls
+.RI [ dir ]
+.br
+.B trail find
+.I query
+.RI [ dir ]
+.br
+.B trail show
+.I session
+.br
+.B trail window
+.RB [ \-before " " n ]
+.RB [ \-after " " n ]
+.I session seq
+.br
+.B trail lineage
+.I session
+.RI [ dir ]
+.br
+.B trail check
+.RI [ dir ]
+.SH DESCRIPTION
+.B trail
+is a read-only browser for Ask session archives.
+It writes one JSON object per line to standard output.
+It never writes or repairs a session and never maintains an index.
+.PP
+A session argument is an existing path, or otherwise a bare id resolved in
+the default archive directory.
+Archive commands scan regular files ending in
+.B .jsonl
+in lexical path order.
+They ignore directories and symbolic links.
+.SH COMMANDS
+.TP
+.B ls
+Write one
+.B session
+summary per file.
+.TP
+.B find
+Write one
+.B match
+record per matching event.
+Matching is a literal substring search after Unicode case folding and
+whitespace collapse.
+The printed text is unchanged.
+.TP
+.B show
+Write every valid archived event inside an
+.B event
+record.
+Unknown event types and fields are preserved.
+.TP
+.B window
+Write the event at
+.I seq
+and neighboring events.
+The default is three events before and after.
+.TP
+.B lineage
+Write
+.B node
+and
+.B edge
+records for the connected component containing the session.
+Only parent and summary ids recorded by Ask are edges.
+Trail does not infer ancestry from copied files.
+.TP
+.B check
+Run
+.B ask replay \-check FILE
+for every archive file and write a
+.B check
+record for each verdict.
+.TP
+.B version
+Print the Trail version.
+.TP
+.B help
+Print a command summary.
+.SH OUTPUT
+Standard output is JSONL.
+Record kinds are
+.BR session ,
+.BR match ,
+.BR event ,
+.BR node ,
+.BR edge ,
+.BR check ,
+.BR warning ,
+and
+.BR error .
+Fatal diagnostics go to standard error.
+.PP
+Damage in one file produces an error record and does not prevent later files
+from being read.
+An invalid final record produces a warning and is ignored in memory as a torn
+append; the file is not changed.
+.SH ENVIRONMENT
+.TP
+.B ASK_DIR
+Default archive and bare-id directory.
+If unset, the default is
+.BR ~/.ask/sessions .
+.TP
+.B ASK
+Ask executable used only by
+.BR check .
+The default is
+.B ask
+on
+.BR PATH .
+.SH EXIT STATUS
+.TP
+.B 0
+Successful result.
+.TP
+.B 1
+No search match, missing sequence, archive damage, or failed replay check.
+.TP
+.B 2
+Bad usage or operating error.
+.SH SEARCH FIELDS
+Find searches user and assistant text, reasoning, attachment names and media
+types, notes, retry and terminal errors, and request model and effort labels.
+It excludes system prompts, base64 media, provider-native state, digests,
+schemas, and fields in unknown event types.
+.SH SEE ALSO
+.BR ask (1),
+.BR jq (1)
