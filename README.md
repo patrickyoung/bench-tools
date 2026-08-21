@@ -241,3 +241,7 @@ and that is worse than a refusal.
 [DESIGN.md](DESIGN.md) is `draft`'s own design, written in `draft`'s own
 template, and `draft check .` passes on it. If that ever stops being true,
 one of the two is wrong.
+
+## License
+
+Draft is available under the [MIT License](LICENSE).
