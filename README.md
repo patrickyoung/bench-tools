@@ -353,10 +353,19 @@ just a tool:
 exec $PLY -t "$(dirname "$0")" -q "review $1 for concurrency bugs"
 ```
 
-Fan-out, specialists and teams are `xargs -P` and a shell script. There is
-no team format, no orchestrator, and nothing to configure. `PLY_DEPTH` stops
-at 8, because a loop that spawns itself is otherwise a fork bomb with a
-credit card.
+When the goal explicitly asks for subagents or parallel agent work, the root
+prompt teaches the same mechanism directly. It recommends no more than three
+independent, read-heavy children, 12 turns per child, indexed
+sessions/output/status files, and a root synthesis that preserves failed
+children. Nested prompts do not advertise delegation again. A toolbox-scoped
+run sees this guidance only when its toolbox contains the bookkeeping programs
+the recipe needs; Ply never widens a grant.
+
+Fan-out, specialists and teams are still background jobs, `wait`, `xargs -P`,
+and shell scripts. There is no team format, provider-specific orchestration, or
+daemon. `PLY_DEPTH` stops at 8, because a loop that spawns itself is otherwise
+a fork bomb with a credit card. Concurrent writers should use disjoint
+worktrees; one shared tree has one writer.
 
 ## Think in shell
 

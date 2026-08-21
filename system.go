@@ -14,7 +14,7 @@ import (
 // no tool-use API underneath — a fenced shell block is the wire format —
 // and -S replaces the whole thing, which is why `ply system` exists and why
 // the manual says to compose with it rather than around it.
-func prompt(box *Box, dir, check string, timeout time.Duration, outCap int) string {
+func prompt(box *Box, dir, check string, timeout time.Duration, outCap, depth int) string {
 	var s strings.Builder
 
 	s.WriteString(`You are working through a Unix shell to reach a goal.
@@ -65,6 +65,38 @@ before changing it.
 `, quoteDir(dir), timeout, bytesize(outCap))
 
 	s.WriteString(box.Catalogue())
+	if depth == 0 && canDelegate(box) {
+		fmt.Fprintf(&s, `
+If and only if the goal explicitly asks for subagents, delegation, or parallel
+agent work, another ordinary ply process is a subagent. Start each one with:
+
+    %s "one independent, bounded task; return a concise evidence-backed summary"
+
+Announce the delegated job names in prose before the command block. Run at most
+three at once, and make the complete fan-out fit this command's %s
+timeout. Give every child all context it needs; skills do not carry over.
+First make a private run directory with
+
+    umask 077
+    base=${PLY_DIR:-${TMPDIR:-/tmp}}
+    mkdir -p "$base"
+    run=$(mktemp -d "$base/ply-team.XXXXXX")
+
+Replace NNN with a stable numeric task index in each child command. Redirect
+that child's stdout and stderr to matching NNN.out and NNN.err files. Preserve
+failure under set -e with `+"`"+`rc=0; child ... || rc=$?`+"`"+`, then atomically publish the
+status through NNN.rc.tmp and mv it to NNN.rc. Wait for every child, then read
+results in task order, not completion order. A missing or nonzero status is a
+visible failure, not a result. Keep child typescripts out of this context;
+their indexed sessions and stderr files are the evidence.
+
+Delegate read-heavy exploration, tests, triage, and review. You remain the
+sole writer and synthesizer in this working tree; the configured check still
+decides done. For truly independent
+writes, use disjoint worktrees. Synthesize the child summaries yourself;
+never pass their conclusion through unchanged.
+`, subagentCommand(box), timeout)
+	}
 
 	if check != "" {
 		fmt.Fprintf(&s, `
@@ -91,6 +123,39 @@ asked for this goal: what you did, the evidence, and anything you could not
 finish. No preamble, no sign-off, no restating the goal back.
 `)
 	return s.String()
+}
+
+func canDelegate(box *Box) bool {
+	if box.Shell {
+		return true
+	}
+	needed := map[string]bool{"mkdir": false, "mktemp": false, "mv": false}
+	for _, tool := range box.Tools {
+		if _, ok := needed[tool.Name]; ok {
+			needed[tool.Name] = true
+		}
+	}
+	for _, found := range needed {
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func subagentCommand(box *Box) string {
+	args := []string{`"$PLY"`}
+	if box.Dir != "" {
+		args = append(args, "-t", shellQuote(box.Dir))
+	}
+	if box.Shell {
+		args = append(args, "-sh")
+	}
+	return strings.Join(append(args, "-turns", "12", "-C", ".", "-f", `"$run/NNN.jsonl"`, "--"), " ")
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
 }
 
 // firstMessage is the goal, and whatever was piped in with it. Large input

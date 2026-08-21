@@ -114,7 +114,7 @@ func (o *opts) box() (*Box, error) {
 }
 
 func (o *opts) runner(b *Box, self string, depth int) Runner {
-	return Runner{
+	r := Runner{
 		Dir:     *o.dir,
 		Path:    b.Path(),
 		Timeout: *o.timeout,
@@ -124,6 +124,12 @@ func (o *opts) runner(b *Box, self string, depth int) Runner {
 		// the only thing standing between that and a bill.
 		Env: []string{"PLY=" + self, "PLY_DEPTH=" + strconv.Itoa(depth+1)},
 	}
+	// A nested Ply started as an ordinary command should not silently fall
+	// back to a different model when the parent selected one with -m.
+	if model := strings.TrimSpace(*o.spec); model != "" {
+		r.Env = append(r.Env, "ASK_MODEL="+model)
+	}
+	return r
 }
 
 // checker is that runner with the caller's reach. Everything about running
@@ -180,7 +186,7 @@ func work(args []string) int {
 	// The protocol lives in the default, so replacing it is a real choice:
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
-	system := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap)
+	system := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
 	o.fs.Visit(func(f *flag.Flag) {
 		if f.Name == "S" {
 			system = *o.sys
@@ -332,7 +338,8 @@ func systemCmd(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
-	out := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap)
+	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
+	out := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
 	if len(o.skills) > 0 {
 		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
 		if err != nil {

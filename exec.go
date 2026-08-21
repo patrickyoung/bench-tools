@@ -129,15 +129,29 @@ func (r Runner) Run(ctx context.Context, script string) Result {
 	cmd.Dir = r.Dir
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
 	cmd.Env = append(append(os.Environ(), "PATH="+r.Path), r.Env...)
-	// Its own process group, so a timeout kills what the script started and
-	// not just the shell that started it. A background child holding the
-	// pipe open is the difference between a timeout and a hang.
+	// Its own process group, so a timeout reaches what the script started and
+	// not just the shell that started it. Interrupt first: a nested Ply then
+	// gets a chance to cancel the separate process groups it owns. Escalate
+	// after a short grace period so an uncooperative descendant cannot keep a
+	// pipe open forever.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
-	cmd.WaitDelay = time.Second
+	done := make(chan struct{})
+	cmd.Cancel = func() error {
+		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
+		go func(pid int) {
+			select {
+			case <-done:
+			case <-time.After(750 * time.Millisecond):
+				_ = syscall.Kill(-pid, syscall.SIGKILL)
+			}
+		}(cmd.Process.Pid)
+		return err
+	}
+	cmd.WaitDelay = 2 * time.Second
 
 	res := Result{Cmd: script, Timeout: r.Timeout}
 	err := cmd.Run()
+	close(done)
 	res.Output, res.Elided, res.Total = out.String()
 	var ee *exec.ExitError
 	switch {

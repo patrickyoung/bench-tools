@@ -3,11 +3,21 @@ package main
 import (
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
+
+func TestMain(m *testing.M) {
+	if os.Getenv("PLY_TEST_PROGRAM") == "1" {
+		os.Exit(run(os.Args[1:]))
+	}
+	os.Exit(m.Run())
+}
 
 // fakeAsk stands in for the model. It is a program, like the real one, so
 // the test exercises the same path production does: argv, stdin, stdout,
@@ -92,6 +102,240 @@ func TestTheLoopRunsWhatTheModelWrites(t *testing.T) {
 	// The output goes back as the next message, as a typescript.
 	if sent := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(sent, "$ echo hello > made.txt") {
 		t.Errorf("the model was not shown what ran:\n%s", sent)
+	}
+}
+
+func TestExplicitDelegationRunsConcurrentIsolatedChildrenAndReturnsFailures(t *testing.T) {
+	if os.Getenv("PLY_TEST_PROGRAM") == "1" {
+		return
+	}
+	work := t.TempDir()
+	evidence := filepath.Join(t.TempDir(), "subagents")
+	askdir := t.TempDir()
+	ask := filepath.Join(askdir, "ask")
+	script := `#!/bin/sh
+set -eu
+d=` + shellQuote(askdir) + `
+session=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -f) session=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ -n "$session" ] || exit 1
+mkdir -p "$(dirname "$session")"
+: > "$session"
+printf '%s' "${ASK_MODEL-}" > "$session.model"
+printf '%s' "$ASK_SYSTEM" > "$session.system"
+pwd > "$session.cwd"
+input="$d/input.$$"
+trap 'rm -f "$input"' EXIT
+cat > "$input"
+case "$session" in
+*/001.jsonl)
+  : > "$d/alpha-start"
+  n=0
+  while [ ! -f "$d/beta-start" ]; do
+    n=$((n+1)); [ "$n" -lt 100 ] || { : > "$d/alpha-peer-missing"; break; }
+    sleep 0.01
+  done
+  printf 'alpha summary with file evidence\n'
+  exit 0 ;;
+*/002.jsonl)
+  : > "$d/beta-start"
+  n=0
+  while [ ! -f "$d/alpha-start" ]; do
+    n=$((n+1)); [ "$n" -lt 100 ] || { : > "$d/beta-peer-missing"; break; }
+    sleep 0.01
+  done
+  printf 'beta context full\n' >&2
+  exit 2 ;;
+esac
+if grep -q 'delegate-root' "$input"; then
+  cat <<'REPLY'
+Delegating: alpha code map; beta race audit.
+
+@@FENCE@@ply
+umask 077
+base=${PLY_DIR:-${TMPDIR:-/tmp}}
+mkdir -p "$base"
+run=$(mktemp -d "$base/ply-team.XXXXXX")
+(
+  rc=0
+  "$PLY" -sh -C . -f "$run/001.jsonl" -- alpha-task >"$run/001.out" 2>"$run/001.err" || rc=$?
+  printf '%s\n' "$rc" >"$run/001.rc.tmp"
+  mv "$run/001.rc.tmp" "$run/001.rc"
+) &
+(
+  rc=0
+  "$PLY" -sh -C . -f "$run/002.jsonl" -- beta-task >"$run/002.out" 2>"$run/002.err" || rc=$?
+  printf '%s\n' "$rc" >"$run/002.rc.tmp"
+  mv "$run/002.rc.tmp" "$run/002.rc"
+) &
+wait
+for n in 001 002; do
+  if [ ! -f "$run/$n.rc" ]; then
+    printf '[%s rc=missing]\n' "$n"
+    continue
+  fi
+  rc=$(cat "$run/$n.rc")
+  printf '[%s rc=%s]\n' "$n" "$rc"
+  if [ "$rc" -eq 0 ]; then
+    cat "$run/$n.out"
+  else
+    tail -n 4 "$run/$n.err"
+  fi
+done
+@@FENCE@@
+REPLY
+  exit 0
+fi
+if grep -q '\[001 rc=0\]' "$input"; then
+  cp "$input" "$d/root-merge-input"
+  printf 'Root synthesis: alpha evidence accepted; beta failed with exit 2.\n'
+  exit 0
+fi
+printf 'unexpected turn\n' >&2
+exit 1
+`
+	script = strings.ReplaceAll(script, "@@FENCE@@", "```")
+	write(t, ask, script, 0o755)
+	t.Setenv("ASK", ask)
+	t.Setenv("PLY_DIR", evidence)
+	t.Setenv("PLY_TEST_PROGRAM", "1")
+	parent := filepath.Join(t.TempDir(), "parent.jsonl")
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "-f", parent, "-m", "openai/parent-model", "delegate-root")
+	if code != 0 || strings.TrimSpace(stdout) != "Root synthesis: alpha evidence accepted; beta failed with exit 2." {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if !strings.Contains(stderr, "Delegating: alpha code map; beta race audit.") {
+		t.Fatalf("delegation activity was not visible on stderr:\n%s", stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "alpha-peer-missing")); !os.IsNotExist(err) {
+		t.Fatalf("alpha did not overlap beta: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "beta-peer-missing")); !os.IsNotExist(err) {
+		t.Fatalf("beta did not overlap alpha: %v", err)
+	}
+	runs, err := filepath.Glob(filepath.Join(evidence, "ply-team.*"))
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("runs=%v err=%v", runs, err)
+	}
+	for _, index := range []string{"001", "002"} {
+		sessionPath := filepath.Join(runs[0], index+".jsonl")
+		for suffix, want := range map[string]string{".model": "openai/parent-model"} {
+			if got := read(t, sessionPath+suffix); got != want {
+				t.Errorf("%s%s=%q, want %q", index, suffix, got, want)
+			}
+		}
+		gotCWD, gotErr := filepath.EvalSymlinks(strings.TrimSpace(read(t, sessionPath+".cwd")))
+		wantCWD, wantErr := filepath.EvalSymlinks(work)
+		if gotErr != nil || wantErr != nil || gotCWD != wantCWD {
+			t.Errorf("%s cwd=%q err=%v, want %q err=%v", index, gotCWD, gotErr, wantCWD, wantErr)
+		}
+		if system := read(t, sessionPath+".system"); strings.Contains(system, "another ordinary ply process is a subagent") {
+			t.Errorf("nested %s prompt advertised recursive delegation", index)
+		}
+	}
+	if got := read(t, filepath.Join(runs[0], "002.rc")); strings.TrimSpace(got) != "2" {
+		t.Fatalf("failed child status=%q", got)
+	}
+	merge := read(t, filepath.Join(askdir, "root-merge-input"))
+	if !strings.Contains(merge, "[001 rc=0]\nalpha summary") || !strings.Contains(merge, "[002 rc=2]") {
+		t.Fatalf("root did not receive ordered success and failure:\n%s", merge)
+	}
+}
+
+func TestInterruptingParentLetsNestedPlyKillItsCommandGroup(t *testing.T) {
+	work := t.TempDir()
+	askdir := t.TempDir()
+	ask := filepath.Join(askdir, "ask")
+	childSession := filepath.Join(t.TempDir(), "child.jsonl")
+	pidfile := filepath.Join(t.TempDir(), "grandchild.pid")
+	script := `#!/bin/sh
+set -eu
+session=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -f) session=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+mkdir -p "$(dirname "$session")"
+: > "$session"
+input=$(mktemp)
+trap 'rm -f "$input"' EXIT
+cat > "$input"
+case "$session" in
+*child.jsonl)
+  cat <<'REPLY'
+Starting a long child command.
+
+@@FENCE@@ply
+echo $$ > ` + shellQuote(pidfile) + `
+sleep 30
+@@FENCE@@
+REPLY
+  ;;
+*)
+  cat <<'REPLY'
+Delegating: cancellable child.
+
+@@FENCE@@ply
+"$PLY" -sh -C . -f ` + shellQuote(childSession) + ` -- child-cancel
+@@FENCE@@
+REPLY
+  ;;
+esac
+`
+	script = strings.ReplaceAll(script, "@@FENCE@@", "```")
+	write(t, ask, script, 0o755)
+	parent := filepath.Join(t.TempDir(), "parent.jsonl")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(executable, "-sh", "-C", work, "-f", parent, "root-cancel")
+	cmd.Env = append(os.Environ(), "PLY_TEST_PROGRAM=1", "ASK="+ask)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(pidfile); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			_ = cmd.Wait()
+			t.Fatal("nested command never started")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGINT); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		t.Fatal("parent did not stop after interrupt")
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(read(t, pidfile)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(3 * time.Second)
+	for syscall.Kill(pid, 0) == nil && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := syscall.Kill(pid, 0); err == nil {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		t.Fatalf("nested command process %d survived parent interrupt", pid)
 	}
 }
 

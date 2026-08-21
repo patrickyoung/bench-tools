@@ -286,8 +286,10 @@ writing commands and never stops for the check.
 .BI \-timeout " d"
 Per\-command timeout, as a Go duration such as
 .BR 30s .
-Default 2m. A command that outlasts it is killed by process group and
-reports 124, which is
+Default 2m. A command that outlasts it receives an interrupt by process group
+so nested ply processes can stop their own command groups, then an
+uncooperative group is killed after a short grace period. It reports 124,
+which is
 .BR timeout (1)'s
 number.
 .TP
