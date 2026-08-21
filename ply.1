@@ -108,6 +108,12 @@ leaves no session behind. Without
 .BR \-check ,
 exit 0 means only that the model stopped.
 .PP
+When the initial check fails, its terminal transcript rides with the goal in
+the first model turn and is recorded once in the Ask session. It does not
+count against
+.BR \-cycles ,
+which counts only checks made after the model has had a chance to work.
+.PP
 The check is the caller's program, not the model's, so it runs with the
 caller's
 .B PATH
@@ -273,7 +279,9 @@ Compactions before giving up. Default 3; 0 is unbounded. A goal that needs
 more than a few has outgrown one run.
 .TP
 .BI \-turns " n"
-Model turns before giving up. Default 0, unbounded.
+Model turns before giving up. Default 50. Zero is explicitly unbounded.
+This is the invocation-wide liveness bound: it also stops a model that keeps
+writing commands and never stops for the check.
 .TP
 .BI \-timeout " d"
 Per\-command timeout, as a Go duration such as
@@ -315,6 +323,13 @@ matching is reported on standard error and the run goes on without one.
 .BI \-f " file"
 Session log to write. Default is a new one under
 .BR $PLY_DIR .
+.TP
+.BI \-session-out " file"
+Atomically write the absolute path of the current Ask session to this file,
+followed by a newline. It is written before the first model turn and replaced
+after every successful compaction, so a supervising process can follow the
+run without parsing the human typescript. A requested control file that
+cannot be maintained is an error. It is a pointer, not a second log.
 .TP
 .B \-q
 No typescript on standard error.
@@ -391,9 +406,10 @@ on
 a provider failure.
 .TP
 .B 2
-Not done: the check is still failing, a cap was reached, or the context
-window is full. It is its own status because a supervisor has to tell "did
-not work" from "broke", or it retries the wrong one.
+Not done: the check is still failing, a bound was reached, the command
+protocol stalled, or the context window is full. It is its own status because
+a supervisor has to tell "did not work" from "broke", or it retries the
+wrong one.
 .TP
 .B 130
 Interrupted.

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,7 @@ exit ${FAKE_ASK_EXIT:-0}
 	return bin, dir
 }
 
-func itoa(n int) string { return string(rune('0' + n)) }
+func itoa(n int) string { return strconv.Itoa(n) }
 
 // runPly calls the program in process, with the streams a filter's contract
 // is written about pointed somewhere a test can read them.
@@ -112,6 +113,36 @@ func TestCheckDecidesDone(t *testing.T) {
 	sent := read(t, filepath.Join(askdir, "stdin.log"))
 	if !strings.Contains(sent, "check and it did not pass") {
 		t.Errorf("the model was never told the check failed:\n%s", sent)
+	}
+}
+
+// TestInitialCheckFailureIsFirstTurnEvidence pins the difference between a
+// pre-check and an optimisation. Its diagnostic is evidence: the model sees
+// it without rediscovering the failure, Ask records it, and it does not spend
+// one of the post-turn check cycles.
+func TestInitialCheckFailureIsFirstTurnEvidence(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch built\n```",
+		"Built it.",
+	)
+	check := "test -f built || { echo baseline failure >&2; exit 7; }"
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-cycles", "1",
+		"-check", check, "build it")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0: the pre-check spent the only cycle\n%s", code, stderr)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	for _, want := range []string{"build it", initialCheckStart, "$ " + check,
+		"baseline failure", "exit 7", initialCheckEnd} {
+		if !strings.Contains(sent, want) {
+			t.Errorf("first-turn evidence lost %q:\n%s", want, sent)
+		}
+	}
+	if n := strings.Count(sent, initialCheckStart); n != 1 {
+		t.Errorf("initial check was recorded %d times, want once:\n%s", n, sent)
+	}
+	if !strings.Contains(stderr, "check failed") || !strings.Contains(stderr, "baseline failure") {
+		t.Errorf("the live typescript hid the pre-check failure:\n%s", stderr)
 	}
 }
 
@@ -307,11 +338,144 @@ echo "ask: context window is full" >&2; exit 2
 	}
 }
 
+func TestSessionOutTracksTheCurrentSession(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+d=`+askdir+`
+for a in "$@"; do
+  if [ "$a" = compact ]; then touch "$d/compacted"; echo `+fresh+`; exit 0; fi
+done
+cat >/dev/null
+[ -f "$d/compacted" ] || exit 2
+echo done
+`, 0o755)
+	control := filepath.Join(t.TempDir(), "current")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-compact",
+		"-session-out", control, "goal")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	want, err := filepath.Abs(fresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(read(t, control)); got != want {
+		t.Errorf("session-out = %q, want %q", got, want)
+	}
+	if fi, err := os.Stat(control); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Errorf("session-out mode: info=%v err=%v, want 0600", fi, err)
+	}
+}
+
+func TestSessionOutExistsBeforeTheFirstTurn(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	session := filepath.Join(t.TempDir(), "named.jsonl")
+	control := filepath.Join(t.TempDir(), "current")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+want=`+session+`
+control=`+control+`
+[ "$(cat "$control")" = "$want" ] || { echo missing-session-control >&2; exit 1; }
+cat >/dev/null
+echo done
+`, 0o755)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-f", session,
+		"-session-out", control, "goal")
+	if code != 0 {
+		t.Fatalf("exit = %d: the control file was not ready before Ask\n%s", code, stderr)
+	}
+}
+
+func TestSessionOutFailureIsInfrastructureFailure(t *testing.T) {
+	work, _, askdir := sandbox(t, "should not run")
+	control := filepath.Join(t.TempDir(), "missing", "current")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-session-out", control, "goal")
+	if code != 1 || !strings.Contains(stderr, "-session-out") {
+		t.Fatalf("exit = %d stderr = %q, want an ordinary infrastructure error", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); err == nil {
+		t.Error("Ask ran after the requested control channel failed")
+	}
+}
+
+func TestSessionOutCannotOverwriteTheSession(t *testing.T) {
+	work, _, askdir := sandbox(t, "should not run")
+	session := filepath.Join(t.TempDir(), "task.jsonl")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-f", session,
+		"-session-out", session, "goal")
+	if code != 1 || !strings.Contains(stderr, "must not name the Ask session") {
+		t.Fatalf("exit = %d stderr = %q", code, stderr)
+	}
+	if _, err := os.Stat(session); err == nil {
+		t.Error("the control artifact overwrote the Ask session path")
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); err == nil {
+		t.Error("Ask ran after the colliding paths were refused")
+	}
+}
+
 func TestModelFailureIsExitOne(t *testing.T) {
 	work, _, _ := sandbox(t, "unused")
 	t.Setenv("FAKE_ASK_EXIT", "1")
 	if code, _, _ := runPly(t, "-sh", "-C", work, "goal"); code != 1 {
 		t.Errorf("exit = %d, want 1 for a broken provider", code)
+	}
+}
+
+func TestMalformedCommandProtocolIsExitTwo(t *testing.T) {
+	work, _, _ := sandbox(t,
+		"```ply\ntouch first",
+		"```ply\ntouch second",
+		"```ply\ntouch third",
+	)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "goal")
+	if code != 2 || !strings.Contains(stderr, "command protocol stalled") {
+		t.Fatalf("exit = %d stderr = %q, want a protocol stall", code, stderr)
+	}
+	for _, name := range []string{"first", "second", "third"} {
+		if _, err := os.Stat(filepath.Join(work, name)); err == nil {
+			t.Errorf("the truncated %s command ran", name)
+		}
+	}
+}
+
+func TestBoundsRejectNegativeValues(t *testing.T) {
+	for _, args := range [][]string{
+		{"-sh", "-turns", "-1", "goal"},
+		{"-sh", "-cycles", "-1", "goal"},
+		{"-sh", "-compactions", "-1", "goal"},
+		{"-sh", "-timeout", "0", "goal"},
+	} {
+		code, _, stderr := runPly(t, args...)
+		if code != 1 || !strings.Contains(stderr, "usage:") {
+			t.Errorf("%v: exit = %d stderr = %q, want a usage error", args, code, stderr)
+		}
+	}
+}
+
+func TestTurnLimitHasFiniteDefault(t *testing.T) {
+	o := newOpts("ply")
+	if *o.turns != defaultTurns || *o.turns <= 0 {
+		t.Fatalf("default turns = %d, want finite %d", *o.turns, defaultTurns)
+	}
+}
+
+func TestDefaultTurnLimitStopsContinuousCommands(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+d=`+askdir+`
+cat >/dev/null
+n=$(cat "$d/n" 2>/dev/null || echo 0)
+n=$((n+1))
+echo "$n" > "$d/n"
+printf '%s\n' '`+"```ply"+`' ':' '`+"```"+`'
+`, 0o755)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "never stop")
+	if code != 2 || !strings.Contains(stderr, "turn limit reached") {
+		t.Fatalf("exit = %d stderr = %q, want the default turn bound", code, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != itoa(defaultTurns) {
+		t.Errorf("model calls = %q, want %d", got, defaultTurns)
 	}
 }
 

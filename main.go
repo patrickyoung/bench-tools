@@ -27,9 +27,10 @@ import (
 const version = "0.1.0"
 
 const (
-	maxStdin  = 16 << 20 // as much as ask will carry in one message
-	spoolOver = 64 << 10 // past this, stdin becomes a file to grep
-	maxDepth  = 8        // ply inside ply inside ply: a fork bomb that bills
+	maxStdin     = 16 << 20 // as much as ask will carry in one message
+	spoolOver    = 64 << 10 // past this, stdin becomes a file to grep
+	maxDepth     = 8        // ply inside ply inside ply: a fork bomb that bills
+	defaultTurns = 50       // one invocation must eventually return control
 )
 
 const synopsis = "ply [flags] <goal> | ply tools | ply system | ply version | ply help"
@@ -56,45 +57,47 @@ func run(args []string) int {
 
 // opts is every knob, in one place, because three verbs share most of them.
 type opts struct {
-	fs       *flag.FlagSet
-	toolbox  *string
-	shell    *bool
-	check    *string
-	force    *bool
-	cycles   *int
-	turns    *int
-	timeout  *time.Duration
-	outcap   *int
-	dir      *string
-	spec     *string
-	sys      *string
-	skills   list
-	file     *string
-	quiet    *bool
-	compact  *bool
-	compacts *int
+	fs         *flag.FlagSet
+	toolbox    *string
+	shell      *bool
+	check      *string
+	force      *bool
+	cycles     *int
+	turns      *int
+	timeout    *time.Duration
+	outcap     *int
+	dir        *string
+	spec       *string
+	sys        *string
+	skills     list
+	file       *string
+	sessionOut *string
+	quiet      *bool
+	compact    *bool
+	compacts   *int
 }
 
 func newOpts(name string) *opts {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	o := &opts{
-		fs:       fs,
-		toolbox:  fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
-		shell:    fs.Bool("sh", false, "hand the model every program on PATH"),
-		check:    fs.String("check", "", "the goal is done when this shell command exits 0"),
-		force:    fs.Bool("B", false, "work the goal even if the check already passes"),
-		cycles:   fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
-		turns:    fs.Int("turns", 0, "model turns before giving up (0 = unbounded)"),
-		timeout:  fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
-		outcap:   fs.Int("cap", 16<<10, "output kept per command, head and tail"),
-		dir:      fs.String("C", "", "run commands here"),
-		spec:     fs.String("m", "", "provider/model, passed to ask"),
-		sys:      fs.String("S", "", "system prompt, replacing the default"),
-		file:     fs.String("f", "", "session log to write"),
-		quiet:    fs.Bool("q", false, "no typescript on stderr"),
-		compact:  fs.Bool("compact", false, "carry on through a full context window"),
-		compacts: fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
+		fs:         fs,
+		toolbox:    fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
+		shell:      fs.Bool("sh", false, "hand the model every program on PATH"),
+		check:      fs.String("check", "", "the goal is done when this shell command exits 0"),
+		force:      fs.Bool("B", false, "work the goal even if the check already passes"),
+		cycles:     fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
+		turns:      fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
+		timeout:    fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
+		outcap:     fs.Int("cap", 16<<10, "output kept per command, head and tail"),
+		dir:        fs.String("C", "", "run commands here"),
+		spec:       fs.String("m", "", "provider/model, passed to ask"),
+		sys:        fs.String("S", "", "system prompt, replacing the default"),
+		file:       fs.String("f", "", "session log to write"),
+		sessionOut: fs.String("session-out", "", "write the current session path to this file"),
+		quiet:      fs.Bool("q", false, "no typescript on stderr"),
+		compact:    fs.Bool("compact", false, "carry on through a full context window"),
+		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to append; repeat for more; - picks one")
 	return o
@@ -137,6 +140,9 @@ func work(args []string) int {
 		return usage(err)
 	}
 	goal := strings.Join(o.fs.Args(), " ")
+	if err := o.validate(); err != nil {
+		return usage(err)
+	}
 
 	depth, err := descend()
 	if err != nil {
@@ -155,10 +161,6 @@ func work(args []string) int {
 			return fail(fmt.Errorf("-C %s: not a directory", *o.dir))
 		}
 	}
-	if *o.outcap < 512 {
-		return fail(fmt.Errorf("-cap %d: too small to be worth reading", *o.outcap))
-	}
-
 	data, err := stdinData(*o.quiet)
 	if err != nil {
 		return fail(err)
@@ -204,14 +206,17 @@ func work(args []string) int {
 
 	// make's "nothing to be done": a goal already met costs nothing, leaves
 	// no session behind, and is safe to put in a hook or a Makefile.
+	var initialCheck *Result
 	if *o.check != "" && !*o.force {
-		if r := checker.Run(ctx, *o.check); r.Code == 0 {
-			v.Check(r)
+		r := checker.Run(ctx, *o.check)
+		v.Check(r)
+		if r.Code == 0 {
 			v.Note("nothing to do")
 			return 0
 		} else if ctx.Err() != nil {
 			return 130
 		}
+		initialCheck = &r
 	}
 
 	// Everything that can fail has failed by here. Only now does ply put a
@@ -222,8 +227,19 @@ func work(args []string) int {
 			return fail(err)
 		}
 	}
+	if *o.sessionOut != "" {
+		if session, err = filepath.Abs(session); err != nil {
+			return fail(fmt.Errorf("session path: %w", err))
+		}
+	}
 	first, err := spool(goal, data, session)
 	if err != nil {
+		return fail(err)
+	}
+	if initialCheck != nil {
+		first = withInitialCheck(first, *initialCheck)
+	}
+	if err := writeSessionOut(*o.sessionOut, session); err != nil {
 		return fail(err)
 	}
 
@@ -245,6 +261,11 @@ func work(args []string) int {
 		Turns:    *o.turns,
 		View:     v,
 	}
+	if *o.sessionOut != "" {
+		loop.SessionChanged = func(path string) error {
+			return writeSessionOut(*o.sessionOut, path)
+		}
+	}
 	answer, err := loop.Run(ctx, first)
 	if answer != "" && !v.Shown() {
 		fmt.Println(strings.TrimRight(answer, "\n"))
@@ -255,7 +276,7 @@ func work(args []string) int {
 	case errors.Is(err, context.Canceled):
 		v.Note("interrupted")
 		return 130
-	case errors.Is(err, ErrCycles), errors.Is(err, ErrTurns), errors.Is(err, ErrOverflow):
+	case errors.Is(err, ErrCycles), errors.Is(err, ErrTurns), errors.Is(err, ErrOverflow), errors.Is(err, ErrProtocol):
 		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
 		return 2
 	default:
@@ -263,9 +284,28 @@ func work(args []string) int {
 	}
 }
 
+func (o *opts) validate() error {
+	switch {
+	case *o.cycles < 0:
+		return fmt.Errorf("-cycles %d: must be zero or greater", *o.cycles)
+	case *o.turns < 0:
+		return fmt.Errorf("-turns %d: must be zero or greater", *o.turns)
+	case *o.compacts < 0:
+		return fmt.Errorf("-compactions %d: must be zero or greater", *o.compacts)
+	case *o.timeout <= 0:
+		return fmt.Errorf("-timeout %s: must be greater than zero", *o.timeout)
+	case *o.outcap < 512:
+		return fmt.Errorf("-cap %d: too small to be worth reading", *o.outcap)
+	}
+	return nil
+}
+
 func toolsCmd(args []string) int {
 	o := newOpts("ply tools")
 	if err := o.fs.Parse(args); err != nil {
+		return usage(err)
+	}
+	if err := o.validate(); err != nil {
 		return usage(err)
 	}
 	box, err := o.box()
@@ -283,6 +323,9 @@ func toolsCmd(args []string) int {
 func systemCmd(args []string) int {
 	o := newOpts("ply system")
 	if err := o.fs.Parse(args); err != nil {
+		return usage(err)
+	}
+	if err := o.validate(); err != nil {
 		return usage(err)
 	}
 	box, err := o.box()
@@ -431,6 +474,53 @@ func mint() (string, error) {
 	var b [4]byte
 	rand.Read(b[:])
 	return filepath.Join(dir, time.Now().Format("20060102-150405")+"-"+hex.EncodeToString(b[:])+".jsonl"), nil
+}
+
+// writeSessionOut maintains the optional process-level pointer to the Ask
+// session which currently owns the run. It is a control artifact, not a
+// second log: one path, replaced atomically, with the conversation still in
+// Ask alone.
+func writeSessionOut(control, session string) error {
+	if control == "" {
+		return nil
+	}
+	control, err := filepath.Abs(control)
+	if err != nil {
+		return fmt.Errorf("-session-out: %w", err)
+	}
+	session, err = filepath.Abs(session)
+	if err != nil {
+		return fmt.Errorf("session path: %w", err)
+	}
+	if strings.ContainsAny(session, "\r\n") {
+		return errors.New("-session-out cannot report a session path containing a newline")
+	}
+	if control == session {
+		return errors.New("-session-out must not name the Ask session itself")
+	}
+	f, err := os.CreateTemp(filepath.Dir(control), ".ply-session-*")
+	if err != nil {
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	tmp := f.Name()
+	ok := false
+	defer func() {
+		if !ok {
+			_ = os.Remove(tmp)
+		}
+	}()
+	if _, err := io.WriteString(f, session+"\n"); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	if err := os.Rename(tmp, control); err != nil {
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	ok = true
+	return nil
 }
 
 // descend counts how deep this ply is inside another. A toolbox program

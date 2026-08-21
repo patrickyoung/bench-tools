@@ -107,6 +107,20 @@ func firstMessage(goal, stdin, spool string) string {
 	}
 }
 
+const (
+	initialCheckStart = "[ply: initial check did not pass]"
+	initialCheckEnd   = "[ply: end initial check]"
+)
+
+// withInitialCheck keeps the pre-check where both audiences can see it: in
+// the first message the model receives, and therefore in the replayable Ask
+// session. The markers let hone separate the goal from the terminal
+// transcript without inventing a second record of the check.
+func withInitialCheck(first string, r Result) string {
+	return first + "\n\n" + initialCheckStart + "\n\n" + r.Typescript() +
+		initialCheckEnd + "\n\nKeep working until the check passes."
+}
+
 // rejection is what a failed check says to the model. It is a typescript
 // like any other tool result, because that is what it is: a command ran and
 // this is what it printed.

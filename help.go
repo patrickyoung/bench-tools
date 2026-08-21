@@ -27,9 +27,9 @@ the process — its user, its container, its chroot — as it always was.
 done: -check cmd runs after the model stops, and the run ends only when it
 exits 0; its output goes back to the model and work continues. It also runs
 before the first turn, so a goal already met costs nothing and leaves no
-session behind. Without -check, exit 0 means only that the model stopped.
-The check is yours, not the model's, so it runs with your PATH and the
-toolbox merely first on it.
+session behind. A failure and its output ride with the first turn. Without
+-check, exit 0 means only that the model stopped. The check is yours, not
+the model's, so it runs with your PATH and the toolbox merely first on it.
 
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
 it), and the exit code says what happened. The conversation is an ask
@@ -45,7 +45,7 @@ flags:
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
-  -turns n      model turns before giving up (default 0 = unbounded)
+  -turns n      model turns before giving up (default 50, 0 = unbounded)
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
@@ -54,6 +54,7 @@ flags:
                 it, so compose with -S "$(ply system; cat house.md)"
   -s name       brief skill to append; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
+  -session-out file  atomically write the current session path here
   -q            no typescript on stderr
 
 env: PLY_TOOLS (-t) · PLY_DIR (sessions, default ~/.ply/sessions) · ASK
@@ -62,7 +63,6 @@ env: PLY_TOOLS (-t) · PLY_DIR (sessions, default ~/.ply/sessions) · ASK
      nothing else. Commands run with $PLY naming this binary and $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
-exit: 0 done · 1 error · 2 not done — check still failing, a cap tripped,
-      or the context window is full and -compact was not given · 130
-      interrupted
+exit: 0 done · 1 error · 2 not done — check still failing, a bound tripped,
+      the command protocol stalled, or context is full · 130 interrupted
 `

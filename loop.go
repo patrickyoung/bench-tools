@@ -17,22 +17,23 @@ import (
 const verdictSource = "ply"
 
 // maxStalls bounds a reply that neither ran anything nor finished — an
-// unterminated fence, twice. Past that the reply is taken at face value,
-// because a model that cannot close a fence will not learn to on the third
-// telling and the run should end somewhere a human can read.
+// unterminated fence, twice. A model that cannot close a fence after being
+// shown the mistake should not be allowed to turn malformed output into an
+// unchecked success.
 const maxStalls = 2
 
 type Loop struct {
-	Model    Model
-	Runner   Runner // the model's reach: the toolbox
-	Checker  Runner // the caller's reach: the caller's own PATH
-	Check    string // shell command; empty means the model's word is the verdict
-	Loaded   string // what ply put in the system prompt, recorded once the log exists
-	Cycles   int    // failed checks before giving up; 0 unbounded
-	Compact  bool   // carry on through a full window by compacting
-	Compacts int    // compactions before giving up; 0 unbounded
-	Turns    int    // model turns before giving up; 0 unbounded
-	View     *view
+	Model          Model
+	Runner         Runner // the model's reach: the toolbox
+	Checker        Runner // the caller's reach: the caller's own PATH
+	Check          string // shell command; empty means the model's word is the verdict
+	Loaded         string // what ply put in the system prompt, recorded once the log exists
+	Cycles         int    // failed checks before giving up; 0 unbounded
+	Compact        bool   // carry on through a full window by compacting
+	Compacts       int    // compactions before giving up; 0 unbounded
+	Turns          int    // model turns before giving up; 0 unbounded
+	View           *view
+	SessionChanged func(string) error // process-boundary notification after compaction
 }
 
 // verdict records how the run ended, in the session, where ply has always
@@ -96,6 +97,11 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			}
 			l.View.Note("context was full; compacted into %s", path)
 			l.Model.Session = path
+			if l.SessionChanged != nil {
+				if err := l.SessionChanged(path); err != nil {
+					return last, fmt.Errorf("recording current session: %w", err)
+				}
+			}
 			compacts++
 			if l.Compacts > 0 && compacts >= l.Compacts {
 				return last, fmt.Errorf("%w after %d compactions", ErrOverflow, compacts)
@@ -149,7 +155,10 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			msg = b.String()
 			continue
 		}
-		if note != "" && stalls < maxStalls {
+		if note != "" {
+			if stalls >= maxStalls {
+				return last, fmt.Errorf("%w after %d malformed replies", ErrProtocol, stalls+1)
+			}
 			stalls++
 			l.View.Note("%s", note)
 			msg = "ply: " + note

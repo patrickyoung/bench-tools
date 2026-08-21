@@ -71,7 +71,8 @@ What is offered instead is real but limited:
   decides whether exit 0 happens.
 - The typescript on stderr and the session log make what happened readable
   after the fact, in full, in order.
-- `-timeout` and `-cycles` bound how long a hijacked run can continue.
+- `-timeout`, `-cycles`, and the finite default `-turns` bound how long a
+  hijacked run can continue.
 
 Treat a `ply` run over untrusted input as untrusted execution of that input,
 and put the boundary in the operating system.
@@ -85,7 +86,10 @@ These exist to stop accidents, not attackers:
 - Command output is capped per command (`-cap`), keeping both ends, with the
   elision stated in the text the model reads.
 - Piped input past 16 MB is an error naming the limit, never a truncation.
+- A run stops after 50 model turns by default. `-turns 0` explicitly removes
+  that invocation-wide bound.
 - `PLY_DEPTH` refuses to start a ply more than eight deep inside another, so
   a toolbox program that runs `ply` cannot become an unbounded fan-out.
-- An unterminated fenced block runs nothing. A truncated command is not a
-  guess worth making.
+- An unterminated fenced block runs nothing. After two corrective replies,
+  another malformed fence stops the run at exit 2; a truncated command is
+  never an unchecked success.

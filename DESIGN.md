@@ -82,6 +82,9 @@ admit: tests, builds, linters, `diff`, `test -f`, an exit status.
 The check also runs *first*, before any model call, and `ply` exits 0 having
 spent nothing if it already passes. That is `make`'s "nothing to be done",
 and it is what makes `ply` safe to put in a loop, a hook, or a Makefile.
+When it fails, its terminal transcript rides with the first turn instead of
+being discarded; that is both the model's starting evidence and the first
+stumble a later passing run can teach from.
 
 When the judgment genuinely needs a model, the mechanism does not change —
 you already have one:
@@ -122,7 +125,7 @@ exit 2 instead of retrying a permanent error until the bill arrives.
     stderr   the typescript: what ran, what it printed, what it exited
     exit 0   done — the check passed, or, with no check, the model stopped
     exit 1   error — usage, no ask on PATH, a provider failure
-    exit 2   not done — check still failing, a cap tripped, context full
+    exit 2   not done — check failing, a bound or protocol stalled, context full
     exit 130 interrupted
 
 Exit 2 is the row that earns its keep, as it does in `ask` and `mu`: a
@@ -137,6 +140,11 @@ Output fed back is bounded and says so in the text the model reads. Input is
 never silently truncated: too much on stdin spools to a file and the model
 is told the path, so a large input becomes something to `grep` rather than
 something to carry every turn.
+
+One invocation is bounded to 50 model turns by default. That bound applies
+even when the model continuously emits valid commands and never stops for a
+check; zero removes it explicitly. A malformed command fence is corrected
+twice and then becomes exit 2, never unchecked completion.
 
 ## Deliberately not here
 

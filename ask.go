@@ -21,6 +21,7 @@ var (
 	ErrOverflow = errors.New("context window is full")
 	ErrCycles   = errors.New("the check never passed")
 	ErrTurns    = errors.New("turn limit reached")
+	ErrProtocol = errors.New("the command protocol stalled")
 )
 
 // Model is one conversation, held in an ask session file. Every turn is one

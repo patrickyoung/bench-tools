@@ -558,7 +558,13 @@ again and you get five more. That is deliberate: the process is the unit,
 and a session that spent its budget would otherwise be poisoned forever with
 no way to say "try again".
 
-If you want a global bound, you own it, and you already have the tools:
+The same is true of `-turns`, which defaults to 50. Unlike `-cycles`, it
+also stops a model that keeps emitting commands and never reaches the
+check. Use `-turns 0` only when the caller supplies some other whole-run
+bound.
+
+If you want a bound across invocations, you own it, and you already have the
+tools:
 
 ```sh
 for i in 1 2 3; do
@@ -577,7 +583,7 @@ for s in ~/.ply/sessions/*.jsonl; do
 done
 ```
 
-### The one wart
+### Compaction changes the session
 
 `-compact` moves the run into a **new** session when the window fills, and
 says so on stderr:
@@ -592,6 +598,18 @@ last named — or drop `-f` and let a fresh conversation do the work, which
 the pre-check makes correct and merely more expensive. This is the one place
 the "conversation is an optimization" rule costs you something real, and it
 is better to know it than to discover it at three in the morning.
+
+A supervising program should not scrape that human typescript. Give Ply a
+control file instead:
+
+```
+ply -compact -session-out /tmp/current-session -sh "finish the work"
+```
+
+The file contains the absolute current Ask session path and a newline. Ply
+writes it before the first model turn and atomically replaces it after each
+successful compaction. A failure to maintain a requested control file is an
+error; the file is a pointer, not another transcript.
 
 ## Putting the boundary in the operating system
 

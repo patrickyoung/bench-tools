@@ -201,6 +201,11 @@ $ echo $?
 That is `make`'s oldest manner, and it is what makes `ply` safe in a git
 hook, a `Makefile`, or a loop.
 
+When that first check fails, its terminal output is not thrown away. It
+rides with the goal in the first model turn and therefore lands in the Ask
+session as the run's first evidence. It does not count against `-cycles`:
+that bound still counts only checks after the model has had a chance to work.
+
 The check is **yours**, not the model's, so it runs with your `$PATH` — with
 the toolbox merely first on it. Scoping it the way the model is scoped would
 mean `go test ./...` needed a toolbox holding `go`, `git` and a linker.
@@ -260,7 +265,7 @@ has read a million of, and every human already knows.
 | stderr | the typescript: what ran, what it printed, what it exited |
 | exit 0 | done — the check passed, or, with no check, the model stopped |
 | exit 1 | error — usage, no `ask`, a provider failure |
-| exit 2 | not done — check still failing, a cap tripped, context full |
+| exit 2 | not done — check failing, a bound tripped, protocol stalled, context full |
 | exit 130 | interrupted |
 
 Exit 2 earns its row, as it does in `ask`: a supervisor has to tell "did not
@@ -271,6 +276,12 @@ Commands run with stdin on `/dev/null`, in their own process group, under
 capped per command, keeping both ends, and the elision is announced *in the
 text the model reads*, because truncation it cannot see is the one failure
 nothing downstream can detect.
+
+An invocation gives up after 50 model turns by default, including a model
+that keeps emitting commands and never stops for the check. `-turns 0`
+deliberately removes that bound. An unterminated command fence is returned
+for correction twice; a third malformed reply stops at exit 2 instead of
+being mistaken for unchecked completion.
 
 ## The log is somebody else's problem
 
