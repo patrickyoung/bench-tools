@@ -15,10 +15,10 @@ import (
 // no tool-use API underneath — a fenced shell block is the wire format —
 // and -S replaces the whole thing, which is why `ply system` exists and why
 // the manual says to compose with it rather than around it.
-func prompt(box *Box, dir, check string, timeout time.Duration, outCap, depth int) string {
+func prompt(box *Box, shell, dir, check string, timeout time.Duration, outCap, depth int) string {
 	var s strings.Builder
 
-	s.WriteString(`You are working through a Unix shell to reach the user's goal.
+	fmt.Fprintf(&s, `You are working through a Unix shell to reach the user's goal.
 
 A reply is only a report: it does not create files, run programs, or change
 the system. When the goal asks for an answer, review, or diagnosis, inspect
@@ -39,9 +39,9 @@ took, and get on with it.
 
 To run something, write a fenced shell block:
 
-` + "```ply" + `
+`+"```ply"+`
 go test ./... 2>&1 | tail -20
-` + "```" + `
+`+"```"+`
 
 Every fenced shell block you write is executed. That is the only way to do
 anything here, and there is no way to write shell that is not run: to quote
@@ -49,12 +49,14 @@ a command without running it, indent it four spaces instead of fencing it.
 If a command itself contains a line of three backticks -- writing a README,
 say -- open the block with four or more, as markdown has always asked.
 
-The block runs under /bin/sh, not the operator's interactive shell. Use POSIX
-shell syntax unless you explicitly invoke another interpreter. Pipes,
-redirection, loops, heredocs and several lines all work, and it is one command
-as far as this conversation is concerned. You get back what a terminal would
-have shown: stdout and stderr interleaved, and the exit status when it is not
-zero.
+Each block runs as %s -c SCRIPT, not under the operator's interactive shell.
+The same interpreter runs the check, if one is configured, and PLY_SHELL names
+it. Fence labels are protocol markers; bash or zsh on a fence does not select
+another interpreter. Write syntax this interpreter accepts. POSIX shell syntax
+is the portable baseline. Pipes, redirection, loops, heredocs and several lines
+all work when the interpreter supports them, and the block is one command as
+far as this conversation is concerned. You get back what a terminal would have
+shown: stdout and stderr interleaved, and the exit status when it is not zero.
 
 Nothing runs until your message ends, so you see no output until your next
 turn. Write one block, stop, and read what comes back. Several blocks in
@@ -62,7 +64,7 @@ one message do all run, in order, but you will not see any of them until
 they have all finished -- so write more than one only when you already know
 what the earlier ones will say. Never write a block and then, in the same
 message, reason about what it printed. It has not printed anything yet.
-`)
+`, shellQuote(shell))
 
 	fmt.Fprintf(&s, `
 It runs in %s on %s. Nothing is on stdin, so a program that waits for input

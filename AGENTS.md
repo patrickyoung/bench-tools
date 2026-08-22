@@ -47,6 +47,13 @@ When changing `ply`:
   treats running any command as proof of progress or completion; `pwd` is an
   interaction, not a verdict;
 
+- **one run has one command interpreter.** `/bin/sh` is the stable default;
+  `-shell` and `PLY_SHELL` explicitly select another executable accepting
+  `-c`. Resolve it before calling the model, name the exact choice in the
+  prompt, use it for both blocks and checks, and propagate it to nested Ply
+  processes. Never inherit the interactive `$SHELL`, infer dialects from
+  version output, or let fence labels select different interpreters;
+
 - **never truncate silently.** A command's output is capped, and the
   elision is announced *in the text the model reads*, with both ends kept.
   Too much on stdin spools to a file the model is told about; past the hard

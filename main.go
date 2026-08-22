@@ -60,6 +60,7 @@ type opts struct {
 	fs         *flag.FlagSet
 	toolbox    *string
 	shell      *bool
+	shellExec  *string
 	check      *string
 	force      *bool
 	cycles     *int
@@ -84,6 +85,7 @@ func newOpts(name string) *opts {
 		fs:         fs,
 		toolbox:    fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
 		shell:      fs.Bool("sh", false, "hand the model every program on PATH"),
+		shellExec:  fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
 		check:      fs.String("check", "", "the goal is done when this shell command exits 0"),
 		force:      fs.Bool("B", false, "work the goal even if the check already passes"),
 		cycles:     fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
@@ -113,16 +115,17 @@ func (o *opts) box() (*Box, error) {
 	return openBox(*o.toolbox, *o.shell)
 }
 
-func (o *opts) runner(b *Box, self string, depth int) Runner {
+func (o *opts) runner(b *Box, self string, depth int, shell string) Runner {
 	r := Runner{
 		Dir:     *o.dir,
 		Path:    b.Path(),
+		Shell:   shell,
 		Timeout: *o.timeout,
 		Cap:     *o.outcap,
 		// A tool that starts another ply is how fan-out, specialists and
 		// teams happen here: a program, not a feature. The depth counter is
 		// the only thing standing between that and a bill.
-		Env: []string{"PLY=" + self, "PLY_DEPTH=" + strconv.Itoa(depth+1)},
+		Env: []string{"PLY=" + self, "PLY_DEPTH=" + strconv.Itoa(depth+1), "PLY_SHELL=" + shell},
 	}
 	// A nested Ply started as an ordinary command should not silently fall
 	// back to a different model when the parent selected one with -m.
@@ -158,6 +161,10 @@ func work(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	shell, err := resolveShell(*o.shellExec)
+	if err != nil {
+		return fail(err)
+	}
 	askBin, err := tool("ASK", "ask", "ply runs ask for the model: go install github.com/patrickyoung/ask@latest")
 	if err != nil {
 		return fail(err)
@@ -186,7 +193,7 @@ func work(args []string) int {
 	// The protocol lives in the default, so replacing it is a real choice:
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
-	system := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
+	system := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
 	o.fs.Visit(func(f *flag.Flag) {
 		if f.Name == "S" {
 			system = *o.sys
@@ -207,7 +214,7 @@ func work(args []string) int {
 	if err != nil {
 		self = "ply"
 	}
-	runner := o.runner(box, self, depth)
+	runner := o.runner(box, self, depth, shell)
 	checker := o.checker(runner, box)
 
 	// make's "nothing to be done": a goal already met costs nothing, leaves
@@ -249,7 +256,7 @@ func work(args []string) int {
 		return fail(err)
 	}
 
-	v.Note("%s · %s", session, describe(box, *o.check))
+	v.Note("%s · %s", session, describe(box, shell, *o.check))
 	if underTree(session, *o.dir) {
 		v.Note("the session is inside the work tree, so a grep or a find will\n" +
 			"     read it back into the conversation it is a record of; -f a path\n" +
@@ -306,6 +313,13 @@ func (o *opts) validate() error {
 	return nil
 }
 
+func shellDefault() string {
+	if shell := os.Getenv("PLY_SHELL"); shell != "" {
+		return shell
+	}
+	return defaultShell
+}
+
 func toolsCmd(args []string) int {
 	o := newOpts("ply tools")
 	if err := o.fs.Parse(args); err != nil {
@@ -338,8 +352,12 @@ func systemCmd(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	shell, err := resolveShell(*o.shellExec)
+	if err != nil {
+		return fail(err)
+	}
 	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
-	out := prompt(box, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
+	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
 	if len(o.skills) > 0 {
 		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
 		if err != nil {
@@ -567,7 +585,7 @@ func underTree(session, dir string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-func describe(b *Box, check string) string {
+func describe(b *Box, shell, check string) string {
 	tools := "shell"
 	if b.Dir != "" {
 		tools = fmt.Sprintf("%d tools", len(b.Tools))
@@ -575,6 +593,7 @@ func describe(b *Box, check string) string {
 			tools += " + shell"
 		}
 	}
+	tools += " · shell: " + shell
 	if check == "" {
 		return tools + " · no check"
 	}

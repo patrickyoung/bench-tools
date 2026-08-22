@@ -24,6 +24,10 @@ The toolbox aims the model; it does not sandbox it. sh has builtins, and a
 redirect opens a file with no program involved. The security boundary is
 the process — its user, its container, its chroot — as it always was.
 
+shell: commands and checks use /bin/sh -c by default. -shell names one other
+executable that accepts -c. Ply resolves it before calling the model and says
+exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
+
 done: -check cmd runs after the model stops, and the run ends only when it
 exits 0; its output goes back to the model and work continues. It also runs
 before the first turn, so a goal already met costs nothing and leaves no
@@ -39,6 +43,7 @@ so ask replay -check on it proves the whole run.
 flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
   -sh           full shell: every program on PATH, and -t's first if given
+  -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
   -check cmd    the goal is done when this shell command exits 0
   -B            work the goal even if the check already passes
   -cycles n     failed checks before giving up (default 5, 0 = unbounded)
@@ -57,8 +62,9 @@ flags:
   -session-out file  atomically write the current session path here
   -q            no typescript on stderr
 
-env: PLY_TOOLS (-t) · PLY_DIR (sessions, default ~/.ply/sessions) · ASK
-     (the ask binary) · BRIEF (the brief binary) · NO_COLOR
+env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_DIR
+     (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
+     (the brief binary) · NO_COLOR
      Models and keys belong to ask; ply passes it -m, -S, -f and -q and
      nothing else. Commands run with $PLY naming this binary and $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is

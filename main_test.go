@@ -32,7 +32,7 @@ func fakeAsk(t *testing.T, replies ...string) (bin, dir string) {
 	write(t, bin, `#!/bin/sh
 d=`+dir+`
 echo "$@" >> "$d/argv.log"
-printf '%s' "$ASK_SYSTEM" > "$d/system"
+[ -z "${ASK_SYSTEM-}" ] || printf '%s' "$ASK_SYSTEM" > "$d/system"
 cat >> "$d/stdin.log"
 n=$(cat "$d/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/n"
 [ -f "$d/reply.$n" ] && cat "$d/reply.$n"
@@ -102,6 +102,60 @@ func TestTheLoopRunsWhatTheModelWrites(t *testing.T) {
 	// The output goes back as the next message, as a typescript.
 	if sent := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(sent, "$ echo hello > made.txt") {
 		t.Errorf("the model was not shown what ran:\n%s", sent)
+	}
+}
+
+func TestSelectedShellRunsCommandsAndChecks(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch built\n```",
+		"Built it.",
+	)
+	dir := t.TempDir()
+	log := filepath.Join(dir, "runs")
+	shell := filepath.Join(dir, "chosen-shell")
+	write(t, shell, "#!/bin/sh\nprintf 'run\\n' >> "+shellQuote(log)+"\nexec /bin/sh \"$@\"\n", 0o755)
+
+	code, _, stderr := runPly(t, "-sh", "-shell", shell, "-C", work,
+		"-check", "test -f built", "build it")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	if got := strings.Count(read(t, log), "run\n"); got != 3 {
+		t.Fatalf("selected shell ran %d times, want initial check, command, and final check", got)
+	}
+	if system := read(t, filepath.Join(askdir, "system")); !strings.Contains(system, shellQuote(shell)+" -c SCRIPT") {
+		t.Fatalf("model was not told the selected shell:\n%s", system)
+	}
+}
+
+func TestMissingShellFailsBeforeTheModelOrSession(t *testing.T) {
+	work, plydir, askdir := sandbox(t, "Done.")
+	missing := filepath.Join(t.TempDir(), "missing")
+	code, _, stderr := runPly(t, "-sh", "-shell", missing, "-C", work, "goal")
+	if code != 1 || !strings.Contains(stderr, "-shell") || !strings.Contains(stderr, "not executable") {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("model was called despite invalid shell: %v", err)
+	}
+	entries, err := os.ReadDir(plydir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("invalid shell left a session behind: %v, %v", entries, err)
+	}
+}
+
+func TestPlyShellIsAnExplicitDefaultNotTheLoginShell(t *testing.T) {
+	t.Setenv("SHELL", "/definitely/not/the/interpreter")
+	t.Setenv("PLY_SHELL", "/bin/zsh")
+	o := newOpts("ply")
+	if got := *o.shellExec; got != "/bin/zsh" {
+		t.Fatalf("-shell default = %q, want PLY_SHELL", got)
+	}
+
+	t.Setenv("PLY_SHELL", "")
+	o = newOpts("ply")
+	if got := *o.shellExec; got != defaultShell {
+		t.Fatalf("-shell default = %q, want %q despite SHELL", got, defaultShell)
 	}
 }
 
@@ -793,7 +847,7 @@ func TestEveryFlagAndVerbIsDocumented(t *testing.T) {
 			}
 		}
 	}
-	for _, env := range []string{"PLY_TOOLS", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
+	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
 		if !strings.Contains(help, env) {
 			t.Errorf("%s is not in ply help", env)
 		}

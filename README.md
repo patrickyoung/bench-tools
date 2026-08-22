@@ -117,6 +117,23 @@ is running it. Neither needed building, because that is how programs work.
 
 `-sh` hands over the whole machine instead, for when you mean it.
 
+The command interpreter is a separate choice from that tool grant. Commands
+and checks use `/bin/sh -c` by default. `-shell executable` selects another
+interpreter that accepts `-c`; `$PLY_SHELL` provides the same Ply-specific
+default. Ply resolves it before calling the model, uses it consistently for
+blocks and checks, and names the resolved executable in the prompt. It never
+inherits `$SHELL`, which is an interactive preference and may name a
+non-POSIX shell.
+
+```sh
+ply -sh -shell /opt/homebrew/bin/bash "use modern Bash where useful"
+```
+
+Fence labels remain protocol markers: a `bash` or `zsh` fence does not switch
+interpreters. If an interpreter needs fixed options, put them in a wrapper
+program and give that one program to `-shell`; Ply does not parse a second
+command line inside the flag.
+
 ### "But does it do MCP?"
 
 No, and it does not need to. An MCP server is a tool cabinet and a bridge
@@ -239,9 +256,10 @@ go test ./... 2>&1 | tail -20
 
 Every fenced shell block it writes is executed — there is no other way to
 act, and no way to write shell that is not run. (To quote a command without
-running it, indent it. That is the whole escape hatch.) Blocks run under
-`/bin/sh`; use POSIX shell syntax or explicitly invoke another interpreter.
-What comes back is what a terminal would have shown:
+running it, indent it. That is the whole escape hatch.) Blocks and checks run
+under the resolved `-shell` interpreter, `/bin/sh` by default. The prompt names
+that executable; fence labels do not select a different one. What comes back
+is what a terminal would have shown:
 
 ```
 $ go test ./... 2>&1 | tail -20

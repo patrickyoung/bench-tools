@@ -43,10 +43,15 @@ go test ./... 2>&1 | tail \-20
 .fi
 .RE
 .PP
-The block runs under
-.BR /bin/sh ,
-so use POSIX shell syntax or explicitly invoke another interpreter. Pipes,
-redirection, loops and here\-documents all work. Its output comes back as the
+The block and the check run under the resolved
+.B \-shell
+interpreter with
+.BR \-c .
+The default is
+.BR /bin/sh .
+The default prompt names the exact interpreter. Fence labels are protocol
+markers and do not select another one. Use syntax that interpreter accepts;
+POSIX shell syntax is the portable baseline. Its output comes back as the
 next message, laid out the way a
 terminal would have shown it: the command echoed with
 .B $
@@ -257,6 +262,19 @@ With
 .BR \-t ,
 the toolbox comes first.
 .TP
+.BI \-shell " executable"
+Command interpreter for model blocks and checks. It must accept
+.BR \-c .
+Ply resolves it before calling the model and reports a missing or
+non\-executable choice as an error. Defaults to
+.BR $PLY_SHELL ,
+or
+.B /bin/sh
+when that is unset. The unrelated login\-shell variable
+.B $SHELL
+is never consulted. This flag names one executable, not an executable plus
+arguments; use a wrapper program when fixed interpreter options are required.
+.TP
 .BI \-check " cmd"
 The goal is done when this shell command exits zero.
 .TP
@@ -343,6 +361,12 @@ No typescript on standard error.
 .B PLY_TOOLS
 Default toolbox directory, as
 .BR \-t .
+.TP
+.B PLY_SHELL
+Default command interpreter, as
+.BR \-shell .
+Ply exports the resolved absolute path to every command, so another Ply
+started as a program inherits the same interpreter.
 .TP
 .B PLY_DIR
 Where sessions live. Default
@@ -502,3 +526,12 @@ Without
 .BR \-check ,
 exit 0 is the model's opinion. That is a real answer for a goal no program
 can judge, and it is a weaker one than it looks.
+.PP
+Changing
+.B \-shell
+changes parsing, builtins, startup files and sometimes the meaning of valid
+syntax. Ply verifies that the named executable exists; it does not guess its
+dialect or inspect a version string. The operator is responsible for choosing
+an interpreter that accepts
+.B \-c
+and for writing a compatible check.

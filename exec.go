@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -28,6 +29,8 @@ var shellLangs = map[string]bool{
 // exitTimeout is timeout(1)'s number for a command it killed. Borrowed
 // rather than invented, because it is already in everyone's fingers.
 const exitTimeout = 124
+
+const defaultShell = "/bin/sh"
 
 // Result is one command's outcome.
 type Result struct {
@@ -111,6 +114,7 @@ func fenceBody(lines []string, start int, fence string) (body string, end int, c
 type Runner struct {
 	Dir     string
 	Path    string        // PATH the command runs with
+	Shell   string        // resolved command interpreter; called with -c
 	Timeout time.Duration // per command
 	Cap     int           // bytes of output kept per command
 	Env     []string      // extra NAME=VALUE, after the inherited environment
@@ -125,7 +129,7 @@ func (r Runner) Run(ctx context.Context, script string) Result {
 	defer stop()
 
 	out := &capBuf{cap: max(r.Cap/2, 1)}
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", script)
+	cmd := exec.CommandContext(ctx, r.Shell, "-c", script)
 	cmd.Dir = r.Dir
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
 	cmd.Env = append(append(os.Environ(), "PATH="+r.Path), r.Env...)
@@ -168,11 +172,32 @@ func (r Runner) Run(ctx context.Context, script string) Result {
 			}
 		}
 	default:
-		// /bin/sh itself failed to start. That is ply's problem, not the
-		// model's, but the model still has to see something.
+		// The selected shell itself failed to start. That is ply's problem,
+		// not the model's, but the model still has to see something.
 		res.Output, res.Code = err.Error(), 1
 	}
 	return res
+}
+
+// resolveShell turns the operator's interpreter choice into one executable
+// before a model is called. A relative path is made absolute before Runner
+// sets Cmd.Dir, and symlinks are deliberately left alone: shells may change
+// their behaviour according to the name by which they were invoked.
+func resolveShell(name string) (string, error) {
+	if name == "" {
+		return "", errors.New("-shell: empty command interpreter")
+	}
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return "", fmt.Errorf("-shell %q: not executable or not on PATH", name)
+	}
+	if !filepath.IsAbs(path) {
+		path, err = filepath.Abs(path)
+		if err != nil {
+			return "", fmt.Errorf("-shell %q: %w", name, err)
+		}
+	}
+	return path, nil
 }
 
 // Typescript renders a result the way a terminal would have. The command

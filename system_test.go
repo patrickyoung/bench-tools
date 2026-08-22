@@ -8,7 +8,7 @@ import (
 )
 
 func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/work", "", time.Minute, 1024, 0)), " ")
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0)), " ")
 	for _, want := range []string{
 		"A reply is only a report",
 		"inspect the relevant evidence",
@@ -17,8 +17,8 @@ func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
 		"while the requested effect remains undone",
 		"preserve unrelated work",
 		"prefer reversible operations",
-		"The block runs under /bin/sh",
-		"Use POSIX shell syntax",
+		"Each block runs as '/bin/sh' -c SCRIPT",
+		"POSIX shell syntax is the portable baseline",
 		"inspect the result with an independent command",
 	} {
 		if !strings.Contains(text, want) {
@@ -28,7 +28,7 @@ func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
 }
 
 func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/work", "", time.Minute, 1024, 0)), " ")
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0)), " ")
 	for _, want := range []string{
 		"It runs in /work on " + platformName(),
 		"Use command -v",
@@ -43,8 +43,22 @@ func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
 	}
 }
 
+func TestPromptNamesTheSelectedInterpreterAndFenceLabelsDoNotChooseIt(t *testing.T) {
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0)), " ")
+	for _, want := range []string{
+		"Each block runs as '/opt/homebrew/bin/bash' -c SCRIPT",
+		"The same interpreter runs the check",
+		"PLY_SHELL names it",
+		"bash or zsh on a fence does not select another interpreter",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("prompt missing %q", want)
+		}
+	}
+}
+
 func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) {
-	text := prompt(&Box{Shell: true}, "/work", "", 2*time.Minute, 16<<10, 0)
+	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", 2*time.Minute, 16<<10, 0)
 	for _, want := range []string{
 		"If and only if the goal explicitly asks for subagents",
 		`"$PLY" -sh -turns 12 -C . -f "$run/NNN.jsonl" --`,
@@ -64,7 +78,7 @@ func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) 
 }
 
 func TestNestedPromptDoesNotAdvertiseRecursiveDelegation(t *testing.T) {
-	text := prompt(&Box{Shell: true}, "/work", "", time.Minute, 1024, 1)
+	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 1)
 	if strings.Contains(text, "another ordinary ply process is a subagent") || strings.Contains(text, `"$PLY" -sh -C`) {
 		t.Fatalf("nested prompt advertises recursion:\n%s", text)
 	}
@@ -72,11 +86,11 @@ func TestNestedPromptDoesNotAdvertiseRecursiveDelegation(t *testing.T) {
 
 func TestPromptDoesNotAdvertiseUnavailableToolboxBookkeeping(t *testing.T) {
 	narrow := &Box{Dir: "/tools", Tools: []Tool{{Name: "rg"}}}
-	if text := prompt(narrow, "/work", "", time.Minute, 1024, 0); strings.Contains(text, "another ordinary ply process is a subagent") {
+	if text := prompt(narrow, defaultShell, "/work", "", time.Minute, 1024, 0); strings.Contains(text, "another ordinary ply process is a subagent") {
 		t.Fatalf("narrow toolbox advertised unavailable delegation:\n%s", text)
 	}
 	complete := &Box{Dir: "/tools", Tools: []Tool{{Name: "mkdir"}, {Name: "mktemp"}, {Name: "mv"}}}
-	if text := prompt(complete, "/work", "", time.Minute, 1024, 0); !strings.Contains(text, `"$PLY" -t '/tools'`) {
+	if text := prompt(complete, defaultShell, "/work", "", time.Minute, 1024, 0); !strings.Contains(text, `"$PLY" -t '/tools'`) {
 		t.Fatalf("capable toolbox omitted delegation:\n%s", text)
 	}
 }
@@ -104,13 +118,16 @@ func TestRunnerExportsAnExplicitModelForNestedPly(t *testing.T) {
 	if err := o.fs.Parse([]string{"-m", "openai/test-model"}); err != nil {
 		t.Fatal(err)
 	}
-	r := o.runner(&Box{Shell: true}, "/bin/ply", 0)
+	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/zsh")
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "ASK_MODEL=openai/test-model") {
 		t.Fatalf("runner env=%q", got)
 	}
+	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_SHELL=/bin/zsh") {
+		t.Fatalf("runner did not export its interpreter: %q", got)
+	}
 
 	o = newOpts("ply")
-	r = o.runner(&Box{Shell: true}, "/bin/ply", 0)
+	r = o.runner(&Box{Shell: true}, "/bin/ply", 0, defaultShell)
 	if got := strings.Join(r.Env, "\n"); strings.Contains(got, "ASK_MODEL=") {
 		t.Fatalf("runner overrode ambient model without -m: %q", got)
 	}

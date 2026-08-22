@@ -115,7 +115,53 @@ func TestWeldedFencesAreNotSilentlyLost(t *testing.T) {
 
 func newRunner(t *testing.T, dir, path string) Runner {
 	t.Helper()
-	return Runner{Dir: dir, Path: path, Timeout: 10 * time.Second, Cap: 4096}
+	return Runner{Dir: dir, Path: path, Shell: defaultShell, Timeout: 10 * time.Second, Cap: 4096}
+}
+
+func TestResolveShellFindsOneExecutableWithoutFollowingItsName(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	link := filepath.Join(dir, "chosen-shell")
+	write(t, target, "#!/bin/sh\nexit 0\n", 0o755)
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := resolveShell(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != link {
+		t.Fatalf("resolved shell = %q, want invocation name %q", got, link)
+	}
+
+	t.Setenv("PATH", dir)
+	got, err = resolveShell("chosen-shell")
+	if err != nil || got != link {
+		t.Fatalf("PATH lookup = %q, %v; want %q", got, err, link)
+	}
+}
+
+func TestResolveShellRejectsMissingAndEmptyChoices(t *testing.T) {
+	for _, name := range []string{"", filepath.Join(t.TempDir(), "missing")} {
+		if _, err := resolveShell(name); err == nil || !strings.Contains(err.Error(), "-shell") {
+			t.Errorf("resolveShell(%q) error = %v", name, err)
+		}
+	}
+}
+
+func TestRunUsesTheSelectedShell(t *testing.T) {
+	dir := t.TempDir()
+	shell := filepath.Join(dir, "chosen-shell")
+	write(t, shell, "#!/bin/sh\nprintf 'chosen shell\\n'\nexec /bin/sh \"$@\"\n", 0o755)
+	r := newRunner(t, dir, os.Getenv("PATH"))
+	r.Shell = shell
+	res := r.Run(context.Background(), "printf 'command ran\\n'")
+	for _, want := range []string{"chosen shell", "command ran"} {
+		if !strings.Contains(res.Output, want) {
+			t.Errorf("output %q does not contain %q", res.Output, want)
+		}
+	}
 }
 
 func TestRunReportsExitStatus(t *testing.T) {

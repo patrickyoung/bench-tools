@@ -49,6 +49,20 @@ mechanism doing three jobs — it is the allowlist, it is the documentation
 -s`. Removing one is `rm`. There is no registry, no schema, no manifest, no
 plugin API, and nothing to version.
 
+The command interpreter is mechanism, not a capability grant. It is
+`/bin/sh` by default because that is the standard command-language interface,
+not because every host ships the same implementation behind it. An operator
+can select one other executable with `-shell` or `$PLY_SHELL`; Ply resolves it
+once, runs both model blocks and checks through its `-c`, and tells the model
+the exact path. It deliberately ignores `$SHELL`: a login-shell preference is
+not a script contract and may name Fish or another incompatible language.
+
+The flag names one program, not a command line. Interpreter flags belong in a
+wrapper program, the Unix answer that avoids teaching Ply another quoting
+language. Fence labels do not dispatch to different shells either: they are
+generous spellings of the one text protocol, while the operator retains the
+one execution choice.
+
 Progressive disclosure falls out for free. `brief` needed three levels for
 prose; programs already have them:
 
