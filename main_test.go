@@ -457,7 +457,7 @@ func TestInitialCheckFailureIsFirstTurnEvidence(t *testing.T) {
 		"```ply\ntouch built\n```",
 		"Built it.",
 	)
-	check := "test -f built || { echo baseline failure >&2; exit 7; }"
+	check := "test -f built || { echo baseline failure >&2; exit 1; }"
 	code, _, stderr := runPly(t, "-sh", "-C", work, "-cycles", "1",
 		"-check", check, "build it")
 	if code != 0 {
@@ -465,7 +465,7 @@ func TestInitialCheckFailureIsFirstTurnEvidence(t *testing.T) {
 	}
 	sent := read(t, filepath.Join(askdir, "stdin.log"))
 	for _, want := range []string{"build it", initialCheckStart, "$ " + check,
-		"baseline failure", "exit 7", initialCheckEnd} {
+		"baseline failure", "exit 1", initialCheckEnd} {
 		if !strings.Contains(sent, want) {
 			t.Errorf("first-turn evidence lost %q:\n%s", want, sent)
 		}
@@ -476,6 +476,75 @@ func TestInitialCheckFailureIsFirstTurnEvidence(t *testing.T) {
 	if !strings.Contains(stderr, "check failed") || !strings.Contains(stderr, "baseline failure") {
 		t.Errorf("the live typescript hid the pre-check failure:\n%s", stderr)
 	}
+}
+
+// A check can judge the report itself, which is the artifact for a question.
+// The pre-check receives EOF; each later check receives the candidate stdout
+// as a newline-terminated text stream.
+func TestCheckReceivesCandidateReportOnStdin(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"The answer is probably 41.",
+		"The answer is 42.",
+	)
+	check := `answer=$(cat)
+[ "$answer" = "The answer is 42." ] || {
+  printf 'expected the supported answer; got: %s\n' "$answer" >&2
+  exit 1
+}`
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "-check", check,
+		"answer the question")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\n%s", code, stderr)
+	}
+	if stdout != "The answer is 42.\n" {
+		t.Errorf("stdout = %q", stdout)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	if !strings.Contains(sent, "expected the supported answer; got: The answer is probably 41.") {
+		t.Errorf("candidate rejection did not reach the model:\n%s", sent)
+	}
+}
+
+// Exit 1 means the candidate failed. Every other nonzero status means the
+// verifier failed, so feeding it back as ordinary work would make the model
+// repair its judge or loop forever on infrastructure.
+func TestBrokenCheckStopsInsteadOfBecomingWork(t *testing.T) {
+	t.Run("initial", func(t *testing.T) {
+		work, plydir, askdir := sandbox(t, "should never be asked")
+		code, _, stderr := runPly(t, "-sh", "-C", work, "-check",
+			"echo verifier setup failed >&2; exit 7", "goal")
+		if code != 1 || !strings.Contains(stderr, "check broken") || !strings.Contains(stderr, "exit 7") {
+			t.Fatalf("exit = %d, stderr = %q", code, stderr)
+		}
+		if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+			t.Fatalf("model was called despite broken pre-check: %v", err)
+		}
+		if entries, err := os.ReadDir(plydir); err != nil || len(entries) != 0 {
+			t.Fatalf("broken pre-check left a session: %v, %v", entries, err)
+		}
+	})
+
+	t.Run("after report", func(t *testing.T) {
+		work, _, askdir := sandbox(t, "A candidate report.", "should not be asked")
+		check := `if [ -s /dev/stdin ]; then
+  echo verifier crashed >&2
+  exit 7
+fi
+exit 1`
+		code, stdout, stderr := runPly(t, "-sh", "-C", work, "-check", check, "goal")
+		if code != 1 || stdout != "A candidate report.\n" {
+			t.Fatalf("exit = %d, stdout = %q, stderr = %q", code, stdout, stderr)
+		}
+		if !strings.Contains(stderr, "check broken") || !strings.Contains(stderr, "verifier crashed") {
+			t.Errorf("broken verifier was not diagnosed:\n%s", stderr)
+		}
+		if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+			t.Errorf("model calls = %s, want 1", got)
+		}
+		if argv := read(t, filepath.Join(askdir, "argv.log")); strings.Contains(argv, "note") {
+			t.Errorf("a broken verifier wrote a verdict note:\n%s", argv)
+		}
+	})
 }
 
 // TestTheCheckIsNotScopedByTheToolbox: the toolbox exists to aim the model.

@@ -170,7 +170,10 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		if l.Check == "" {
 			return reply, nil
 		}
-		r := l.Checker.Run(ctx, l.Check)
+		// A check is a verifier, not merely a postcondition. File and code
+		// checks can ignore stdin; a question check can judge the exact report
+		// that would otherwise be printed to stdout.
+		r := l.Checker.RunInput(ctx, l.Check, reply)
 		if ctx.Err() != nil {
 			return last, ctx.Err()
 		}
@@ -179,6 +182,9 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			l.verdict(ctx, r)
 			return reply, nil
 		}
+		if r.Code != 1 {
+			return reply, checkError(r)
+		}
 		cycle++
 		if l.Cycles > 0 && cycle >= l.Cycles {
 			l.verdict(ctx, r)
@@ -186,4 +192,11 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		}
 		msg = rejection(r)
 	}
+}
+
+func checkError(r Result) error {
+	if r.Killed {
+		return fmt.Errorf("%w: timed out after %s (exit %d)", ErrCheck, r.Timeout, r.Code)
+	}
+	return fmt.Errorf("%w: exit %d", ErrCheck, r.Code)
 }

@@ -118,13 +118,17 @@ security boundary is the process \(em its user, its container, its
 .SS Done
 .B \-check
 takes a shell command. It runs after the model stops, and the run ends only
-when it exits zero; a failure goes back to the model, which keeps working.
+when it exits zero. The candidate final report is its standard input,
+terminated by a newline. Exit 1 rejects that candidate and its output goes
+back to the model, which keeps working. Any other nonzero exit, signal, or
+timeout means the verifier itself is broken and stops the run as an error.
+File and code checks may ignore standard input.
 It also runs before the first turn, so a goal already met costs nothing and
-leaves no session behind. Without
+leaves no session behind; that pre-check receives empty standard input. Without
 .BR \-check ,
 exit 0 means only that the model stopped.
 .PP
-When the initial check fails, its terminal transcript rides with the goal in
+When the initial check rejects, its terminal transcript rides with the goal in
 the first model turn and is recorded once in the Ask session. It does not
 count against
 .BR \-cycles ,
@@ -284,7 +288,8 @@ is never consulted. This flag names one executable, not an executable plus
 arguments; use a wrapper program when fixed interpreter options are required.
 .TP
 .BI \-check " cmd"
-The goal is done when this shell command exits zero.
+Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any
+other status is a broken verifier.
 .TP
 .B \-B
 Work the goal even if the check already passes, as
@@ -292,7 +297,7 @@ Work the goal even if the check already passes, as
 takes it.
 .TP
 .BI \-cycles " n"
-Failed checks before giving up. Default 5; 0 is unbounded.
+Rejected candidates before giving up. Default 5; 0 is unbounded.
 .TP
 .B \-compact
 When the context window fills, carry on. A full window is permanent, so the
@@ -454,7 +459,7 @@ Error: bad usage, no
 .B ask
 on
 .BR PATH ,
-a provider failure.
+a provider failure, or a broken verifier.
 .TP
 .B 2
 Not done: the check is still failing, a bound was reached, the command

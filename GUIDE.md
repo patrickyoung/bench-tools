@@ -739,6 +739,14 @@ ask replay -json "$s" | jq -r 'select(.type=="assistant")
 
 ## The check is also a tool
 
+A check is a verifier process, not only a filesystem postcondition. The
+pre-check receives empty stdin. After Ply stops, the proposed final report is
+passed on stdin as newline-terminated text: exit 0 accepts it, exit 1 rejects
+it and supplies feedback, and any other exit, signal, or timeout means the
+verifier broke. That lets a question check inspect the answer itself while a
+file or code check simply ignores stdin. Normalize a wrapped program's
+ordinary negative result to exit 1 if it uses a different status.
+
 The system prompt tells the model, verbatim, what command decides. With
 `-sh` — or with the check's program in the toolbox — the model can therefore
 run it itself, and it does: in a six-turn run that documented a small shell

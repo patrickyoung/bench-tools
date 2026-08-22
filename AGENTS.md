@@ -31,9 +31,12 @@ When changing `ply`:
   `mu`. Softening that sentence is worse than the missing feature, because
   somebody will trust it;
 
-- **done is a program's opinion.** `-check` is a command and its exit status
-  is the verdict. Do not add a model-based verifier: when judgment needs a
-  model, `ask` is a program and goes in the check like anything else. The
+- **done is a program's opinion.** `-check` is a verifier command. Its stdin is
+  empty for the pre-check and carries the candidate final report afterwards;
+  file and code checks may ignore it. Exit 0 accepts, exit 1 rejects and feeds
+  its output back, and any other exit, signal, or timeout means the verifier is
+  broken and stops the run. Do not add a model-based verifier: when judgment
+  needs a model, `ask` is a program and goes in the check like anything else. The
   check runs before the first turn as well as after, and that is not an
   optimisation — it is what makes `ply` safe in a hook, a cron line, or a
   `Makefile`. It also runs with the *caller's* `PATH`, toolbox first: the

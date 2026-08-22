@@ -87,9 +87,9 @@ func newOpts(name string) *opts {
 		toolbox:    fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
 		shell:      fs.Bool("sh", false, "hand the model every program on PATH"),
 		shellExec:  fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
-		check:      fs.String("check", "", "the goal is done when this shell command exits 0"),
+		check:      fs.String("check", "", "verifier: candidate stdin; 0 accept, 1 reject, other broken"),
 		force:      fs.Bool("B", false, "work the goal even if the check already passes"),
-		cycles:     fs.Int("cycles", 5, "failed checks before giving up (0 = unbounded)"),
+		cycles:     fs.Int("cycles", 5, "rejected candidates before giving up (0 = unbounded)"),
 		turns:      fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
 		timeout:    fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
 		outcap:     fs.Int("cap", 16<<10, "output kept per command, head and tail"),
@@ -226,13 +226,15 @@ func work(args []string) int {
 	// no session behind, and is safe to put in a hook or a Makefile.
 	var initialCheck *Result
 	if *o.check != "" && !*o.force {
-		r := checker.Run(ctx, *o.check)
+		r := checker.RunInput(ctx, *o.check, "")
 		v.Check(r)
 		if r.Code == 0 {
 			v.Note("nothing to do")
 			return 0
 		} else if ctx.Err() != nil {
 			return 130
+		} else if r.Code != 1 {
+			return fail(checkError(r))
 		}
 		initialCheck = &r
 	}

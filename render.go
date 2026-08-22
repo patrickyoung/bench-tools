@@ -106,6 +106,11 @@ func (v *view) Check(r Result) {
 		fmt.Fprintln(v.w, v.dim("ply: check passed: ")+v.bold(oneline(r.Cmd)))
 		return
 	}
+	if r.Code != 1 {
+		fmt.Fprintln(v.w, v.red("ply: check broken: ")+v.bold(oneline(r.Cmd)))
+		v.Result(r)
+		return
+	}
 	fmt.Fprintln(v.w, v.red("ply: check failed: ")+v.bold(oneline(r.Cmd)))
 	v.Result(r)
 }

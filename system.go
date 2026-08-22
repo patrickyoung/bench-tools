@@ -128,9 +128,11 @@ Whether you are done is not your judgment. When you stop, ply runs
 
     %s
 
-and the run ends only when that exits zero. If it does not, you will see
-what it printed and keep working. Do not announce success; make the check
-pass.
+with your final report on its standard input. Exit 0 accepts the work; exit
+1 rejects it, and you will see what the check printed and keep working. Any
+other exit means the checker itself is broken and stops the run. File and
+code checks may simply ignore stdin. Do not announce success; make the check
+accept the work.
 `, indentAfterFirst(check, "    "))
 	} else {
 		s.WriteString(`

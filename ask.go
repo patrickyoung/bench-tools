@@ -24,6 +24,10 @@ var (
 	ErrProtocol = errors.New("the command protocol stalled")
 )
 
+// ErrCheck is infrastructure failure, not an ordinary rejected candidate.
+// Main therefore maps it to exit 1 rather than Ply's exit-2 "not done".
+var ErrCheck = errors.New("the check is broken")
+
 // Model is one conversation, held in an ask session file. Every turn is one
 // `ask` process appending to it, so the file is the whole record: the
 // commands are in the assistant messages, their output is in the user

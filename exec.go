@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -132,12 +133,28 @@ type Runner struct {
 // command that waits for input would otherwise hang the loop until the
 // timeout, once per turn, forever.
 func (r Runner) Run(ctx context.Context, script string) Result {
+	return r.run(ctx, script, nil)
+}
+
+// RunInput executes a verifier with finite input. Ply's final report is a
+// text stream, just like stdout, so terminate it with one newline. The empty
+// input used by the pre-check remains empty: before any work there is no
+// candidate report to judge.
+func (r Runner) RunInput(ctx context.Context, script, input string) Result {
+	if input != "" {
+		input = strings.TrimRight(input, "\n") + "\n"
+	}
+	return r.run(ctx, script, strings.NewReader(input))
+}
+
+func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result {
 	ctx, stop := context.WithTimeout(ctx, r.Timeout)
 	defer stop()
 
 	out := &capBuf{cap: max(r.Cap/2, 1)}
 	cmd := exec.CommandContext(ctx, r.Shell, "-c", script)
 	cmd.Dir = r.Dir
+	cmd.Stdin = stdin
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
 	cmd.Env = append(append(os.Environ(), "PATH="+r.Path), r.Env...)
 	// Its own process group, so a timeout reaches what the script started and
