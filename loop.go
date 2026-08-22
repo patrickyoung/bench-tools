@@ -28,7 +28,7 @@ type Loop struct {
 	Checker        Runner // the caller's reach: the caller's own PATH
 	Check          string // shell command; empty means the model's word is the verdict
 	Loaded         string // what ply put in the system prompt, recorded once the log exists
-	Cycles         int    // failed checks before giving up; 0 unbounded
+	Cycles         int    // rejected candidates before giving up; 0 unbounded
 	Compact        bool   // carry on through a full window by compacting
 	Compacts       int    // compactions before giving up; 0 unbounded
 	Turns          int    // model turns before giving up; 0 unbounded
