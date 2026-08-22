@@ -77,6 +77,12 @@ and do not run. An empty or unfinished first block runs nothing and receives a
 correction. Independent commands may be lines in one shell script; a command
 that depends on earlier output belongs in the next turn.
 .PP
+.B \-require-action
+refuses a report until at least one command has run. An actionless report is
+returned for correction twice; a third stops at exit 2. It is a liveness
+policy for callers that promise tool-mediated work, not evidence that any
+particular outcome is complete.
+.PP
 Because the protocol is text, it needs no tool\-use API and works with any
 model
 .BR ask (1)
@@ -293,6 +299,10 @@ are broken as well; verifier evidence is never silently truncated.
 Work the goal even if the check already passes, as
 .BR make (1)
 takes it.
+.TP
+.B \-require-action
+Refuse a final report until at least one command has run. Persistent
+actionless replies stop at exit 2.
 .TP
 .BI \-cycles " n"
 Rejected candidates before giving up. Default 5; 0 is unbounded.

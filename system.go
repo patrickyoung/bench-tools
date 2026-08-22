@@ -151,6 +151,36 @@ finish. No preamble, no sign-off, no restating the goal back.
 	return s.String()
 }
 
+// composeSystem keeps a procedure close to the goal while making the action
+// wire format the final instruction the model reads. A long skill changes how
+// work is done; it must not accidentally hide how Ply executes that work.
+func composeSystem(base, procedure string, requireAction bool) string {
+	var s strings.Builder
+	s.WriteString(base)
+	s.WriteString(procedure)
+	if procedure != "" {
+		s.WriteString(`
+
+PLY ACTION PROTOCOL REMINDER
+The procedure above changes how to do the work, not how actions run. To use a
+program, end the turn with exactly one complete fenced ply block. Ply returns
+that command's real result on the next turn. Do not claim the shell or a
+deferred command is unavailable; send the next required block after reading
+the result. A report with no block ends the run.
+`)
+	}
+	if requireAction {
+		s.WriteString(`
+
+This invocation requires real tool interaction. At least one command must run
+before a final report is accepted. If the goal requests an artifact or system
+change, continue using command blocks until that effect exists and has been
+inspected; merely describing the intended command is not progress.
+`)
+	}
+	return s.String()
+}
+
 func platformName() string {
 	switch runtime.GOOS {
 	case "darwin":

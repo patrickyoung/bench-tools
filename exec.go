@@ -82,7 +82,7 @@ func commands(reply string) (cmds []string, prose, note string) {
 			return nil, strings.TrimSpace(reply), "the first command block was empty, so nothing ran. Send one complete command block or a report with no command block."
 		}
 		if strings.TrimSpace(strings.Join(lines[end+1:], "\n")) != "" {
-			note = "ply ran only the first command block. Everything after it was deferred and did not run, because it was written before this command's result existed. Read the result before choosing the next action or reporting what happened."
+			note = "ply ran the first command block successfully through the shell. Everything after it was deferred and did not run, because it was written before this command's result existed. The shell is available: read this result, then send the next required action as one new complete ply block; do not report a deferred block as unavailable."
 		}
 		return []string{command}, strings.TrimSpace(strings.Join(kept, "\n")), note
 	}

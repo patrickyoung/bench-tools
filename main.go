@@ -63,6 +63,7 @@ type opts struct {
 	shellExec  *string
 	check      *string
 	force      *bool
+	requireAct *bool
 	cycles     *int
 	turns      *int
 	timeout    *time.Duration
@@ -90,6 +91,7 @@ func newOpts(name string) *opts {
 		shellExec:  fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
 		check:      fs.String("check", "", "verifier: candidate stdin; 0 accept, 1 reject, other broken"),
 		force:      fs.Bool("B", false, "work the goal even if the check already passes"),
+		requireAct: fs.Bool("require-action", false, "refuse a final report until at least one command runs"),
 		cycles:     fs.Int("cycles", 5, "rejected candidates before giving up (0 = unbounded)"),
 		turns:      fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
 		timeout:    fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
@@ -105,7 +107,7 @@ func newOpts(name string) *opts {
 		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
 		contractID: fs.String("contract-id", "", "intent contract digest recorded in verifier receipts"),
 	}
-	fs.Var(&o.skills, "s", "brief skill to append; repeat for more; - picks one")
+	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
 }
 
@@ -213,8 +215,17 @@ func work(args []string) int {
 		if err != nil {
 			return fail(err)
 		}
-		system += s
+		system = composeSystem(system, s, *o.requireAct)
 		skills = got
+		for _, skill := range skills {
+			how := "named"
+			if skill.Chosen {
+				how = "selected by Brief"
+			}
+			v.Note("Brief procedure %s loaded (%s)", skill.Name, how)
+		}
+	} else {
+		system = composeSystem(system, "", *o.requireAct)
 	}
 
 	self, err := os.Executable()
@@ -288,17 +299,18 @@ func work(args []string) int {
 			"     outside the tree keeps the record out of the work")
 	}
 	loop := &Loop{
-		Model:      Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
-		Runner:     runner,
-		Checker:    checker,
-		Check:      *o.check,
-		Loaded:     skillNote(skills),
-		Cycles:     *o.cycles,
-		Compact:    *o.compact,
-		Compacts:   *o.compacts,
-		Turns:      *o.turns,
-		View:       v,
-		ContractID: *o.contractID,
+		Model:         Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
+		Runner:        runner,
+		Checker:       checker,
+		Check:         *o.check,
+		RequireAction: *o.requireAct,
+		Loaded:        skillNote(skills),
+		Cycles:        *o.cycles,
+		Compact:       *o.compact,
+		Compacts:      *o.compacts,
+		Turns:         *o.turns,
+		View:          v,
+		ContractID:    *o.contractID,
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {
@@ -384,14 +396,15 @@ func systemCmd(args []string) int {
 	}
 	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
 	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
+	procedures := ""
 	if len(o.skills) > 0 {
 		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
 		if err != nil {
 			return fail(err)
 		}
-		out += s
+		procedures = s
 	}
-	fmt.Print(out)
+	fmt.Print(composeSystem(out, procedures, *o.requireAct))
 	return 0
 }
 

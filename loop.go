@@ -25,6 +25,7 @@ type Loop struct {
 	Runner         Runner // the model's reach: the toolbox
 	Checker        Runner // the caller's reach: the caller's own PATH
 	Check          string // shell command; empty means the model's word is the verdict
+	RequireAction  bool   // a final report is invalid until one command has run
 	Loaded         string // what ply put in the system prompt, recorded once the log exists
 	Cycles         int    // rejected candidates before giving up; 0 unbounded
 	Compact        bool   // carry on through a full window by compacting
@@ -41,7 +42,7 @@ type Loop struct {
 // act on than it needs to be.
 func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 	msg, last := first, ""
-	stalls, turns, cycle, compacts := 0, 0, 0, 0
+	stalls, actions, turns, cycle, compacts := 0, 0, 0, 0, 0
 	for {
 		if l.Turns > 0 && turns >= l.Turns {
 			return last, fmt.Errorf("%w: %d", ErrTurns, l.Turns)
@@ -99,6 +100,7 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 
 		if len(cmds) > 0 {
 			stalls = 0
+			actions++
 			var b strings.Builder
 			for _, c := range cmds {
 				r := l.Runner.Run(ctx, c)
@@ -119,6 +121,16 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		if note != "" {
 			if stalls >= maxStalls {
 				return last, fmt.Errorf("%w after %d malformed replies", ErrProtocol, stalls+1)
+			}
+			stalls++
+			l.View.Note("%s", note)
+			msg = "ply: " + note
+			continue
+		}
+		if l.RequireAction && actions == 0 {
+			note = "no command has run, so this invocation cannot end with a report. The shell is available: send exactly one complete fenced ply block as the final content of your next turn."
+			if stalls >= maxStalls {
+				return last, fmt.Errorf("%w after %d actionless replies", ErrProtocol, stalls+1)
 			}
 			stalls++
 			l.View.Note("%s", note)

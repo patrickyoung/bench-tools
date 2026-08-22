@@ -133,10 +133,49 @@ func TestActionTurnsAreObservedBeforeTheModelContinues(t *testing.T) {
 		t.Fatalf("stdout = %q", got)
 	}
 	sent := read(t, filepath.Join(askdir, "stdin.log"))
-	for _, want := range []string{"ran only the first command block", "deferred and did not run", "$ touch unobserved-one", "$ printf 'real evidence", "real evidence"} {
+	for _, want := range []string{"ran the first command block successfully", "shell is available", "deferred and did not run", "$ touch unobserved-one", "$ printf 'real evidence", "real evidence"} {
 		if !strings.Contains(sent, want) {
 			t.Errorf("conversation lost %q:\n%s", want, sent)
 		}
+	}
+}
+
+func TestRequireActionCorrectsAProseOnlyReply(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"I cannot run the shell in this turn.",
+		"```ply\nprintf evidence; touch made\n```",
+		"Created made after observing real evidence.",
+	)
+	code, stdout, stderr := runPly(t, "-sh", "-require-action", "-C", work, "make a file")
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "made")); err != nil {
+		t.Fatalf("corrected action did not run: %v", err)
+	}
+	if !strings.Contains(stdout, "Created made") {
+		t.Fatalf("stdout=%q", stdout)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	for _, want := range []string{"no command has run", "shell is available", "exactly one complete fenced ply block", "evidence"} {
+		if !strings.Contains(strings.ToLower(sent), strings.ToLower(want)) {
+			t.Errorf("correction lost %q:\n%s", want, sent)
+		}
+	}
+}
+
+func TestRequireActionStopsPersistentProseAtExitTwo(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"No shell.",
+		"Still no shell.",
+		"I remain unable to act.",
+	)
+	code, _, stderr := runPly(t, "-sh", "-require-action", "-C", work, "make a file")
+	if code != 2 || !strings.Contains(stderr, "actionless replies") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "3" {
+		t.Fatalf("model calls=%q, want 3", got)
 	}
 }
 
@@ -1177,6 +1216,9 @@ func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d\n%s", code, stderr)
 	}
+	if !strings.Contains(stderr, "Brief procedure house loaded (named)") {
+		t.Fatalf("typescript hid the loaded procedure:\n%s", stderr)
+	}
 	argv := read(t, filepath.Join(askdir, "argv.log"))
 	if !strings.Contains(argv, "note") {
 		t.Fatalf("no note was written:\n%s", argv)
@@ -1184,6 +1226,12 @@ func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
 	sent := read(t, filepath.Join(askdir, "stdin.log"))
 	if !strings.Contains(sent, "loaded skill house (named)") {
 		t.Errorf("the log does not say which skill was loaded:\n%s", sent)
+	}
+	system := read(t, filepath.Join(askdir, "system"))
+	procedure := strings.Index(system, "Use tabs.")
+	reminder := strings.Index(system, "PLY ACTION PROTOCOL REMINDER")
+	if procedure < 0 || reminder < procedure || !strings.Contains(system[reminder:], "exactly one complete fenced ply block") {
+		t.Fatalf("skill hid the trailing action protocol:\n%s", system)
 	}
 
 	// A run with no -s claims nothing. The absence is the signal, the same

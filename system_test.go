@@ -32,6 +32,18 @@ func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
 	}
 }
 
+func TestComposedSkillEndsWithActionAndRequiredInteractionPolicy(t *testing.T) {
+	text := composeSystem("BASE PROTOCOL\n", "\nSKILL PROCEDURE\n", true)
+	for _, want := range []string{"SKILL PROCEDURE", "PLY ACTION PROTOCOL REMINDER", "Do not claim the shell", "is unavailable", "requires real tool interaction", "At least one command must run"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("composed system missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Index(text, "PLY ACTION PROTOCOL REMINDER") < strings.Index(text, "SKILL PROCEDURE") {
+		t.Fatalf("action reminder did not follow the skill:\n%s", text)
+	}
+}
+
 func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
 	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0)), " ")
 	for _, want := range []string{

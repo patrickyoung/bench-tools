@@ -299,6 +299,12 @@ exit 1
 
 A report with no block ends the run, and that report is the answer.
 
+`-require-action` tightens only that stopping rule: before any command has
+run, a prose-only reply is returned for correction rather than accepted as a
+final report. A third actionless reply stops at exit 2. This is useful for a
+caller whose public mode promises tool-mediated work; it remains optional for
+plain Ply because a question or review may legitimately need no command.
+
 The default prompt reads a goal by its outcome. An answer, review or diagnosis
 means inspecting relevant evidence and reporting it without unrequested
 changes. A requested artifact or system change means using programs to make
@@ -340,7 +346,9 @@ An invocation gives up after 50 model turns by default, including a model
 that keeps emitting commands and never stops for the check. `-turns 0`
 deliberately removes that bound. An empty or unfinished first command block is
 returned for correction twice; a third malformed reply stops at exit 2 instead
-of being guessed at or mistaken for unchecked completion.
+of being guessed at or mistaken for unchecked completion. With
+`-require-action`, the same bound applies to actionless final reports before
+the first command runs.
 
 ## The log is somebody else's problem
 

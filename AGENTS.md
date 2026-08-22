@@ -61,6 +61,12 @@ When changing `ply`:
   running any command as proof of progress or completion; `pwd` is an
   interaction, not a verdict;
 
+- **required interaction is liveness, not completion.** `-require-action`
+  may refuse a final report until one command has run, but it never treats
+  that command as progress or evidence. Bound persistent actionless replies
+  as protocol stalls and preserve the ordinary report-without-action behavior
+  when the flag is absent;
+
 - **one run has one command interpreter.** `/bin/sh` is the stable default;
   `-shell` and `PLY_SHELL` explicitly select another executable accepting
   `-c`. Resolve it before calling the model, name the exact choice in the

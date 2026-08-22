@@ -31,6 +31,7 @@ exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
 loop: one model turn consumes one shell block or a report with no block. Ply
 runs the first complete action and returns its result before asking again;
 later blocks and claims are deferred. Empty or unfinished first blocks run none.
+With -require-action, a report before any command is corrected, then exit 2.
 
 done: -check cmd is a verifier. Before work it receives empty stdin; after
 the model stops it receives the candidate report. Exit 0 accepts, 1 rejects
@@ -53,6 +54,7 @@ flags:
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
   -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
+  -require-action  refuse a final report until at least one command runs
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
@@ -65,7 +67,7 @@ flags:
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
-  -s name       brief skill to append; repeat for more; -s - picks one
+  -s name       brief skill to compose; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
   -session-out file  atomically write the current session path here
   -contract-id digest  bind verifier receipts to an admitted intent contract
