@@ -61,10 +61,12 @@ ASK=${ASK:-ask}
 BRIEF=${BRIEF:-brief}
 PLY=${PLY:-ply}
 HONE=${HONE:-hone}
-# vouch and web are optional: plenty of designs need neither. But a design
-# that needs one and is planned against a reference that never mentions it
-# gets built the hard way -- or worse, gets an invented answer for how
-# credentials work. So they are reported when present, and never required.
+CAGE=${CAGE:-cage}
+MAY=${MAY:-may}
+# Cage, May, Vouch and Web are optional: plenty of designs need none. But a
+# design that needs confinement, consent, identity, or a browser and is
+# planned against a reference that never mentions it will invent the seam.
+# They are reported when present and never required for ordinary checking.
 VOUCH=${VOUCH:-vouch}
 WEB=${WEB:-web}
 
@@ -77,8 +79,9 @@ draft -- design a system built from ask, brief, ply and hone
 
   draft new <dir> [description ...]  scaffold a project and its DESIGN.md
   draft check [dir]                  is this design buildable? (exit 1 = no)
+  draft admit [dir]                  approve and freeze its verifier
   draft prove [-n N] [dir]           break the code; does the check notice?
-  draft build [dir]                  build it, and let its own check decide
+  draft build [-admitted] [dir]      build it; optionally require admission
   draft sync                         regenerate the tool reference
   draft tools                        print what the family can currently do
   draft version                      print the version
@@ -97,8 +100,8 @@ Without one it writes the template and the questions, and you fill them in.
   draft check hn                    # buildable?
   draft build hn                    # ply it into existence
 
-env: ASK BRIEF PLY HONE (the binaries) . DRAFT_MODEL (the model new uses)
-exit: 0 yes . 1 no -- not buildable, nothing to do . 2 error
+env: ASK BRIEF PLY HONE CAGE MAY (binaries) . DRAFT_MODEL (new's model)
+exit: 0 yes . 1 no . 2 error . admit preserves May 3/75; Cage may return 125
 EOF
 }
 
@@ -139,18 +142,18 @@ This file is what the installed binaries say about themselves on this
 machine. \`draft check\` regenerates it and fails when it has drifted, so a
 design is never planned against a tool that has moved on.
 
-\`ask\`, \`brief\`, \`ply\` and \`hone\` are required. \`vouch\` and \`web\` appear
-when they are installed: a design that needs an identity or a browser and
-cannot see one here will invent how they work.
+\`ask\`, \`brief\`, \`ply\` and \`hone\` are required. \`cage\`, \`may\`, \`vouch\`
+and \`web\` appear when installed: a design that needs confinement, consent,
+identity or a browser and cannot see one here will invent how they work.
 
 ## Versions
 
 EOF
-	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$VOUCH" "$WEB"; do
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$CAGE" "$MAY" "$VOUCH" "$WEB"; do
 		command -v "$t" >/dev/null 2>&1 || continue
 		printf '    %-6s %s\n' "$(basename "$t")" "$("$t" version 2>&1 | head -1)"
 	done
-	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$VOUCH" "$WEB"; do
+	for t in "$ASK" "$BRIEF" "$PLY" "$HONE" "$CAGE" "$MAY" "$VOUCH" "$WEB"; do
 		command -v "$t" >/dev/null 2>&1 || continue
 		printf '\n## %s\n\n```\n' "$(basename "$t")"
 		"$t" help 2>&1
@@ -229,6 +232,123 @@ vacuous() {
 	true | : | exit0 | /bin/true | /usr/bin/true | test1=1) return 0 ;;
 	esac
 	return 1
+}
+
+# ---------------------------------------------------------------- admission
+#
+# A DESIGN.md check held in a shell variable is stable, but a worker can still
+# replace a script that command names. Admission gives the verifier itself an
+# operator-owned address outside the writable project, after May has bound a
+# human answer to its exact bytes. An admitted build then puts the whole Ply
+# process behind Cage: the project and temporary directory remain writable,
+# while the stored verifier does not.
+
+sha256() {
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum | awk '{print $1}'
+	elif command -v shasum >/dev/null 2>&1; then
+		shasum -a 256 | awk '{print $1}'
+	elif command -v openssl >/dev/null 2>&1; then
+		openssl dgst -sha256 | awk '{print $NF}'
+	else
+		die "no SHA-256 program (need sha256sum, shasum, or openssl)"
+	fi
+}
+
+state_dir() {
+	case ${XDG_STATE_HOME:-} in
+	/*) base=$XDG_STATE_HOME ;;
+	"")
+		[ -n "${HOME:-}" ] || die "HOME is empty; cannot locate admitted verifiers"
+		base=$HOME/.local/state
+		;;
+	*) die "XDG_STATE_HOME must be an absolute path" ;;
+	esac
+	dir=$base/draft/verifiers
+	if [ -d "$dir" ]; then
+		CDPATH= cd -P -- "$dir" 2>/dev/null && pwd
+	else
+		printf '%s\n' "$dir"
+	fi
+}
+
+project_dir() {
+	CDPATH= cd -P -- "$1" 2>/dev/null && pwd
+}
+
+shell_quote() {
+	printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\"'\\\"'/g")"
+}
+
+admission_text() { # project, normalized check
+	project=$1
+	check=$2
+	check_hash=$(printf '%s' "$check" | sha256) || return 2
+	printf 'draft verifier admission v1\nproject: %s\ncheck-sha256: %s\ncommand:\n%s' \
+		"$project" "$check_hash" "$check"
+}
+
+admission_path() { # project, normalized check
+	action=$(admission_text "$1" "$2") || return 2
+	receipt=$(printf '%s\n' "$action" | sha256) || return 2
+	printf '%s/%s.sh\n' "$(state_dir)" "$receipt"
+}
+
+prepare_store() {
+	store=$(state_dir)
+	parent=${store%/verifiers}
+	[ ! -L "$parent" ] && [ ! -L "$store" ] ||
+		die "draft verifier state may not be a symlink"
+	umask 077
+	mkdir -p "$store" || return 2
+	chmod 700 "$parent" "$store" || return 2
+	state_dir
+}
+
+safe_verifier_path() { # admitted path, writable project
+	path=$1
+	project=$2
+	temp=$(project_dir "${TMPDIR:-/tmp}") || die "cannot resolve the temporary directory"
+	case $path in
+	"$project"/* | "$temp"/*)
+		die "verifier state is inside a Cage write root: $path"
+		;;
+	esac
+}
+
+cmd_admit() {
+	dir=${1:-.}
+	[ $# -le 1 ] || die "usage: draft admit [dir]"
+	ck=$(QUIET=1 cmd_check "$dir") || return $?
+	project=$(project_dir "$dir") || die "cannot resolve project directory $dir"
+	store=$(prepare_store) || return 2
+	path=$(admission_path "$project" "$ck") || return 2
+	safe_verifier_path "$path" "$project"
+
+	if [ -e "$path" ]; then
+		[ -f "$path" ] && [ ! -L "$path" ] && [ "$(cat "$path")" = "$ck" ] ||
+			die "admitted verifier is corrupt: $path"
+		say "verifier already admitted: ${path##*/}"
+		printf '%s\n' "$path"
+		return 0
+	fi
+
+	may=$(command -v "$MAY" 2>/dev/null) || die "may is required to admit a verifier"
+	action=$(admission_text "$project" "$ck") || return 2
+	printf '%s\n' "$action" | "$may"
+	status=$?
+	[ "$status" -eq 0 ] || return "$status"
+
+	store=$(state_dir)
+	umask 077
+	tmp=$(mktemp "$store/.admit.XXXXXX") || return 2
+	if printf '%s\n' "$ck" >"$tmp" && chmod 500 "$tmp" && mv "$tmp" "$path"; then
+		say "admitted verifier: ${path##*/}"
+		printf '%s\n' "$path"
+		return 0
+	fi
+	rm -f "$tmp"
+	return 2
 }
 
 # ---------------------------------------------------------------- prove
@@ -620,6 +740,11 @@ cmd_check() {
 }
 
 cmd_build() {
+	admitted=0
+	if [ "${1:-}" = "-admitted" ]; then
+		admitted=1
+		shift
+	fi
 	dir=${1:-.}
 	shift 2>/dev/null || true
 	d="$dir/DESIGN.md"
@@ -628,6 +753,24 @@ cmd_build() {
 		return 1
 	}
 	say "check: $ck"
+	check=$ck
+	project=$dir
+	if [ "$admitted" -eq 1 ]; then
+		project=$(project_dir "$dir") || die "cannot resolve project directory $dir"
+		sealed=$(admission_path "$project" "$ck") || return 2
+		safe_verifier_path "$sealed" "$project"
+		if [ ! -f "$sealed" ]; then
+			printf '%s: verifier is not admitted; run draft admit %s\n' "$ME" "$dir" >&2
+			return 1
+		fi
+		[ ! -L "$sealed" ] && [ "$(cat "$sealed")" = "$ck" ] ||
+			die "admitted verifier is corrupt: $sealed"
+		cage=$(command -v "$CAGE" 2>/dev/null) ||
+			die "cage is required for an admitted build"
+		ply=$(command -v "$PLY" 2>/dev/null) || die "ply is required for a build"
+		check=". $(shell_quote "$sealed")"
+		say "admitted verifier: ${sealed##*/} · Cage protects it from the worker"
+	fi
 	# ply owns the loop, the prompt and the toolbox from here, and draft does
 	# not second-guess any of them. An earlier version composed `ply system`
 	# output into -S and got it wrong in the way that matters: `ply system`
@@ -656,8 +799,7 @@ cmd_build() {
 	# PATH under -sh, PLY_DEPTH bounds recursion at eight rather than
 	# forbidding it, and a delegating builder burns a whole run before
 	# anything downstream notices.
-	"$PLY" -sh -C "$dir" -check "$ck" "$@" \
-		"Read DESIGN.md in this directory once: it is the agreement and the
+	goal="Read DESIGN.md in this directory once: it is the agreement and the
 whole specification. Then build exactly what it describes, writing real
 files, and nothing it says is not being done. Where it is silent, prefer the
 simplest thing the check would accept.
@@ -669,6 +811,18 @@ yourself with the shell you have.
 Work in small steps and verify as you go. Create the smallest piece that
 moves $ck closer to passing, run it, and repeat. Do not re-read DESIGN.md
 once you have it. The check is: $ck"
+	sessions=$project/.draft/build
+	mkdir -p "$sessions" || return 2
+	if [ "$admitted" -eq 1 ]; then
+		# Ask needs its provider connection, so this is deliberately -net.
+		# Cage is being used for its write boundary: only the project and the
+		# ordinary temporary directory are writable; the admitted verifier is
+		# readable but outside both.
+		PLY_DIR="$sessions" "$cage" -net -w "$project" -- "$ply" -sh -C "$project" \
+			-check "$check" "$@" "$goal"
+	else
+		PLY_DIR="$sessions" "$PLY" -sh -C "$dir" -check "$check" "$@" "$goal"
+	fi
 }
 
 # ------------------------------------------------------------------- main
@@ -676,6 +830,7 @@ once you have it. The check is: $ck"
 case ${1:-help} in
 new)     shift; cmd_new "$@" ;;
 check)   shift; cmd_check "$@" ;;
+admit)   shift; cmd_admit "$@" ;;
 prove)   shift; cmd_prove "$@" ;;
 build)   shift; cmd_build "$@" ;;
 sync)    shift; cmd_sync "$@" ;;

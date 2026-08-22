@@ -6,9 +6,9 @@ This file is what the installed binaries say about themselves on this
 machine. `draft check` regenerates it and fails when it has drifted, so a
 design is never planned against a tool that has moved on.
 
-`ask`, `brief`, `ply` and `hone` are required. `vouch` and `web` appear
-when they are installed: a design that needs an identity or a browser and
-cannot see one here will invent how they work.
+`ask`, `brief`, `ply` and `hone` are required. `cage`, `may`, `vouch`
+and `web` appear when installed: a design that needs confinement, consent,
+identity or a browser and cannot see one here will invent how they work.
 
 ## Versions
 
@@ -16,6 +16,8 @@ cannot see one here will invent how they work.
     brief  brief 0.1.0
     ply    ply 0.1.0
     hone   hone 0.1.0
+    cage   cage 0.1.0
+    may    may 0.1.0
     vouch  vouch 0.1.0
     web    web 1.0.0
 
@@ -28,58 +30,66 @@ ask — put a question through a language model, get the answer on stdout
   ask replay [flags] [session]    re-render a session (-check verifies replay)
   ask compact [flags] [session]   continue a full conversation in a fresh one
   ask note -s src [flags] [text]  record something a program decided
-  ask system                      print the default system prompt
+  ask system                      print the built-in system prompt
   ask login openai-codex [flags]  store subscription auth (-from-codex)
   ask logout <provider>           remove stored credentials
   ask auth [list]                 list stored credential providers
   ask version                     print the version (-V, --version)
   ask help                        print this summary (-h, --help)
 
-Anything that is not a command is a message; -- sends a word that is one.
+Anything that is not a command is a message; -- forces a command-like word.
 
-pipes: the answer is stdout, progress is stderr (2>/dev/null hides it), and
-the exit code says what happened. Piped stdin is the message, or rides with
-one: git diff | ask "write a commit message".
+streams: the answer is stdout. Progress and errors are stderr. Piped stdin
+is the message, or data for an instruction:
+  git diff | ask "write a commit message"
 
-conversation: each run continues the current session, so ask remembers what
-was said. -n starts a fresh one, -f keeps a thread in a file of your own.
+conversation: each ask starts a fresh session. -c continues the current one;
+-f keeps a named thread in a file of your own.
 A session that fills the window is exit 2 and stays exit 2; ask compact
 starts a fresh one from a model-written handoff note, so the work survives
 the window. Branching verbatim needs no verb: cp the file.
 
-attachments: -a takes a file and repeats. What a file is decided by reading
-it, never by its name: text is inlined, images, PDFs, audio and video ride
-as attachments. Binary on stdin is an attachment too, so
+attachments: -a takes a regular file and repeats. Content decides its type:
+text is inlined; images, PDFs, audio and video are attached. Binary stdin is
+an attachment too, so
 screencapture -x -t png - | ask "what is this?" needs no flag. Providers
 differ in what they carry, and ask says so before sending, not after.
 
 flags:
-  -m spec       provider/model, e.g. anthropic/claude-sonnet-5 ($ASK_MODEL);
-                when continuing, defaults to the session's own model
+  -m spec       provider/model. Default: $ASK_MODEL, then a continued
+                session's model; e.g. anthropic/your-model
   -a file       attach a file; repeat for more (16 max, 16MB each, 32MB
                 total). The bytes land in the session log, so it replays
-  -S text       system prompt, replacing the default ($ASK_SYSTEM). -S ""
-                sends none; compose with -S "$(ask system; cat style.md)"
-  -n            start a new conversation instead of continuing
-  -f file       session log to read and append to (default: -d's current)
+  -S text       system prompt for this call, replacing $ASK_SYSTEM or the
+                built-in default. -S "" sends none
+  -c            continue the current conversation
+  -f file       named session; continue it if it exists, create it otherwise
   -d dir        conversation directory ($ASK_DIR, or ~/.ask/sessions)
-  -effort e     reasoning effort: off, low, medium, high (default: the
-                provider's own, thinking on)
-  -max-tokens n max output tokens (default 16384)
-  -json         emit the raw event stream on stdout instead of the answer
-  -q            no progress on stderr
+  -effort e     reasoning effort: off, low, medium, high, xhigh; provider
+                mapping varies (default: the provider's own)
+  -max-tokens n max output tokens (default 16384). openai-codex does not
+                support this flag and refuses it
+  -schema file  constrain the answer with JSON Schema ("-" reads stdin)
+  -json         emit this invocation's raw events instead of the answer
+  -q            no progress on stderr; errors still print
 compact only:
   -m spec       summarizer provider/model (default: the session's own)
   -d dir        conversation directory ($ASK_DIR)
-  -q            no progress on stderr
+  -q            no progress on stderr; errors still print
                 The note lands as the first message of a new session,
                 stamped source=summary, with the parent and the
                 summarizer's own session named in the header. The source
                 is never touched. stdout is the new session's path.
 replay only:
+  -d dir        conversation directory ($ASK_DIR)
   -check        verify the replay invariant and exit
-  -step n       print the exact provider request logged at this seq
+  -step n       print the normalized request at this seq, rebuilding messages
   -json         emit the raw events instead of re-rendering
+note only:
+  -s source     program writing the note (required, one word)
+  -f file       session to append to (default: current)
+  -d dir        conversation directory ($ASK_DIR)
+  -q            no progress on stderr; errors still print
 login only:
   -from-codex       import auth from the official Codex CLI — the usual path
   -access-token t   store this access token ('-' reads stdin)
@@ -92,12 +102,15 @@ login only:
                     prefer stdin, and -from-codex over both.
 
 keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
-stored auth: ~/.ask/auth.json (or ASK_AUTH_FILE) for openai-codex/<model>
-env:  ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
-gateway: <PROVIDER>_BASE_URL points a provider at a corporate gateway;
-  ASK_AUTH_URL (+ ASK_AUTH_CLIENT_ID/_CLIENT_SECRET/_REFRESH_TOKEN/_SCOPE)
-  adds OAuth bearer auth — vendor keys then live gateway-side and are
-  optional. Token endpoints must be https, except on loopback
+stored auth: ~/.ask/auth.json (or ASK_AUTH_FILE) for openai-codex/<model>;
+  CODEX_HOME selects the Codex CLI directory used by -from-codex
+env: ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
+gateway: ANTHROPIC_BASE_URL · OPENAI_BASE_URL · OPENAI_CODEX_BASE_URL ·
+  GEMINI_BASE_URL · OPENROUTER_BASE_URL replace provider endpoints;
+  ASK_AUTH_URL adds OAuth bearer auth to API-key providers. Optional auth:
+  ASK_AUTH_CLIENT_ID · ASK_AUTH_CLIENT_SECRET · ASK_AUTH_REFRESH_TOKEN ·
+  ASK_AUTH_SCOPE. Vendor keys become optional. Token endpoints must be https
+  except on loopback
 vertex: ANTHROPIC_VERTEX_PROJECT_ID + CLOUD_ML_REGION route anthropic/ models
   through Google Vertex AI (ANTHROPIC_VERTEX_BASE_URL overrides the endpoint)
 exit: 0 answered · 1 error · 2 context window full · 130 interrupted
@@ -177,12 +190,20 @@ The toolbox aims the model; it does not sandbox it. sh has builtins, and a
 redirect opens a file with no program involved. The security boundary is
 the process — its user, its container, its chroot — as it always was.
 
+shell: commands and checks use /bin/sh -c by default. -shell names one other
+executable that accepts -c. Ply resolves it before calling the model and says
+exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
+
+loop: one model turn consumes one shell block or a report with no block. Ply
+runs the first complete action and returns its result before asking again;
+later blocks and claims are deferred. Empty or unfinished first blocks run none.
+
 done: -check cmd runs after the model stops, and the run ends only when it
 exits 0; its output goes back to the model and work continues. It also runs
 before the first turn, so a goal already met costs nothing and leaves no
-session behind. Without -check, exit 0 means only that the model stopped.
-The check is yours, not the model's, so it runs with your PATH and the
-toolbox merely first on it.
+session behind. A failure and its output ride with the first turn. Without
+-check, exit 0 means only that the model stopped. The check is yours, not
+the model's, so it runs with your PATH and the toolbox merely first on it.
 
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
 it), and the exit code says what happened. The conversation is an ask
@@ -192,32 +213,36 @@ so ask replay -check on it proves the whole run.
 flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
   -sh           full shell: every program on PATH, and -t's first if given
+  -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
   -check cmd    the goal is done when this shell command exits 0
   -B            work the goal even if the check already passes
   -cycles n     failed checks before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
-  -turns n      model turns before giving up (default 0 = unbounded)
+  -turns n      model turns before giving up (default 50, 0 = unbounded)
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
+  -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
   -s name       brief skill to append; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
+  -session-out file  atomically write the current session path here
   -q            no typescript on stderr
 
-env: PLY_TOOLS (-t) · PLY_DIR (sessions, default ~/.ply/sessions) · ASK
-     (the ask binary) · BRIEF (the brief binary) · NO_COLOR
-     Models and keys belong to ask; ply passes it -m, -S, -f and -q and
-     nothing else. Commands run with $PLY naming this binary and $PLY_DEPTH
+env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
+     (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
+     (the brief binary) · NO_COLOR
+     Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
+     -q and nothing else. Commands run with $PLY naming this binary and
+     $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
-exit: 0 done · 1 error · 2 not done — check still failing, a cap tripped,
-      or the context window is full and -compact was not given · 130
-      interrupted
+exit: 0 done · 1 error · 2 not done — check still failing, a bound tripped,
+      the command protocol stalled, or context is full · 130 interrupted
 ```
 
 ## hone
@@ -289,6 +314,50 @@ archive branches on it rather than stopping:
   for s in ~/.ask/sessions/*.jsonl; do hone "$s" -into house || continue; done
 ```
 
+## cage
+
+```
+cage - confine one command with the host kernel
+
+  cage [-net] [-ro | -w dir ...] -- command [args...]
+  cage check
+  cage status
+  cage version
+
+The child may read the host filesystem. By default it may write only the
+current directory and the temporary directory, and cannot reach host networks.
+-ro removes the current-directory write. One or more -w flags replace it with
+the named writable directories. The temporary directory remains writable.
+
+stdin, stdout, stderr, and the child's status pass through. Status 125 means
+the confinement could not be established; Cage fails closed and does not run
+the child. Status 2 is Cage usage. Other statuses belong to the child.
+```
+
+## may
+
+```
+may - ask a human before one exact action
+
+  printf '%s\n' ACTION | may [JOB]  approve now, or park under JOB
+  may pending                       print pending requests as JSONL
+  may decide DIGEST                 decide one request at /dev/tty
+  may check                         run the offline acceptance check
+  may version                       print the version (-V, --version)
+  may help                          print this summary (-h, --help)
+
+The action is the exact bytes on stdin and never argv. Without JOB, may asks
+y/N on /dev/tty. With JOB, may consumes a matching single-use grant or records
+a pending request and exits 75. The decide command is the human side of that
+file handoff and also reads only /dev/tty.
+
+State is under ~/.local/state/may. Audit is append-only JSONL. Keep the binary
+and state outside model toolboxes and writable sandboxes. There is no flag,
+environment variable, config file, or classifier that bypasses the human.
+
+exit: 0 approved - 3 refused/no human - 75 parked - 2 usage/I/O - 1 check
+```
+
 ## vouch
 
 ```
@@ -334,6 +403,14 @@ web -- fetch a web page to stdout, or drive one through a plan
 
 Render options: --wait {load,domcontentloaded,networkidle}  --profile FILE  --timeout MS
                 --attach ENDPOINT|PORT   work in a browser you started yourself
+
+Reading is free; acting asks first. Every click and every submit -- and any
+step marked {"irreversible": true} -- passes a human before it happens: `may`
+inside a clerk job (0 proceeds, 75 parks the run, 3 declines it), a y/N at the
+terminal outside one. With neither, web exits 77 and the step does not happen;
+there is no flag to turn this off. Give the human words worth reading:
+
+    {"click": "#place-order", "may": "place the order for $51.25"}
 
 Attached mode (for sites that refuse an automation-launched browser, e.g. a
 Google sign-in). Start Chrome yourself, sign in by hand, then:

@@ -58,6 +58,31 @@ the document rather than being papered over.
 that decided the design was finished is the thing that decides the build is.
 One sentence, one place, no second opinion.
 
+For work where the builder must not be able to rewrite that opinion, admit it
+before building:
+
+```sh
+draft admit project
+draft build -admitted project
+```
+
+`admit` sends the canonical project path, the normalized Check bytes, and
+their SHA-256 digest to `may`. Only after the operator approves those exact
+bytes does Draft store a content-addressed verifier under the operator's state
+directory (`$XDG_STATE_HOME/draft/verifiers`, or
+`~/.local/state/draft/verifiers`). State inside the project or system temporary
+directory is refused because Cage deliberately grants both write access.
+`build -admitted` refuses a missing or changed receipt and runs Ply
+through `cage -net -w PROJECT`; the project and temporary directory stay
+writable, while the admitted verifier is read-only to the worker. Network is
+deliberately enabled because Ask needs its provider connection—Cage is the
+write boundary here.
+
+Admission freezes the shell program in the Check block. It cannot freeze the
+meaning of writable programs or fixtures that program calls. Put the semantic
+assertions directly in the block or in operator-controlled programs, and use
+`draft prove` to measure whether the resulting oracle notices broken code.
+
 ## But is the check any good?
 
 `draft check` says a design names a check. `ply` says the check passes.
@@ -198,6 +223,8 @@ is a thing two people can disagree about precisely.
 | exit 0 | yes: written, buildable, built |
 | exit 1 | no: not buildable, nothing to do |
 | exit 2 | error: bad usage, missing tools, unreadable design |
+| exit 3 / 75 | May declined / parked an admission for a human |
+| exit 125 | Cage could not establish the admitted-build boundary |
 
 `grep`'s contract, not `ask`'s, because `draft check` asks a question where
 *no* is a real answer and often the right one.
@@ -207,8 +234,9 @@ is a thing two people can disagree about precisely.
 ```
 draft new <dir> [description ...]  scaffold a project and its DESIGN.md
 draft check [dir]                  is this design buildable? (exit 1 = no)
+draft admit [dir]                  approve and freeze its verifier
 draft prove [-n N] [dir]           break the code; does the check notice?
-draft build [dir]                  build it, and let its own check decide
+draft build [-admitted] [dir]      build it; optionally require admission
 draft sync                         regenerate the tool reference
 draft tools                        print what the family can currently do
 draft version                      print the version
@@ -217,9 +245,10 @@ draft help                         print the summary
 
 ## Deliberately absent
 
-No binary, no daemon, no config file, no cache, no state, no registry, no
-templates for the system being built, no interactive interview, no provider
-code, and no capability of its own.
+No binary, daemon, config file, cache, registry, templates for the system
+being built, provider code, or capability of its own. Ordinary design and
+build remain stateless. The one deliberate state is an operator-approved,
+content-addressed verifier used only by `admit` and `build -admitted`.
 
 The interview is the one worth explaining. `ask` cannot ask a clarifying
 question — nothing is listening on stdin — and `ply` gives every command

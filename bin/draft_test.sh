@@ -13,13 +13,14 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 DRAFT="$HERE/bin/draft"
 JOURNAL=.draft-prove-restore
 TMP=$(mktemp -d)
+STATE="$HERE/.draft-test-state.$$"
 # The tally runs on exit rather than at the bottom of the file. It used to
 # be a printf on the last line, so a test appended after it ran, passed or
 # failed silently, and changed nothing -- the exit status had already been
 # decided one line above. Tests get appended to this file constantly; the
 # structure has to survive that.
 finish() {
-	rm -rf "$TMP"
+	rm -rf "$TMP" "$STATE"
 	printf '%d passed, %d failed\n' "$pass" "$fail"
 	[ "$fail" -eq 0 ] || exit 1
 }
@@ -75,6 +76,20 @@ want "misuse is exit 2" 2 $?
 [ -s "$TMP/e" ] && ok || no "misuse says nothing on stderr"
 
 [ "$("$DRAFT" version | wc -l | tr -d ' ')" = 1 ] && ok || no "version is one line"
+
+# Prove's mutation operators are behavior, not incidental data. If one
+# disappears or reverses, the tool silently stops challenging that class of
+# boundary bug; pin the complete small set so prove can prove itself.
+mutations=$(sed -n "/^MUTATIONS='/,/^.*'$/p" "$DRAFT" |
+	sed -e "1s/^MUTATIONS='//" -e "\$s/'\$//")
+expected_mutations='>=|>
+<=|<
+==|!=
+!=|==
+True|False
+False|True'
+[ "$mutations" = "$expected_mutations" ] && ok ||
+	no "prove mutation operators drifted" "$mutations"
 
 # Every verb the script dispatches appears in help and in the README.
 #
@@ -206,6 +221,79 @@ want "a real check containing 'true' is accepted" 0 $?
 "$DRAFT" build "$TMP/a" >/dev/null 2>"$TMP/e"
 want "build refuses an unbuildable design" 1 $?
 grep -q "not buildable" "$TMP/e" && ok || no "build does not say why" "$(cat "$TMP/e")"
+
+# --- admit: the worker cannot rewrite its own verdict ---------------------
+
+mkdir -p "$TMP/gates" "$STATE"
+REAL_MAY=$(command -v may)
+REAL_CAGE=$(command -v cage)
+cat >"$TMP/gates/may" <<'EOF'
+#!/bin/sh
+case ${1:-} in
+version|-V|--version|help|-h|--help) exec "$REAL_MAY" "$@" ;;
+esac
+cat >"$MAY_LOG"
+exit "${MAY_EXIT:-0}"
+EOF
+cat >"$TMP/gates/cage" <<'EOF'
+#!/bin/sh
+case ${1:-} in
+version|-V|--version|help|-h|--help) exec "$REAL_CAGE" "$@" ;;
+esac
+printf '%s\n' "$@" >"$CAGE_LOG"
+printf '%s\n' "${PLY_DIR:-}" >"$CAGE_ENV_LOG"
+exit 0
+EOF
+chmod 755 "$TMP/gates/may" "$TMP/gates/cage"
+export MAY_LOG="$TMP/may.log" CAGE_LOG="$TMP/cage.log"
+export CAGE_ENV_LOG="$TMP/cage-env.log" REAL_MAY REAL_CAGE
+
+fill "$TMP/admitted" "test -f result"
+XDG_STATE_HOME="$STATE" MAY="$TMP/gates/may" \
+	"$DRAFT" admit "$TMP/admitted" >"$TMP/receipt" 2>"$TMP/e"
+want "admit exits 0 after May approves the exact verifier" 0 $?
+receipt=$(cat "$TMP/receipt")
+[ -f "$receipt" ] && ok || no "admit wrote no verifier receipt" "$receipt"
+grep -q "draft verifier admission v1" "$MAY_LOG" &&
+	grep -q "test -f result" "$MAY_LOG" && ok ||
+	no "May did not receive the exact admission" "$(cat "$MAY_LOG")"
+
+# Existing operator state is reusable without asking again, but only for the
+# same canonical project and command bytes.
+MAY_EXIT=3 XDG_STATE_HOME="$STATE" MAY="$TMP/gates/may" \
+	"$DRAFT" admit "$TMP/admitted" >"$TMP/receipt2" 2>/dev/null
+want "an existing matching admission is reusable" 0 $?
+cmp -s "$TMP/receipt" "$TMP/receipt2" && ok || no "admission address changed"
+
+XDG_STATE_HOME="$STATE" CAGE="$TMP/gates/cage" \
+	"$DRAFT" build -admitted "$TMP/admitted" >/dev/null 2>"$TMP/e"
+want "an admitted build enters Cage" 0 $?
+grep -qx -- "-net" "$CAGE_LOG" && grep -qx -- "-w" "$CAGE_LOG" &&
+	grep -qx "$(CDPATH= cd -P -- "$TMP/admitted" && pwd)" "$CAGE_LOG" && ok ||
+	no "Cage did not receive the project write boundary" "$(cat "$CAGE_LOG")"
+grep -Fqx ". '$receipt'" "$CAGE_LOG" && ok ||
+	no "Ply did not receive the frozen verifier" "$(cat "$CAGE_LOG")"
+admitted_project=$(CDPATH= cd -P -- "$TMP/admitted" && pwd)
+[ "$(cat "$CAGE_ENV_LOG")" = "$admitted_project/.draft/build" ] && ok ||
+	no "admitted build session is outside the writable project" "$(cat "$CAGE_ENV_LOG")"
+
+fill "$TMP/refused" "test -f another-result"
+MAY_EXIT=3 XDG_STATE_HOME="$STATE" MAY="$TMP/gates/may" \
+	"$DRAFT" admit "$TMP/refused" >/dev/null 2>/dev/null
+want "May refusal propagates and stores nothing" 3 $?
+
+XDG_STATE_HOME="$TMP/unsafe-state" MAY="$TMP/gates/may" \
+	"$DRAFT" admit "$TMP/refused" >/dev/null 2>"$TMP/e"
+want "admission refuses verifier state inside Cage's temporary write root" 2 $?
+grep -q "inside a Cage write root" "$TMP/e" && ok ||
+	no "unsafe verifier state was not diagnosed" "$(cat "$TMP/e")"
+
+chmod 700 "$receipt"
+printf 'different bytes\n' >"$receipt"
+XDG_STATE_HOME="$STATE" CAGE="$TMP/gates/cage" \
+	"$DRAFT" build -admitted "$TMP/admitted" >/dev/null 2>"$TMP/e"
+want "an altered admitted verifier is a broken gate" 2 $?
+grep -q "corrupt" "$TMP/e" && ok || no "corrupt verifier was not diagnosed" "$(cat "$TMP/e")"
 
 # --- the reference --------------------------------------------------------
 

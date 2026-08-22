@@ -123,6 +123,19 @@ because that is mechanical. Whether a real command covers what matters is
 judgment, and it is yours. Write the check that would have caught the bug
 you are about to write.
 
+### Admit the oracle when the worker must not own it
+
+A check inside the same writable tree as the implementation is evidence, not
+an independent judge: a builder can weaken a test or replace `./bin/check`.
+For consequential work, keep the semantic assertions in the Check block or an
+operator-controlled program, then have the operator run `draft admit DIR`.
+May binds approval to the canonical project and exact check bytes. Build with
+`draft build -admitted DIR`; Cage leaves the project writable but prevents the
+worker from changing the stored verifier. Follow with `draft prove DIR` to
+challenge coverage. Admission freezes the verifier program, not writable
+fixtures or helper programs it delegates to, so keep those outside the
+candidate tree when they are part of the oracle.
+
 ## The shape of a system
 
 ```

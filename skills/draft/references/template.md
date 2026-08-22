@@ -52,6 +52,10 @@ required, and `draft check` refuses a design without it. If no program can
 decide, say so here and say what a human looks at instead -- but look hard
 first, because a program can decide far more often than it seems.
 
+Keep the semantic assertions here or in an operator-controlled program when
+the build needs an admitted verifier. A project-local check script is writable
+by the builder unless the operating-system boundary protects it.
+
 ```sh
 false
 ```
