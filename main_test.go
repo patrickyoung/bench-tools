@@ -105,6 +105,40 @@ func TestTheLoopRunsWhatTheModelWrites(t *testing.T) {
 	}
 }
 
+// TestActionTurnsAreObservedBeforeTheModelContinues is the protocol's central
+// invariant. A model response is not a little batch program with a fictional
+// final answer attached: Ply consumes one action, returns real terminal
+// evidence, and defers the rest until the model has observed that evidence.
+func TestActionTurnsAreObservedBeforeTheModelContinues(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch unobserved-one\n```\n```ply\ntouch unobserved-two\n```\nBoth files exist.",
+		"I will do the work now.\n\n```ply\nprintf 'real evidence\\n'; touch observed\n```",
+		"Created and observed the requested file.",
+	)
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "make one observed change")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\n%s", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "unobserved-one")); err != nil {
+		t.Fatalf("the first action did not run: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(work, "unobserved-two")); !os.IsNotExist(err) {
+		t.Errorf("a deferred action ran: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(work, "observed")); err != nil {
+		t.Fatalf("corrected action did not run: %v", err)
+	}
+	if got := strings.TrimSpace(stdout); got != "Created and observed the requested file." {
+		t.Fatalf("stdout = %q", got)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	for _, want := range []string{"ran only the first command block", "deferred and did not run", "$ touch unobserved-one", "$ printf 'real evidence", "real evidence"} {
+		if !strings.Contains(sent, want) {
+			t.Errorf("conversation lost %q:\n%s", want, sent)
+		}
+	}
+}
+
 func TestSelectedShellRunsCommandsAndChecks(t *testing.T) {
 	work, _, askdir := sandbox(t,
 		"```ply\ntouch built\n```",

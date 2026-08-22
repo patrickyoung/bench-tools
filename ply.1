@@ -32,8 +32,9 @@ when it needs a procedure it runs
 and a tool is a program, so the toolbox is
 .BR PATH .
 .SS The protocol
-The model runs a command by writing a fenced shell block, and every fenced
-shell block it writes is executed:
+One model turn is either one action or one report. An action is optional
+leading prose followed by exactly one nonempty fenced shell block as the
+turn's final content:
 .PP
 .RS
 .nf
@@ -68,6 +69,13 @@ or
 is a command; an indented one is not, which is how the model quotes shell
 without running it. A reply with no block at all ends the run, and that
 reply is the answer.
+.PP
+Ply executes the action and returns its terminal result before asking the
+model for another turn. If a response contains more, Ply consumes only its
+first complete command block. Later blocks and text are explicitly deferred
+and do not run. An empty or unfinished first block runs nothing and receives a
+correction. Independent commands may be lines in one shell script; a command
+that depends on earlier output belongs in the next turn.
 .PP
 Because the protocol is text, it needs no tool\-use API and works with any
 model

@@ -254,12 +254,25 @@ go test ./... 2>&1 | tail -20
 ```
 ````
 
-Every fenced shell block it writes is executed — there is no other way to
-act, and no way to write shell that is not run. (To quote a command without
-running it, indent it. That is the whole escape hatch.) Blocks and checks run
-under the resolved `-shell` interpreter, `/bin/sh` by default. The prompt names
-that executable; fence labels do not select a different one. What comes back
-is what a terminal would have shown:
+An assistant turn is one action or one report. An action is optional leading
+prose followed by exactly one nonempty fenced shell block as the final content
+of the turn. Ply executes that one shell program and returns its result before
+the model can continue. A report contains no shell block and ends the loop.
+
+This is enforced rather than suggested. Ply consumes only the first complete
+command block. Later blocks and trailing prose are explicitly deferred and do
+not run; the first result comes back before the model chooses again. An empty
+or unfinished first block runs nothing and receives a correction. Commands
+that do not require observation can still be lines in one shell script;
+dependent work must wait for the next turn. The transcript therefore never
+pretends the model observed output that did not exist yet, without making
+useful work depend on perfect response formatting.
+
+There is no way to write a fenced shell block that is merely quoted. Indent it
+to quote it; that is the whole escape hatch. Blocks and checks run under the
+resolved `-shell` interpreter, `/bin/sh` by default. The prompt names that
+executable; fence labels do not select a different one. What comes back is
+what a terminal would have shown:
 
 ```
 $ go test ./... 2>&1 | tail -20
@@ -269,7 +282,7 @@ FAIL
 exit 1
 ```
 
-A reply with no block ends the run, and that reply is the answer.
+A report with no block ends the run, and that report is the answer.
 
 The default prompt reads a goal by its outcome. An answer, review or diagnosis
 means inspecting relevant evidence and reporting it without unrequested
@@ -310,15 +323,15 @@ nothing downstream can detect.
 
 An invocation gives up after 50 model turns by default, including a model
 that keeps emitting commands and never stops for the check. `-turns 0`
-deliberately removes that bound. An unterminated command fence is returned
-for correction twice; a third malformed reply stops at exit 2 instead of
-being mistaken for unchecked completion.
+deliberately removes that bound. An empty or unfinished first command block is
+returned for correction twice; a third malformed reply stops at exit 2 instead
+of being guessed at or mistaken for unchecked completion.
 
 ## The log is somebody else's problem
 
-`ply` keeps no log. The conversation is an `ask` session: the commands are
-in the assistant turns and their output is in the user turns, so the file is
-the entire run — and `ask` already proves those.
+`ply` keeps no log. The conversation is an `ask` session: each consumed action
+is in an assistant turn, its output and any explicit deferral are in the next
+user turn, so the file is the entire run — and `ask` already proves those.
 
 ```
 $ ask replay -check ~/.ply/sessions/20260801-142233-a3f9c1e0.jsonl

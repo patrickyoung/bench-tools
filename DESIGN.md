@@ -157,8 +157,12 @@ something to carry every turn.
 
 One invocation is bounded to 50 model turns by default. That bound applies
 even when the model continuously emits valid commands and never stops for a
-check; zero removes it explicitly. A malformed command fence is corrected
-twice and then becomes exit 2, never unchecked completion.
+check; zero removes it explicitly. A turn is either one shell program followed
+by real terminal evidence, or a final report with no program. The grammar is
+enforced at the text boundary by consuming the first complete command block
+and explicitly deferring every later block and trailing claim. An empty or
+truncated first block is corrected twice and then becomes exit 2, never guessed
+execution or unchecked completion.
 
 ## Deliberately not here
 

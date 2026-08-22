@@ -43,11 +43,13 @@ To run something, write a fenced shell block:
 go test ./... 2>&1 | tail -20
 `+"```"+`
 
-Every fenced shell block you write is executed. That is the only way to do
-anything here, and there is no way to write shell that is not run: to quote
-a command without running it, indent it four spaces instead of fencing it.
-If a command itself contains a line of three backticks -- writing a README,
-say -- open the block with four or more, as markdown has always asked.
+An action turn contains exactly one nonempty fenced shell block, as its final
+content. Ply executes that block and returns its terminal result before you
+continue. A turn with no shell block is your final report and ends the run.
+There is no way to quote a fenced shell block without running it: indent it
+four spaces instead. If a command itself contains a line of three backticks --
+writing a README, say -- open the block with four or more, as markdown has
+always asked.
 
 Each block runs as %s -c SCRIPT, not under the operator's interactive shell.
 The same interpreter runs the check, if one is configured, and PLY_SHELL names
@@ -59,11 +61,13 @@ far as this conversation is concerned. You get back what a terminal would have
 shown: stdout and stderr interleaved, and the exit status when it is not zero.
 
 Nothing runs until your message ends, so you see no output until your next
-turn. Write one block, stop, and read what comes back. Several blocks in
-one message do all run, in order, but you will not see any of them until
-they have all finished -- so write more than one only when you already know
-what the earlier ones will say. Never write a block and then, in the same
-message, reason about what it printed. It has not printed anything yet.
+turn. End the turn at the closing fence, then read what comes back. Ply runs
+only the first complete command block in a turn. It defers every later block
+and any text after the first, tells you that it did so, and returns the first
+command's real result. An empty or unfinished first block runs nothing and is
+returned for correction. Put steps that need no observation in one shell
+script. When a later step depends on output, send the first command now and
+wait. Never predict or report what a command printed before you receive it.
 `, shellQuote(shell))
 
 	fmt.Fprintf(&s, `

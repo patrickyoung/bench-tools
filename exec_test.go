@@ -22,9 +22,10 @@ func TestCommandsExtractsShellBlocks(t *testing.T) {
 			want:  []string{"ls -la"},
 		},
 		{
-			name:  "sh, bash and shell all mean shell",
+			name:  "only the first of several recognized shell blocks runs",
 			reply: "```sh\na\n```\ntext\n```bash\nb\n```\n```shell\nc\n```",
-			want:  []string{"a", "b", "c"},
+			want:  []string{"a"},
+			note:  true,
 		},
 		{
 			name:  "another language is prose, not a command",
@@ -36,9 +37,10 @@ func TestCommandsExtractsShellBlocks(t *testing.T) {
 			reply: "run this yourself:\n\n    ```sh\n    rm -rf /\n    ```\n",
 		},
 		{
-			name:  "several blocks run in the order they were written",
+			name:  "the first of several blocks is the one action",
 			reply: "```ply\nfirst\n```\nthen\n```ply\nsecond\n```",
-			want:  []string{"first", "second"},
+			want:  []string{"first"},
+			note:  true,
 		},
 		{
 			// A reply cut off by an output cap looks exactly like this, and
@@ -48,7 +50,7 @@ func TestCommandsExtractsShellBlocks(t *testing.T) {
 			note:  true,
 		},
 		{
-			name:  "blocks before an unterminated one still run",
+			name:  "a complete first block runs before an unfinished deferred one",
 			reply: "```ply\nsafe\n```\n```ply\ntruncated",
 			want:  []string{"safe"},
 			note:  true,
@@ -61,8 +63,20 @@ func TestCommandsExtractsShellBlocks(t *testing.T) {
 			want:  []string{"cat > R.md <<'EOF'\n```sh\nmake\n```\nEOF"},
 		},
 		{
-			name:  "an empty block is not a command",
+			name:  "an empty block is corrected rather than mistaken for a report",
 			reply: "```ply\n\n```",
+			note:  true,
+		},
+		{
+			name:  "text after a command is deferred rather than trusted",
+			reply: "```ply\ntouch made\n```\nMade it.",
+			want:  []string{"touch made"},
+			note:  true,
+		},
+		{
+			name:  "leading commentary may introduce one final command",
+			reply: "I will inspect it.\n\n```ply\nprintf '%s\\n' one; printf '%s\\n' two\n```",
+			want:  []string{"printf '%s\\n' one; printf '%s\\n' two"},
 		},
 		{
 			name:  "a fence must start the line",
@@ -85,13 +99,21 @@ func TestCommandsExtractsShellBlocks(t *testing.T) {
 			}
 		})
 	}
+	for _, lang := range []string{"sh", "bash", "shell", "zsh"} {
+		t.Run(lang+" is a command label", func(t *testing.T) {
+			got, _, note := commands("```" + lang + "\nprintf ok\n```")
+			if len(got) != 1 || got[0] != "printf ok" || note != "" {
+				t.Fatalf("commands=%q note=%q", got, note)
+			}
+		})
+	}
 }
 
 // TestProseIsTheReplyWithoutItsCommands: what a command was is about to be
 // shown under a real prompt with what it printed, so showing it twice is
 // noise. Somebody else's code block is not a command and stays put.
 func TestProseIsTheReplyWithoutItsCommands(t *testing.T) {
-	_, prose, _ := commands("Looking now.\n\n```ply\nls -la\n```\n\nThen this:\n\n```python\nprint(1)\n```")
+	_, prose, _ := commands("Looking now.\n\n```python\nprint(1)\n```\n\nThen this:\n\n```ply\nls -la\n```")
 	if strings.Contains(prose, "ls -la") {
 		t.Errorf("the command is still in the prose:\n%s", prose)
 	}

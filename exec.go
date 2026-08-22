@@ -43,16 +43,15 @@ type Result struct {
 	Timeout time.Duration
 }
 
-// commands extracts the shell blocks from a reply, in order, and returns
-// what was left when they are taken out — the prose, which is the only part
-// of the reply worth showing on stderr, because every command in it is
-// about to be echoed again with its output under a real prompt.
+// commands consumes at most one action from a reply. Optional prose may lead
+// it; the first complete, nonempty shell block is the action. Everything after
+// that block is deferred, because the model could not have seen the command's
+// result when it wrote the rest. A reply with no shell block is a final report.
 //
-// note is a line for the model when the reply held something that looked
-// like a command but could not be run: an unterminated fence, which is what
-// a reply cut off by an output cap looks like. Running the truncated
-// remainder is not an option — `rm -rf /tmp/build` cut in half is a
-// different command.
+// note tells the model when no action could run, or when content after the
+// first action was deliberately not applied. This is the observation boundary:
+// even a model that emits a whole imagined workflow in one response gets one
+// real result before it can choose the next action.
 func commands(reply string) (cmds []string, prose, note string) {
 	lines := strings.Split(reply, "\n")
 	var kept []string
@@ -65,19 +64,27 @@ func commands(reply string) (cmds []string, prose, note string) {
 		body, end, closed := fenceBody(lines, i+1, fence)
 		if !closed {
 			if shellLangs[lang] {
-				note = fmt.Sprintf("a fenced block was never closed, so nothing ran. Close it with a line of %d backticks and nothing else.", len(fence))
+				return nil, strings.TrimSpace(reply), fmt.Sprintf("the first command block was never closed, so nothing ran. Close it with a line of %d backticks and nothing else.", len(fence))
 			}
 			kept = append(kept, lines[i:]...)
 			break
 		}
 		if !shellLangs[lang] {
 			kept = append(kept, lines[i:end+1]...) // somebody else's code block; leave it whole
-		} else if s := strings.TrimSpace(body); s != "" {
-			cmds = append(cmds, s)
+			i = end
+			continue
 		}
-		i = end
+
+		command := strings.TrimSpace(body)
+		if command == "" {
+			return nil, strings.TrimSpace(reply), "the first command block was empty, so nothing ran. Send one complete command block or a report with no command block."
+		}
+		if strings.TrimSpace(strings.Join(lines[end+1:], "\n")) != "" {
+			note = "ply ran only the first command block. Everything after it was deferred and did not run, because it was written before this command's result existed. Read the result before choosing the next action or reporting what happened."
+		}
+		return []string{command}, strings.TrimSpace(strings.Join(kept, "\n")), note
 	}
-	return cmds, strings.TrimSpace(strings.Join(kept, "\n")), note
+	return nil, strings.TrimSpace(strings.Join(kept, "\n")), ""
 }
 
 // openFence reports whether a line opens a fenced block, and with what.

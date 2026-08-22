@@ -40,11 +40,14 @@ When changing `ply`:
   toolbox exists to aim the model, and a check scoped to it would mean `go
   test ./...` needed a toolbox holding `go`, `git` and a linker;
 
-- **action is a prompt contract; completion is still a check.** The default
-  prompt distinguishes inspecting and reporting from producing a requested
-  effect, and says plainly that reply text does not change the system. Keep
-  that behavior in the public `ply system` value. Do not add loop state that
-  treats running any command as proof of progress or completion; `pwd` is an
+- **a turn is one action or one report; completion is still a check.** Consume
+  the first complete, nonempty shell block as the turn's one action, return its
+  result, and explicitly defer every later block and trailing claim. This must
+  work even when a model emits an imagined multi-step workflow: formatting
+  failure is not allowed to erase useful work or make unobserved work real. A
+  report has no shell block and stops the model loop. Keep this grammar and the
+  outcome-oriented guidance in the public `ply system` value. Do not treat
+  running any command as proof of progress or completion; `pwd` is an
   interaction, not a verdict;
 
 - **one run has one command interpreter.** `/bin/sh` is the stable default;
@@ -66,9 +69,11 @@ When changing `ply`:
   a background child holding the pipe open is the difference between a
   timeout and a hang;
 
-- **never run a truncated command.** An unterminated fence is a note back to
-  the model, not a best guess at what it meant. `rm -rf /tmp/build` cut in
-  half is a different command;
+- **never run a partially understood command.** An unterminated first fence is
+  a note back to the model, not a best guess at what it meant. `rm -rf
+  /tmp/build` cut in half is a different command. Once a complete first block
+  has been consumed, later content is deferred rather than parsed as part of
+  that command;
 
 - **keep the log somebody else's.** The conversation is an `ask` session and
   `ply` writes no log of its own, so `ask replay -check` proves an entire

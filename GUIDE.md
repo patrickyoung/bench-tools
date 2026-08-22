@@ -80,17 +80,26 @@ not run yet. `fizzcheck` then exited 1 and it went back to work.
 
 That is the feature working. Without `-check`, nothing catches it.
 
-### 3. The model cannot see output it has not waited for
+### 3. Observation is a turn boundary
 
-A reply can hold several blocks; they all run, in order, before the model
-sees any of them. The prompt says so, plainly, and models still sometimes
-write four blocks and then reason about the second one's output. Two
-consequences worth knowing:
+A reply is either one action or one report. One action means optional leading
+prose, exactly one complete shell block, and nothing after it. Ply runs that
+shell program, returns its terminal result, and only then asks for the next
+turn. A report has no command block and ends the loop.
 
-- Cheap, obvious sequences in one block are fine and fast: `cd x && make`.
-- Anything where step two depends on reading step one belongs in the *next*
-  turn. You cannot force this, but `-check` makes guessing expensive rather
-  than final.
+This keeps the useful distinction simple:
+
+- Cheap, obvious sequences that need no intermediate observation belong in
+  one shell script: `cd x && make`.
+- Anything where step two depends on reading step one belongs in the next
+  turn.
+
+Ply enforces the boundary by consuming only the first complete command block.
+Later blocks and trailing prose are explicitly deferred and do not run; the
+first result comes back before the model chooses again. An empty or unfinished
+first block runs nothing and receives a correction. This is why a transcript
+can be read literally: the model cannot make a later action or success claim
+real before observing the command that came first.
 
 ### 4. One writing worker per tree
 

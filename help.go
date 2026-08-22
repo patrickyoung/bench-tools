@@ -28,6 +28,10 @@ shell: commands and checks use /bin/sh -c by default. -shell names one other
 executable that accepts -c. Ply resolves it before calling the model and says
 exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
 
+loop: one model turn consumes one shell block or a report with no block. Ply
+runs the first complete action and returns its result before asking again;
+later blocks and claims are deferred. Empty or unfinished first blocks run none.
+
 done: -check cmd runs after the model stops, and the run ends only when it
 exits 0; its output goes back to the model and work continues. It also runs
 before the first turn, so a goal already met costs nothing and leaves no
