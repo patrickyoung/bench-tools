@@ -66,8 +66,8 @@ side effect of ordinary use.
 
 ## The gap that had to be found first
 
-It is not produced *yet*. Two real runs, one that passed and one that
-failed:
+Originally, two real runs, one that passed and one that failed, produced no
+durable machine verdict:
 
     $ ply -sh -check 'go test ./... 2>&1' -f run.jsonl  "make the test pass"
     ply: check passed: go test ./... 2>&1        # exit 0
@@ -104,20 +104,17 @@ and it contradicts the principle `ask` states in `DoneData`:
 > rather than only in the exit code**, so a session read later says how it
 > finished.
 
-So the fix is upstream, it is small, and it makes two existing documents
-true:
+The upstream fix now makes the evidence explicit:
 
-1. **`ask note`** — append a stamped message to a session without calling a
-   model. The mechanism already exists: `UserData.Source` is documented as
-   existing "so that model-written text in a conversation can always be told
-   apart from what was actually asked, by a reader and by a program." A
-   check typescript is the *least* model-written text in the system — it is
-   a command and what it printed.
-2. **`ply`** writes the check's verdict through it, pass or fail.
+1. **`ask note -k ... -json - -seal`** appends typed JSON and a digest of its
+   exact event prefix without folding either into model context.
+2. **`ply`** writes `ply.verifier/v1` receipts for rejection, acceptance, and
+   broken verifiers, binding candidate, verifier, output, and status.
+3. **`ask replay -check`** verifies request folds, event sequence, and seals.
 
-Until then `hone` refuses to learn from the session, and says why. It does
-not guess. A mislabeled lesson is the 13x failure and the poisoning failure
-at the same time.
+`hone` reads those receipts and still refuses sessions with no verdict. It
+does not guess. A mislabeled lesson is the 13x failure and the poisoning
+failure at the same time.
 
 ## What hone is
 

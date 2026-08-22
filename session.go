@@ -51,8 +51,17 @@ type turn struct {
 }
 
 type noteData struct {
-	Source string `json:"source"`
-	Text   string `json:"text"`
+	Source string          `json:"source"`
+	Text   string          `json:"text,omitempty"`
+	Kind   string          `json:"kind,omitempty"`
+	Body   json.RawMessage `json:"body,omitempty"`
+}
+
+type verifierReceipt struct {
+	Phase    string `json:"phase"`
+	Verifier string `json:"verifier"`
+	Outcome  string `json:"outcome"`
+	ExitCode int    `json:"exit_code"`
 }
 
 type block struct {
@@ -63,13 +72,14 @@ type block struct {
 // session is a run, read back. It holds what a lesson can be grounded in
 // and nothing else.
 type session struct {
-	Path   string
-	ID     string
-	Model  string
-	Goal   string   // the first thing asked
-	Check  string   // the command that decided, lifted out of the system prompt
-	Script []string // every typescript the run produced, in order
-	Notes  []noteData
+	Path     string
+	ID       string
+	Model    string
+	Goal     string   // the first thing asked
+	Check    string   // the command that decided, lifted out of the system prompt
+	Script   []string // every typescript the run produced, in order
+	Notes    []noteData
+	Receipts []verifierReceipt
 }
 
 // These are Ply's human-readable boundaries around the failed pre-check it
@@ -138,10 +148,13 @@ func readSession(path string) (*session, error) {
 		if rerr != nil && !atEOF {
 			return nil, rerr
 		}
+		if atEOF && len(line) > 0 {
+			break // no terminating newline means Ask never completed the event
+		}
 		if len(bytes.TrimSpace(line)) > 0 {
 			var e event
 			if jerr := json.Unmarshal(line, &e); jerr != nil {
-				if atEOF || !more(r) {
+				if atEOF {
 					break // torn tail
 				}
 				return nil, fmt.Errorf("%s: corrupt event: %w", path, jerr)
@@ -158,11 +171,6 @@ func readSession(path string) (*session, error) {
 		return nil, fmt.Errorf("%s: no session header; this is not an ask session", path)
 	}
 	return s, nil
-}
-
-func more(r *bufio.Reader) bool {
-	_, err := r.Peek(1)
-	return err == nil
 }
 
 func (s *session) add(e event, first *bool) error {
@@ -209,6 +217,19 @@ func (s *session) add(e event, first *bool) error {
 			return fmt.Errorf("%s: note event %d: %w", s.Path, e.Seq, err)
 		}
 		s.Notes = append(s.Notes, n)
+		if n.Source == "ply" && n.Kind == verifierReceiptKind {
+			var receipt verifierReceipt
+			if err := json.Unmarshal(n.Body, &receipt); err != nil {
+				return fmt.Errorf("%s: verifier receipt event %d: %w", s.Path, e.Seq, err)
+			}
+			if receipt.Outcome != "accepted" && receipt.Outcome != "rejected" && receipt.Outcome != "broken" {
+				return fmt.Errorf("%s: verifier receipt event %d: unknown outcome %q", s.Path, e.Seq, receipt.Outcome)
+			}
+			s.Receipts = append(s.Receipts, receipt)
+			if receipt.Verifier != "" {
+				s.Check = receipt.Verifier
+			}
+		}
 	}
 	return nil
 }

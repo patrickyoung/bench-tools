@@ -21,10 +21,10 @@ failed and then passed teaches, and the lesson is the difference. That gate
 is arithmetic on exit statuses already in the log; a model is used to word a
 lesson, never to decide there is one.
 
-the verdict: ply -check writes it into the session as a note, so hone knows
-how a run ended without guessing. A run with no check has no verdict and is
-refused, saying so. This is the whole reason it works: everything else that
-learns from agent logs is learning from unlabelled ones.
+the verdict: ply -check writes each result as a typed, sealed receipt in the
+session, so hone knows how a run ended without guessing. Legacy signed prose
+notes still read. A run with no check has no verdict and is refused, saying
+so. This is the whole reason it works: unlabelled trajectories do not teach.
 
 no store: a lesson is a skill, brief is the catalogue, and $BRIEF_PATH is
 where it lives. hone writes what brief reads and stops -- there is no

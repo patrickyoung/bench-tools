@@ -22,6 +22,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -49,9 +50,10 @@ func (v verdict) String() string {
 // between two programs, which is why they are pinned here and tested
 // against a real run rather than matched loosely.
 const (
-	passedMark = "the check passed"
-	failedMark = "the check did not pass"
-	skillMark  = "loaded skill "
+	passedMark          = "the check passed"
+	failedMark          = "the check did not pass"
+	skillMark           = "loaded skill "
+	verifierReceiptKind = "ply.verifier/v1"
 )
 
 // Skills is what ply put in the system prompt, by name.
@@ -102,6 +104,19 @@ func (s *session) Verdict() verdict {
 	v := unjudged
 	for _, n := range s.Notes {
 		if n.Source != "ply" {
+			continue
+		}
+		if n.Kind == verifierReceiptKind {
+			var receipt verifierReceipt
+			if json.Unmarshal(n.Body, &receipt) != nil {
+				continue
+			}
+			switch receipt.Outcome {
+			case "accepted":
+				v = passed
+			case "rejected", "broken":
+				v = failed
+			}
 			continue
 		}
 		switch {

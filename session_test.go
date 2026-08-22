@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -34,6 +37,42 @@ func TestInitialPlyCheckIsGoalAndStumble(t *testing.T) {
 	got := s.Stumbles()
 	if len(got) != 1 || got[0].Cmd != "go test ./..." || got[0].Fix != "$ edit broken.go" {
 		t.Fatalf("stumbles = %+v", got)
+	}
+}
+
+func TestReadSessionUsesStructuredVerifierReceipt(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "run.jsonl")
+	var b strings.Builder
+	writeEvent := func(seq int, typ string, data any) {
+		raw, _ := json.Marshal(data)
+		line, _ := json.Marshal(map[string]any{"seq": seq, "type": typ, "data": json.RawMessage(raw)})
+		b.Write(line)
+		b.WriteByte('\n')
+	}
+	writeEvent(1, "session", header{ID: "run", Model: "m"})
+	writeEvent(2, "user", userData{Text: "fix it"})
+	writeEvent(3, "note", noteData{Source: "ply", Kind: verifierReceiptKind,
+		Body: verifierNote("accepted", 0).Body})
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := readSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Verdict() != passed || s.Check != "go test ./..." || len(s.Receipts) != 1 {
+		t.Fatalf("session = %+v", s)
+	}
+}
+
+func TestReadSessionRejectsMalformedTerminatedTail(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "run.jsonl")
+	body := `{"seq":1,"type":"session","data":{"id":"run"}}` + "\n" + `{"seq":2` + "\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readSession(path); err == nil {
+		t.Fatal("newline-terminated malformed tail was accepted as torn")
 	}
 }
 

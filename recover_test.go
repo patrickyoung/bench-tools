@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -25,6 +26,11 @@ func passedNote() noteData {
 
 func failedNote() noteData {
 	return noteData{Source: "ply", Text: failedMark + ":\n\n$ go test ./...\nFAIL\nexit 1\n"}
+}
+
+func verifierNote(outcome string, code int) noteData {
+	body, _ := json.Marshal(verifierReceipt{Phase: "candidate", Verifier: "go test ./...", Outcome: outcome, ExitCode: code})
+	return noteData{Source: "ply", Kind: verifierReceiptKind, Body: body}
 }
 
 // stumbleScript is a command that failed and a command that fixed it, in
@@ -105,6 +111,26 @@ func TestTheLastVerdictWins(t *testing.T) {
 	s := build{script: stumbleScript, notes: []noteData{failedNote(), passedNote()}}.session()
 	if got := s.Verdict(); got != passed {
 		t.Fatalf("Verdict() = %v, want passed", got)
+	}
+}
+
+func TestStructuredVerifierReceiptsDecideVerdict(t *testing.T) {
+	s := build{script: stumbleScript, notes: []noteData{
+		verifierNote("rejected", 1), verifierNote("accepted", 0),
+	}}.session()
+	if got := s.Verdict(); got != passed {
+		t.Fatalf("Verdict() = %v, want passed", got)
+	}
+	if ok, why := s.Teaches(); !ok {
+		t.Fatalf("sealed receipt recovery did not teach: %s", why)
+	}
+
+	forged := build{script: stumbleScript, notes: []noteData{{
+		Source: "deploy", Kind: verifierReceiptKind,
+		Body: verifierNote("accepted", 0).Body,
+	}}}.session()
+	if got := forged.Verdict(); got != unjudged {
+		t.Fatalf("non-Ply structured receipt decided verdict: %v", got)
 	}
 }
 

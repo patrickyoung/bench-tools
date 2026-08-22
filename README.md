@@ -103,15 +103,12 @@ $ jq -c '{seq,type}' fail.jsonl | tail -2
 Structurally identical. A session recorded everything that was *tried* and
 nothing about whether it *worked*; the verdict lived on stderr and in an
 exit status, and both are gone the moment the shell moves on. `ply` now
-writes it into the log as an `ask note` — stamped, not folded — which is
-what its own documentation had always said it did.
+writes every verifier result as a typed `ply.verifier/v1` Ask note followed
+by a replay-verified prefix seal. It is attributed and not folded.
 
 ```
-$ jq -r 'select(.type=="note") | "[" + .data.source + "] " + .data.text' pass.jsonl
-[ply] the check passed:
-
-$ go test ./... 2>&1
-ok  	x	0.253s
+$ jq 'select(.type=="note" and .data.kind=="ply.verifier/v1") | .data.body' pass.jsonl
+{"phase":"candidate","outcome":"accepted","exit_code":0,...}
 ```
 
 A run with no `-check` writes no verdict, and `hone` refuses it rather than
