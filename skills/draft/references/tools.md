@@ -198,12 +198,12 @@ loop: one model turn consumes one shell block or a report with no block. Ply
 runs the first complete action and returns its result before asking again;
 later blocks and claims are deferred. Empty or unfinished first blocks run none.
 
-done: -check cmd runs after the model stops, and the run ends only when it
-exits 0; its output goes back to the model and work continues. It also runs
-before the first turn, so a goal already met costs nothing and leaves no
-session behind. A failure and its output ride with the first turn. Without
--check, exit 0 means only that the model stopped. The check is yours, not
-the model's, so it runs with your PATH and the toolbox merely first on it.
+done: -check cmd is a verifier. Before work it receives empty stdin; after
+the model stops it receives the candidate report. Exit 0 accepts, 1 rejects
+and sends its output back, and any other status means the verifier broke.
+A passing pre-check costs no model turn or session. Without -check, exit 0
+means only that the model stopped. The check is yours, not the model's, so it
+runs with your PATH and the toolbox merely first on it.
 
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
 it), and the exit code says what happened. The conversation is an ask
@@ -214,9 +214,9 @@ flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
   -sh           full shell: every program on PATH, and -t's first if given
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
-  -check cmd    the goal is done when this shell command exits 0
+  -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
-  -cycles n     failed checks before giving up (default 5, 0 = unbounded)
+  -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
@@ -241,7 +241,8 @@ env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
      $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
-exit: 0 done · 1 error · 2 not done — check still failing, a bound tripped,
+exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
+      a bound tripped,
       the command protocol stalled, or context is full · 130 interrupted
 ```
 
