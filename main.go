@@ -77,6 +77,7 @@ type opts struct {
 	quiet      *bool
 	compact    *bool
 	compacts   *int
+	contractID *string
 }
 
 func newOpts(name string) *opts {
@@ -102,6 +103,7 @@ func newOpts(name string) *opts {
 		quiet:      fs.Bool("q", false, "no typescript on stderr"),
 		compact:    fs.Bool("compact", false, "carry on through a full context window"),
 		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
+		contractID: fs.String("contract-id", "", "intent contract digest recorded in verifier receipts"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to append; repeat for more; - picks one")
 	return o
@@ -228,12 +230,28 @@ func work(args []string) int {
 	if *o.check != "" && !*o.force {
 		r := checker.RunInput(ctx, *o.check, "")
 		v.Check(r)
-		if r.Code == 0 {
+		// An orchestrator may already have created -f while compiling an
+		// intent contract. In that case even a pre-check terminal must become
+		// durable evidence in the same session. Plain Ply keeps make's
+		// zero-litter fast path when no session exists yet.
+		if *o.file != "" {
+			if _, statErr := os.Stat(*o.file); statErr == nil {
+				model := Model{Bin: askBin, Session: *o.file}
+				recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+				err := model.Record(recordCtx, verdictSource, verifierReceiptKind,
+					receiptFor(*o.contractID, "baseline", "", checker, r))
+				cancel()
+				if err != nil {
+					return fail(fmt.Errorf("record verifier receipt: %w", err))
+				}
+			}
+		}
+		if verifierOutcome(r) == "accepted" {
 			v.Note("nothing to do")
 			return 0
 		} else if ctx.Err() != nil {
 			return 130
-		} else if r.Code != 1 {
+		} else if verifierOutcome(r) == "broken" {
 			return fail(checkError(r))
 		}
 		initialCheck = &r
@@ -270,16 +288,17 @@ func work(args []string) int {
 			"     outside the tree keeps the record out of the work")
 	}
 	loop := &Loop{
-		Model:    Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
-		Runner:   runner,
-		Checker:  checker,
-		Check:    *o.check,
-		Loaded:   skillNote(skills),
-		Cycles:   *o.cycles,
-		Compact:  *o.compact,
-		Compacts: *o.compacts,
-		Turns:    *o.turns,
-		View:     v,
+		Model:      Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
+		Runner:     runner,
+		Checker:    checker,
+		Check:      *o.check,
+		Loaded:     skillNote(skills),
+		Cycles:     *o.cycles,
+		Compact:    *o.compact,
+		Compacts:   *o.compacts,
+		Turns:      *o.turns,
+		View:       v,
+		ContractID: *o.contractID,
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {

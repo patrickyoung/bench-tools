@@ -35,6 +35,8 @@ later blocks and claims are deferred. Empty or unfinished first blocks run none.
 done: -check cmd is a verifier. Before work it receives empty stdin; after
 the model stops it receives the candidate report. Exit 0 accepts, 1 rejects
 and sends its output back, and any other status means the verifier broke.
+Interpreter startup failure or output beyond -cap is broken too: verifier
+evidence is never silently truncated.
 A passing pre-check costs no model turn or session. Without -check, exit 0
 means only that the model stopped. The check is yours, not the model's, so it
 runs with your PATH and the toolbox merely first on it.
@@ -42,7 +44,8 @@ runs with your PATH and the toolbox merely first on it.
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
 it), and the exit code says what happened. The conversation is an ask
 session — commands in the assistant turns, their output in the user turns —
-so ask replay -check on it proves the whole run.
+and each verifier run is a sealed structured receipt, so ask replay -check
+detects changes, gaps, reordering, or an unsealed record in a retained prefix.
 
 flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
@@ -65,6 +68,7 @@ flags:
   -s name       brief skill to append; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
   -session-out file  atomically write the current session path here
+  -contract-id digest  bind verifier receipts to an admitted intent contract
   -q            no typescript on stderr
 
 env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR

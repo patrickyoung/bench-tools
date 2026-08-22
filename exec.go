@@ -35,13 +35,14 @@ const defaultShell = "/bin/sh"
 
 // Result is one command's outcome.
 type Result struct {
-	Cmd     string
-	Output  string
-	Code    int
-	Elided  int64 // bytes dropped from the middle of Output
-	Total   int64 // bytes the command actually produced
-	Killed  bool
-	Timeout time.Duration
+	Cmd        string
+	Output     string
+	Code       int
+	Elided     int64 // bytes dropped from the middle of Output
+	Total      int64 // bytes the command actually produced
+	Killed     bool
+	StartError bool // interpreter could not start; never an ordinary verifier rejection
+	Timeout    time.Duration
 }
 
 // commands consumes at most one action from a reply. Optional prose may lead
@@ -141,10 +142,15 @@ func (r Runner) Run(ctx context.Context, script string) Result {
 // input used by the pre-check remains empty: before any work there is no
 // candidate report to judge.
 func (r Runner) RunInput(ctx context.Context, script, input string) Result {
-	if input != "" {
-		input = strings.TrimRight(input, "\n") + "\n"
-	}
+	input = verifierInput(input)
 	return r.run(ctx, script, strings.NewReader(input))
+}
+
+func verifierInput(input string) string {
+	if input == "" {
+		return ""
+	}
+	return strings.TrimRight(input, "\n") + "\n"
 }
 
 func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result {
@@ -198,7 +204,7 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	default:
 		// The selected shell itself failed to start. That is ply's problem,
 		// not the model's, but the model still has to see something.
-		res.Output, res.Code = err.Error(), 1
+		res.Output, res.Code, res.StartError = err.Error(), 1, true
 	}
 	return res
 }
@@ -245,6 +251,8 @@ func (r Result) Typescript() string {
 	// Silence and success is what a shell shows: nothing. Anything else is
 	// news, and news is worth a line.
 	switch {
+	case r.StartError:
+		s.WriteString("[ply: command interpreter could not start] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Killed:
 		s.WriteString("[ply: killed after " + r.Timeout.String() + "] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Code != 0:

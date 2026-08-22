@@ -34,6 +34,7 @@ d=`+dir+`
 echo "$@" >> "$d/argv.log"
 [ -z "${ASK_SYSTEM-}" ] || printf '%s' "$ASK_SYSTEM" > "$d/system"
 cat >> "$d/stdin.log"
+[ "${1-}" = note ] && exit ${FAKE_ASK_NOTE_EXIT:-0}
 n=$(cat "$d/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/n"
 [ -f "$d/reply.$n" ] && cat "$d/reply.$n"
 exit ${FAKE_ASK_EXIT:-0}
@@ -541,10 +542,26 @@ exit 1`
 		if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
 			t.Errorf("model calls = %s, want 1", got)
 		}
-		if argv := read(t, filepath.Join(askdir, "argv.log")); strings.Contains(argv, "note") {
-			t.Errorf("a broken verifier wrote a verdict note:\n%s", argv)
+		if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, "-k "+verifierReceiptKind) {
+			t.Errorf("a broken verifier did not write a structured receipt:\n%s", argv)
 		}
 	})
+}
+
+func TestVerifierOutputBeyondEvidenceCapIsBroken(t *testing.T) {
+	work, _, askdir := sandbox(t, "candidate")
+	check := `if [ -s /dev/stdin ]; then yes x | head -c 2000; exit 0; fi
+exit 1`
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-cap", "512", "-check", check, "goal")
+	if code != 1 || !strings.Contains(stderr, "output exceeded the evidence cap") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%s, want 1", got)
+	}
+	if receipt := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(receipt, `"outcome":"broken"`) || !strings.Contains(receipt, `"elided_bytes":`) {
+		t.Fatalf("broken receipt = %s", receipt)
+	}
 }
 
 // TestTheCheckIsNotScopedByTheToolbox: the toolbox exists to aim the model.
@@ -1049,8 +1066,10 @@ func TestTheVerdictLandsInTheLog(t *testing.T) {
 		if !strings.Contains(argv, "note") || !strings.Contains(argv, "-s ply") {
 			t.Errorf("ply never wrote a note:\n%s", argv)
 		}
-		if !strings.Contains(text, "the check passed") {
-			t.Errorf("the verdict is not in what was written:\n%s", text)
+		for _, want := range []string{`"outcome":"accepted"`, `"phase":"candidate"`, `"candidate_sha256":`, `"verifier_sha256":`} {
+			if !strings.Contains(text, want) {
+				t.Errorf("the receipt is missing %q:\n%s", want, text)
+			}
 		}
 	})
 
@@ -1063,8 +1082,8 @@ func TestTheVerdictLandsInTheLog(t *testing.T) {
 		if !strings.Contains(argv, "note") {
 			t.Errorf("a run that gave up recorded nothing:\n%s", argv)
 		}
-		if !strings.Contains(text, "the check did not pass") {
-			t.Errorf("the verdict is not in what was written:\n%s", text)
+		if !strings.Contains(text, `"outcome":"rejected"`) {
+			t.Errorf("the rejected receipt is not in what was written:\n%s", text)
 		}
 	})
 
@@ -1081,9 +1100,9 @@ func TestTheVerdictLandsInTheLog(t *testing.T) {
 		}
 	})
 
-	// A failing check the loop carries on from is already in the
-	// conversation as the rejection the model was handed. Recording it again
-	// would say it happened twice.
+	// Each verifier execution gets one receipt, including an intermediate
+	// rejection. The rejection is also folded as feedback, but the receipt is
+	// what binds it to the exact candidate and verifier bytes.
 	t.Run("recovered runs record once", func(t *testing.T) {
 		work, _, askdir := sandbox(t,
 			"All done!", // the check catches the lie
@@ -1094,13 +1113,45 @@ func TestTheVerdictLandsInTheLog(t *testing.T) {
 			t.Fatal("exit")
 		}
 		_, text := verdict(t, askdir)
-		if n := strings.Count(text, "the check did not pass"); n != 0 {
-			t.Errorf("an intermediate failure was recorded %d times; it is already the rejection", n)
+		if n := strings.Count(text, `"outcome":"rejected"`); n != 1 {
+			t.Errorf("intermediate rejection receipts = %d, want 1", n)
 		}
-		if n := strings.Count(text, "the check passed"); n != 1 {
-			t.Errorf("the verdict was recorded %d times, want 1", n)
+		if n := strings.Count(text, `"outcome":"accepted"`); n != 1 {
+			t.Errorf("accepted receipts = %d, want 1", n)
 		}
 	})
+}
+
+func TestAcceptedOutcomeRequiresDurableReceipt(t *testing.T) {
+	work, _, askdir := sandbox(t, "A supported answer.")
+	t.Setenv("FAKE_ASK_NOTE_EXIT", "1")
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-check", "true", "answer")
+	if code != 1 || !strings.Contains(stderr, "record verifier receipt") {
+		t.Fatalf("exit=%d stderr=%q, want evidence persistence failure", code, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%s, want 1", got)
+	}
+}
+
+func TestPassingPrecheckRecordsReceiptInExistingContractSession(t *testing.T) {
+	work, _, askdir := sandbox(t)
+	session := filepath.Join(t.TempDir(), "contract.jsonl")
+	write(t, session, "existing contract session\n", 0o600)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-f", session,
+		"-contract-id", "sha256:contract", "-check", "true", "already done")
+	if code != 0 || !strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("precheck called model: %v", err)
+	}
+	text := read(t, filepath.Join(askdir, "stdin.log"))
+	for _, want := range []string{`"phase":"baseline"`, `"outcome":"accepted"`, `"contract_id":"sha256:contract"`} {
+		if !strings.Contains(text, want) {
+			t.Errorf("baseline receipt missing %q: %s", want, text)
+		}
+	}
 }
 
 // TestWhatWasLoadedLandsInTheLog closes the joint between brief and hone.

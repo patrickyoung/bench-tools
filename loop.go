@@ -10,10 +10,8 @@ import (
 	"strings"
 )
 
-// verdictSource stamps the note ply writes when the check reaches a
-// terminal answer. It is the program's name because that is who ran the
-// command: a reader, and hone(1), can tell at a glance that nobody typed
-// this and no model wrote it.
+// verdictSource attributes verifier receipts and composition notes to the
+// program that observed them, rather than the model or terminal user.
 const verdictSource = "ply"
 
 // maxStalls bounds a reply that neither ran anything nor finished — an
@@ -34,44 +32,7 @@ type Loop struct {
 	Turns          int    // model turns before giving up; 0 unbounded
 	View           *view
 	SessionChanged func(string) error // process-boundary notification after compaction
-}
-
-// verdict records how the run ended, in the session, where ply has always
-// said everything worth recording goes. Until it did, a session held every
-// command that ran and nothing about whether the work was done — so a run
-// that passed and a run that gave up were the same shape on disk, and
-// nothing reading the log afterwards could tell them apart.
-//
-// It is a note rather than a message because the run is over and it is
-// addressed to a later reader. It is written at exactly the two points the
-// check reaches a terminal answer, and nowhere else: a failing check that
-// the loop carries on from is already in the conversation as the rejection
-// the model was handed, and recording it twice would say it happened twice.
-//
-// Best effort. A run that did the work and then could not write a line
-// about it did the work, and the exit status still says so.
-func (l *Loop) verdict(ctx context.Context, r Result) {
-	if l.Model.Session == "" {
-		return
-	}
-	// context.Canceled would fail the write for an interruption that has
-	// nothing to do with the verdict; the check already ran and this is
-	// what it said.
-	if err := l.Model.Note(context.WithoutCancel(ctx), verdictSource, verdictText(r)); err != nil {
-		l.View.Note("could not record the verdict: %v", err)
-	}
-}
-
-// verdictText is the typescript with a line saying what it decided. The
-// typescript alone would leave a reader to infer the verdict from an exit
-// status that a passing command does not print, which is the ambiguity
-// this whole thing exists to remove.
-func verdictText(r Result) string {
-	outcome := "the check passed"
-	if r.Code != 0 {
-		outcome = "the check did not pass"
-	}
-	return outcome + ":\n\n" + r.Typescript()
+	ContractID     string             // admitted intent contract digest, when a caller supplied one
 }
 
 // Run works the goal. The returned string is the model's final report even
@@ -178,16 +139,17 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			return last, ctx.Err()
 		}
 		l.View.Check(r)
-		if r.Code == 0 {
-			l.verdict(ctx, r)
+		if err := l.recordVerifier(ctx, "candidate", reply, r); err != nil {
+			return reply, err
+		}
+		if verifierOutcome(r) == "accepted" {
 			return reply, nil
 		}
-		if r.Code != 1 {
+		if verifierOutcome(r) == "broken" {
 			return reply, checkError(r)
 		}
 		cycle++
 		if l.Cycles > 0 && cycle >= l.Cycles {
-			l.verdict(ctx, r)
 			return reply, fmt.Errorf("%w after %d cycles", ErrCycles, cycle)
 		}
 		msg = rejection(r)
@@ -195,6 +157,12 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 }
 
 func checkError(r Result) error {
+	if r.StartError {
+		return fmt.Errorf("%w: command interpreter could not start: %s", ErrCheck, firstLine(r.Output))
+	}
+	if r.Elided > 0 {
+		return fmt.Errorf("%w: output exceeded the evidence cap (%d bytes, %d elided)", ErrCheck, r.Total, r.Elided)
+	}
 	if r.Killed {
 		return fmt.Errorf("%w: timed out after %s (exit %d)", ErrCheck, r.Timeout, r.Code)
 	}

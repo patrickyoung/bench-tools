@@ -43,6 +43,14 @@ When changing `ply`:
   toolbox exists to aim the model, and a check scoped to it would mean `go
   test ./...` needed a toolbox holding `go`, `git` and a linker;
 
+- **a verifier run earns a durable receipt before it earns an outcome.** Every
+  candidate check writes one typed `ply.verifier/v1` record through Ask,
+  followed by Ask's prefix seal. It binds the normalized candidate, exact
+  verifier and interpreter, status, output, and optional admitted-contract
+  digest. Rejection, acceptance, and verifier breakage all count. Receipt
+  failure is infrastructure failure; never print successful completion first
+  and promise to record it later;
+
 - **a turn is one action or one report; completion is still a check.** Consume
   the first complete, nonempty shell block as the turn's one action, return its
   result, and explicitly defer every later block and trailing claim. This must

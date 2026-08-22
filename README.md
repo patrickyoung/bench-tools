@@ -235,7 +235,8 @@ and supplies feedback, and any other exit status, signal, or timeout means the
 verifier itself is broken and stops Ply with exit 1. A file or code check can
 ignore stdin; a question check can inspect the answer. If a wrapped program
 uses other statuses for an ordinary negative result, normalize those to 1 in
-the check command.
+the check command. Interpreter startup failure or verifier output beyond
+`-cap` is also broken; executable evidence is never silently truncated.
 
 The check is **yours**, not the model's, so it runs with your `$PATH` — with
 the toolbox merely first on it. Scoping it the way the model is scoped would
@@ -354,21 +355,24 @@ ok: 20260801-142233-a3f9c1e0.jsonl replays exactly (24 events)
 
 One log format, one replay invariant, no second pipeline to drift.
 
-The verdict goes in it too, as an `ask note` — stamped, not folded, so it
-records how the run ended without changing the conversation:
+Every verifier run goes in it too, as a typed `ply.verifier/v1` Ask note
+followed by a prefix seal. The record is not folded, so it does not change
+the conversation; it binds the candidate, verifier, interpreter, result,
+captured output, and optional intent-contract digest:
 
 ```
-$ jq -r 'select(.type=="note") | "[" + .data.source + "] " + .data.text' run.jsonl
-[ply] the check passed:
-
-$ go test ./... 2>&1
-ok  	x	0.253s
+$ jq 'select(.type=="note" and .data.kind=="ply.verifier/v1") | .data.body' run.jsonl
+{"phase":"candidate","outcome":"accepted","exit_code":0,...}
 ```
 
-That line is worth more than it looks. Without it a session holds every
-command that ran and nothing about whether the work was *done* — a run that
-passed and a run that gave up are the same shape on disk. It is the only
-thing in the file that a program decided, and it is what lets
+Without that receipt a session holds every command that ran and nothing
+machine-checkable about whether the work was *done*. Rejections, acceptance,
+and broken verifiers are all recorded. `ask replay -check` verifies event
+sequence and seals, so changes, gaps, reordering, or an unsealed record within
+a retained prefix fail. A prefix seal is not an external proof against
+truncating the file to an earlier valid prefix. It does not claim the verifier
+was wise; it proves the retained record of what ran and what that program
+decided. This is what lets
 [`hone`][hone] learn from the run without guessing. A run with no `-check`
 writes none: done is a program's opinion, and with no program there is no
 opinion to record.

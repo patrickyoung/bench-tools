@@ -173,26 +173,21 @@ proves it.
 .B ply
 keeps no log of its own.
 .PP
-When
+Every
 .B \-check
-reaches a terminal answer, the verdict is recorded there as an
-.B ask note
-\(em stamped
-.BR ply ,
-and not folded, so it says how the run ended without changing the
-conversation. Without it a session holds every command that ran and nothing
-about whether the work was done, and a run that passed and a run that gave
-up are the same shape on disk. It is the only thing in the file that a
-program decided, and it is what
-.BR hone (1)
-learns from.
-.PP
-It is written at exactly the two points the check decides \(em passing, or
-out of cycles \(em and nowhere else: a failing check the loop carries on
-from is already in the conversation as the rejection the model was handed.
+execution after a model report is recorded as a typed
+.B ply.verifier/v1
+note followed by an Ask prefix seal. The receipt binds the exact normalized
+candidate, verifier command and interpreter, outcome, exit status, captured
+output, timeout, and optional intent contract digest. Rejections, acceptance,
+and broken verifiers are all records; a rejection is also folded into the
+conversation as feedback for the next turn. Ask replay verifies sequence and
+seal integrity, so changes, sequence gaps, reordering, or an unsealed record
+inside a retained prefix fail. A prefix seal is not an external proof that the
+file was not truncated after an earlier valid prefix.
 A run with no
 .B \-check
-records no verdict at all, because done is a program's opinion and there was
+records no verifier receipt, because done is a program's opinion and there was
 no program to have one.
 .PP
 What
@@ -289,7 +284,10 @@ arguments; use a wrapper program when fixed interpreter options are required.
 .TP
 .BI \-check " cmd"
 Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any
-other status is a broken verifier.
+other status is a broken verifier. Interpreter startup failure and output
+beyond
+.B \-cap
+are broken as well; verifier evidence is never silently truncated.
 .TP
 .B \-B
 Work the goal even if the check already passes, as
@@ -373,6 +371,11 @@ followed by a newline. It is written before the first model turn and replaced
 after every successful compaction, so a supervising process can follow the
 run without parsing the human typescript. A requested control file that
 cannot be maintained is an error. It is a pointer, not a second log.
+.TP
+.BI \-contract-id " digest"
+Bind every verifier receipt to an admitted intent contract digest. This is
+normally supplied by an orchestrator such as Bench; Ply records it literally
+and does not interpret or amend the contract.
 .TP
 .B \-q
 No typescript on standard error.

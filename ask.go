@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -102,21 +103,8 @@ func (m Model) Compact(ctx context.Context) (string, error) {
 	return path, nil
 }
 
-// Note records the check's verdict in the conversation, which is where ply
-// has always said everything worth recording goes. It did not go there: the
-// verdict lived on stderr and in an exit status, so a session held every
-// command that ran and nothing about whether the work was done, and a run
-// that passed and a run that gave up were the same shape on disk.
-//
-// It is a note rather than a message because of who it is for. A failing
-// check becomes a user message — the model has to act on it, and does. A
-// passing check is addressed to nobody, because the run is over; it is a
-// record for whoever reads the session later, which includes hone(1),
-// which refuses to learn from a run that will not say how it ended.
-//
-// Best effort, and deliberately so: a run that did the work and then could
-// not write a line about it did the work. The failure is worth a word on
-// stderr and nothing more.
+// Note records human-readable composition metadata such as loaded skill
+// names. Executable evidence uses Record below and is not best effort.
 func (m Model) Note(ctx context.Context, source, text string) error {
 	cmd := exec.CommandContext(ctx, m.Bin, "note", "-q", "-s", source, "-f", m.Session)
 	cmd.Stdin = strings.NewReader(text)
@@ -124,6 +112,25 @@ func (m Model) Note(ctx context.Context, source, text string) error {
 	cmd.Stderr = &errb
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s note: %s", m.Bin, firstLine(errb.String()))
+	}
+	return nil
+}
+
+// Record appends a typed JSON record and requires Ask to durably seal it.
+// Unlike a prose note, this is part of Ply's executable evidence boundary:
+// success is not reported until Ask confirms the record and its prefix seal.
+func (m Model) Record(ctx context.Context, source, kind string, body any) error {
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal %s record: %w", kind, err)
+	}
+	cmd := exec.CommandContext(ctx, m.Bin, "note", "-q", "-s", source, "-f", m.Session,
+		"-k", kind, "-json", "-", "-seal")
+	cmd.Stdin = bytes.NewReader(raw)
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%s sealed note: %s", m.Bin, firstLine(errb.String()))
 	}
 	return nil
 }
