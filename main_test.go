@@ -824,6 +824,18 @@ func TestSystemPromptTravelsInTheEnvironment(t *testing.T) {
 	}
 }
 
+func TestReasoningEffortPassesLiterallyToAsk(t *testing.T) {
+	work, _, askdir := sandbox(t, "done")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-effort", "xhigh", "goal")
+	if code != 0 {
+		t.Fatalf("exit = %d: %s", code, stderr)
+	}
+	argv := read(t, filepath.Join(askdir, "argv.log"))
+	if !strings.Contains(argv, "-effort xhigh") {
+		t.Fatalf("ask argv lost effort: %q", argv)
+	}
+}
+
 // TestStdinIsTheGoalOrRidesWithIt, per ask and mu both.
 func TestGoalComesFromArgvOrStdin(t *testing.T) {
 	work, _, askdir := sandbox(t, "done")
@@ -881,7 +893,7 @@ func TestEveryFlagAndVerbIsDocumented(t *testing.T) {
 			}
 		}
 	}
-	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
+	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_EFFORT", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
 		if !strings.Contains(help, env) {
 			t.Errorf("%s is not in ply help", env)
 		}

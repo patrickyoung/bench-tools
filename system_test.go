@@ -118,9 +118,9 @@ func TestSubagentCommandPreservesTheResolvedToolGrant(t *testing.T) {
 	}
 }
 
-func TestRunnerExportsAnExplicitModelForNestedPly(t *testing.T) {
+func TestRunnerExportsExplicitModelAndEffortForNestedPly(t *testing.T) {
 	o := newOpts("ply")
-	if err := o.fs.Parse([]string{"-m", "openai/test-model"}); err != nil {
+	if err := o.fs.Parse([]string{"-m", "openai/test-model", "-effort", "xhigh"}); err != nil {
 		t.Fatal(err)
 	}
 	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/zsh")
@@ -129,6 +129,9 @@ func TestRunnerExportsAnExplicitModelForNestedPly(t *testing.T) {
 	}
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_SHELL=/bin/zsh") {
 		t.Fatalf("runner did not export its interpreter: %q", got)
+	}
+	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_EFFORT=xhigh") {
+		t.Fatalf("runner did not export its reasoning effort: %q", got)
 	}
 
 	o = newOpts("ply")

@@ -32,6 +32,7 @@ type Model struct {
 	Bin     string // the ask binary
 	Session string // -f: a thread of ply's own, never the caller's current one
 	Spec    string // -m, empty to let ask decide
+	Effort  string // -effort, empty to let ask and the provider decide
 	System  string // -S, sent every turn so the log says what shaped it
 }
 
@@ -42,6 +43,9 @@ func (m Model) Turn(ctx context.Context, text string) (string, error) {
 	args := []string{"-q", "-f", m.Session}
 	if m.Spec != "" {
 		args = append(args, "-m", m.Spec)
+	}
+	if m.Effort != "" {
+		args = append(args, "-effort", m.Effort)
 	}
 	cmd := exec.CommandContext(ctx, m.Bin, args...)
 	cmd.Stdin = strings.NewReader(text)

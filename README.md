@@ -134,6 +134,10 @@ interpreters. If an interpreter needs fixed options, put them in a wrapper
 program and give that one program to `-shell`; Ply does not parse a second
 command line inside the flag.
 
+Model selection still belongs to Ask. Ply passes `-m` and `-effort` through
+literally; `$PLY_EFFORT` supplies the latter to nested Ply workers as well.
+Ask decides which effort names a provider supports.
+
 ### "But does it do MCP?"
 
 No, and it does not need to. An MCP server is a tool cabinet and a bridge

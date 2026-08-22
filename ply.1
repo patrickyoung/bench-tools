@@ -336,6 +336,13 @@ Provider and model, passed to
 Default is ask's own
 .BR $ASK_MODEL .
 .TP
+.BI \-effort " level"
+Reasoning effort, passed literally to
+.BR ask (1).
+The default is unset; ask and its provider decide. Set
+.B PLY_EFFORT
+to give nested Ply workers the same value.
+.TP
 .BI \-S " text"
 System prompt, replacing the default. The protocol lives in the default, so
 .B ply system
@@ -375,6 +382,12 @@ Default command interpreter, as
 .BR \-shell .
 Ply exports the resolved absolute path to every command, so another Ply
 started as a program inherits the same interpreter.
+.TP
+.B PLY_EFFORT
+Default reasoning effort, as
+.BR \-effort .
+Ply passes the value literally to Ask and exports it to commands so nested
+Ply workers inherit the same policy.
 .TP
 .B PLY_DIR
 Where sessions live. Default
@@ -416,6 +429,7 @@ Models, keys and gateways belong to
 .B ply
 passes it
 .BR \-m ,
+.BR \-effort ,
 .BR \-f ,
 .B \-q
 and the system prompt in

@@ -59,6 +59,7 @@ flags:
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
+  -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
   -s name       brief skill to append; repeat for more; -s - picks one
@@ -66,11 +67,12 @@ flags:
   -session-out file  atomically write the current session path here
   -q            no typescript on stderr
 
-env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_DIR
+env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
      (the brief binary) · NO_COLOR
-     Models and keys belong to ask; ply passes it -m, -S, -f and -q and
-     nothing else. Commands run with $PLY naming this binary and $PLY_DEPTH
+     Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
+     -q and nothing else. Commands run with $PLY naming this binary and
+     $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error · 2 not done — check still failing, a bound tripped,

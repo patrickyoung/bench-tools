@@ -69,6 +69,7 @@ type opts struct {
 	outcap     *int
 	dir        *string
 	spec       *string
+	effort     *string
 	sys        *string
 	skills     list
 	file       *string
@@ -94,6 +95,7 @@ func newOpts(name string) *opts {
 		outcap:     fs.Int("cap", 16<<10, "output kept per command, head and tail"),
 		dir:        fs.String("C", "", "run commands here"),
 		spec:       fs.String("m", "", "provider/model, passed to ask"),
+		effort:     fs.String("effort", os.Getenv("PLY_EFFORT"), "reasoning effort, passed to ask"),
 		sys:        fs.String("S", "", "system prompt, replacing the default"),
 		file:       fs.String("f", "", "session log to write"),
 		sessionOut: fs.String("session-out", "", "write the current session path to this file"),
@@ -131,6 +133,9 @@ func (o *opts) runner(b *Box, self string, depth int, shell string) Runner {
 	// back to a different model when the parent selected one with -m.
 	if model := strings.TrimSpace(*o.spec); model != "" {
 		r.Env = append(r.Env, "ASK_MODEL="+model)
+	}
+	if effort := strings.TrimSpace(*o.effort); effort != "" {
+		r.Env = append(r.Env, "PLY_EFFORT="+effort)
 	}
 	return r
 }
@@ -263,7 +268,7 @@ func work(args []string) int {
 			"     outside the tree keeps the record out of the work")
 	}
 	loop := &Loop{
-		Model:    Model{Bin: askBin, Session: session, Spec: *o.spec, System: system},
+		Model:    Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
 		Runner:   runner,
 		Checker:  checker,
 		Check:    *o.check,

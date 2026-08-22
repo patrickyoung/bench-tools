@@ -99,6 +99,11 @@ When changing `ply`:
   system prompt travels in `ASK_SYSTEM`, not argv, because argv is
   world-readable in `ps` and a skill can be private;
 
+- **model policy passes through; it is not reimplemented.** `-m` and
+  `-effort` are literal Ask arguments. Ply validates neither provider names nor
+  effort levels, and exports explicit values to nested Ply processes so a
+  delegated run does not silently change its model policy;
+
 - run `go test ./...` — and `go test -race ./...` when touching the runner or
   the loop — before reporting success;
 
