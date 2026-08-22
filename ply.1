@@ -43,8 +43,11 @@ go test ./... 2>&1 | tail \-20
 .fi
 .RE
 .PP
-The block is a shell script, so pipes, redirection, loops and here\-documents
-all work. Its output comes back as the next message, laid out the way a
+The block runs under
+.BR /bin/sh ,
+so use POSIX shell syntax or explicitly invoke another interpreter. Pipes,
+redirection, loops and here\-documents all work. Its output comes back as the
+next message, laid out the way a
 terminal would have shown it: the command echoed with
 .B $
 and

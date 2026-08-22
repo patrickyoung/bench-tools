@@ -239,8 +239,9 @@ go test ./... 2>&1 | tail -20
 
 Every fenced shell block it writes is executed — there is no other way to
 act, and no way to write shell that is not run. (To quote a command without
-running it, indent it. That is the whole escape hatch.) What comes back is
-what a terminal would have shown:
+running it, indent it. That is the whole escape hatch.) Blocks run under
+`/bin/sh`; use POSIX shell syntax or explicitly invoke another interpreter.
+What comes back is what a terminal would have shown:
 
 ```
 $ go test ./... 2>&1 | tail -20
@@ -251,6 +252,18 @@ exit 1
 ```
 
 A reply with no block ends the run, and that reply is the answer.
+
+The default prompt reads a goal by its outcome. An answer, review or diagnosis
+means inspecting relevant evidence and reporting it without unrequested
+changes. A requested artifact or system change means using programs to make
+the effect real, then inspecting the resulting state. Text in the final reply
+is only a report; it is not a substitute for writing the file or doing the
+work.
+
+That is guidance for the loop, not a second verdict. Ply does not mistake
+"some command ran" for completion: without `-check`, exit 0 still means only
+that the model stopped. When completion has an executable meaning, give it to
+`-check`.
 
 Two things fall out of choosing text over a tool-use API. It works with
 **any model `ask` can reach**, including ones whose tool support is an

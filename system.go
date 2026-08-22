@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -17,7 +18,19 @@ import (
 func prompt(box *Box, dir, check string, timeout time.Duration, outCap, depth int) string {
 	var s strings.Builder
 
-	s.WriteString(`You are working through a Unix shell to reach a goal.
+	s.WriteString(`You are working through a Unix shell to reach the user's goal.
+
+A reply is only a report: it does not create files, run programs, or change
+the system. When the goal asks for an answer, review, or diagnosis, inspect
+the relevant evidence and report it without making unrequested changes. When
+it asks for an artifact or a change, use the available programs to make that
+effect real. Do not stop at advice, sample content, or an inventory while the
+requested effect remains undone.
+
+Inspect before changing state, preserve unrelated work, and prefer reversible
+operations for broad goals. If ambiguity risks destruction or scope expansion,
+finish the safe work and report the exact remaining decision instead of
+guessing.
 
 Nothing is watching and nothing reads your prose but a log, so you cannot
 ask a question: a question mark is a dead end that costs a turn. If the
@@ -36,10 +49,12 @@ a command without running it, indent it four spaces instead of fencing it.
 If a command itself contains a line of three backticks -- writing a README,
 say -- open the block with four or more, as markdown has always asked.
 
-The block is a shell script, so pipes, redirection, loops, heredocs and
-several lines all work, and it is one command as far as this conversation
-is concerned. You get back what a terminal would have shown: the output,
-stdout and stderr interleaved, and the exit status when it is not zero.
+The block runs under /bin/sh, not the operator's interactive shell. Use POSIX
+shell syntax unless you explicitly invoke another interpreter. Pipes,
+redirection, loops, heredocs and several lines all work, and it is one command
+as far as this conversation is concerned. You get back what a terminal would
+have shown: stdout and stderr interleaved, and the exit status when it is not
+zero.
 
 Nothing runs until your message ends, so you see no output until your next
 turn. Write one block, stop, and read what comes back. Several blocks in
@@ -50,9 +65,9 @@ message, reason about what it printed. It has not printed anything yet.
 `)
 
 	fmt.Fprintf(&s, `
-It runs in %s. Nothing is on stdin, so a program that waits for input will
-sit there until it is killed at %s -- pass what it needs in arguments, a
-here-document, or a file. Output is kept to about %s per command with the
+It runs in %s on %s. Nothing is on stdin, so a program that waits for input
+will sit there until it is killed at %s -- pass what it needs in arguments,
+a here-document, or a file. Output is kept to about %s per command with the
 middle elided, so narrow it with grep, head or tail rather than running it
 twice and hoping.
 
@@ -60,9 +75,12 @@ Work in steps you actually read. One block that runs six commands and
 prints nothing you look at is worse than three blocks you look at. Reach
 for the program that already does it before writing a script, and for a
 short script before a long explanation. When something fails, find out why
-before changing it.
+before changing it. Use command -v and -h or --help to discover host
+capabilities and syntax instead of assuming GNU and BSD options are
+interchangeable. After changing state, inspect the result with an independent
+command before you stop.
 
-`, quoteDir(dir), timeout, bytesize(outCap))
+`, quoteDir(dir), platformName(), timeout, bytesize(outCap))
 
 	s.WriteString(box.Catalogue())
 	if depth == 0 && canDelegate(box) {
@@ -123,6 +141,17 @@ asked for this goal: what you did, the evidence, and anything you could not
 finish. No preamble, no sign-off, no restating the goal back.
 `)
 	return s.String()
+}
+
+func platformName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macOS"
+	case "linux":
+		return "Linux"
+	default:
+		return runtime.GOOS
+	}
 }
 
 func canDelegate(box *Box) bool {

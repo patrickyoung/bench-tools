@@ -40,6 +40,13 @@ When changing `ply`:
   toolbox exists to aim the model, and a check scoped to it would mean `go
   test ./...` needed a toolbox holding `go`, `git` and a linker;
 
+- **action is a prompt contract; completion is still a check.** The default
+  prompt distinguishes inspecting and reporting from producing a requested
+  effect, and says plainly that reply text does not change the system. Keep
+  that behavior in the public `ply system` value. Do not add loop state that
+  treats running any command as proof of progress or completion; `pwd` is an
+  interaction, not a verdict;
+
 - **never truncate silently.** A command's output is capped, and the
   elision is announced *in the text the model reads*, with both ends kept.
   Too much on stdin spools to a file the model is told about; past the hard

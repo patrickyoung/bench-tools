@@ -1,10 +1,47 @@
 package main
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/work", "", time.Minute, 1024, 0)), " ")
+	for _, want := range []string{
+		"A reply is only a report",
+		"inspect the relevant evidence",
+		"without making unrequested changes",
+		"use the available programs to make that effect real",
+		"while the requested effect remains undone",
+		"preserve unrelated work",
+		"prefer reversible operations",
+		"The block runs under /bin/sh",
+		"Use POSIX shell syntax",
+		"inspect the result with an independent command",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("prompt missing %q", want)
+		}
+	}
+}
+
+func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/work", "", time.Minute, 1024, 0)), " ")
+	for _, want := range []string{
+		"It runs in /work on " + platformName(),
+		"Use command -v",
+		"instead of assuming GNU and BSD options are interchangeable",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("prompt missing %q", want)
+		}
+	}
+	if got := platformName(); got == "" || (runtime.GOOS == "darwin" && got != "macOS") || (runtime.GOOS == "linux" && got != "Linux") {
+		t.Errorf("platformName()=%q for GOOS=%q", got, runtime.GOOS)
+	}
+}
 
 func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) {
 	text := prompt(&Box{Shell: true}, "/work", "", 2*time.Minute, 16<<10, 0)
