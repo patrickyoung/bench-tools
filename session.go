@@ -72,6 +72,32 @@ type session struct {
 	Notes  []noteData
 }
 
+// These are Ply's human-readable boundaries around the failed pre-check it
+// carries in the first model turn. They are a wire format between the two
+// programs, like the verdict text in recover.go: the terminal transcript is
+// still ordinary text, and no private event type or second log is involved.
+const (
+	initialCheckStart = "[ply: initial check did not pass]"
+	initialCheckEnd   = "[ply: end initial check]"
+)
+
+func splitInitialCheck(body string) (goal, script string) {
+	start := "\n\n" + initialCheckStart + "\n\n"
+	// Ply appends this section after arbitrary goal text. A goal may itself
+	// quote a complete example of the wire format, so the last start is the
+	// only one that can belong to Ply's appended evidence.
+	i := strings.LastIndex(body, start)
+	if i < 0 {
+		return body, ""
+	}
+	rest := body[i+len(start):]
+	j := strings.LastIndex(rest, initialCheckEnd)
+	if j < 0 {
+		return body, "" // an incomplete marker is prose, not evidence
+	}
+	return body[:i], rest[:j]
+}
+
 // text pulls the readable part of a message. Attachments are named, not
 // carried: a lesson about a photograph is not a photograph.
 func text(bs []block, fallback string) string {
@@ -155,9 +181,16 @@ func (s *session) add(e event, first *bool) error {
 		}
 		body := text(u.Blocks, u.Text)
 		if *first {
-			// The first message is the goal. Everything after it is what
-			// commands printed, which is the run.
-			s.Goal, *first = body, false
+			// The first message is the goal, except that Ply may have put
+			// its failed pre-check beside it so the model sees the existing
+			// diagnostic before doing work. Keep that terminal transcript in
+			// the run: a later passing verdict makes it the first stumble.
+			var initial string
+			s.Goal, initial = splitInitialCheck(body)
+			if initial != "" {
+				s.Script = append(s.Script, initial)
+			}
+			*first = false
 			return nil
 		}
 		s.Script = append(s.Script, body)
