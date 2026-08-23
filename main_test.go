@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"os"
 	"os/exec"
@@ -728,6 +729,107 @@ func TestContextFullIsExitTwo(t *testing.T) {
 	t.Setenv("FAKE_ASK_EXIT", "2")
 	if code, _, _ := runPly(t, "-sh", "-C", work, "goal"); code != 2 {
 		t.Errorf("exit = %d, want 2 for a full context window", code)
+	}
+}
+
+func TestSteeringFileReachesTheNextOrdinaryAskTurn(t *testing.T) {
+	work, _, askdir := sandbox(t, "finished")
+	steer := filepath.Join(t.TempDir(), "steer")
+	if err := os.WriteFile(steer, []byte("focus on the parser\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, _ := runPly(t, "-sh", "-C", work, "-steer", steer, "repair it")
+	if code != 0 || stdout != "finished\n" {
+		t.Fatalf("code=%d stdout=%q", code, stdout)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	for _, want := range []string{"OPERATOR STEERING", "focus on the parser", "does not amend", "repair it"} {
+		if !strings.Contains(sent, want) {
+			t.Errorf("Ask turn omitted %q:\n%s", want, sent)
+		}
+	}
+}
+
+func TestSteeringAppendedDuringWorkWaitsForTheNextTurn(t *testing.T) {
+	control := t.TempDir()
+	marker := filepath.Join(control, "command-running")
+	ack := filepath.Join(control, "steering-appended")
+	command := "```ply\ntouch " + shellQuote(marker) + "\nwhile [ ! -f " + shellQuote(ack) + " ]; do sleep 0.01; done\n```"
+	work, _, askdir := sandbox(t, command, "finished")
+	steer := filepath.Join(control, "steer")
+	if err := os.WriteFile(steer, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			if _, err := os.Stat(marker); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				done <- errors.New("command did not start")
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		f, err := os.OpenFile(steer, os.O_WRONLY|os.O_APPEND, 0)
+		if err == nil {
+			_, err = f.WriteString("inspect the parser next\n")
+			f.Close()
+		}
+		if err == nil {
+			err = os.WriteFile(ack, nil, 0o600)
+		}
+		done <- err
+	}()
+	code, stdout, _ := runPly(t, "-sh", "-C", work, "-steer", steer, "repair it")
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 || stdout != "finished\n" {
+		t.Fatalf("code=%d stdout=%q", code, stdout)
+	}
+	sent := read(t, filepath.Join(askdir, "stdin.log"))
+	goalAt, steerAt := strings.Index(sent, "repair it"), strings.Index(sent, "inspect the parser next")
+	if goalAt < 0 || steerAt < 0 || steerAt <= goalAt || strings.Count(sent, "inspect the parser next") != 1 {
+		t.Fatalf("steering was not confined to the later turn:\n%s", sent)
+	}
+}
+
+func TestBadSteeringFailsBeforeSpoolOrSessionControlArtifacts(t *testing.T) {
+	work, _, _ := sandbox(t, "unused")
+	dir := t.TempDir()
+	input := filepath.Join(dir, "input")
+	if err := os.WriteFile(input, []byte(strings.Repeat("evidence", 10<<10)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	in, err := os.Open(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldStdin := os.Stdin
+	os.Stdin = in
+	defer func() { os.Stdin = oldStdin; in.Close() }()
+	session := filepath.Join(dir, "session.jsonl")
+	sessionOut := filepath.Join(dir, "session.out")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-f", session, "-session-out", sessionOut, "-steer", filepath.Join(dir, "missing"), "goal")
+	if code != 1 || !strings.Contains(stderr, "open steering file") {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
+	}
+	for _, path := range []string{strings.TrimSuffix(session, ".jsonl") + ".stdin", sessionOut, session} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("failed invocation left %s: %v", path, err)
+		}
+	}
+}
+
+func TestPassingPrecheckDoesNotHideInvalidSteering(t *testing.T) {
+	work, _, _ := sandbox(t, "unused")
+	missing := filepath.Join(t.TempDir(), "missing")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-check", "true", "-steer", missing, "goal")
+	if code != 1 || !strings.Contains(stderr, "open steering file") || strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
 }
 

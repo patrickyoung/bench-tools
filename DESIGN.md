@@ -173,3 +173,8 @@ the boundary). Parallel tool execution (a shell already has `&`). A plugin
 API. A second way to name a tool besides putting it on `$PATH`. Retry of the
 check itself with a different model. Anything that makes the sentence "ask,
 run, check, repeat" longer.
+
+`-steer FILE` is the interactive seam: a controller appends ordinary UTF-8
+lines, and Ply reads them only before an Ask turn. The file is transport, not
+a second log or an execution protocol; Ask records the applied guidance in the
+same conversation as the tool results.

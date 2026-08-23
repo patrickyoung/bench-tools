@@ -93,3 +93,7 @@ These exist to stop accidents, not attackers:
 - An unterminated fenced block runs nothing. After two corrective replies,
   another malformed fence stops the run at exit 2; a truncated command is
   never an unchecked success.
+- `-steer` is cooperative guidance, not an authority boundary. Ply rejects
+  malformed, truncated, or oversized steering input, but a process able to
+  write that file can influence future model turns. It cannot directly replace
+  Ply's fixed verifier or toolbox arguments.

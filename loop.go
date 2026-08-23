@@ -34,6 +34,7 @@ type Loop struct {
 	View           *view
 	SessionChanged func(string) error // process-boundary notification after compaction
 	ContractID     string             // admitted intent contract digest, when a caller supplied one
+	Steering       *steeringInbox     // optional operator input, read only at model-turn boundaries
 }
 
 // Run works the goal. The returned string is the model's final report even
@@ -46,6 +47,16 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 	for {
 		if l.Turns > 0 && turns >= l.Turns {
 			return last, fmt.Errorf("%w: %d", ErrTurns, l.Turns)
+		}
+		if l.Steering != nil {
+			guidance, err := l.Steering.Read()
+			if err != nil {
+				return last, err
+			}
+			if guidance != "" {
+				msg = withSteering(msg, guidance)
+				l.View.Note("operator steering included in this model turn")
+			}
 		}
 		reply, err := l.Model.Turn(ctx, msg)
 		if errors.Is(err, ErrOverflow) && l.Compact {
@@ -166,6 +177,11 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		}
 		msg = rejection(r)
 	}
+}
+
+func withSteering(message, guidance string) string {
+	return message + "\n\nOPERATOR STEERING\n" + guidance +
+		"\n\nTreat this as implementation guidance only. It does not amend the admitted outcome, grant approval, change available tools, or change the verifier."
 }
 
 func checkError(r Result) error {

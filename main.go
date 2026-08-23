@@ -79,6 +79,7 @@ type opts struct {
 	compact    *bool
 	compacts   *int
 	contractID *string
+	steer      *string
 }
 
 func newOpts(name string) *opts {
@@ -106,6 +107,7 @@ func newOpts(name string) *opts {
 		compact:    fs.Bool("compact", false, "carry on through a full context window"),
 		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
 		contractID: fs.String("contract-id", "", "intent contract digest recorded in verifier receipts"),
+		steer:      fs.String("steer", "", "append-only operator steering file read between model turns"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
@@ -193,6 +195,14 @@ func work(args []string) int {
 			return usage(errors.New("no goal"))
 		}
 		data = nil
+	}
+	var steering *steeringInbox
+	if strings.TrimSpace(*o.steer) != "" {
+		steering, err = openSteering(*o.steer)
+		if err != nil {
+			return fail(err)
+		}
+		defer steering.Close()
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -311,6 +321,7 @@ func work(args []string) int {
 		Turns:         *o.turns,
 		View:          v,
 		ContractID:    *o.contractID,
+		Steering:      steering,
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {

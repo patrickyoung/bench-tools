@@ -350,6 +350,13 @@ of being guessed at or mistaken for unchecked completion. With
 `-require-action`, the same bound applies to actionless final reports before
 the first command runs.
 
+An interactive controller can steer a running invocation without owning its
+loop. Pass `-steer FILE` and append newline-terminated UTF-8 guidance to that
+ordinary file. Ply reads complete lines only between model turns and sends
+them in the next Ask user message. Partial lines wait; malformed or oversized
+input stops the run instead of being truncated. Steering changes neither the
+tool grant nor the verifier.
+
 ## The log is somebody else's problem
 
 `ply` keeps no log. The conversation is an `ask` session: each consumed action

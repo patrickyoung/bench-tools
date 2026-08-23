@@ -325,6 +325,13 @@ Model turns before giving up. Default 50. Zero is explicitly unbounded.
 This is the invocation-wide liveness bound: it also stops a model that keeps
 writing commands and never stops for the check.
 .TP
+.BI \-steer " file"
+Read operator steering from a regular append-only UTF-8 line file immediately
+before each model turn. Only complete newline-terminated lines are consumed.
+Each line is limited to 8 KiB and each pending batch to 64 KiB. Steering is
+ordinary implementation guidance recorded in the next Ask user turn; it does
+not change tools, the verifier, or an admitted outcome contract.
+.TP
 .BI \-timeout " d"
 Per\-command timeout, as a Go duration such as
 .BR 30s .

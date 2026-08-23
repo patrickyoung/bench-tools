@@ -60,6 +60,7 @@ flags:
                 a handoff note and the run continues in a fresh session
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
   -turns n      model turns before giving up (default 50, 0 = unbounded)
+  -steer file   read appended UTF-8 lines between model turns
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
