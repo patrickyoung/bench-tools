@@ -81,6 +81,7 @@ type opts struct {
 	contractID *string
 	steer      *string
 	mayJob     *string
+	cage       *bool
 }
 
 func newOpts(name string) *opts {
@@ -110,6 +111,7 @@ func newOpts(name string) *opts {
 		contractID: fs.String("contract-id", os.Getenv("PLY_CONTRACT_ID"), "intent contract digest recorded in receipts"),
 		steer:      fs.String("steer", "", "append-only operator steering file read between model turns"),
 		mayJob:     fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
+		cage:       fs.Bool("cage", false, "confine every approved model action with Cage"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
@@ -161,6 +163,7 @@ func (o *opts) runner(b *Box, self string, depth int, shell string, approval *ma
 // check belongs to whoever typed it.
 func (o *opts) checker(r Runner, b *Box) Runner {
 	r.Path = b.CheckPath()
+	r.Cage = nil
 	return r
 }
 
@@ -190,6 +193,10 @@ func work(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	self, err := os.Executable()
+	if err != nil {
+		self = "ply"
+	}
 	if *o.dir != "" {
 		if fi, err := os.Stat(*o.dir); err != nil || !fi.IsDir() {
 			return fail(fmt.Errorf("-C %s: not a directory", *o.dir))
@@ -208,6 +215,30 @@ func work(args []string) int {
 		}
 		approval, err = openMayGate(mayBin, *o.mayJob)
 		if err != nil {
+			return fail(err)
+		}
+	}
+	var cageBin string
+	var confinement *cageLauncher
+	if *o.cage {
+		cageBin, err = tool("CAGE", "cage", "-cage needs Cage: go install github.com/patrickyoung/cage@latest")
+		if err != nil {
+			return fail(err)
+		}
+		if _, err := executableDigest("Cage", cageBin); err != nil {
+			return fail(err)
+		}
+		probe := *o.file
+		if probe == "" {
+			dir, dirErr := defaultSessionDir()
+			if dirErr != nil {
+				return fail(dirErr)
+			}
+			probe = filepath.Join(dir, "session.jsonl")
+		}
+		probeTemp := strings.TrimSuffix(probe, ".jsonl") + ".cage-tmp"
+		if err := validateCageControlPaths(*o.dir, probeTemp, probe, *o.sessionOut, *o.steer,
+			askBin, approval.Bin, cageBin, shell, self); err != nil {
 			return fail(err)
 		}
 	}
@@ -239,6 +270,9 @@ func work(args []string) int {
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
 	system := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil)
+	if *o.cage {
+		system += confinementPrompt()
+	}
 	o.fs.Visit(func(f *flag.Flag) {
 		if f.Name == "S" {
 			system = *o.sys
@@ -264,10 +298,6 @@ func work(args []string) int {
 		system = composeSystem(system, "", *o.requireAct)
 	}
 
-	self, err := os.Executable()
-	if err != nil {
-		self = "ply"
-	}
 	runner := o.runner(box, self, depth, shell, approval)
 	checker := o.checker(runner, box)
 
@@ -317,6 +347,19 @@ func work(args []string) int {
 			return fail(fmt.Errorf("session path: %w", err))
 		}
 	}
+	if *o.cage {
+		cageTemp := strings.TrimSuffix(session, ".jsonl") + ".cage-tmp"
+		if err := validateCageControlPaths(*o.dir, cageTemp, session, *o.sessionOut, *o.steer,
+			askBin, approval.Bin, cageBin, shell, self); err != nil {
+			return fail(err)
+		}
+		confinement, err = openCageLauncher(cageBin, *o.dir, cageTemp)
+		if err != nil {
+			return fail(err)
+		}
+		runner.Cage = confinement
+		runner.Env = append(runner.Env, "TMPDIR="+confinement.TempDir)
+	}
 	first, err := spool(goal, data, session)
 	if err != nil {
 		return fail(err)
@@ -328,7 +371,7 @@ func work(args []string) int {
 		return fail(err)
 	}
 
-	v.Note("%s · %s", session, describe(box, shell, *o.check, approval != nil))
+	v.Note("%s · %s", session, describe(box, shell, *o.check, approval != nil, confinement != nil))
 	if underTree(session, *o.dir) {
 		v.Note("the session is inside the work tree, so a grep or a find will\n" +
 			"     read it back into the conversation it is a record of; -f a path\n" +
@@ -357,7 +400,8 @@ func work(args []string) int {
 	}
 	answer, err := loop.Run(ctx, first)
 	if answer != "" && !v.Shown() && !errors.Is(err, ErrApprovalParked) &&
-		!errors.Is(err, ErrApprovalDeclined) && !errors.Is(err, ErrApprovalBoundary) {
+		!errors.Is(err, ErrApprovalDeclined) && !errors.Is(err, ErrApprovalBoundary) &&
+		!errors.Is(err, ErrConfinement) {
 		fmt.Println(strings.TrimRight(answer, "\n"))
 	}
 	switch {
@@ -372,6 +416,9 @@ func work(args []string) int {
 	case errors.Is(err, ErrApprovalDeclined):
 		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
 		return 3
+	case errors.Is(err, ErrConfinement):
+		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
+		return cageBoundaryExit
 	case errors.Is(err, ErrCycles), errors.Is(err, ErrTurns), errors.Is(err, ErrOverflow), errors.Is(err, ErrProtocol):
 		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
 		return 2
@@ -382,6 +429,12 @@ func work(args []string) int {
 
 func (o *opts) validate() error {
 	switch {
+	case *o.cage && strings.TrimSpace(*o.mayJob) == "":
+		return errors.New("-cage requires -may-job")
+	case *o.cage && strings.TrimSpace(*o.contractID) == "":
+		return errors.New("-cage requires -contract-id")
+	case *o.cage && *o.compact:
+		return errors.New("-cage does not support -compact; start a new explicit invocation instead")
 	case *o.cycles < 0:
 		return fmt.Errorf("-cycles %d: must be zero or greater", *o.cycles)
 	case *o.turns < 0:
@@ -466,6 +519,9 @@ func systemCmd(args []string) int {
 	}
 	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
 	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "")
+	if *o.cage {
+		out += confinementPrompt()
+	}
 	procedures := ""
 	if len(o.skills) > 0 {
 		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
@@ -594,13 +650,9 @@ func stdinData(quiet bool) ([]byte, error) {
 // session: ply keeps no log of its own, and `ask replay -check` on this
 // path proves the entire run.
 func mint() (string, error) {
-	dir := os.Getenv("PLY_DIR")
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("no home directory for sessions; set $PLY_DIR")
-		}
-		dir = filepath.Join(home, ".ply", "sessions")
+	dir, err := defaultSessionDir()
+	if err != nil {
+		return "", err
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -608,6 +660,18 @@ func mint() (string, error) {
 	var b [4]byte
 	rand.Read(b[:])
 	return filepath.Join(dir, time.Now().Format("20060102-150405")+"-"+hex.EncodeToString(b[:])+".jsonl"), nil
+}
+
+func defaultSessionDir() (string, error) {
+	dir := os.Getenv("PLY_DIR")
+	if dir != "" {
+		return dir, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("no home directory for sessions; set $PLY_DIR")
+	}
+	return filepath.Join(home, ".ply", "sessions"), nil
 }
 
 // writeSessionOut maintains the optional process-level pointer to the Ask
@@ -694,7 +758,7 @@ func underTree(session, dir string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-func describe(b *Box, shell, check string, approval bool) string {
+func describe(b *Box, shell, check string, approval, caged bool) string {
 	tools := "shell"
 	if b.Dir != "" {
 		tools = fmt.Sprintf("%d tools", len(b.Tools))
@@ -705,6 +769,9 @@ func describe(b *Box, shell, check string, approval bool) string {
 	tools += " · shell: " + shell
 	if approval {
 		tools += " · May approval: every action"
+	}
+	if caged {
+		tools += " · Cage: workspace + private temp, no network"
 	}
 	if check == "" {
 		return tools + " · no check"

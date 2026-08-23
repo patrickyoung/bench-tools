@@ -58,6 +58,45 @@ func TestApprovalEnvelopePreservesFractionalTimeoutExactly(t *testing.T) {
 	}
 }
 
+func TestCagedApprovalEnvelopeBindsExactLauncherPolicy(t *testing.T) {
+	workspace, err := canonicalWorkDir(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cageBin := filepath.Join(t.TempDir(), "cage")
+	if err := os.WriteFile(cageBin, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	launcher, err := openCageLauncher(cageBin, workspace, filepath.Join(t.TempDir(), "private"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := Runner{Dir: workspace, Path: "/tools", Shell: "/bin/sh",
+		Timeout: 501 * time.Nanosecond, Cap: 1024, Cage: launcher}
+	action := approvalActionFor("contract", "printf exact", runner)
+	if action.Version != 2 || action.Confinement == nil {
+		t.Fatalf("action=%#v", action)
+	}
+	wantArgv := []string{launcher.Bin, "-w", workspace, "--", "/bin/sh", "-c", "printf exact"}
+	if action.Confinement.Kind != "cage" || action.Confinement.CageSHA256 != launcher.BinSHA256 ||
+		action.Confinement.Workspace != workspace || action.Confinement.TempDir != launcher.TempDir ||
+		action.Confinement.Network || !reflect.DeepEqual(action.Confinement.Argv, wantArgv) {
+		t.Fatalf("confinement=%#v", action.Confinement)
+	}
+}
+
+func TestLegacyApprovalEnvelopeBytesStayVersionOne(t *testing.T) {
+	runner := Runner{Dir: "/work", Path: "/tools", Shell: "/bin/sh", Timeout: time.Second}
+	body, err := json.Marshal(approvalActionFor("contract", "true", runner))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"version":1,"contract_id":"contract","directory":"/work","shell":"/bin/sh","path":"/tools","timeout_ns":1000000000,"script":"true"}`
+	if string(body) != want {
+		t.Fatalf("legacy v1 bytes changed:\n%s\nwant:\n%s", body, want)
+	}
+}
+
 func TestApprovalEnvelopeBindsAnIntentionallyEmptyPATH(t *testing.T) {
 	runner := Runner{Dir: "/work", Path: "", Shell: "/bin/sh", Timeout: time.Second, Cap: 1024}
 	if err := validateApprovalText("PATH", runner.Path, true); err != nil {
@@ -89,6 +128,23 @@ func TestApprovalRejectsTextThatJSONWouldRewrite(t *testing.T) {
 		if _, err := gate.Request(context.Background(), "contract", script, runner); err == nil {
 			t.Fatalf("approval accepted non-exact script %q", script)
 		}
+	}
+}
+
+func TestCagedApprovalRejectsConfinementTextThatJSONWouldRewrite(t *testing.T) {
+	bin, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate, err := openMayGate(bin, "bench-cage-text")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := Runner{Dir: "/work", Path: "/bin", Shell: "/bin/sh", Timeout: time.Second,
+		Cage: &cageLauncher{Bin: "bad\xffcage", BinSHA256: "sha256:x", Workspace: "/work", TempDir: "/tmp/private"}}
+	if _, err := gate.Request(context.Background(), "contract", "true", runner); err == nil ||
+		!strings.Contains(err.Error(), "valid UTF-8") {
+		t.Fatalf("invalid Cage bytes reached JSON/May: %v", err)
 	}
 }
 

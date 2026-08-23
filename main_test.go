@@ -113,8 +113,11 @@ echo "$@" >> "$d/argv.log"
 cat >> "$d/stdin.log"
 if [ "${1-}" = note ]; then
   case " $* " in
-    *" ply.approval/v1 "*)
+    *" ply.approval/v1 "*|*" ply.approval/v2 "*)
       [ -n "${FAKE_ASK_APPROVAL_ASSERT_ABSENT-}" ] && [ -e "$FAKE_ASK_APPROVAL_ASSERT_ABSENT" ] && exit 97
+      ;;
+    *" ply.confinement/v1 "*)
+      [ -n "${FAKE_ASK_CONFINEMENT_NOTE_EXIT-}" ] && exit "$FAKE_ASK_CONFINEMENT_NOTE_EXIT"
       ;;
   esac
   exit ${FAKE_ASK_NOTE_EXIT:-0}
@@ -124,6 +127,26 @@ n=$(cat "$d/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/n"
 exit ${FAKE_ASK_EXIT:-0}
 `, 0o755)
 	return bin, dir
+}
+
+func fakeCage(t *testing.T, mode string) string {
+	t.Helper()
+	dir := t.TempDir()
+	log := filepath.Join(dir, "cage.argv")
+	bin := filepath.Join(dir, "cage")
+	write(t, bin, `#!/bin/sh
+printf '%s\n' "$@" >> `+shellQuote(log)+`
+if [ "`+mode+`" = setup-fail ]; then
+  echo 'fake Cage setup failed' >&2
+  exit 125
+fi
+while [ "$#" -gt 0 ] && [ "$1" != -- ]; do shift; done
+[ "$#" -gt 0 ] || exit 2
+shift
+exec "$@"
+`, 0o755)
+	t.Setenv("CAGE", bin)
+	return log
 }
 
 func fakeMay(t *testing.T, verdict string) string {
@@ -272,6 +295,349 @@ func TestMaySpentReceiptIsSealedBeforeExactActionRuns(t *testing.T) {
 	}
 }
 
+func TestCageWrapsOnlyTheApprovedModelAction(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\nprintf done > made\n```",
+		"Created the file.",
+	)
+	_ = fakeMay(t, "spent")
+	cageLog := fakeCage(t, "run")
+	marker := filepath.Join(work, "made")
+	t.Setenv("FAKE_ASK_APPROVAL_ASSERT_ABSENT", marker)
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage",
+		"-check", "test -f made", "make the file")
+	if code != 0 {
+		t.Fatalf("exit=%d\n%s", code, stderr)
+	}
+	if strings.TrimSpace(stdout) != "Created the file." {
+		t.Fatalf("stdout=%q", stdout)
+	}
+	if got := strings.TrimSpace(read(t, marker)); got != "done" {
+		t.Fatalf("caged action did not run: %q", got)
+	}
+	lines := strings.Split(strings.TrimSpace(read(t, cageLog)), "\n")
+	realWork, err := canonicalWorkDir(work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(lines) != 6 || lines[0] != "-w" || lines[1] != realWork || lines[2] != "--" ||
+		lines[4] != "-c" || lines[5] != "printf done > made" {
+		t.Fatalf("Cage argv=%q", lines)
+	}
+	if strings.Count(read(t, filepath.Join(askdir, "argv.log")), "note -q") < 1 {
+		t.Fatal("approval receipt was not recorded")
+	}
+	recorded := read(t, filepath.Join(askdir, "stdin.log"))
+	if !strings.Contains(read(t, filepath.Join(askdir, "argv.log")), approvalReceiptKindV2) ||
+		!strings.Contains(recorded, `"kind":"cage"`) ||
+		!strings.Contains(recorded, `"network":false`) {
+		t.Fatalf("caged approval receipt is incomplete:\n%s", recorded)
+	}
+	if strings.Count(read(t, cageLog), "-w\n") != 1 {
+		t.Fatalf("the verifier was unexpectedly caged:\n%s", read(t, cageLog))
+	}
+}
+
+func TestCageStatus125StopsBeforeModelOrCheckContinues(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch forbidden\n```",
+		"must not continue",
+	)
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "setup-fail")
+	checkLog := filepath.Join(t.TempDir(), "check-ran")
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage",
+		"-check", "touch "+shellQuote(checkLog)+"; false", "goal")
+	if code != cageBoundaryExit || stdout != "" || !strings.Contains(stderr, "confinement") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "forbidden")); !os.IsNotExist(err) {
+		t.Fatalf("action ran after Cage setup failure: %v", err)
+	}
+	if _, err := os.Stat(checkLog); !os.IsNotExist(err) {
+		t.Fatalf("check ran after Cage setup failure: %v", err)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%q, want one", got)
+	}
+}
+
+func TestCageChildStatus125PreservesEffectsAndSaysTheyMayExist(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\necho observed; touch effected; exit 125\n```",
+		"must not continue",
+	)
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != cageBoundaryExit || stdout != "" || !strings.Contains(stderr, "observed") ||
+		!strings.Contains(stderr, "may have run") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "effected")); err != nil {
+		t.Fatalf("child status 125 effect was lost from the test: %v", err)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%q, want one", got)
+	}
+	argvLog := read(t, filepath.Join(askdir, "argv.log"))
+	if strings.Index(argvLog, approvalReceiptKindV2) < 0 || strings.Index(argvLog, confinementReceiptKind) < 0 ||
+		strings.Index(argvLog, approvalReceiptKindV2) > strings.Index(argvLog, confinementReceiptKind) {
+		t.Fatalf("receipt order is not approval then confinement:\n%s", argvLog)
+	}
+	recorded := read(t, filepath.Join(askdir, "stdin.log"))
+	if !strings.Contains(recorded, `"may_have_run":true`) ||
+		!strings.Contains(recorded, `"exit_code":125`) ||
+		!strings.Contains(recorded, `"output":"b2JzZXJ2ZWQK"`) {
+		t.Fatalf("terminal confinement receipt lost evidence:\n%s", recorded)
+	}
+}
+
+func TestConfinementReceiptPreservesInvalidUTF8OutputExactly(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\nprintf '\\377'; exit 125\n```")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	code, stdout, _ := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != cageBoundaryExit || stdout != "" {
+		t.Fatalf("exit=%d stdout=%q", code, stdout)
+	}
+	recorded := read(t, filepath.Join(askdir, "stdin.log"))
+	if !strings.Contains(recorded, `"output":"/w=="`) ||
+		!strings.Contains(recorded, `"output_sha256":"`+digestText(string([]byte{0xff}))+`"`) ||
+		!strings.Contains(recorded, `"output_bytes":1`) {
+		t.Fatalf("invalid UTF-8 output was not exact base64 evidence:\n%s", recorded)
+	}
+}
+
+func TestConfinementReceiptFailureCannotBecomeExit125Evidence(t *testing.T) {
+	work, _, _ := sandbox(t, "```ply\ntouch effected; exit 125\n```")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	t.Setenv("FAKE_ASK_CONFINEMENT_NOTE_EXIT", "1")
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != cageBoundaryExit || stdout != "" || !strings.Contains(stderr, "record confinement receipt") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "effected")); err != nil {
+		t.Fatalf("test did not preserve the possible effect: %v", err)
+	}
+}
+
+func TestCageDigestDriftAfterActionPreservesObservedEffects(t *testing.T) {
+	work, _, askdir := sandbox(t, "")
+	_ = fakeMay(t, "spent")
+	cageLog := fakeCage(t, "run")
+	cageBin := filepath.Join(filepath.Dir(cageLog), "cage")
+	script := "touch effected; printf '# changed\\n' > " + shellQuote(cageBin)
+	write(t, filepath.Join(askdir, "reply.1"), "```ply\n"+script+"\n```", 0o644)
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != cageBoundaryExit || stdout != "" || !strings.Contains(stderr, "effects may exist") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "effected")); err != nil {
+		t.Fatalf("post-action drift hid a real effect: %v", err)
+	}
+}
+
+func TestCageRejectsControllerStateInsideWritableWorkspace(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	session := filepath.Join(work, "session.jsonl")
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-f", session,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("controller path failure called the model: %v", err)
+	}
+}
+
+func TestCageRejectsAskInsidePrivateWritableTemp(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	state := t.TempDir()
+	session := filepath.Join(state, "run.jsonl")
+	privateTemp := filepath.Join(state, "run.cage-tmp")
+	if err := os.Mkdir(privateTemp, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	askInTemp := filepath.Join(privateTemp, "ask")
+	body, err := os.ReadFile(os.Getenv("ASK"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, askInTemp, string(body), 0o755)
+	t.Setenv("ASK", askInTemp)
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-f", session,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "inside the writable private temporary directory") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe Ask path reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsControllerSymlinkLocatedInWorkspace(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	link := filepath.Join(work, "ask")
+	if err := os.Symlink(os.Getenv("ASK"), link); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ASK", link)
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "Ask executable") ||
+		!strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe Ask symlink reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsControllerPathThroughWorkspaceSymlinkComponent(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	safe := t.TempDir()
+	body, err := os.ReadFile(os.Getenv("ASK"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(safe, "ask"), string(body), 0o755)
+	if err := os.Symlink(safe, filepath.Join(work, "link")); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ASK", filepath.Join(work, "link", "ask"))
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "Ask executable") ||
+		!strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe Ask component symlink reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsSpoolSymlinkIntoWritableRoot(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	state := t.TempDir()
+	session := filepath.Join(state, "run.jsonl")
+	spool := filepath.Join(state, "run.stdin")
+	if err := os.Symlink(filepath.Join(work, "worker-input"), spool); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-f", session,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "piped input spool") ||
+		!strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe spool path reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsShellInsideWritableWorkspace(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	shell := filepath.Join(work, "shell")
+	write(t, shell, "#!/bin/sh\nexec /bin/sh \"$@\"\n", 0o755)
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-shell", shell,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "shell executable") ||
+		!strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe shell path reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsAskCredentialStateInWritableRoots(t *testing.T) {
+	for _, where := range []string{"workspace", "private-temp"} {
+		t.Run(where, func(t *testing.T) {
+			work, _, askdir := sandbox(t, "must not call model")
+			_ = fakeMay(t, "spent")
+			_ = fakeCage(t, "run")
+			state := t.TempDir()
+			session := filepath.Join(state, "run.jsonl")
+			root := work
+			if where == "private-temp" {
+				root = filepath.Join(state, "run.cage-tmp")
+				if err := os.Mkdir(root, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Setenv("ASK_AUTH_FILE", filepath.Join(root, "auth.json"))
+			code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-f", session,
+				"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+			if code != 1 || !strings.Contains(stderr, "Ask credential file") ||
+				!strings.Contains(stderr, "inside the writable") {
+				t.Fatalf("exit=%d stderr=%q", code, stderr)
+			}
+			if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+				t.Fatalf("unsafe auth state reached the model: %v", err)
+			}
+		})
+	}
+}
+
+func TestCageRejectsPreexistingExternalHardlink(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	external := filepath.Join(t.TempDir(), "controller")
+	write(t, external, "authority", 0o600)
+	if err := os.Link(external, filepath.Join(work, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "hard link outside") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("hard-link boundary failure called the model: %v", err)
+	}
+}
+
+func TestCageRequiresApprovalAndContract(t *testing.T) {
+	for _, args := range [][]string{
+		{"-sh", "-cage", "goal"},
+		{"-sh", "-cage", "-may-job", "job", "goal"},
+	} {
+		code, _, stderr := runPly(t, args...)
+		if code != 1 || !strings.Contains(stderr, "-cage requires") {
+			t.Fatalf("args=%q exit=%d stderr=%q", args, code, stderr)
+		}
+	}
+}
+
+func TestCageRejectsCompaction(t *testing.T) {
+	code, _, stderr := runPly(t, "-sh", "-cage", "-may-job", "job",
+		"-contract-id", "contract", "-compact", "goal")
+	if code != 1 || !strings.Contains(stderr, "does not support -compact") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+}
+
 func TestMayDeclineAndBoundaryFailuresNeverExecuteOrContinue(t *testing.T) {
 	for _, tc := range []struct {
 		name, mode string
@@ -344,6 +710,27 @@ func TestPassingPrecheckDoesNotRequestMay(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
 		t.Fatalf("passing precheck called the model: %v", err)
+	}
+}
+
+func TestPassingPrecheckDoesNotStartCageOrModel(t *testing.T) {
+	work, plydir, askdir := sandbox(t, "must not call model")
+	mayLog := fakeMay(t, "parked")
+	cageLog := fakeCage(t, "run")
+	code, _, stderr := runPly(t, "-sh", "-C", work,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage",
+		"-check", "true", "already done")
+	if code != 0 || !strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	for _, path := range []string{mayLog, cageLog, filepath.Join(askdir, "n")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("passing precheck touched %s: %v", path, err)
+		}
+	}
+	entries, err := os.ReadDir(plydir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("passing caged precheck left session/temp artifacts: entries=%v err=%v", entries, err)
 	}
 }
 

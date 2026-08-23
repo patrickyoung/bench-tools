@@ -333,6 +333,7 @@ has read a million of, and every human already knows.
 | exit 2 | not done — check failing, a bound tripped, protocol stalled, context full |
 | exit 3 | the exact proposed action was declined and did not run |
 | exit 75 | the exact proposed action is parked for approval and did not run |
+| exit 125 | Cage boundary failure or reserved child status; effects may exist |
 | exit 130 | interrupted |
 
 Exit 2 earns its row, as it does in `ask`: a supervisor has to tell "did not
@@ -409,6 +410,54 @@ is safe and it does not confine what the script can reach. Put May state and
 controller evidence outside the worker's writable boundary and compose Ply
 with Cage or another OS boundary when the worker is not trusted as the same
 user.
+
+### Confine the approved action, not the model client
+
+`-cage` composes that exact May decision with
+[Cage](https://github.com/patrickyoung/cage). It is intentionally one fixed
+policy in this release: the physical workspace and a private per-session temp
+directory are writable, host networking is denied, and the rest of the host
+filesystem remains readable. It requires `-may-job` and `-contract-id`:
+
+```sh
+PLY_DIR="$HOME/.local/state/ply/demo" \
+  ply -sh -C "$PWD" -f "$HOME/.local/state/ply/demo/run.jsonl" \
+  -contract-id contract-demo -may-job bench-demo -cage \
+  -check 'test -s report.txt' "create report.txt"
+```
+
+Ask, Brief, May, and the verifier are not caged. Only the literal
+model-authored action becomes:
+
+```text
+/absolute/cage -w /physical/workspace -- /absolute/sh -c SCRIPT
+```
+
+The verifier keeps caller authority. A read-only predicate such as
+`test -s report.txt` is different from `make test` or `go test`, which may run
+workspace code the model just changed. Cage confines the action, not code an
+operator later chooses to execute outside it.
+
+Ply seals `ply.approval/v2` before Cage starts. That receipt retains the v1
+May evidence and additionally binds the Cage executable digest, exact argv,
+workspace, private temp root, and denied-network policy. Cage status 125 is
+reserved as confinement failure: Ply stops with 125 before another model turn
+or check, even if the child itself chose that number.
+
+Before returning 125, Ply seals a terminal `ply.confinement/v1` receipt after
+the approval receipt. It binds the approved action, Cage identity and roots,
+status, exact captured output bytes (base64 in JSON), and whether effects may
+exist. A failure to seal still returns 125 and says the terminal evidence could
+not be recorded; it never continues to the model or verifier.
+
+Controller state is authority, so Ply refuses Cage mode when the Ask session,
+steering file, session pointer, Ask/May/Cage executable, or May state sits
+inside the writable workspace. Put sessions in an external absolute state
+directory. This is write and network confinement, not secrecy: actions can
+still read host files, consume CPU, signal same-user processes where the host
+backend permits it, and exploit programs they run. Ply also rejects a writable
+root containing a pre-existing hard link to a file outside the admitted roots;
+without that scan, a pathname boundary would not protect the shared inode.
 
 ## The log is somebody else's problem
 

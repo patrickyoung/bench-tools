@@ -100,6 +100,16 @@ When changing `ply`:
   the pre-exec seam. Do not infer risk from model prose, cache May stdout, or
   let a nested Ply silently discard the inherited gate;
 
+- **Cage decorates actions, not Ply.** `-cage` is valid only with the exact
+  May gate. Ask, Brief, May, the controller, and the verifier remain ordinary
+  processes; only Runner invokes Cage around the literal approved shell
+  action. The fixed first policy writes the physical workspace and a private
+  temp directory, denies host network access, and leaves reads unrestricted.
+  Controller evidence must live outside both writable roots. Reserve status
+  125 as confinement failure and stop before another model turn or check.
+  After the already-sealed `ply.approval/v2`, seal `ply.confinement/v1`
+  with the observed output and whether effects may exist before returning;
+
 - **keep the log somebody else's.** The conversation is an `ask` session and
   `ply` writes no log of its own, so `ask replay -check` proves an entire
   run. Anything worth recording — a command, its output, its exit status,

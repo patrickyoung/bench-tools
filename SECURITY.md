@@ -88,7 +88,7 @@ verdict `spent`. It then seals a `ply.approval/v1` receipt before execution.
 Parked, declined, malformed, killed, oversized, or unrecordable results execute
 nothing and do not reach another model turn or the final check.
 
-This is human authority over one exact shell script, not containment or a
+Without `-cage`, this is human authority over one exact shell script, not containment or a
 safety judgment. A script can contain several commands, spawn descendants,
 touch the network, or damage May state if the surrounding OS lets it. The
 operator sees and grants those literal bytes; Cage, a container, another uid,
@@ -100,6 +100,53 @@ malicious peer process.
 The action envelope binds Ply's selected contract ID, physical directory,
 shell, PATH, nanosecond timeout, and script. Other inherited environment bytes
 are ambient execution context and are not frozen by the approval receipt.
+
+## What action-only Cage means
+
+`-cage` is valid only with `-may-job` and an explicit contract ID. May still
+runs in Ply's controller process. After May returns `spent` and Ply seals the
+receipt, Runner starts this exact process shape:
+
+```text
+CAGE -w REAL_WORKSPACE -- SHELL -c SCRIPT
+```
+
+Cage receives a private stable `TMPDIR`. The real workspace and that temp
+directory are writable; host network access is denied; host reads remain
+available. Ask, Brief, May, pre-checks, candidate checks, and Ask record writes
+are outside Cage. A caged `ply.approval/v2` receipt binds the exact Cage path,
+binary digest, argv, workspace, temp root, and network bit before execution.
+Ply hashes Cage before approval and immediately before and after the action.
+If Cage cannot start, returns reserved 125, or changes across execution, Ply
+seals `ply.confinement/v1` after the prior `ply.approval/v2` and stops before a
+model or check. The terminal receipt carries exact captured output as base64,
+the status, Cage identity and roots, and `may_have_run`; it does not pretend
+that a child 125 or post-action digest drift had no effects.
+
+An outside verifier has the caller's authority. A check such as `test -s file`
+only reads state, but `make test`, `go test`, or another build command may
+execute code the caged action just changed. Cage therefore contains the model
+action, not arbitrary code launched later by the operator's verifier. Confine
+the verifier separately when that code is not trusted.
+
+Cage status 125 is conservatively reserved for boundary failure. Because a
+child can also return 125, that child's outcome is indistinguishable and fails
+closed. Ply returns 125 and does not give the output to another model turn or
+run the verifier.
+
+This boundary protects writes and host networking. It does not hide readable
+files, restrict CPU or process visibility, judge a verifier, or authenticate
+same-user peers. Ply refuses known controller/session/May state and executable
+paths under the workspace, but the surrounding operator still owns the host
+account and installation. A container or separate uid is the stronger boundary
+when host reads or same-user processes are in scope.
+
+Path policy alone does not stop writes through a pre-existing hard link: two
+names can share one inode across the boundary. Before work, Ply walks both
+writable roots and refuses any regular inode whose link count exceeds the
+number of names found inside those roots. Cage prevents creating a new
+cross-boundary link during the action; a hostile same-user peer racing the
+scan remains outside this threat model.
 
 ## Bounds ply does enforce
 

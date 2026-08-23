@@ -85,6 +85,8 @@ func (v *view) Result(r Result) {
 		s.WriteString("\n")
 	}
 	switch {
+	case r.ConfinementFailed:
+		s.WriteString(v.red("[ply: "+r.ConfinementDetail+"; stopped] exit 125") + "\n")
 	case r.Killed:
 		s.WriteString(v.red(fmt.Sprintf("[ply: killed after %s] exit %d", r.Timeout, r.Code)) + "\n")
 	case r.Code != 0:

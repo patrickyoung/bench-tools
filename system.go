@@ -7,6 +7,17 @@ import (
 	"time"
 )
 
+func confinementPrompt() string {
+	return `
+
+Every model-authored action runs inside Cage after exact May approval. The
+real workspace and one private temporary directory are writable, host network
+access is denied, and host files remain readable. Ask, May, Brief, and the
+configured verifier run outside Cage. Cage status 125 is reserved for a
+confinement failure and stops the invocation.
+`
+}
+
 // prompt builds the system prompt. It is a value, not a secret: `ply
 // system` prints exactly what would be sent, so extending it is ordinary
 // shell rather than a config format.

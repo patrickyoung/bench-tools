@@ -204,6 +204,17 @@ note before an approved action executes or a parked/declined action becomes
 terminal. The receipt binds the fresh May executable and argv, exact stdin and
 stdout digests, May exit status, job, action envelope, verdict and contract ID.
 Saved May JSON is never an authority input; Ply always spawns May itself.
+With
+.BR \-cage ,
+the corresponding
+.B ply.approval/v2
+record also binds the Cage executable digest, exact argv, physical workspace,
+private temporary root, and denied-network policy.
+If the Cage boundary then fails, Ply appends and seals
+.B ply.confinement/v1
+before returning 125. It binds the approval, Cage identity and roots, exact
+captured output bytes, and whether effects may exist. No later model turn or
+verifier runs.
 .PP
 What
 .B \-s
@@ -363,6 +374,19 @@ NUL, job, NUL, and that exact action.
 The May request itself has a separate 10-second controller timeout; the
 approved command timeout starts only when Runner starts the shell.
 .TP
+.B \-cage
+Confine each approved model action with Cage. This requires
+.B \-may-job
+and
+.BR \-contract-id .
+The physical workspace and a private temporary directory are writable, host
+network access is denied, and host files remain readable. Ask, Brief, May, and
+the configured verifier remain outside Cage. Controller state and executables
+must be outside the writable workspace. Status 125 is conservatively reserved
+for confinement failure and stops before another model turn or check. The
+Cage executable is selected by
+.BR $CAGE .
+.TP
 .BI \-timeout " d"
 Per\-command timeout, as a Go duration such as
 .BR 30s .
@@ -486,6 +510,14 @@ binary used by
 Default
 .BR may .
 .TP
+.B CAGE
+The
+.BR cage (1)
+binary used by
+.BR \-cage .
+Default
+.BR cage .
+.TP
 .B PLY_MAY_JOB
 Default exact-action approval job. Ply exports the resolved May path and this
 job to model-authored commands so a nested Ply cannot silently discard the
@@ -542,6 +574,11 @@ The exact proposed action was declined by May and was not executed.
 .B 75
 The exact proposed action is parked in May for an operator decision and was
 not executed.
+.TP
+.B 125
+Cage could not establish or preserve confinement, its child returned the
+reserved status 125, or the Cage executable changed after possible effects.
+The action may have run; inspect the sealed confinement receipt and workspace.
 .TP
 .B 130
 Interrupted.

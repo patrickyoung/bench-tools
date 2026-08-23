@@ -62,6 +62,7 @@ flags:
   -turns n      model turns before giving up (default 50, 0 = unbounded)
   -steer file   read appended UTF-8 lines between model turns
   -may-job job  require exact May approval before every model action
+  -cage         confine approved actions; needs -may-job and -contract-id
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
@@ -77,7 +78,8 @@ flags:
 
 env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
-     (the brief binary) · MAY (the may binary) · PLY_MAY_JOB · NO_COLOR
+     (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
+     · PLY_MAY_JOB · NO_COLOR
      Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
      -q and nothing else. Commands run with $PLY naming this binary and
      $PLY_DEPTH
@@ -85,5 +87,5 @@ env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
      a program, not a feature.
 exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
       bound, protocol, or context · 3 approval declined · 75 approval required
-      · 130 interrupted
+      · 125 confinement failed · 130 interrupted
 `

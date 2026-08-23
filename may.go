@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -18,6 +17,7 @@ import (
 
 const (
 	approvalReceiptKind    = "ply.approval/v1"
+	approvalReceiptKindV2  = "ply.approval/v2"
 	maxApprovalResult      = 128 << 10 // enough for May's maximally escaped 16 KiB action
 	maxMayJob              = 1024
 	maxMayAction           = 16 << 10
@@ -34,13 +34,24 @@ var (
 // approvalAction is the exact, human-reviewable envelope May binds. The
 // script is the same string Runner would otherwise pass to shell -c.
 type approvalAction struct {
-	Version    int    `json:"version"`
-	ContractID string `json:"contract_id,omitempty"`
-	Directory  string `json:"directory"`
-	Shell      string `json:"shell"`
-	Path       string `json:"path"`
-	TimeoutNS  int64  `json:"timeout_ns"`
-	Script     string `json:"script"`
+	Version     int                  `json:"version"`
+	ContractID  string               `json:"contract_id,omitempty"`
+	Directory   string               `json:"directory"`
+	Shell       string               `json:"shell"`
+	Path        string               `json:"path"`
+	TimeoutNS   int64                `json:"timeout_ns"`
+	Script      string               `json:"script"`
+	Confinement *approvalConfinement `json:"confinement,omitempty"`
+}
+
+type approvalConfinement struct {
+	Kind       string   `json:"kind"`
+	CagePath   string   `json:"cage_path"`
+	CageSHA256 string   `json:"cage_sha256"`
+	Argv       []string `json:"argv"`
+	Workspace  string   `json:"workspace"`
+	TempDir    string   `json:"temp_dir"`
+	Network    bool     `json:"network"`
 }
 
 type mayResult struct {
@@ -90,27 +101,7 @@ func openMayGate(bin, job string) (*mayGate, error) {
 }
 
 func mayExecutableDigest(path string) (string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", fmt.Errorf("resolve May: %w", err)
-	}
-	if !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
-		return "", fmt.Errorf("resolve May: %s is not an executable regular file", path)
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return "", fmt.Errorf("read May: %w", err)
-	}
-	h := sha256.New()
-	_, copyErr := io.Copy(h, f)
-	closeErr := f.Close()
-	if copyErr != nil {
-		return "", fmt.Errorf("read May: %w", copyErr)
-	}
-	if closeErr != nil {
-		return "", fmt.Errorf("read May: %w", closeErr)
-	}
-	return fmt.Sprintf("sha256:%x", h.Sum(nil)), nil
+	return executableDigest("May", path)
 }
 
 func validateMayJob(job string) error {
@@ -137,6 +128,26 @@ func (g mayGate) Request(ctx context.Context, contractID, script string, runner 
 		{name: "script", value: script},
 	} {
 		if err := validateApprovalText(field.name, field.value, field.allowEmpty); err != nil {
+			return approvalReceipt{}, err
+		}
+	}
+	if runner.Cage != nil {
+		for _, field := range []struct{ name, value string }{
+			{"Cage path", runner.Cage.Bin},
+			{"Cage digest", runner.Cage.BinSHA256},
+			{"Cage workspace", runner.Cage.Workspace},
+			{"Cage temporary directory", runner.Cage.TempDir},
+		} {
+			if err := validateApprovalText(field.name, field.value, false); err != nil {
+				return approvalReceipt{}, err
+			}
+		}
+		for i, arg := range runner.Cage.argv(runner.Shell, script) {
+			if err := validateApprovalText(fmt.Sprintf("Cage argv[%d]", i), arg, false); err != nil {
+				return approvalReceipt{}, err
+			}
+		}
+		if err := runner.Cage.checkDigest(); err != nil {
 			return approvalReceipt{}, err
 		}
 	}
@@ -215,7 +226,7 @@ func (g mayGate) Request(ctx context.Context, contractID, script string, runner 
 		return approvalReceipt{}, errors.New("May approval result was not one canonical JSON line on stdout with empty stderr")
 	}
 	return approvalReceipt{
-		Version: 1, ContractID: contractID, Job: g.Job, Digest: result.Digest,
+		Version: action.Version, ContractID: contractID, Job: g.Job, Digest: result.Digest,
 		Action: action, ActionSHA256: digestText(string(body)), Verdict: result.Verdict,
 		MayPath: g.Bin, MaySHA256: g.BinSHA256, MayArgv: argv,
 		MayInputSHA256: digestText(string(body)), MayStdoutSHA256: digestText(out),
@@ -234,10 +245,19 @@ func validateApprovalText(name, value string, allowEmpty bool) error {
 }
 
 func approvalActionFor(contractID, script string, runner Runner) approvalAction {
-	return approvalAction{
+	action := approvalAction{
 		Version: 1, ContractID: contractID, Directory: runner.Dir, Shell: runner.Shell,
 		Path: runner.Path, TimeoutNS: int64(runner.Timeout), Script: script,
 	}
+	if runner.Cage != nil {
+		action.Version = 2
+		action.Confinement = &approvalConfinement{
+			Kind: "cage", CagePath: runner.Cage.Bin, CageSHA256: runner.Cage.BinSHA256,
+			Argv: runner.Cage.argv(runner.Shell, script), Workspace: runner.Cage.Workspace,
+			TempDir: runner.Cage.TempDir, Network: false,
+		}
+	}
+	return action
 }
 
 func processCode(err error) (int, error) {
@@ -265,7 +285,11 @@ func (l *Loop) recordApproval(ctx context.Context, receipt approvalReceipt) erro
 	}
 	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), approvalRecordTimeout)
 	defer cancel()
-	if err := l.Model.Record(recordCtx, verdictSource, approvalReceiptKind, receipt); err != nil {
+	kind := approvalReceiptKind
+	if receipt.Action.Version == 2 {
+		kind = approvalReceiptKindV2
+	}
+	if err := l.Model.Record(recordCtx, verdictSource, kind, receipt); err != nil {
 		return fmt.Errorf("record approval receipt: %w", err)
 	}
 	return nil

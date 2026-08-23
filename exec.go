@@ -35,14 +35,17 @@ const defaultShell = "/bin/sh"
 
 // Result is one command's outcome.
 type Result struct {
-	Cmd        string
-	Output     string
-	Code       int
-	Elided     int64 // bytes dropped from the middle of Output
-	Total      int64 // bytes the command actually produced
-	Killed     bool
-	StartError bool // interpreter could not start; never an ordinary verifier rejection
-	Timeout    time.Duration
+	Cmd                   string
+	Output                string
+	Code                  int
+	Elided                int64 // bytes dropped from the middle of Output
+	Total                 int64 // bytes the command actually produced
+	Killed                bool
+	StartError            bool // interpreter could not start; never an ordinary verifier rejection
+	ConfinementFailed     bool // Cage could not establish or preserve the action boundary
+	ConfinementMayHaveRun bool
+	ConfinementDetail     string
+	Timeout               time.Duration
 }
 
 // commands consumes at most one action from a reply. Optional prose may lead
@@ -127,6 +130,7 @@ type Runner struct {
 	Timeout time.Duration // per command
 	Cap     int           // bytes of output kept per command
 	Env     []string      // extra NAME=VALUE, after the inherited environment
+	Cage    *cageLauncher // model actions only; Checker always clears it
 }
 
 // Run executes one block as a shell script. Its stdin is the null device —
@@ -158,7 +162,15 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	defer stop()
 
 	out := &capBuf{cap: max(r.Cap/2, 1)}
-	cmd := exec.CommandContext(ctx, r.Shell, "-c", script)
+	argv := []string{r.Shell, "-c", script}
+	if r.Cage != nil {
+		if err := r.Cage.checkDigest(); err != nil {
+			return Result{Cmd: script, Code: cageBoundaryExit,
+				StartError: true, ConfinementFailed: true, ConfinementDetail: err.Error(), Timeout: r.Timeout}
+		}
+		argv = r.Cage.argv(r.Shell, script)
+	}
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = r.Dir
 	cmd.Stdin = stdin
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
@@ -187,6 +199,14 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	err := cmd.Run()
 	close(done)
 	res.Output, res.Elided, res.Total = out.String()
+	if r.Cage != nil {
+		if digestErr := r.Cage.checkDigest(); digestErr != nil {
+			res.Code, res.StartError, res.ConfinementFailed = cageBoundaryExit, true, true
+			res.ConfinementMayHaveRun = true
+			res.ConfinementDetail = digestErr.Error() + "; action effects may exist"
+			return res
+		}
+	}
 	var ee *exec.ExitError
 	switch {
 	case ctx.Err() == context.DeadlineExceeded:
@@ -194,6 +214,11 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	case err == nil:
 	case errors.As(err, &ee):
 		res.Code = ee.ExitCode()
+		if r.Cage != nil && res.Code == cageBoundaryExit {
+			res.ConfinementFailed = true
+			res.ConfinementMayHaveRun = true
+			res.ConfinementDetail = "Cage returned reserved status 125; the child may have run"
+		}
 		if res.Code < 0 { // killed by a signal; report it the way a shell does
 			if ws, ok := ee.Sys().(syscall.WaitStatus); ok {
 				res.Code = 128 + int(ws.Signal())
@@ -205,6 +230,11 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 		// The selected shell itself failed to start. That is ply's problem,
 		// not the model's, but the model still has to see something.
 		res.Output, res.Code, res.StartError = err.Error(), 1, true
+		if r.Cage != nil {
+			res.Code, res.ConfinementFailed = cageBoundaryExit, true
+			res.ConfinementDetail = "Cage could not start; action did not run"
+			res.Output, res.Total, res.Elided = "", 0, 0
+		}
 	}
 	return res
 }
@@ -251,6 +281,8 @@ func (r Result) Typescript() string {
 	// Silence and success is what a shell shows: nothing. Anything else is
 	// news, and news is worth a line.
 	switch {
+	case r.ConfinementFailed:
+		s.WriteString("[ply: " + r.ConfinementDetail + "; stopped] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.StartError:
 		s.WriteString("[ply: command interpreter could not start] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Killed:

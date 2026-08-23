@@ -115,6 +115,7 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			actions++
 			var b strings.Builder
 			for _, c := range cmds {
+				var admitted *approvalReceipt
 				if l.Approval != nil {
 					receipt, err := l.Approval.Request(ctx, l.ContractID, c, l.Runner)
 					if err != nil {
@@ -134,6 +135,7 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 						return last, fmt.Errorf("%w: %s", ErrApprovalDeclined, receipt.Digest)
 					case "spent":
 						// The sealed receipt exists before the exact action runs.
+						admitted = &receipt
 					default:
 						return last, fmt.Errorf("%w: unknown verdict %q", ErrApprovalBoundary, receipt.Verdict)
 					}
@@ -143,6 +145,12 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 					return last, ctx.Err()
 				}
 				l.View.Result(r)
+				if r.ConfinementFailed {
+					if err := l.recordConfinement(ctx, admitted, r); err != nil {
+						return last, fmt.Errorf("%w: %s; %v", ErrConfinement, r.ConfinementDetail, err)
+					}
+					return last, fmt.Errorf("%w: %s", ErrConfinement, r.ConfinementDetail)
+				}
 				b.WriteString(r.Typescript())
 				b.WriteString("\n")
 			}

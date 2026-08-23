@@ -663,6 +663,30 @@ None of this makes `-t` a sandbox, and none of it should be described that
 way. It puts the boundary where `SECURITY.md` says it belongs, and it is
 about ten lines of shell.
 
+For a local action-only boundary, compose the existing May and Cage programs:
+
+```sh
+state="$HOME/.local/state/ply/project"
+mkdir -p "$state"
+ply -sh -C "$PWD" -f "$state/run.jsonl" \
+    -contract-id contract-project -may-job project -cage \
+    -check 'make test' "repair the project"
+```
+
+This does not run `cage -- ply`: doing that would also confine Ask and normally
+cut the model client off from the network. `ply -cage` leaves the controller,
+model client, approval program, and check outside. It wraps only the exact
+model-authored shell action after May has spent and Ply has sealed the grant.
+The workspace and a private temp root are writable, networking is denied, and
+host reads remain unrestricted. Keep the session and May state outside the
+workspace; Ply refuses the known unsafe overlap.
+
+The replay order for a Cage failure is ordinary Ask events, then the sealed
+`ply.approval/v2` grant, then sealed `ply.confinement/v1`, then process status
+125. No later model turn or verifier exists. The second receipt distinguishes
+pre-start refusal from a reserved child 125 or post-action integrity failure,
+where filesystem effects may already exist.
+
 ### Proposing an effect instead of having it
 
 Sometimes what you want is not containment but a look before the change
