@@ -121,6 +121,60 @@ func TestJobParksGrantsOnceThenParksAgain(t *testing.T) {
 	}
 }
 
+func TestMachineRequestReportsTheSameExactOneShotDecision(t *testing.T) {
+	state := t.TempDir()
+	job, action := "release-142", "publish release v1.4.2\n"
+	digest := actionDigest(job, action)
+
+	code, stdout, stderr := runMay(t, state, action, "", false, "request", job)
+	assertRequestResult(t, code, stdout, stderr, requestResult{
+		Version: requestResultVersion, Job: job, Digest: digest, Action: action, Verdict: "parked",
+	}, exitParked)
+	if code, _, _ := runMay(t, state, "", "yes\n", true, "decide", digest); code != exitYes {
+		t.Fatal(code)
+	}
+	code, stdout, stderr = runMay(t, state, action, "", false, "request", job)
+	assertRequestResult(t, code, stdout, stderr, requestResult{
+		Version: requestResultVersion, Job: job, Digest: digest, Action: action, Verdict: "spent",
+	}, exitYes)
+	code, stdout, stderr = runMay(t, state, action, "", false, "request", job)
+	assertRequestResult(t, code, stdout, stderr, requestResult{
+		Version: requestResultVersion, Job: job, Digest: digest, Action: action, Verdict: "parked",
+	}, exitParked)
+}
+
+func TestMachineRequestReportsDeclineWithoutAnotherApprovalPath(t *testing.T) {
+	state := t.TempDir()
+	job, action := "archive-9", "erase archive\n"
+	digest := actionDigest(job, action)
+	if code, _, _ := runMay(t, state, action, "", false, "request", job); code != exitParked {
+		t.Fatal(code)
+	}
+	if code, _, _ := runMay(t, state, "", "no\n", true, "decide", digest); code != exitNo {
+		t.Fatal(code)
+	}
+	code, stdout, stderr := runMay(t, state, action, "", false, "request", job)
+	assertRequestResult(t, code, stdout, stderr, requestResult{
+		Version: requestResultVersion, Job: job, Digest: digest, Action: action, Verdict: "declined",
+	}, exitNo)
+}
+
+func assertRequestResult(t *testing.T, code int, stdout, stderr string, want requestResult, wantCode int) {
+	t.Helper()
+	if code != wantCode || stderr != "" || !strings.HasSuffix(stdout, "\n") || strings.Count(stdout, "\n") != 1 {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	var got requestResult
+	dec := json.NewDecoder(strings.NewReader(stdout))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("result=%#v want %#v", got, want)
+	}
+}
+
 func TestConcurrentCallersCannotBothSpendOneGrant(t *testing.T) {
 	state := t.TempDir()
 	job, action := "release", "publish\n"
@@ -161,6 +215,78 @@ func TestConcurrentCallersCannotBothSpendOneGrant(t *testing.T) {
 	}
 	if approved != 1 {
 		t.Fatalf("concurrent exits = %d, %d; approved=%d", first, second, approved)
+	}
+}
+
+func TestMachineCallersCannotBothReportOneGrantSpent(t *testing.T) {
+	state := t.TempDir()
+	job, action := "release", "publish\n"
+	digest := actionDigest(job, action)
+	if code, _, _ := runMay(t, state, action, "", false, "request", job); code != exitParked {
+		t.Fatal(code)
+	}
+	if code, _, _ := runMay(t, state, "", "yes\n", true, "decide", digest); code != exitYes {
+		t.Fatal(code)
+	}
+
+	type outcome struct {
+		code int
+		body string
+	}
+	start := make(chan struct{})
+	results := make(chan outcome, 2)
+	invoke := func() {
+		<-start
+		var stdout, stderr bytes.Buffer
+		a := &app{in: strings.NewReader(action), out: &stdout, errOut: &stderr,
+			stateDir: state, now: time.Now,
+			openTTY: func() (readWriteCloser, error) { return nil, errors.New("no tty") }}
+		results <- outcome{code: a.run([]string{"request", job}), body: stdout.String()}
+	}
+	go invoke()
+	go invoke()
+	close(start)
+	spent := 0
+	for range 2 {
+		got := <-results
+		if got.code != exitYes {
+			continue
+		}
+		var result requestResult
+		if err := json.Unmarshal([]byte(got.body), &result); err != nil || result.Verdict != "spent" || result.Digest != digest {
+			t.Fatalf("invalid successful machine result: exit=%d body=%q err=%v", got.code, got.body, err)
+		}
+		spent++
+	}
+	if spent != 1 {
+		t.Fatalf("machine spent results=%d, want 1", spent)
+	}
+}
+
+func TestJobBoundKeepsParkedRequestsReadable(t *testing.T) {
+	for _, command := range []bool{false, true} {
+		t.Run(fmt.Sprint(command), func(t *testing.T) {
+			state := t.TempDir()
+			job := strings.Repeat("j", maxJob)
+			args := []string{job}
+			if command {
+				args = []string{"request", job}
+			}
+			if code, _, stderr := runMay(t, state, "act\n", "", false, args...); code != exitParked {
+				t.Fatalf("max job exit=%d stderr=%q", code, stderr)
+			}
+			if code, stdout, stderr := runMay(t, state, "", "", false, "pending"); code != exitYes || !strings.Contains(stdout, job) {
+				t.Fatalf("pending exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+			}
+			tooLong := strings.Repeat("j", maxJob+1)
+			args = []string{tooLong}
+			if command {
+				args = []string{"request", tooLong}
+			}
+			if code, stdout, stderr := runMay(t, state, "act\n", "", false, args...); code != exitErr || stdout != "" || !strings.Contains(stderr, "exceeds") {
+				t.Fatalf("oversize exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+			}
+		})
 	}
 }
 
@@ -331,6 +457,28 @@ func TestPendingOutputFailure(t *testing.T) {
 	if code := a.run([]string{"pending"}); code != exitErr ||
 		!strings.Contains(stderr.String(), "write stdout") {
 		t.Fatalf("exit=%d stderr=%q", code, stderr.String())
+	}
+}
+
+func TestMachineOutputFailureAfterSpendCannotBecomeApproval(t *testing.T) {
+	state := t.TempDir()
+	job, action := "job", "act\n"
+	digest := actionDigest(job, action)
+	if code, _, _ := runMay(t, state, action, "", false, "request", job); code != exitParked {
+		t.Fatal(code)
+	}
+	if code, _, _ := runMay(t, state, "", "yes\n", true, "decide", digest); code != exitYes {
+		t.Fatal(code)
+	}
+	var stderr bytes.Buffer
+	a := &app{in: strings.NewReader(action), out: brokenWriter{}, errOut: &stderr,
+		stateDir: state, now: time.Now, openTTY: openControllingTTY}
+	if code := a.run([]string{"request", job}); code != exitErr ||
+		!strings.Contains(stderr.String(), "write stdout") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr.String())
+	}
+	if code, _, _ := runMay(t, state, action, "", false, "request", job); code != exitParked {
+		t.Fatalf("a spent grant survived an unrecordable machine result: exit=%d", code)
 	}
 }
 

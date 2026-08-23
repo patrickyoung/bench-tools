@@ -10,6 +10,11 @@ Action bytes come only from stdin. Terminal decisions come only from
 the words too, and is atomically moved out of `granted` before May returns 0.
 Corrupt or mismatched state fails closed.
 
+`may request JOB` reports the existing job transition as strict JSON. The
+reported verdict is useful to a supervisor only together with May's exit
+status and exact action bytes. No JSON input is accepted, and the command does
+not create a second way to approve.
+
 May writes `~/.local/state/may` with private directory and file modes and
 appends `audit.jsonl`. These permissions prevent accidental access by other
 accounts; they do not protect against another process running as the same

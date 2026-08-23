@@ -88,6 +88,56 @@ func selfCheck(out io.Writer) error {
 		return fmt.Errorf("declined request exited %d", code)
 	}
 
+	decodeMachine := func(stdout string, code int, wantJob, wantAction, wantVerdict string, wantCode int) error {
+		if code != wantCode {
+			return fmt.Errorf("machine %s exited %d, want %d", wantVerdict, code, wantCode)
+		}
+		var result requestResult
+		dec := json.NewDecoder(strings.NewReader(stdout))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&result); err != nil {
+			return fmt.Errorf("decode machine %s: %w", wantVerdict, err)
+		}
+		var extra any
+		if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+			return fmt.Errorf("machine %s result has trailing JSON", wantVerdict)
+		}
+		if result.Version != requestResultVersion || result.Job != wantJob || result.Action != wantAction ||
+			result.Digest != actionDigest(wantJob, wantAction) || result.Verdict != wantVerdict {
+			return fmt.Errorf("machine %s result does not bind the exact request: %#v", wantVerdict, result)
+		}
+		return nil
+	}
+	machineJob, machineAction := "machine-release", "publish machine release\n"
+	code, stdout, _ := run(machineAction, "", false, "request", machineJob)
+	if err := decodeMachine(stdout, code, machineJob, machineAction, "parked", exitParked); err != nil {
+		return err
+	}
+	machineDigest := actionDigest(machineJob, machineAction)
+	if code, _, _ := run("", "yes\n", true, "decide", machineDigest); code != exitYes {
+		return fmt.Errorf("machine grant decision exited %d", code)
+	}
+	code, stdout, _ = run(machineAction, "", false, "request", machineJob)
+	if err := decodeMachine(stdout, code, machineJob, machineAction, "spent", exitYes); err != nil {
+		return err
+	}
+	code, stdout, _ = run(machineAction, "", false, "request", machineJob)
+	if err := decodeMachine(stdout, code, machineJob, machineAction, "parked", exitParked); err != nil {
+		return err
+	}
+	machineDeclineJob, machineDeclineAction := "machine-decline", "decline machine action\n"
+	code, stdout, _ = run(machineDeclineAction, "", false, "request", machineDeclineJob)
+	if err := decodeMachine(stdout, code, machineDeclineJob, machineDeclineAction, "parked", exitParked); err != nil {
+		return err
+	}
+	if code, _, _ := run("", "no\n", true, "decide", actionDigest(machineDeclineJob, machineDeclineAction)); code != exitNo {
+		return fmt.Errorf("machine decline decision exited %d", code)
+	}
+	code, stdout, _ = run(machineDeclineAction, "", false, "request", machineDeclineJob)
+	if err := decodeMachine(stdout, code, machineDeclineJob, machineDeclineAction, "declined", exitNo); err != nil {
+		return err
+	}
+
 	tamperedAction := "transfer funds\n"
 	tamperedJob := "transfer-1"
 	tamperedDigest := actionDigest(tamperedJob, tamperedAction)
@@ -113,8 +163,8 @@ func selfCheck(out io.Writer) error {
 		return fmt.Errorf("read audit: %w", err)
 	}
 	lines := bytes.Split(bytes.TrimSpace(auditBody), []byte{'\n'})
-	if len(lines) < 11 {
-		return fmt.Errorf("audit has %d records, want at least 11", len(lines))
+	if len(lines) < 17 {
+		return fmt.Errorf("audit has %d records, want at least 17", len(lines))
 	}
 	seenWords := false
 	for _, line := range lines {

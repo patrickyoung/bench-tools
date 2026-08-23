@@ -7,13 +7,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
 const (
-	stateVersion = 1
-	maxStateSize = maxAction*6 + 4096
+	stateVersion         = 1
+	requestResultVersion = 1
+	maxStateSize         = (maxAction+maxJob)*6 + 4096
 )
 
 var errStateRace = errors.New("approval state changed; retry")
@@ -32,6 +32,30 @@ type auditRecord struct {
 	Job     string `json:"job,omitempty"`
 	Action  string `json:"action"`
 	Verdict string `json:"verdict"`
+}
+
+// requestResult is May's machine boundary. It reports the exact request and
+// the verdict produced by the same state transition as `may JOB`; it does not
+// add another approval path.
+type requestResult struct {
+	Version int    `json:"version"`
+	Job     string `json:"job"`
+	Digest  string `json:"digest"`
+	Action  string `json:"action"`
+	Verdict string `json:"verdict"`
+}
+
+func (r requestResult) code() int {
+	switch r.Verdict {
+	case "spent":
+		return exitYes
+	case "declined":
+		return exitNo
+	case "parked":
+		return exitParked
+	default:
+		return exitErr
+	}
 }
 
 func (a *app) ensureState() error {
@@ -67,10 +91,27 @@ func (a *app) statePath(kind, digest string) string {
 }
 
 func (a *app) forJob(job, action string) int {
-	if err := a.ensureState(); err != nil {
+	result, err := a.jobRequest(job, action)
+	if err != nil {
 		return a.fail(exitErr, err)
 	}
+	switch result.Verdict {
+	case "spent":
+		fmt.Fprintf(a.errOut, "may: granted %s (spent)\n", result.Digest)
+	case "declined":
+		fmt.Fprintf(a.errOut, "may: declined %s\n", result.Digest)
+	case "parked":
+		fmt.Fprintf(a.errOut, "may: parked %s\n", result.Digest)
+	}
+	return result.code()
+}
+
+func (a *app) jobRequest(job, action string) (requestResult, error) {
+	if err := a.ensureState(); err != nil {
+		return requestResult{}, err
+	}
 	digest := actionDigest(job, action)
+	result := requestResult{Version: requestResultVersion, Job: job, Digest: digest, Action: action}
 	req := request{
 		Version: stateVersion,
 		Digest:  digest,
@@ -81,54 +122,54 @@ func (a *app) forJob(job, action string) int {
 
 	declined := a.statePath("declined", digest)
 	if exists, err := a.validStateFile(declined, req); err != nil {
-		return a.fail(exitErr, err)
+		return requestResult{}, err
 	} else if exists {
-		fmt.Fprintf(a.errOut, "may: declined %s\n", digest)
-		return exitNo
+		result.Verdict = "declined"
+		return result, nil
 	}
 
 	granted := a.statePath("granted", digest)
 	if exists, err := a.validStateFile(granted, req); err != nil {
-		return a.fail(exitErr, err)
+		return requestResult{}, err
 	} else if exists {
 		if err := a.consumeGrant(granted, digest); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return a.fail(exitErr, errStateRace)
+				return requestResult{}, errStateRace
 			}
-			return a.fail(exitErr, fmt.Errorf("consume grant %s: %w", digest, err))
+			return requestResult{}, fmt.Errorf("consume grant %s: %w", digest, err)
 		}
 		if err := a.audit("spent", digest, job, action); err != nil {
-			return a.fail(exitErr, err)
+			return requestResult{}, err
 		}
-		fmt.Fprintf(a.errOut, "may: granted %s (spent)\n", digest)
-		return exitYes
+		result.Verdict = "spent"
+		return result, nil
 	}
 
 	pending := a.statePath("pending", digest)
 	if exists, err := a.validStateFile(pending, req); err != nil {
-		return a.fail(exitErr, err)
+		return requestResult{}, err
 	} else if exists {
-		fmt.Fprintf(a.errOut, "may: parked %s\n", digest)
-		return exitParked
+		result.Verdict = "parked"
+		return result, nil
 	}
 
 	body, err := json.Marshal(req)
 	if err != nil {
-		return a.fail(exitErr, fmt.Errorf("encode request: %w", err))
+		return requestResult{}, fmt.Errorf("encode request: %w", err)
 	}
 	body = append(body, '\n')
 	if err := a.audit("asked", digest, job, action); err != nil {
-		return a.fail(exitErr, err)
+		return requestResult{}, err
 	}
 	if err := writeExclusive(pending, body); err != nil {
 		if errors.Is(err, os.ErrExist) {
-			fmt.Fprintf(a.errOut, "may: parked %s\n", digest)
-			return exitParked
+			result.Verdict = "parked"
+			return result, nil
 		}
-		return a.fail(exitErr, fmt.Errorf("record request: %w", err))
+		return requestResult{}, fmt.Errorf("record request: %w", err)
 	}
-	fmt.Fprintf(a.errOut, "may: parked %s: %s\n", digest, strconv.Quote(action))
-	return exitParked
+	result.Verdict = "parked"
+	return result, nil
 }
 
 func (a *app) consumeGrant(granted, digest string) error {

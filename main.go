@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,11 +32,13 @@ const (
 	exitNo     = 3
 	exitParked = 75
 	maxAction  = 16 * 1024
+	maxJob     = 1024
 )
 
 const usageText = `may - ask a human before one exact action
 
   printf '%s\n' ACTION | may [JOB]  approve now, or park under JOB
+  printf '%s\n' ACTION | may request JOB  print the exact machine result
   may pending                       print pending requests as JSONL
   may decide DIGEST                 decide one request at /dev/tty
   may check                         run the offline acceptance check
@@ -115,6 +118,30 @@ func (a *app) run(args []string) int {
 				return a.fail(exitErr, errors.New("usage: may pending"))
 			}
 			return a.pending()
+		case "request":
+			if len(args) != 2 {
+				return a.fail(exitErr, errors.New("usage: may request JOB"))
+			}
+			job := args[1]
+			if err := validateJob(job); err != nil {
+				return a.fail(exitErr, err)
+			}
+			action, err := readAction(a.in)
+			if err != nil {
+				return a.fail(exitErr, err)
+			}
+			result, err := a.jobRequest(job, action)
+			if err != nil {
+				return a.fail(exitErr, err)
+			}
+			body, err := json.Marshal(result)
+			if err != nil {
+				return a.fail(exitErr, fmt.Errorf("encode request result: %w", err))
+			}
+			if code := a.write(append(body, '\n')); code != exitYes {
+				return code
+			}
+			return result.code()
 		case "decide":
 			if len(args) != 2 {
 				return a.fail(exitErr, errors.New("usage: may decide DIGEST"))
@@ -142,8 +169,8 @@ func (a *app) run(args []string) int {
 			return a.fail(exitErr, fmt.Errorf("unknown option %q", args[0]))
 		}
 		job = args[0]
-		if !utf8.ValidString(job) || strings.TrimSpace(job) == "" {
-			return a.fail(exitErr, errors.New("JOB must be non-empty UTF-8"))
+		if err := validateJob(job); err != nil {
+			return a.fail(exitErr, err)
 		}
 	}
 	action, err := readAction(a.in)
@@ -154,6 +181,16 @@ func (a *app) run(args []string) int {
 		return a.atTerminal(action)
 	}
 	return a.forJob(job, action)
+}
+
+func validateJob(job string) error {
+	if !utf8.ValidString(job) || strings.TrimSpace(job) == "" {
+		return errors.New("JOB must be non-empty UTF-8")
+	}
+	if len(job) > maxJob {
+		return fmt.Errorf("JOB exceeds %d bytes", maxJob)
+	}
+	return nil
 }
 
 func readAction(r io.Reader) (string, error) {

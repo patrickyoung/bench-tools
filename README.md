@@ -20,6 +20,7 @@ exact bytes.
 
 ```text
 printf '%s\n' ACTION | may [JOB]
+printf '%s\n' ACTION | may request JOB
 may pending
 may decide DIGEST
 may check
@@ -32,10 +33,17 @@ action, so approval is read from `/dev/tty`; a pipe, model, or redirected
 stdin cannot answer its own question. `y` and `yes`, case-insensitively, are
 the only approvals. Anything else is a refusal.
 
-With `JOB`, May computes SHA-256 over a version marker, the job, and every
-action byte. A matching grant is consumed by atomic rename before exit 0. If
+With `JOB`, May computes lowercase hexadecimal SHA-256 over the exact byte
+sequence `may-v1`, NUL, `JOB`, NUL, `ACTION`. This is the public v1 digest
+wire contract. A matching grant is consumed by atomic rename before exit 0. If
 there is no decision, the exact words and digest are written as a pending
 request and May exits 75. A recorded decline exits 3.
+
+`request JOB` performs that identical state transition and writes one strict
+JSON object containing `version`, `job`, `digest`, the exact `action`, and
+`verdict` (`parked`, `declined`, or `spent`). Its exit status remains
+0/3/75/2. This is for a supervisor that must bind the machine result before it
+acts; JSON does not add an approval path and cannot answer May's human prompt.
 
 The human side is:
 
@@ -75,7 +83,7 @@ store.
 
 The newline from `printf '%s\n'` is one of the approved bytes. A retry must
 produce the same bytes. Actions must be non-empty UTF-8 without NUL and are
-bounded at 16 KiB.
+bounded at 16 KiB. Job names are non-empty UTF-8 bounded at 1 KiB.
 
 ## Exit status
 

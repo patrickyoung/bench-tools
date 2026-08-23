@@ -49,6 +49,22 @@ bytes consume the grant by atomic rename and return 0. A second attempt cannot
 reuse it: it creates a new pending request and returns 75. Different spacing,
 case, or a missing final newline also produces a different request.
 
+A supervisor uses the same transition with a machine-readable result:
+
+```sh
+printf '%s\n' "$action" | may request release-142
+```
+
+Stdout is one strict JSON object with the exact job, action, digest, and
+`parked`, `declined`, or `spent` verdict. The exit status is still 75, 3, or
+0. The supervisor must persist the `spent` result before executing the exact
+action; malformed output or any other exit is a broken gate, never approval.
+
+The v1 digest is lowercase hexadecimal SHA-256 of the exact byte sequence
+`may-v1`, NUL, job, NUL, action. For the job `bench-vector` and action
+`exact action\n`, it is
+`dacbdd07dd815422813fd388df0a988315d29eeb79312c0bc0dc4ea120f11b41`.
+
 ## Inspect the record
 
 All authority remains ordinary files:

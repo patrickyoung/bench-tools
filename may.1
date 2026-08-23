@@ -7,6 +7,9 @@ may \- ask a human before one exact action
 .br
 .B may pending
 .br
+.B may request
+.I JOB
+.br
 .B may decide
 .I DIGEST
 .br
@@ -28,11 +31,20 @@ Standard input is never an approval channel.
 .PP
 With
 .IR JOB ,
-May computes SHA-256 over a version marker, the job, and the exact action.
+May computes lowercase hexadecimal SHA-256 over the exact byte sequence
+.BR may-v1 ,
+NUL, the job, NUL, and the exact action. This is the public v1 digest wire
+contract.
 A matching grant is atomically moved to spent state before status 0.
 A matching decline returns status 3.
 With neither, May records a pending request and returns status 75.
 .SH COMMANDS
+.TP
+.BI "request " JOB
+Perform the same exact job transition and write one strict JSON result with
+the version, job, digest, action, and parked, declined, or spent verdict.
+The exit status remains 75, 3, or 0; state or output failure is status 2.
+This command reports authority and never creates it.
 .TP
 .B pending
 Write every validated pending request as one JSON object per line.
@@ -95,6 +107,7 @@ network request, or configuration file.
 .nf
 printf '%s\n' 'publish release v1.4.2' | may
 printf '%s\n' 'publish release v1.4.2' | may release-142
+printf '%s\n' 'publish release v1.4.2' | may request release-142
 may pending
 may decide DIGEST
 .fi
