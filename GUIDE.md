@@ -1,15 +1,21 @@
 # Using Cage
 
-Cage is the boundary around a process tree. Put it outside the agent or build
-command whose effects you want to constrain:
+Cage is the boundary around one process tree. Put it around the ordinary
+program whose effects you want to constrain:
 
 ```sh
-cage -- ply -sh -check 'go test ./...' 'make the tests pass'
+cage -- sh -c 'make test && make package'
 ```
 
 Everything the child starts inherits the same kernel policy. A toolbox limits
 which program names are convenient; Cage limits filesystem writes and network
 operations even when a shell builtin or redirection performs them.
+
+For Ply, choose the process tree deliberately. `cage -- ply ...` confines the
+whole model client, including Ask, and normally denies the network connection
+the model needs. `ply -cage` instead leaves Ply, Ask, May, Brief, and the
+verifier outside while wrapping each exact model-authored action after May
+approval. That action-only composition is usually the useful agent boundary.
 
 ## Choose writes explicitly
 
@@ -38,6 +44,12 @@ cage -w ./build -w ./generated -- generator ./schema
 Once any `-w` is present, the current directory is not implicitly writable.
 Every named directory must already exist. Cage resolves symlinks before
 building the policy, so the kernel receives canonical roots.
+
+Canonical path policy cannot distinguish two hard-link names for one inode. A
+pre-existing hard link inside a writable root can therefore modify the same
+file through an external name. Reject such roots or verify that every link to
+each writable regular inode is contained inside the admitted roots. Ply's
+`-cage` integration performs that conservative scan before work.
 
 The temporary directory always remains writable. Set `TMPDIR` before Cage if
 a job needs a specific scratch root:

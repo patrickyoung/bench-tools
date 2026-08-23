@@ -49,6 +49,14 @@ unsafe contents inside a granted tree safe. Unix sockets, device nodes,
 compiler hooks, package-manager configuration, and executable search paths
 inside a writable root may have effects outside the intended source edit.
 
+Hard links are inode aliases, not redirects. If one name is inside a writable
+root and another is outside, writing the inside name changes the outside file.
+Cage cannot recover pathname separation for a link that already exists.
+Reject writable roots containing regular files whose link count exceeds the
+number of names contained in the admitted roots, or use a fresh copied
+workspace. The `ply -cage` integration performs this scan before starting
+model actions; raw `cage` callers own the same check.
+
 `-ro` removes the default workspace grant; it does not make the temporary
 directory read-only. `-net` removes the network boundary completely for the
 child process tree.
