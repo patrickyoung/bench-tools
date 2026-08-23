@@ -57,61 +57,63 @@ func run(args []string) int {
 
 // opts is every knob, in one place, because three verbs share most of them.
 type opts struct {
-	fs         *flag.FlagSet
-	toolbox    *string
-	shell      *bool
-	shellExec  *string
-	check      *string
-	force      *bool
-	requireAct *bool
-	cycles     *int
-	turns      *int
-	timeout    *time.Duration
-	outcap     *int
-	dir        *string
-	spec       *string
-	effort     *string
-	sys        *string
-	skills     list
-	file       *string
-	sessionOut *string
-	quiet      *bool
-	compact    *bool
-	compacts   *int
-	contractID *string
-	steer      *string
-	mayJob     *string
-	cage       *bool
+	fs              *flag.FlagSet
+	toolbox         *string
+	shell           *bool
+	shellExec       *string
+	actionShellExec *string
+	check           *string
+	force           *bool
+	requireAct      *bool
+	cycles          *int
+	turns           *int
+	timeout         *time.Duration
+	outcap          *int
+	dir             *string
+	spec            *string
+	effort          *string
+	sys             *string
+	skills          list
+	file            *string
+	sessionOut      *string
+	quiet           *bool
+	compact         *bool
+	compacts        *int
+	contractID      *string
+	steer           *string
+	mayJob          *string
+	cage            *bool
 }
 
 func newOpts(name string) *opts {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	o := &opts{
-		fs:         fs,
-		toolbox:    fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
-		shell:      fs.Bool("sh", false, "hand the model every program on PATH"),
-		shellExec:  fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
-		check:      fs.String("check", "", "verifier: candidate stdin; 0 accept, 1 reject, other broken"),
-		force:      fs.Bool("B", false, "work the goal even if the check already passes"),
-		requireAct: fs.Bool("require-action", false, "refuse a final report until at least one command runs"),
-		cycles:     fs.Int("cycles", 5, "rejected candidates before giving up (0 = unbounded)"),
-		turns:      fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
-		timeout:    fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
-		outcap:     fs.Int("cap", 16<<10, "output kept per command, head and tail"),
-		dir:        fs.String("C", "", "run commands here"),
-		spec:       fs.String("m", "", "provider/model, passed to ask"),
-		effort:     fs.String("effort", os.Getenv("PLY_EFFORT"), "reasoning effort, passed to ask"),
-		sys:        fs.String("S", "", "system prompt, replacing the default"),
-		file:       fs.String("f", "", "session log to write"),
-		sessionOut: fs.String("session-out", "", "write the current session path to this file"),
-		quiet:      fs.Bool("q", false, "no typescript on stderr"),
-		compact:    fs.Bool("compact", false, "carry on through a full context window"),
-		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
-		contractID: fs.String("contract-id", os.Getenv("PLY_CONTRACT_ID"), "intent contract digest recorded in receipts"),
-		steer:      fs.String("steer", "", "append-only operator steering file read between model turns"),
-		mayJob:     fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
-		cage:       fs.Bool("cage", false, "confine every approved model action with Cage"),
+		fs:              fs,
+		toolbox:         fs.String("t", os.Getenv("PLY_TOOLS"), "toolbox directory; PATH becomes this alone"),
+		shell:           fs.Bool("sh", false, "hand the model every program on PATH"),
+		shellExec:       fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
+		actionShellExec: fs.String("action-shell", os.Getenv("PLY_ACTION_SHELL"), "model-action interpreter; checks keep -shell"),
+		check:           fs.String("check", "", "verifier: candidate stdin; 0 accept, 1 reject, other broken"),
+		force:           fs.Bool("B", false, "work the goal even if the check already passes"),
+		requireAct:      fs.Bool("require-action", false, "refuse a final report until at least one command runs"),
+		cycles:          fs.Int("cycles", 5, "rejected candidates before giving up (0 = unbounded)"),
+		turns:           fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
+		timeout:         fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
+		outcap:          fs.Int("cap", 16<<10, "output kept per command, head and tail"),
+		dir:             fs.String("C", "", "run commands here"),
+		spec:            fs.String("m", "", "provider/model, passed to ask"),
+		effort:          fs.String("effort", os.Getenv("PLY_EFFORT"), "reasoning effort, passed to ask"),
+		sys:             fs.String("S", "", "system prompt, replacing the default"),
+		file:            fs.String("f", "", "session log to write"),
+		sessionOut:      fs.String("session-out", "", "write the current session path to this file"),
+		quiet:           fs.Bool("q", false, "no typescript on stderr"),
+		compact:         fs.Bool("compact", false, "carry on through a full context window"),
+		compacts:        fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
+		contractID:      fs.String("contract-id", os.Getenv("PLY_CONTRACT_ID"), "intent contract digest recorded in receipts"),
+		steer:           fs.String("steer", "", "append-only operator steering file read between model turns"),
+		mayJob:          fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
+		cage:            fs.Bool("cage", false, "confine every approved model action with Cage"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
@@ -127,17 +129,17 @@ func (o *opts) box() (*Box, error) {
 	return openBox(*o.toolbox, *o.shell)
 }
 
-func (o *opts) runner(b *Box, self string, depth int, shell string, approval *mayGate) Runner {
+func (o *opts) runner(b *Box, self string, depth int, actionShell, checkShell string, approval *mayGate) Runner {
 	r := Runner{
 		Dir:     *o.dir,
 		Path:    b.Path(),
-		Shell:   shell,
+		Shell:   actionShell,
 		Timeout: *o.timeout,
 		Cap:     *o.outcap,
 		// A tool that starts another ply is how fan-out, specialists and
 		// teams happen here: a program, not a feature. The depth counter is
 		// the only thing standing between that and a bill.
-		Env: []string{"PLY=" + self, "PLY_DEPTH=" + strconv.Itoa(depth+1), "PLY_SHELL=" + shell},
+		Env: []string{"PLY=" + self, "PLY_DEPTH=" + strconv.Itoa(depth+1), "PLY_SHELL=" + checkShell, "PLY_ACTION_SHELL=" + actionShell},
 	}
 	// A nested Ply started as an ordinary command should not silently fall
 	// back to a different model when the parent selected one with -m.
@@ -158,11 +160,12 @@ func (o *opts) runner(b *Box, self string, depth int, shell string, approval *ma
 	return r
 }
 
-// checker is that runner with the caller's reach. Everything about running
-// a command is shared; only the PATH differs, and it differs because the
-// check belongs to whoever typed it.
-func (o *opts) checker(r Runner, b *Box) Runner {
+// checker is that runner with the caller's reach. It restores the operator's
+// check interpreter and PATH because the check belongs to whoever typed it;
+// the optional action adapter and Cage remain model-action boundaries only.
+func (o *opts) checker(r Runner, b *Box, checkShell string) Runner {
 	r.Path = b.CheckPath()
+	r.Shell = checkShell
 	r.Cage = nil
 	return r
 }
@@ -188,6 +191,13 @@ func work(args []string) int {
 	shell, err := resolveShell(*o.shellExec)
 	if err != nil {
 		return fail(err)
+	}
+	actionShell := shell
+	if strings.TrimSpace(*o.actionShellExec) != "" {
+		actionShell, err = resolveShellFlag("-action-shell", *o.actionShellExec)
+		if err != nil {
+			return fail(err)
+		}
 	}
 	askBin, err := tool("ASK", "ask", "ply runs ask for the model: go install github.com/patrickyoung/ask@latest")
 	if err != nil {
@@ -238,7 +248,7 @@ func work(args []string) int {
 		}
 		probeTemp := strings.TrimSuffix(probe, ".jsonl") + ".cage-tmp"
 		if err := validateCageControlPaths(*o.dir, probeTemp, probe, *o.sessionOut, *o.steer,
-			askBin, approval.Bin, cageBin, shell, self); err != nil {
+			askBin, approval.Bin, cageBin, actionShell, shell, self); err != nil {
 			return fail(err)
 		}
 	}
@@ -269,7 +279,7 @@ func work(args []string) int {
 	// The protocol lives in the default, so replacing it is a real choice:
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
-	system := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil)
+	system := promptWithCheckShell(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil)
 	if *o.cage {
 		system += confinementPrompt()
 	}
@@ -298,8 +308,8 @@ func work(args []string) int {
 		system = composeSystem(system, "", *o.requireAct)
 	}
 
-	runner := o.runner(box, self, depth, shell, approval)
-	checker := o.checker(runner, box)
+	runner := o.runner(box, self, depth, actionShell, shell, approval)
+	checker := o.checker(runner, box, shell)
 
 	// make's "nothing to be done": a goal already met costs nothing, leaves
 	// no session behind, and is safe to put in a hook or a Makefile.
@@ -350,7 +360,7 @@ func work(args []string) int {
 	if *o.cage {
 		cageTemp := strings.TrimSuffix(session, ".jsonl") + ".cage-tmp"
 		if err := validateCageControlPaths(*o.dir, cageTemp, session, *o.sessionOut, *o.steer,
-			askBin, approval.Bin, cageBin, shell, self); err != nil {
+			askBin, approval.Bin, cageBin, actionShell, shell, self); err != nil {
 			return fail(err)
 		}
 		confinement, err = openCageLauncher(cageBin, *o.dir, cageTemp)
@@ -371,7 +381,7 @@ func work(args []string) int {
 		return fail(err)
 	}
 
-	v.Note("%s · %s", session, describe(box, shell, *o.check, approval != nil, confinement != nil))
+	v.Note("%s · %s", session, describe(box, actionShell, shell, *o.check, approval != nil, confinement != nil))
 	if underTree(session, *o.dir) {
 		v.Note("the session is inside the work tree, so a grep or a find will\n" +
 			"     read it back into the conversation it is a record of; -f a path\n" +
@@ -518,7 +528,14 @@ func systemCmd(args []string) int {
 		return fail(err)
 	}
 	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
-	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "")
+	actionShell := shell
+	if strings.TrimSpace(*o.actionShellExec) != "" {
+		actionShell, err = resolveShellFlag("-action-shell", *o.actionShellExec)
+		if err != nil {
+			return fail(err)
+		}
+	}
+	out := promptWithCheckShell(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "")
 	if *o.cage {
 		out += confinementPrompt()
 	}
@@ -758,7 +775,7 @@ func underTree(session, dir string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-func describe(b *Box, shell, check string, approval, caged bool) string {
+func describe(b *Box, actionShell, checkShell, check string, approval, caged bool) string {
 	tools := "shell"
 	if b.Dir != "" {
 		tools = fmt.Sprintf("%d tools", len(b.Tools))
@@ -766,7 +783,11 @@ func describe(b *Box, shell, check string, approval, caged bool) string {
 			tools += " + shell"
 		}
 	}
-	tools += " · shell: " + shell
+	if actionShell == checkShell {
+		tools += " · shell: " + actionShell
+	} else {
+		tools += " · action shell: " + actionShell + " · check shell: " + checkShell
+	}
 	if approval {
 		tools += " · May approval: every action"
 	}

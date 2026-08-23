@@ -76,7 +76,12 @@ func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
 }
 
 func TestPromptNamesTheSelectedInterpreterAndFenceLabelsDoNotChooseIt(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0, false)), " ")
+	box := &Box{Shell: true}
+	legacy := prompt(box, "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0, false)
+	if split := promptWithCheckShell(box, "/opt/homebrew/bin/bash", "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0, false); split != legacy {
+		t.Fatal("equal action/check shells changed the historical prompt")
+	}
+	text := strings.Join(strings.Fields(legacy), " ")
 	for _, want := range []string{
 		"Each block runs as '/opt/homebrew/bin/bash' -c SCRIPT",
 		"The same interpreter runs the check",
@@ -86,6 +91,30 @@ func TestPromptNamesTheSelectedInterpreterAndFenceLabelsDoNotChooseIt(t *testing
 		if !strings.Contains(text, want) {
 			t.Errorf("prompt missing %q", want)
 		}
+	}
+}
+
+func TestPromptNamesSeparateActionAndCheckInterpreters(t *testing.T) {
+	text := strings.Join(strings.Fields(promptWithCheckShell(&Box{Shell: true}, "/opt/action", "/bin/sh", "/work", "true", time.Minute, 1024, 0, false)), " ")
+	for _, want := range []string{
+		"Each block runs as '/opt/action' -c SCRIPT",
+		"PLY_ACTION_SHELL names that action interpreter",
+		"configured check, if any, runs separately as '/bin/sh' -c CHECK",
+		"-shell and PLY_SHELL name its interpreter",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("prompt missing %q", want)
+		}
+	}
+}
+
+func TestDescribeNamesSplitInterpretersOnlyWhenSelected(t *testing.T) {
+	box := &Box{Shell: true}
+	if got := describe(box, "/bin/sh", "/bin/sh", "", false, false); !strings.Contains(got, "shell: /bin/sh") || strings.Contains(got, "action shell") {
+		t.Fatalf("default description=%q", got)
+	}
+	if got := describe(box, "/opt/action", "/bin/sh", "true", false, false); !strings.Contains(got, "action shell: /opt/action · check shell: /bin/sh") {
+		t.Fatalf("split description=%q", got)
 	}
 }
 
@@ -150,19 +179,22 @@ func TestRunnerExportsExplicitModelAndEffortForNestedPly(t *testing.T) {
 	if err := o.fs.Parse([]string{"-m", "openai/test-model", "-effort", "xhigh"}); err != nil {
 		t.Fatal(err)
 	}
-	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/zsh", nil)
+	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/opt/action", "/bin/zsh", nil)
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "ASK_MODEL=openai/test-model") {
 		t.Fatalf("runner env=%q", got)
 	}
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_SHELL=/bin/zsh") {
-		t.Fatalf("runner did not export its interpreter: %q", got)
+		t.Fatalf("runner did not export its check interpreter: %q", got)
+	}
+	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_ACTION_SHELL=/opt/action") {
+		t.Fatalf("runner did not export its action interpreter: %q", got)
 	}
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "PLY_EFFORT=xhigh") {
 		t.Fatalf("runner did not export its reasoning effort: %q", got)
 	}
 
 	o = newOpts("ply")
-	r = o.runner(&Box{Shell: true}, "/bin/ply", 0, defaultShell, nil)
+	r = o.runner(&Box{Shell: true}, "/bin/ply", 0, defaultShell, defaultShell, nil)
 	if got := strings.Join(r.Env, "\n"); strings.Contains(got, "ASK_MODEL=") {
 		t.Fatalf("runner overrode ambient model without -m: %q", got)
 	}
@@ -174,7 +206,7 @@ func TestRunnerPropagatesExactActionGateToNestedPly(t *testing.T) {
 		t.Fatal(err)
 	}
 	gate := &mayGate{Bin: "/operator/bin/may", BinSHA256: "sha256:abc", Job: "bench-contract-abc"}
-	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/sh", gate)
+	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/sh", "/bin/sh", gate)
 	joined := strings.Join(r.Env, "\n")
 	for _, want := range []string{
 		"PLY_CONTRACT_ID=contract-abc",

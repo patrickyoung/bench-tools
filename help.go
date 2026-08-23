@@ -25,8 +25,9 @@ redirect opens a file with no program involved. The security boundary is
 the process — its user, its container, its chroot — as it always was.
 
 shell: commands and checks use /bin/sh -c by default. -shell names one other
-executable that accepts -c. Ply resolves it before calling the model and says
-exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
+executable that accepts -c. -action-shell may name a separate interpreter for
+model actions while checks keep -shell. Ply resolves both before the model and
+says exactly which it chose. The login-shell variable $SHELL is ignored.
 
 loop: one model turn consumes one shell block or a report with no block. Ply
 runs the first complete action and returns its result before asking again;
@@ -52,6 +53,7 @@ flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
   -sh           full shell: every program on PATH, and -t's first if given
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
+  -action-shell path  model actions only ($PLY_ACTION_SHELL; default -shell)
   -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
   -require-action  refuse a final report until at least one command runs
@@ -76,7 +78,8 @@ flags:
   -contract-id digest  bind verifier receipts to an admitted intent contract
   -q            no typescript on stderr
 
-env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
+env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_ACTION_SHELL (-action-shell)
+     · PLY_EFFORT (-effort) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
      (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
      · PLY_MAY_JOB · NO_COLOR

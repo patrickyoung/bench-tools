@@ -120,19 +120,24 @@ is running it. Neither needed building, because that is how programs work.
 The command interpreter is a separate choice from that tool grant. Commands
 and checks use `/bin/sh -c` by default. `-shell executable` selects another
 interpreter that accepts `-c`; `$PLY_SHELL` provides the same Ply-specific
-default. Ply resolves it before calling the model, uses it consistently for
-blocks and checks, and names the resolved executable in the prompt. It never
-inherits `$SHELL`, which is an interactive preference and may name a
+default. `-action-shell executable` (or `$PLY_ACTION_SHELL`) may select a
+different interpreter for model-authored blocks while the configured verifier
+keeps `-shell`. This is the ordinary Unix seam for an operator-owned container
+or remote-execution adapter: the adapter receives the exact script as the
+argument following `-c`; it is not a sandbox claim made by Ply. Ply resolves
+both executables before calling the model and names them in the prompt. It
+never inherits `$SHELL`, which is an interactive preference and may name a
 non-POSIX shell.
 
 ```sh
 ply -sh -shell /opt/homebrew/bin/bash "use modern Bash where useful"
+ply -t ./tools -action-shell /opt/worker-shell -check 'make test' "repair it"
 ```
 
 Fence labels remain protocol markers: a `bash` or `zsh` fence does not switch
 interpreters. If an interpreter needs fixed options, put them in a wrapper
-program and give that one program to `-shell`; Ply does not parse a second
-command line inside the flag.
+program and give that one program to `-shell` or `-action-shell`; Ply does not
+parse a second command line inside either flag.
 
 Model selection still belongs to Ask. Ply passes `-m` and `-effort` through
 literally; `$PLY_EFFORT` supplies the latter to nested Ply workers as well.
@@ -284,10 +289,11 @@ pretends the model observed output that did not exist yet, without making
 useful work depend on perfect response formatting.
 
 There is no way to write a fenced shell block that is merely quoted. Indent it
-to quote it; that is the whole escape hatch. Blocks and checks run under the
-resolved `-shell` interpreter, `/bin/sh` by default. The prompt names that
-executable; fence labels do not select a different one. What comes back is
-what a terminal would have shown:
+to quote it; that is the whole escape hatch. Checks and, by default, blocks run
+under the resolved `-shell` interpreter, `/bin/sh` by default. An explicit
+`-action-shell` changes blocks only. The prompt names the exact choices; fence
+labels do not select a different one. What comes back is what a terminal would
+have shown:
 
 ```
 $ go test ./... 2>&1 | tail -20

@@ -44,10 +44,18 @@ session it writes.
   skill can be a private procedure.
 - **Commands inherit the environment.** They see whatever `ply` saw,
   including API keys. `$PATH` is the only general variable `ply` replaces;
-  it also sets its nesting metadata and propagates selected model,
-  interpreter, contract, and May-gate settings to nested Ply. If a secret
+  it also sets its nesting metadata and propagates selected model, check and
+  action interpreters, contract, and May-gate settings to nested Ply. If a secret
   must not be reachable by a model-authored
   command, it must not be in the environment `ply` was started with.
+
+`-action-shell` is an operator-selected executable boundary, not a sandbox.
+It receives `-c` and the exact model-authored script with Ply's inherited
+environment; Ply neither inspects the adapter nor restricts what it can reach.
+A container adapter must itself whitelist environment and mounts, isolate
+network and resources, and preserve exit and signal behavior. The configured
+verifier deliberately keeps `-shell` and does not pass through the action
+adapter.
 
 ## Where the run is written
 

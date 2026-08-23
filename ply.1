@@ -44,7 +44,7 @@ go test ./... 2>&1 | tail \-20
 .fi
 .RE
 .PP
-The block and the check run under the resolved
+By default the block and the check run under the resolved
 .B \-shell
 interpreter with
 .BR \-c .
@@ -296,7 +296,7 @@ With
 the toolbox comes first.
 .TP
 .BI \-shell " executable"
-Command interpreter for model blocks and checks. It must accept
+Command interpreter for checks and, by default, model blocks. It must accept
 .BR \-c .
 Ply resolves it before calling the model and reports a missing or
 non\-executable choice as an error. Defaults to
@@ -307,6 +307,18 @@ when that is unset. The unrelated login\-shell variable
 .B $SHELL
 is never consulted. This flag names one executable, not an executable plus
 arguments; use a wrapper program when fixed interpreter options are required.
+.TP
+.BI \-action-shell " executable"
+Interpreter for model-authored blocks only. It must accept
+.BR \-c .
+The configured verifier keeps
+.BR \-shell .
+Defaults to
+.BR $PLY_ACTION_SHELL ,
+or to the resolved
+.B \-shell
+when that is unset. This is an ordinary executable seam for an
+operator-owned container or remote runner, not a sandbox provided by Ply.
 .TP
 .BI \-check " cmd"
 Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any
@@ -464,6 +476,13 @@ Default command interpreter, as
 .BR \-shell .
 Ply exports the resolved absolute path to every command, so another Ply
 started as a program inherits the same interpreter.
+.TP
+.B PLY_ACTION_SHELL
+Default model-action interpreter, as
+.BR \-action-shell .
+Ply exports its resolved absolute path separately so nested Ply workers retain
+the same action boundary while their checks retain
+.BR PLY_SHELL .
 .TP
 .B PLY_EFFORT
 Default reasoning effort, as
@@ -675,3 +694,10 @@ dialect or inspect a version string. The operator is responsible for choosing
 an interpreter that accepts
 .B \-c
 and for writing a compatible check.
+.PP
+.B \-action-shell
+changes that interpreter only for model-authored blocks. Ply passes it the
+literal script and inherited action environment; the named program owns any
+container, remote-execution, mount, credential, signal, and resource policy.
+The verifier remains outside that adapter under
+.BR \-shell .

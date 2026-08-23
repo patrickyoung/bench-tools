@@ -27,6 +27,10 @@ confinement failure and stops the invocation.
 // and -S replaces the whole thing, which is why `ply system` exists and why
 // the manual says to compose with it rather than around it.
 func prompt(box *Box, shell, dir, check string, timeout time.Duration, outCap, depth int, approval bool) string {
+	return promptWithCheckShell(box, shell, shell, dir, check, timeout, outCap, depth, approval)
+}
+
+func promptWithCheckShell(box *Box, actionShell, checkShell, dir, check string, timeout time.Duration, outCap, depth int, approval bool) string {
 	var s strings.Builder
 
 	fmt.Fprintf(&s, `You are working through a Unix shell to reach the user's goal.
@@ -62,14 +66,7 @@ four spaces instead. If a command itself contains a line of three backticks --
 writing a README, say -- open the block with four or more, as markdown has
 always asked.
 
-Each block runs as %s -c SCRIPT, not under the operator's interactive shell.
-The same interpreter runs the check, if one is configured, and PLY_SHELL names
-it. Fence labels are protocol markers; bash or zsh on a fence does not select
-another interpreter. Write syntax this interpreter accepts. POSIX shell syntax
-is the portable baseline. Pipes, redirection, loops, heredocs and several lines
-all work when the interpreter supports them, and the block is one command as
-far as this conversation is concerned. You get back what a terminal would have
-shown: stdout and stderr interleaved, and the exit status when it is not zero.
+%s
 
 Nothing runs until your message ends, so you see no output until your next
 turn. End the turn at the closing fence, then read what comes back. Ply runs
@@ -79,7 +76,7 @@ command's real result. An empty or unfinished first block runs nothing and is
 returned for correction. Put steps that need no observation in one shell
 script. When a later step depends on output, send the first command now and
 wait. Never predict or report what a command printed before you receive it.
-`, shellQuote(shell))
+`, interpreterPrompt(actionShell, checkShell))
 
 	if approval {
 		s.WriteString(`
@@ -169,6 +166,29 @@ asked for this goal: what you did, the evidence, and anything you could not
 finish. No preamble, no sign-off, no restating the goal back.
 `)
 	return s.String()
+}
+
+func interpreterPrompt(actionShell, checkShell string) string {
+	if actionShell == checkShell {
+		return fmt.Sprintf(`Each block runs as %s -c SCRIPT, not under the operator's interactive shell.
+The same interpreter runs the check, if one is configured, and PLY_SHELL names
+it. Fence labels are protocol markers; bash or zsh on a fence does not select
+another interpreter. Write syntax this interpreter accepts. POSIX shell syntax
+is the portable baseline. Pipes, redirection, loops, heredocs and several lines
+all work when the interpreter supports them, and the block is one command as
+far as this conversation is concerned. You get back what a terminal would have
+shown: stdout and stderr interleaved, and the exit status when it is not zero.`, shellQuote(actionShell))
+	}
+	return fmt.Sprintf(`Each block runs as %s -c SCRIPT, not under the operator's interactive shell.
+PLY_ACTION_SHELL names that action interpreter. The configured check, if any,
+runs separately as %s -c CHECK; -shell and PLY_SHELL name its interpreter.
+Fence labels are protocol markers; bash or zsh on a fence does not select
+another interpreter. Write syntax the action interpreter accepts. POSIX shell
+syntax is the portable baseline. Pipes, redirection, loops, heredocs and several
+lines all work when the interpreter supports them, and the block is one command
+as far as this conversation is concerned. You get back what a terminal would
+have shown: stdout and stderr interleaved, and the exit status when it is not
+zero.`, shellQuote(actionShell), shellQuote(checkShell))
 }
 
 // composeSystem keeps a procedure close to the goal while making the action

@@ -189,6 +189,13 @@ ply tools -t tools
 
 Keep a toolbox per job and point `$PLY_TOOLS` at the one you use most.
 
+The interpreter is another program boundary. `-shell` selects the interpreter
+for checks and, by default, model blocks. When actions must cross an
+operator-owned container or remote runner without moving the verifier there,
+give that executable to `-action-shell`; it receives exactly `-c` and the
+model's script. Ply resolves and reports both paths but does not claim the
+adapter confines anything—that remains the adapter and operating system's job.
+
 A script in a toolbox brings its interpreter's name with it, and `-t` means
 PATH is the toolbox and nothing else — so the interpreter has to be in
 there too, or the tool fails with `env: python3: No such file or

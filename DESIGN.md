@@ -52,10 +52,14 @@ plugin API, and nothing to version.
 The command interpreter is mechanism, not a capability grant. It is
 `/bin/sh` by default because that is the standard command-language interface,
 not because every host ships the same implementation behind it. An operator
-can select one other executable with `-shell` or `$PLY_SHELL`; Ply resolves it
-once, runs both model blocks and checks through its `-c`, and tells the model
-the exact path. It deliberately ignores `$SHELL`: a login-shell preference is
-not a script contract and may name Fish or another incompatible language.
+can select another executable with `-shell` or `$PLY_SHELL`; Ply resolves it
+once, runs checks and (by default) model blocks through its `-c`, and tells the
+model the exact path. An explicit `-action-shell` or `$PLY_ACTION_SHELL` may
+instead name one executable for model blocks alone while checks retain
+`-shell`. This is a process-composition seam for an operator-owned container
+or remote runner, not a capability grant made by Ply. Ply deliberately ignores
+`$SHELL`: a login-shell preference is not a script contract and may name Fish
+or another incompatible language.
 
 The flag names one program, not a command line. Interpreter flags belong in a
 wrapper program, the Unix answer that avoids teaching Ply another quoting
@@ -187,6 +191,6 @@ model-authored block, Ply runs the public `may request JOB` filter with one
 exact JSON action on stdin. Exit 75 or 3 stops without execution; only a fresh
 exit 0 plus the exact `spent` object can proceed. Ply seals its own receipt
 before handing the same script to Runner. Ask, Brief and the configured check
-do not pass through May. There is still one model, one shell interpreter, one
-action loop and one Ask log; approval is another program in the pipeline, not
-a permission subsystem inside Ply.
+do not pass through May. There is still one model, one action loop and one Ask
+log; approval and an optional action interpreter are programs in the pipeline,
+not permission or remote-execution subsystems inside Ply.

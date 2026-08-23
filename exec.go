@@ -244,17 +244,21 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 // sets Cmd.Dir, and symlinks are deliberately left alone: shells may change
 // their behaviour according to the name by which they were invoked.
 func resolveShell(name string) (string, error) {
+	return resolveShellFlag("-shell", name)
+}
+
+func resolveShellFlag(flagName, name string) (string, error) {
 	if name == "" {
-		return "", errors.New("-shell: empty command interpreter")
+		return "", fmt.Errorf("%s: empty command interpreter", flagName)
 	}
 	path, err := exec.LookPath(name)
 	if err != nil {
-		return "", fmt.Errorf("-shell %q: not executable or not on PATH", name)
+		return "", fmt.Errorf("%s %q: not executable or not on PATH", flagName, name)
 	}
 	if !filepath.IsAbs(path) {
 		path, err = filepath.Abs(path)
 		if err != nil {
-			return "", fmt.Errorf("-shell %q: %w", name, err)
+			return "", fmt.Errorf("%s %q: %w", flagName, name, err)
 		}
 	}
 	return path, nil

@@ -230,8 +230,12 @@ func TestTheLoopRunsWhatTheModelWrites(t *testing.T) {
 func TestMayParksExactActionBeforeExecution(t *testing.T) {
 	work, _, askdir := sandbox(t, "```ply\ntouch must-not-exist\n```")
 	mayLog := fakeMay(t, "parked")
-	checkLog := filepath.Join(t.TempDir(), "check-ran")
+	dir := t.TempDir()
+	checkLog := filepath.Join(dir, "check-ran")
+	actionShell := filepath.Join(dir, "action-shell")
+	write(t, actionShell, "#!/bin/sh\nexec /bin/sh \"$@\"\n", 0o755)
 	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-action-shell", actionShell,
 		"-contract-id", "contract-123", "-may-job", "bench-contract-123",
 		"-check", "touch "+shellQuote(checkLog)+"; false", "make the file")
 	if code != 75 {
@@ -261,7 +265,7 @@ func TestMayParksExactActionBeforeExecution(t *testing.T) {
 		t.Fatal(err)
 	}
 	if action.Script != "touch must-not-exist" || action.ContractID != "contract-123" ||
-		action.Directory != wantDir || action.Shell == "" || action.Path == "" || action.TimeoutNS <= 0 {
+		action.Directory != wantDir || action.Shell != actionShell || action.Path == "" || action.TimeoutNS <= 0 {
 		t.Fatalf("May did not receive the exact action envelope: %#v", action)
 	}
 	if recorded := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(recorded, `"contract_id":"contract-123"`) ||
@@ -559,14 +563,31 @@ func TestCageRejectsShellInsideWritableWorkspace(t *testing.T) {
 	_ = fakeCage(t, "run")
 	shell := filepath.Join(work, "shell")
 	write(t, shell, "#!/bin/sh\nexec /bin/sh \"$@\"\n", 0o755)
-	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-shell", shell,
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-shell", shell, "-action-shell", "/bin/sh",
 		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
-	if code != 1 || !strings.Contains(stderr, "shell executable") ||
+	if code != 1 || !strings.Contains(stderr, "check shell executable") ||
 		!strings.Contains(stderr, "inside the writable workspace") {
 		t.Fatalf("exit=%d stderr=%q", code, stderr)
 	}
 	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
 		t.Fatalf("unsafe shell path reached the model: %v", err)
+	}
+}
+
+func TestCageRejectsActionShellInsideWritableWorkspace(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	_ = fakeMay(t, "spent")
+	_ = fakeCage(t, "run")
+	actionShell := filepath.Join(work, "action-shell")
+	write(t, actionShell, "#!/bin/sh\nexec /bin/sh \"$@\"\n", 0o755)
+	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-action-shell", actionShell,
+		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
+	if code != 1 || !strings.Contains(stderr, "action shell executable") ||
+		!strings.Contains(stderr, "inside the writable workspace") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("unsafe action shell path reached the model: %v", err)
 	}
 }
 
@@ -917,6 +938,59 @@ func TestSelectedShellRunsCommandsAndChecks(t *testing.T) {
 	}
 }
 
+func TestActionShellRunsOnlyModelBlocksWhileChecksKeepShell(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\ntouch built\n```",
+		"Built it.",
+	)
+	dir := t.TempDir()
+	actionLog, checkLog := filepath.Join(dir, "actions"), filepath.Join(dir, "checks")
+	actionShell, checkShell := filepath.Join(dir, "action-shell"), filepath.Join(dir, "check-shell")
+	write(t, actionShell, "#!/bin/sh\nprintf 'action\\n' >> "+shellQuote(actionLog)+"\nexec /bin/sh \"$@\"\n", 0o755)
+	write(t, checkShell, "#!/bin/sh\nprintf 'check\\n' >> "+shellQuote(checkLog)+"\nexec /bin/sh \"$@\"\n", 0o755)
+
+	code, _, stderr := runPly(t, "-sh", "-shell", checkShell, "-action-shell", actionShell, "-C", work,
+		"-check", "test -f built", "build it")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	if got := strings.Count(read(t, actionLog), "action\n"); got != 1 {
+		t.Fatalf("action shell runs=%d, want 1", got)
+	}
+	if got := strings.Count(read(t, checkLog), "check\n"); got != 2 {
+		t.Fatalf("check shell runs=%d, want 2", got)
+	}
+	system := read(t, filepath.Join(askdir, "system"))
+	for _, want := range []string{shellQuote(actionShell) + " -c SCRIPT", shellQuote(checkShell) + " -c CHECK"} {
+		if !strings.Contains(system, want) {
+			t.Fatalf("model prompt missing %q:\n%s", want, system)
+		}
+	}
+	checkShellJSON, err := json.Marshal(checkShell)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayInput := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(replayInput, `"shell":`+string(checkShellJSON)) {
+		t.Fatalf("verifier receipt did not bind check shell %s:\n%s", checkShell, replayInput)
+	}
+}
+
+func TestMissingActionShellFailsBeforeTheModelOrSession(t *testing.T) {
+	work, plydir, askdir := sandbox(t, "Done.")
+	missing := filepath.Join(t.TempDir(), "missing")
+	code, _, stderr := runPly(t, "-sh", "-action-shell", missing, "-C", work, "goal")
+	if code != 1 || !strings.Contains(stderr, "-action-shell") || !strings.Contains(stderr, "not executable") {
+		t.Fatalf("exit = %d, stderr = %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("model was called despite invalid action shell: %v", err)
+	}
+	entries, err := os.ReadDir(plydir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("invalid action shell left a session behind: %v, %v", entries, err)
+	}
+}
+
 func TestMissingShellFailsBeforeTheModelOrSession(t *testing.T) {
 	work, plydir, askdir := sandbox(t, "Done.")
 	missing := filepath.Join(t.TempDir(), "missing")
@@ -945,6 +1019,19 @@ func TestPlyShellIsAnExplicitDefaultNotTheLoginShell(t *testing.T) {
 	o = newOpts("ply")
 	if got := *o.shellExec; got != defaultShell {
 		t.Fatalf("-shell default = %q, want %q despite SHELL", got, defaultShell)
+	}
+}
+
+func TestPlyActionShellIsAnExplicitOptionalDefault(t *testing.T) {
+	t.Setenv("PLY_ACTION_SHELL", "/opt/action-shell")
+	o := newOpts("ply")
+	if got := *o.actionShellExec; got != "/opt/action-shell" {
+		t.Fatalf("-action-shell default = %q", got)
+	}
+	t.Setenv("PLY_ACTION_SHELL", "")
+	o = newOpts("ply")
+	if got := *o.actionShellExec; got != "" {
+		t.Fatalf("empty PLY_ACTION_SHELL should inherit -shell, got %q", got)
 	}
 }
 
@@ -1834,7 +1921,7 @@ func TestEveryFlagAndVerbIsDocumented(t *testing.T) {
 			}
 		}
 	}
-	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_EFFORT", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
+	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_ACTION_SHELL", "PLY_EFFORT", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
 		if !strings.Contains(help, env) {
 			t.Errorf("%s is not in ply help", env)
 		}

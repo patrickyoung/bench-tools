@@ -233,7 +233,7 @@ func canonicalExisting(path string) (string, error) {
 	return filepath.EvalSymlinks(abs)
 }
 
-func validateCageControlPaths(workspace, temp, session, sessionOut, steering, ask, may, cage, shell, ply string) error {
+func validateCageControlPaths(workspace, temp, session, sessionOut, steering, ask, may, cage, actionShell, checkShell, ply string) error {
 	workspace, err := canonicalDir("Cage workspace", workspace)
 	if err != nil {
 		return err
@@ -262,7 +262,8 @@ func validateCageControlPaths(workspace, temp, session, sessionOut, steering, as
 		{"Ask executable", ask, true},
 		{"May executable", may, true},
 		{"Cage executable", cage, true},
-		{"shell executable", shell, true},
+		{"action shell executable", actionShell, true},
+		{"check shell executable", checkShell, true},
 		{"Ply executable", ply, true},
 		{"Ask credential file", askAuthPath(), false},
 	}
