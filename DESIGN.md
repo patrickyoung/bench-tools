@@ -71,10 +71,11 @@ Progressive disclosure falls out for free. `brief` needed three levels for
 prose; programs already have them:
 
     level 1   the names, always in the prompt        ls tools/
-    level 2   the interface, when the model wants it cmd -h
+    level 2   the documented interface, when present
     level 3   the behaviour                          run it
 
-Nothing needed building for levels 2 and 3. They are how programs work.
+Nothing needed building for level 3. A toolbox author may provide level 2;
+Unix does not define a universal help flag.
 
 **The toolbox scopes; it does not sandbox.** `sh` has builtins, and `read`
 plus a redirect opens a file with no program involved. The security boundary

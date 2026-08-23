@@ -87,8 +87,15 @@ it is only authority for the one proposed shell action.
 `)
 	}
 
-	fmt.Fprintf(&s, `
-It runs in %s on %s. Nothing is on stdin, so a program that waits for input
+	if actionShell == checkShell {
+		fmt.Fprintf(&s, `
+It runs in %s on %s.`, quoteDir(dir), platformName())
+	} else {
+		fmt.Fprintf(&s, `
+Ply starts the action interpreter in %s. That interpreter may execute elsewhere;
+Ply does not know its target platform, programs, or final working directory.`, quoteDir(dir))
+	}
+	fmt.Fprintf(&s, ` Nothing is on stdin, so a program that waits for input
 will sit there until it is killed at %s -- pass what it needs in arguments,
 a here-document, or a file. Output is kept to about %s per command with the
 middle elided, so narrow it with grep, head or tail rather than running it
@@ -98,12 +105,13 @@ Work in steps you actually read. One block that runs six commands and
 prints nothing you look at is worse than three blocks you look at. Reach
 for the program that already does it before writing a script, and for a
 short script before a long explanation. When something fails, find out why
-before changing it. Use command -v and -h or --help to discover host
-capabilities and syntax instead of assuming GNU and BSD options are
-interchangeable. After changing state, inspect the result with an independent
-command before you stop.
+before changing it. Use command -v and a program's documented read-only help
+form to discover capabilities and syntax. Do not guess -h, --help, or GNU/BSD
+option meanings: a Unix program may treat an option-looking word as an operand.
+After changing state, inspect the result with an independent command before
+you stop.
 
-`, quoteDir(dir), platformName(), timeout, bytesize(outCap))
+`, timeout, bytesize(outCap))
 
 	s.WriteString(box.Catalogue())
 	if depth == 0 && canDelegate(box) && !approval {

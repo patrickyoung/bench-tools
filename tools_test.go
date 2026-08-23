@@ -85,9 +85,8 @@ func TestPathIsTheCapabilitySet(t *testing.T) {
 	}
 }
 
-// TestCatalogueIsLevelOne: names and one line each. The instructions for a
-// program are `name -h`, and running it is level three; neither needed
-// building, because that is how programs have always worked.
+// TestCatalogueIsLevelOne: names and one line each. A program's documented
+// interface and execution are the next levels; Ply does not invent a help flag.
 func TestCatalogueIsLevelOne(t *testing.T) {
 	dir := t.TempDir()
 	write(t, filepath.Join(dir, "deploy"), "#!/usr/bin/env bash\n\n# ship it to staging\necho\n", 0o755)
@@ -104,6 +103,9 @@ func TestCatalogueIsLevelOne(t *testing.T) {
 	}
 	if strings.Contains(cat, "echo") {
 		t.Errorf("the catalogue leaked a program's body:\n%s", cat)
+	}
+	if !strings.Contains(cat, "documented read-only help") || strings.Contains(cat, "Run `name -h`") {
+		t.Errorf("catalogue gives unsafe help advice:\n%s", cat)
 	}
 	shell, _ := openBox("", true)
 	if c := shell.Catalogue(); !strings.Contains(c, "every program") {

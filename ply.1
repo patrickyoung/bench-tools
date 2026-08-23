@@ -105,10 +105,13 @@ mkdir tools && ln \-s $(which ls grep sed git go) tools/
 A program says what it is in the first comment after its shebang, and that
 line is the catalogue the model is given.
 .B ply tools
-prints it. What a program does beyond that is
-.BR "name \-h" ,
-and beyond that, running it: the three levels of progressive disclosure,
-which programs have always had.
+prints it. A program may also document a read-only help form, but Unix defines
+no universal
+.B \-h
+or
+.B \-\-help
+option; either spelling may be an operand. Running the program is the final
+level of progressive disclosure.
 .PP
 .B \-sh
 hands over every program on the machine instead. With both, the toolbox
@@ -319,6 +322,8 @@ or to the resolved
 .B \-shell
 when that is unset. This is an ordinary executable seam for an
 operator-owned container or remote runner, not a sandbox provided by Ply.
+Ply does not infer the adapter's target platform, programs, or final working
+directory.
 .TP
 .BI \-check " cmd"
 Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any

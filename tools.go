@@ -103,9 +103,8 @@ func (b *Box) CheckPath() string {
 }
 
 // Catalogue is level 1: the names, and whatever each program says about
-// itself in one line. Level 2 is `name -h` and level 3 is running it, both
-// of which are how programs have always worked and needed no mechanism
-// here.
+// itself in one line. A program's documented interface and execution are the
+// next levels; Unix does not define a universal help flag.
 func (b *Box) Catalogue() string {
 	var s strings.Builder
 	switch {
@@ -130,7 +129,7 @@ func (b *Box) Catalogue() string {
 		fmt.Fprintf(&s, "  %-*s  %s\n", width, t.Name, t.Synopsis)
 	}
 	if len(b.Tools) > 0 {
-		s.WriteString("\nRun `name -h` to learn one you do not know. Shell builtins work as\nusual.\n")
+		s.WriteString("\nUse a program's documented read-only help form when its synopsis is not\nenough; do not guess a help flag because it may be an operand. Shell builtins\nwork as usual.\n")
 	}
 	return s.String()
 }
@@ -138,7 +137,7 @@ func (b *Box) Catalogue() string {
 // synopsis reads the line a script uses to say what it is: the first
 // comment after the shebang, which is where flows and shell scripts have
 // always put it. A compiled binary says nothing here and does not need to —
-// the model knows what grep is, and `name -h` covers the rest.
+// the model already knows common programs.
 func firstComment(path string) string {
 	f, err := os.Open(path)
 	if err != nil {

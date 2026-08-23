@@ -18,8 +18,8 @@
 # server command baked in as absolute paths, so the toolbox needs nothing
 # else on PATH -- which matters, because with -t there is nothing else on
 # PATH. Level 1 of disclosure is the synopsis ply reads from the first
-# comment, level 2 is `name -h`, level 3 is running it. None of that needed
-# building; it is how programs have always worked.
+# comment. These generated wrappers deliberately implement `-h` and `--help`
+# as their documented level 2; level 3 is running one.
 #
 # This is not part of ply and ply does not know it exists. It is a program
 # that writes programs, which is the only kind of extension ply has.

@@ -109,11 +109,14 @@ nothing else:
   rg
   sed
 
-Run `name -h` to learn one you do not know. Shell builtins work as usual.
+Use a program's documented read-only help form when its synopsis is not
+enough; do not guess a help flag because it may be an operand. Shell builtins
+work as usual.
 ```
 
-That is level 1 of progressive disclosure. Level 2 is `deploy -h`. Level 3
-is running it. Neither needed building, because that is how programs work.
+That is level 1 of progressive disclosure. Level 2 is a program's documented
+interface or help form, when it has one. Level 3 is running it. Unix does not
+define a universal `-h` or `--help` option.
 
 `-sh` hands over the whole machine instead, for when you mean it.
 
@@ -126,8 +129,9 @@ keeps `-shell`. This is the ordinary Unix seam for an operator-owned container
 or remote-execution adapter: the adapter receives the exact script as the
 argument following `-c`; it is not a sandbox claim made by Ply. Ply resolves
 both executables before calling the model and names them in the prompt. It
-never inherits `$SHELL`, which is an interactive preference and may name a
-non-POSIX shell.
+does not infer the adapter's target platform, programs, or final working
+directory. It never inherits `$SHELL`, which is an interactive preference and
+may name a non-POSIX shell.
 
 ```sh
 ply -sh -shell /opt/homebrew/bin/bash "use modern Bash where useful"

@@ -64,7 +64,7 @@ func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
 	for _, want := range []string{
 		"It runs in /work on " + platformName(),
 		"Use command -v",
-		"instead of assuming GNU and BSD options are interchangeable",
+		"Do not guess -h, --help, or GNU/BSD option meanings",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("prompt missing %q", want)
@@ -101,10 +101,15 @@ func TestPromptNamesSeparateActionAndCheckInterpreters(t *testing.T) {
 		"PLY_ACTION_SHELL names that action interpreter",
 		"configured check, if any, runs separately as '/bin/sh' -c CHECK",
 		"-shell and PLY_SHELL name its interpreter",
+		"That interpreter may execute elsewhere",
+		"does not know its target platform",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("prompt missing %q", want)
 		}
+	}
+	if strings.Contains(text, "It runs in /work on "+platformName()) {
+		t.Fatal("split action interpreter was described as the host platform")
 	}
 }
 

@@ -194,7 +194,8 @@ for checks and, by default, model blocks. When actions must cross an
 operator-owned container or remote runner without moving the verifier there,
 give that executable to `-action-shell`; it receives exactly `-c` and the
 model's script. Ply resolves and reports both paths but does not claim the
-adapter confines anything—that remains the adapter and operating system's job.
+adapter confines anything or runs on the host platform—that remains the
+adapter and operating system's job.
 
 A script in a toolbox brings its interpreter's name with it, and `-t` means
 PATH is the toolbox and nothing else — so the interpreter has to be in
@@ -359,8 +360,9 @@ usual way; put it in a toolbox and a running `ply` hires it as a tool,
 because `$PLY` names the binary already in play.
 
 Nothing about it is a feature. The catalogue is the directory, discovery is
-`ls`, level 2 is `-h`, and line 2 is the synopsis `ply tools` prints — the
-same three levels every program in a toolbox has. [`contrib/capability`][cap]
+`ls`, and line 2 is the synopsis `ply tools` prints. A program may also expose
+a documented read-only help form; do not assume that form is `-h` or `--help`,
+because Unix permits either spelling to be an operand. [`contrib/capability`][cap]
 is this example as a real file, with the details written down.
 
 [cap]: contrib/capability
