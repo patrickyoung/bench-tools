@@ -140,6 +140,8 @@ exit 2 instead of retrying a permanent error until the bill arrives.
     exit 0   done — the check passed, or, with no check, the model stopped
     exit 1   error — usage, no ask on PATH, a provider failure
     exit 2   not done — check failing, a bound or protocol stalled, context full
+    exit 3   exact action declined by May; not executed
+    exit 75  exact action parked in May; not executed
     exit 130 interrupted
 
 Exit 2 is the row that earns its keep, as it does in `ask` and `mu`: a
@@ -168,8 +170,9 @@ execution or unchecked completion.
 
 A daemon. A config file. An MCP client or server. A TUI or REPL — the shell
 is the REPL and `ply` is a filter. Provider code of any kind. A session
-format. A permission prompt (the toolbox is the policy, and the process is
-the boundary). Parallel tool execution (a shell already has `&`). A plugin
+format. A risk classifier or permission database (May owns exact human
+authority; the process still owns containment). Parallel tool execution (a
+shell already has `&`). A plugin
 API. A second way to name a tool besides putting it on `$PATH`. Retry of the
 check itself with a different model. Anything that makes the sentence "ask,
 run, check, repeat" longer.
@@ -178,3 +181,12 @@ run, check, repeat" longer.
 lines, and Ply reads them only before an Ask turn. The file is transport, not
 a second log or an execution protocol; Ask records the applied guidance in the
 same conversation as the tool results.
+
+`-may-job JOB` is the optional execution-authority seam. Immediately before a
+model-authored block, Ply runs the public `may request JOB` filter with one
+exact JSON action on stdin. Exit 75 or 3 stops without execution; only a fresh
+exit 0 plus the exact `spent` object can proceed. Ply seals its own receipt
+before handing the same script to Runner. Ask, Brief and the configured check
+do not pass through May. There is still one model, one shell interpreter, one
+action loop and one Ask log; approval is another program in the pipeline, not
+a permission subsystem inside Ply.

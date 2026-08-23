@@ -8,7 +8,7 @@ import (
 )
 
 func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0)), " ")
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0, false)), " ")
 	for _, want := range []string{
 		"A reply is only a report",
 		"inspect the relevant evidence",
@@ -32,6 +32,21 @@ func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
 	}
 }
 
+func TestPromptExplainsExactActionApprovalWithoutExposingPolicyIDs(t *testing.T) {
+	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0, true)
+	for _, want := range []string{"exact May approval", "not already granted", "one proposed shell action"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("approval policy missing %q", want)
+		}
+	}
+	if strings.Contains(text, "bench-secret-job") {
+		t.Fatal("approval job leaked into the model prompt")
+	}
+	if strings.Contains(text, "another ordinary ply process is a subagent") {
+		t.Fatal("approval mode advertised delegation whose child pause is not a root terminal")
+	}
+}
+
 func TestComposedSkillEndsWithActionAndRequiredInteractionPolicy(t *testing.T) {
 	text := composeSystem("BASE PROTOCOL\n", "\nSKILL PROCEDURE\n", true)
 	for _, want := range []string{"SKILL PROCEDURE", "PLY ACTION PROTOCOL REMINDER", "Do not claim the shell", "is unavailable", "requires real tool interaction", "At least one command must run"} {
@@ -45,7 +60,7 @@ func TestComposedSkillEndsWithActionAndRequiredInteractionPolicy(t *testing.T) {
 }
 
 func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0)), " ")
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 0, false)), " ")
 	for _, want := range []string{
 		"It runs in /work on " + platformName(),
 		"Use command -v",
@@ -61,7 +76,7 @@ func TestPromptNamesTheActualHostAndDiscouragesForeignSyntax(t *testing.T) {
 }
 
 func TestPromptNamesTheSelectedInterpreterAndFenceLabelsDoNotChooseIt(t *testing.T) {
-	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0)), " ")
+	text := strings.Join(strings.Fields(prompt(&Box{Shell: true}, "/opt/homebrew/bin/bash", "/work", "true", time.Minute, 1024, 0, false)), " ")
 	for _, want := range []string{
 		"Each block runs as '/opt/homebrew/bin/bash' -c SCRIPT",
 		"The same interpreter runs the check",
@@ -75,7 +90,7 @@ func TestPromptNamesTheSelectedInterpreterAndFenceLabelsDoNotChooseIt(t *testing
 }
 
 func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) {
-	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", 2*time.Minute, 16<<10, 0)
+	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", 2*time.Minute, 16<<10, 0, false)
 	for _, want := range []string{
 		"If and only if the goal explicitly asks for subagents",
 		`"$PLY" -sh -turns 12 -C . -f "$run/NNN.jsonl" --`,
@@ -95,7 +110,7 @@ func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) 
 }
 
 func TestNestedPromptDoesNotAdvertiseRecursiveDelegation(t *testing.T) {
-	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 1)
+	text := prompt(&Box{Shell: true}, defaultShell, "/work", "", time.Minute, 1024, 1, false)
 	if strings.Contains(text, "another ordinary ply process is a subagent") || strings.Contains(text, `"$PLY" -sh -C`) {
 		t.Fatalf("nested prompt advertises recursion:\n%s", text)
 	}
@@ -103,11 +118,11 @@ func TestNestedPromptDoesNotAdvertiseRecursiveDelegation(t *testing.T) {
 
 func TestPromptDoesNotAdvertiseUnavailableToolboxBookkeeping(t *testing.T) {
 	narrow := &Box{Dir: "/tools", Tools: []Tool{{Name: "rg"}}}
-	if text := prompt(narrow, defaultShell, "/work", "", time.Minute, 1024, 0); strings.Contains(text, "another ordinary ply process is a subagent") {
+	if text := prompt(narrow, defaultShell, "/work", "", time.Minute, 1024, 0, false); strings.Contains(text, "another ordinary ply process is a subagent") {
 		t.Fatalf("narrow toolbox advertised unavailable delegation:\n%s", text)
 	}
 	complete := &Box{Dir: "/tools", Tools: []Tool{{Name: "mkdir"}, {Name: "mktemp"}, {Name: "mv"}}}
-	if text := prompt(complete, defaultShell, "/work", "", time.Minute, 1024, 0); !strings.Contains(text, `"$PLY" -t '/tools'`) {
+	if text := prompt(complete, defaultShell, "/work", "", time.Minute, 1024, 0, false); !strings.Contains(text, `"$PLY" -t '/tools'`) {
 		t.Fatalf("capable toolbox omitted delegation:\n%s", text)
 	}
 }
@@ -135,7 +150,7 @@ func TestRunnerExportsExplicitModelAndEffortForNestedPly(t *testing.T) {
 	if err := o.fs.Parse([]string{"-m", "openai/test-model", "-effort", "xhigh"}); err != nil {
 		t.Fatal(err)
 	}
-	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/zsh")
+	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/zsh", nil)
 	if got := strings.Join(r.Env, "\n"); !strings.Contains(got, "ASK_MODEL=openai/test-model") {
 		t.Fatalf("runner env=%q", got)
 	}
@@ -147,8 +162,34 @@ func TestRunnerExportsExplicitModelAndEffortForNestedPly(t *testing.T) {
 	}
 
 	o = newOpts("ply")
-	r = o.runner(&Box{Shell: true}, "/bin/ply", 0, defaultShell)
+	r = o.runner(&Box{Shell: true}, "/bin/ply", 0, defaultShell, nil)
 	if got := strings.Join(r.Env, "\n"); strings.Contains(got, "ASK_MODEL=") {
 		t.Fatalf("runner overrode ambient model without -m: %q", got)
+	}
+}
+
+func TestRunnerPropagatesExactActionGateToNestedPly(t *testing.T) {
+	o := newOpts("ply")
+	if err := o.fs.Parse([]string{"-contract-id", "contract-abc"}); err != nil {
+		t.Fatal(err)
+	}
+	gate := &mayGate{Bin: "/operator/bin/may", BinSHA256: "sha256:abc", Job: "bench-contract-abc"}
+	r := o.runner(&Box{Shell: true}, "/bin/ply", 0, "/bin/sh", gate)
+	joined := strings.Join(r.Env, "\n")
+	for _, want := range []string{
+		"PLY_CONTRACT_ID=contract-abc",
+		"MAY=/operator/bin/may",
+		"PLY_MAY_JOB=bench-contract-abc",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("nested environment is missing %q: %q", want, joined)
+		}
+	}
+
+	t.Setenv("PLY_CONTRACT_ID", "inherited-contract")
+	t.Setenv("PLY_MAY_JOB", "inherited-job")
+	inherited := newOpts("ply")
+	if *inherited.contractID != "inherited-contract" || *inherited.mayJob != "inherited-job" {
+		t.Fatalf("nested defaults lost gate: contract=%q job=%q", *inherited.contractID, *inherited.mayJob)
 	}
 }

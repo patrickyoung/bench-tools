@@ -15,7 +15,7 @@ import (
 // no tool-use API underneath — a fenced shell block is the wire format —
 // and -S replaces the whole thing, which is why `ply system` exists and why
 // the manual says to compose with it rather than around it.
-func prompt(box *Box, shell, dir, check string, timeout time.Duration, outCap, depth int) string {
+func prompt(box *Box, shell, dir, check string, timeout time.Duration, outCap, depth int, approval bool) string {
 	var s strings.Builder
 
 	fmt.Fprintf(&s, `You are working through a Unix shell to reach the user's goal.
@@ -70,6 +70,15 @@ script. When a later step depends on output, send the first command now and
 wait. Never predict or report what a command printed before you receive it.
 `, shellQuote(shell))
 
+	if approval {
+		s.WriteString(`
+Every model-authored action is subject to an exact May approval before it
+runs. If those exact bytes are not already granted, Ply stops this invocation
+without executing them. Approval changes neither the goal nor the tool grant;
+it is only authority for the one proposed shell action.
+`)
+	}
+
 	fmt.Fprintf(&s, `
 It runs in %s on %s. Nothing is on stdin, so a program that waits for input
 will sit there until it is killed at %s -- pass what it needs in arguments,
@@ -89,7 +98,7 @@ command before you stop.
 `, quoteDir(dir), platformName(), timeout, bytesize(outCap))
 
 	s.WriteString(box.Catalogue())
-	if depth == 0 && canDelegate(box) {
+	if depth == 0 && canDelegate(box) && !approval {
 		fmt.Fprintf(&s, `
 If and only if the goal explicitly asks for subagents, delegation, or parallel
 agent work, another ordinary ply process is a subagent. Start each one with:

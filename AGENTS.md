@@ -92,6 +92,14 @@ When changing `ply`:
   has been consumed, later content is deferred rather than parsed as part of
   that command;
 
+- **exact approval precedes execution, never follows it.** With `-may-job`,
+  run a fresh May process on the literal action envelope, require its matching
+  exit status and strict result, seal `ply.approval/v1`, and only then pass the
+  unchanged script to Runner. A parked, declined, malformed, or unrecordable
+  result stops before another model turn or check. May owns grants; Ply owns
+  the pre-exec seam. Do not infer risk from model prose, cache May stdout, or
+  let a nested Ply silently discard the inherited gate;
+
 - **keep the log somebody else's.** The conversation is an `ask` session and
   `ply` writes no log of its own, so `ask replay -check` proves an entire
   run. Anything worth recording — a command, its output, its exit status,

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,10 +17,83 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if os.Getenv("PLY_TEST_MAY") == "1" && len(os.Args) > 1 && os.Args[1] == "request" {
+		os.Exit(fakeMayProgram(os.Args[1:]))
+	}
 	if os.Getenv("PLY_TEST_PROGRAM") == "1" {
 		os.Exit(run(os.Args[1:]))
 	}
 	os.Exit(m.Run())
+}
+
+func fakeMayProgram(args []string) int {
+	if len(args) != 2 || args[0] != "request" {
+		fmt.Fprintln(os.Stderr, "fake May: want request JOB")
+		return 2
+	}
+	body, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return 2
+	}
+	if path := os.Getenv("PLY_TEST_MAY_LOG"); path != "" {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			return 2
+		}
+		_, _ = f.Write(body)
+		_ = f.Close()
+	}
+	mode := os.Getenv("PLY_TEST_MAY_VERDICT")
+	if mode == "" {
+		mode = "parked"
+	}
+	if mode == "malformed" {
+		fmt.Print("not json\n")
+		return 75
+	}
+	if mode == "oversized" {
+		_, _ = os.Stdout.Write(make([]byte, maxApprovalResult+1))
+		return 75
+	}
+	if mode == "whitespace" {
+		result := mayResult{Version: 1, Job: args[1], Action: string(body), Digest: mayDigest(args[1], string(body)), Verdict: "parked"}
+		encoded, _ := json.Marshal(result)
+		fmt.Printf(" \n%s\n\n", encoded)
+		return 75
+	}
+	if mode == "stderr" {
+		fmt.Fprintln(os.Stderr, "unexpected diagnostic")
+		mode = "parked"
+	}
+	if mode == "hang" {
+		time.Sleep(30 * time.Second)
+		return 2
+	}
+	if mode == "killed" {
+		return 2
+	}
+	action := string(body)
+	if mode == "mismatch" {
+		action += "different"
+		mode = "parked"
+	}
+	result := mayResult{
+		Version: 1, Job: args[1], Action: action,
+		Digest: mayDigest(args[1], action), Verdict: mode,
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		return 2
+	}
+	switch mode {
+	case "spent":
+		return 0
+	case "declined":
+		return 3
+	case "parked":
+		return 75
+	default:
+		return 2
+	}
 }
 
 // fakeAsk stands in for the model. It is a program, like the real one, so
@@ -35,12 +111,33 @@ d=`+dir+`
 echo "$@" >> "$d/argv.log"
 [ -z "${ASK_SYSTEM-}" ] || printf '%s' "$ASK_SYSTEM" > "$d/system"
 cat >> "$d/stdin.log"
-[ "${1-}" = note ] && exit ${FAKE_ASK_NOTE_EXIT:-0}
+if [ "${1-}" = note ]; then
+  case " $* " in
+    *" ply.approval/v1 "*)
+      [ -n "${FAKE_ASK_APPROVAL_ASSERT_ABSENT-}" ] && [ -e "$FAKE_ASK_APPROVAL_ASSERT_ABSENT" ] && exit 97
+      ;;
+  esac
+  exit ${FAKE_ASK_NOTE_EXIT:-0}
+fi
 n=$(cat "$d/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/n"
 [ -f "$d/reply.$n" ] && cat "$d/reply.$n"
 exit ${FAKE_ASK_EXIT:-0}
 `, 0o755)
 	return bin, dir
+}
+
+func fakeMay(t *testing.T, verdict string) string {
+	t.Helper()
+	bin, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := filepath.Join(t.TempDir(), "may-input.jsonl")
+	t.Setenv("MAY", bin)
+	t.Setenv("PLY_TEST_MAY", "1")
+	t.Setenv("PLY_TEST_MAY_VERDICT", verdict)
+	t.Setenv("PLY_TEST_MAY_LOG", log)
+	return log
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -104,6 +201,236 @@ func TestTheLoopRunsWhatTheModelWrites(t *testing.T) {
 	// The output goes back as the next message, as a typescript.
 	if sent := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(sent, "$ echo hello > made.txt") {
 		t.Errorf("the model was not shown what ran:\n%s", sent)
+	}
+}
+
+func TestMayParksExactActionBeforeExecution(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\ntouch must-not-exist\n```")
+	mayLog := fakeMay(t, "parked")
+	checkLog := filepath.Join(t.TempDir(), "check-ran")
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-contract-id", "contract-123", "-may-job", "bench-contract-123",
+		"-check", "touch "+shellQuote(checkLog)+"; false", "make the file")
+	if code != 75 {
+		t.Fatalf("exit=%d, want 75\n%s", code, stderr)
+	}
+	if stdout != "" {
+		t.Fatalf("parked action leaked candidate stdout: %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(work, "must-not-exist")); !os.IsNotExist(err) {
+		t.Fatalf("parked action executed: %v", err)
+	}
+	if _, err := os.Stat(checkLog); !os.IsNotExist(err) {
+		t.Fatalf("candidate check ran after parked action: %v", err)
+	}
+	if !strings.Contains(stderr, "NOT EXECUTED") || !strings.Contains(stderr, "approval required") {
+		t.Fatalf("parked state was not explicit:\n%s", stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%q, want one", got)
+	}
+	var action approvalAction
+	if err := json.Unmarshal([]byte(strings.TrimSpace(read(t, mayLog))), &action); err != nil {
+		t.Fatalf("May input: %v", err)
+	}
+	wantDir, err := canonicalWorkDir(work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if action.Script != "touch must-not-exist" || action.ContractID != "contract-123" ||
+		action.Directory != wantDir || action.Shell == "" || action.Path == "" || action.TimeoutNS <= 0 {
+		t.Fatalf("May did not receive the exact action envelope: %#v", action)
+	}
+	if recorded := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(recorded, `"contract_id":"contract-123"`) ||
+		!strings.Contains(recorded, `"verdict":"parked"`) ||
+		!strings.Contains(recorded, `"may_exit_code":75`) {
+		t.Fatalf("sealed approval receipt is incomplete:\n%s", recorded)
+	}
+}
+
+func TestMaySpentReceiptIsSealedBeforeExactActionRuns(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\nprintf done > made\n```",
+		"Created the file.",
+	)
+	_ = fakeMay(t, "spent")
+	marker := filepath.Join(work, "made")
+	t.Setenv("FAKE_ASK_APPROVAL_ASSERT_ABSENT", marker)
+	code, stdout, stderr := runPly(t, "-sh", "-B", "-C", work,
+		"-may-job", "bench-spent", "-check", "test -f made", "make the file")
+	if code != 0 {
+		t.Fatalf("exit=%d\n%s", code, stderr)
+	}
+	if got := strings.TrimSpace(stdout); got != "Created the file." {
+		t.Fatalf("stdout=%q", got)
+	}
+	if got := strings.TrimSpace(read(t, marker)); got != "done" {
+		t.Fatalf("approved exact action did not execute once: %q", got)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "2" {
+		t.Fatalf("model calls=%q, want two", got)
+	}
+}
+
+func TestMayDeclineAndBoundaryFailuresNeverExecuteOrContinue(t *testing.T) {
+	for _, tc := range []struct {
+		name, mode string
+		wantCode   int
+	}{
+		{name: "declined", mode: "declined", wantCode: 3},
+		{name: "malformed", mode: "malformed", wantCode: 1},
+		{name: "mismatch", mode: "mismatch", wantCode: 1},
+		{name: "oversized", mode: "oversized", wantCode: 1},
+		{name: "noncanonical whitespace", mode: "whitespace", wantCode: 1},
+		{name: "unexpected stderr", mode: "stderr", wantCode: 1},
+		{name: "operational failure", mode: "killed", wantCode: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			work, _, askdir := sandbox(t, "```ply\ntouch forbidden\n```", "must not reach")
+			_ = fakeMay(t, tc.mode)
+			code, stdout, _ := runPly(t, "-sh", "-C", work, "-may-job", "bench-boundary", "goal")
+			if code != tc.wantCode || stdout != "" {
+				t.Fatalf("exit=%d stdout=%q, want %d and empty", code, stdout, tc.wantCode)
+			}
+			if _, err := os.Stat(filepath.Join(work, "forbidden")); !os.IsNotExist(err) {
+				t.Fatalf("unadmitted action executed: %v", err)
+			}
+			if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+				t.Fatalf("model continued after approval terminal: %q calls", got)
+			}
+		})
+	}
+}
+
+func TestMayReceiptFailureAfterSpendPreventsExecution(t *testing.T) {
+	work, _, _ := sandbox(t, "```ply\ntouch forbidden\n```")
+	_ = fakeMay(t, "spent")
+	t.Setenv("FAKE_ASK_NOTE_EXIT", "1")
+	code, stdout, _ := runPly(t, "-sh", "-C", work, "-may-job", "bench-record", "goal")
+	if code != 1 || stdout != "" {
+		t.Fatalf("exit=%d stdout=%q", code, stdout)
+	}
+	if _, err := os.Stat(filepath.Join(work, "forbidden")); !os.IsNotExist(err) {
+		t.Fatalf("action ran without a durable Ply receipt: %v", err)
+	}
+}
+
+func TestOversizedApprovalActionNeverReachesMayOrRunner(t *testing.T) {
+	script := "# " + strings.Repeat("x", maxMayAction) + "\ntouch forbidden"
+	work, _, _ := sandbox(t, "```ply\n"+script+"\n```")
+	mayLog := fakeMay(t, "spent")
+	code, stdout, stderr := runPly(t, "-sh", "-C", work, "-may-job", "bench-large", "goal")
+	if code != 1 || stdout != "" || !strings.Contains(stderr, "approval action exceeds") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if _, err := os.Stat(mayLog); !os.IsNotExist(err) {
+		t.Fatalf("oversized action reached May: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(work, "forbidden")); !os.IsNotExist(err) {
+		t.Fatalf("oversized action executed: %v", err)
+	}
+}
+
+func TestPassingPrecheckDoesNotRequestMay(t *testing.T) {
+	work, _, askdir := sandbox(t, "must not call model")
+	mayLog := fakeMay(t, "parked")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-may-job", "bench-precheck",
+		"-check", "true", "already done")
+	if code != 0 || !strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(mayLog); !os.IsNotExist(err) {
+		t.Fatalf("passing precheck requested approval: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("passing precheck called the model: %v", err)
+	}
+}
+
+func TestInvalidMayGateFailsBeforePrecheckModelOrSession(t *testing.T) {
+	work, plydir, askdir := sandbox(t, "must not call model")
+	t.Setenv("MAY", filepath.Join(t.TempDir(), "missing-may"))
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-may-job", "bench-invalid",
+		"-check", "true", "already done")
+	if code != 1 || !strings.Contains(stderr, "not on PATH") || strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("invalid May gate called the model: %v", err)
+	}
+	entries, err := os.ReadDir(plydir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("invalid May gate left session artifacts: entries=%v err=%v", entries, err)
+	}
+}
+
+func TestInterruptAtMayBoundaryIsExit130WithoutExecutionOrReceipt(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\ntouch forbidden\n```")
+	mayLog := filepath.Join(t.TempDir(), "may-started")
+	checkLog := filepath.Join(t.TempDir(), "check-ran")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(executable, "-sh", "-B", "-C", work,
+		"-may-job", "bench-interrupt", "-check", "touch "+shellQuote(checkLog)+"; false", "goal")
+	cmd.Env = append(os.Environ(),
+		"PLY_TEST_PROGRAM=1", "PLY_TEST_MAY=1", "PLY_TEST_MAY_VERDICT=hang",
+		"PLY_TEST_MAY_LOG="+mayLog, "MAY="+executable,
+		"ASK="+os.Getenv("ASK"), "PLY_DIR="+os.Getenv("PLY_DIR"))
+	var stdout, stderr strings.Builder
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(mayLog); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+			t.Fatal("May request never started")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err := cmd.Process.Signal(os.Interrupt); err != nil {
+		t.Fatal(err)
+	}
+	err = cmd.Wait()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 130 {
+		t.Fatalf("wait=%v exit=%v stderr=%q", err, exit, stderr.String())
+	}
+	if stdout.String() != "" {
+		t.Fatalf("interrupted proposal leaked stdout: %q", stdout.String())
+	}
+	if _, err := os.Stat(filepath.Join(work, "forbidden")); !os.IsNotExist(err) {
+		t.Fatalf("interrupted action executed: %v", err)
+	}
+	if _, err := os.Stat(checkLog); !os.IsNotExist(err) {
+		t.Fatalf("check ran after interrupted approval: %v", err)
+	}
+	if recorded := read(t, filepath.Join(askdir, "stdin.log")); strings.Contains(recorded, approvalReceiptKind) {
+		t.Fatalf("interrupted May request became a receipt:\n%s", recorded)
+	}
+}
+
+func TestMayJobIsFiniteValidText(t *testing.T) {
+	for _, tc := range []struct {
+		name, job string
+	}{
+		{name: "blank", job: "  "},
+		{name: "nul", job: "bad\x00job"},
+		{name: "too long", job: strings.Repeat("j", maxMayJob+1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			code, _, stderr := runPly(t, "-sh", "-may-job", tc.job, "goal")
+			if code != 1 || !strings.Contains(stderr, "-may-job") {
+				t.Fatalf("exit=%d stderr=%q", code, stderr)
+			}
+		})
 	}
 }
 

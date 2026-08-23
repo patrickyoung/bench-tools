@@ -331,6 +331,8 @@ has read a million of, and every human already knows.
 | exit 0 | done — the check passed, or, with no check, the model stopped |
 | exit 1 | error — usage, no `ask`, provider failure, or broken verifier |
 | exit 2 | not done — check failing, a bound tripped, protocol stalled, context full |
+| exit 3 | the exact proposed action was declined and did not run |
+| exit 75 | the exact proposed action is parked for approval and did not run |
 | exit 130 | interrupted |
 
 Exit 2 earns its row, as it does in `ask`: a supervisor has to tell "did not
@@ -356,6 +358,57 @@ ordinary file. Ply reads complete lines only between model turns and sends
 them in the next Ask user message. Partial lines wait; malformed or oversized
 input stops the run instead of being truncated. Steering changes neither the
 tool grant nor the verifier.
+
+## Exact-action approval
+
+`-may-job JOB` puts [May](https://github.com/patrickyoung/may) immediately in
+front of every model-authored shell block. Ply sends May one canonical JSON
+envelope containing the admitted contract ID, physical working directory,
+resolved interpreter, exact PATH, nanosecond timeout, and literal script. May status 75 parks those
+exact bytes; status 3 declines them; only status 0 with a strict matching
+`spent` result permits the unchanged script to run.
+
+This is a Unix process seam, not a risk classifier or a second tool protocol:
+
+```sh
+ply -sh -may-job bench-demo -f run.jsonl "prepare the report"
+# exit 75; stderr names the digest and says NOT EXECUTED
+may pending
+may decide DIGEST
+ply -sh -may-job bench-demo -f run.jsonl "continue the same outcome"
+```
+
+The decision still happens on `/dev/tty`; neither model text nor JSON can
+create a grant. Ply starts a fresh absolute-path May process for each proposed
+block, checks its exit status and exact result, seals a `ply.approval/v1`
+receipt into the Ask session, and only then executes a spent action. Failure to
+seal loses the one-shot grant and executes nothing. Ask, Brief, pre-checks and
+final checks remain outside the gate. Nested Ply processes inherit the same
+job and contract ID, but a nested child's 75 is ordinary command evidence to
+its parent, not a root terminal event. The approval-mode prompt therefore does
+not advertise delegation; a controller that deliberately launches nested Ply
+must inspect the child session separately.
+
+May owns the state transition; its public v1 digest is SHA-256 over
+`may-v1`, NUL, job, NUL, and exact action. Ply independently checks that wire
+value so a result cannot name unrelated May state.
+The May request has its own 10-second controller bound. The command's admitted
+timeout starts only if the action is spent, sealed, and handed to Runner.
+
+The exact May action schema is deliberately small and public:
+
+```json
+{"version":1,"contract_id":"...","directory":"/work","shell":"/bin/sh","path":"/tools","timeout_ns":120000000000,"script":"make test"}
+```
+
+Ply marshals that object canonically and adds one newline; those are the bytes
+May stores, displays, digests, and returns.
+
+Approval says that one exact shell script may run. It does not say the script
+is safe and it does not confine what the script can reach. Put May state and
+controller evidence outside the worker's writable boundary and compose Ply
+with Cage or another OS boundary when the worker is not trusted as the same
+user.
 
 ## The log is somebody else's problem
 

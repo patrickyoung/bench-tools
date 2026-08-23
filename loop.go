@@ -35,6 +35,7 @@ type Loop struct {
 	SessionChanged func(string) error // process-boundary notification after compaction
 	ContractID     string             // admitted intent contract digest, when a caller supplied one
 	Steering       *steeringInbox     // optional operator input, read only at model-turn boundaries
+	Approval       *mayGate           // optional exact-action human gate, outside the model toolbox
 }
 
 // Run works the goal. The returned string is the model's final report even
@@ -114,6 +115,29 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			actions++
 			var b strings.Builder
 			for _, c := range cmds {
+				if l.Approval != nil {
+					receipt, err := l.Approval.Request(ctx, l.ContractID, c, l.Runner)
+					if err != nil {
+						if ctx.Err() != nil {
+							return last, fmt.Errorf("%w: %w", ctx.Err(), ErrApprovalBoundary)
+						}
+						return last, fmt.Errorf("%w: %v", ErrApprovalBoundary, err)
+					}
+					if err := l.recordApproval(ctx, receipt); err != nil {
+						return last, fmt.Errorf("%w: %v", ErrApprovalBoundary, err)
+					}
+					l.View.Approval(c, receipt)
+					switch receipt.Verdict {
+					case "parked":
+						return last, fmt.Errorf("%w: %s", ErrApprovalParked, receipt.Digest)
+					case "declined":
+						return last, fmt.Errorf("%w: %s", ErrApprovalDeclined, receipt.Digest)
+					case "spent":
+						// The sealed receipt exists before the exact action runs.
+					default:
+						return last, fmt.Errorf("%w: unknown verdict %q", ErrApprovalBoundary, receipt.Verdict)
+					}
+				}
 				r := l.Runner.Run(ctx, c)
 				if ctx.Err() != nil {
 					return last, ctx.Err()

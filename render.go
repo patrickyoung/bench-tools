@@ -96,6 +96,28 @@ func (v *view) Result(r Result) {
 	fmt.Fprint(v.w, s.String())
 }
 
+// Approval renders a proposed action without borrowing the shell prompt used
+// for actions that actually ran. The sealed receipt, not this view, is the
+// durable authority record.
+func (v *view) Approval(script string, receipt approvalReceipt) {
+	if v.quiet {
+		return
+	}
+	state := strings.ToUpper(receipt.Verdict)
+	if receipt.Verdict == "spent" {
+		fmt.Fprintln(v.w, v.dim("ply: approval spent "+receipt.Digest+"; executing exact action"))
+		return
+	}
+	fmt.Fprintln(v.w, v.red("ply: approval "+state+" "+receipt.Digest+" · NOT EXECUTED"))
+	for i, line := range strings.Split(script, "\n") {
+		prefix := "? "
+		if i > 0 {
+			prefix = ": "
+		}
+		fmt.Fprintln(v.w, v.bold(prefix+line))
+	}
+}
+
 // Check prints the verdict. It is the one line worth finding in a long
 // typescript, so it says the word.
 func (v *view) Check(r Result) {

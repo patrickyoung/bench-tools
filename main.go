@@ -80,6 +80,7 @@ type opts struct {
 	compacts   *int
 	contractID *string
 	steer      *string
+	mayJob     *string
 }
 
 func newOpts(name string) *opts {
@@ -106,8 +107,9 @@ func newOpts(name string) *opts {
 		quiet:      fs.Bool("q", false, "no typescript on stderr"),
 		compact:    fs.Bool("compact", false, "carry on through a full context window"),
 		compacts:   fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
-		contractID: fs.String("contract-id", "", "intent contract digest recorded in verifier receipts"),
+		contractID: fs.String("contract-id", os.Getenv("PLY_CONTRACT_ID"), "intent contract digest recorded in receipts"),
 		steer:      fs.String("steer", "", "append-only operator steering file read between model turns"),
+		mayJob:     fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
@@ -123,7 +125,7 @@ func (o *opts) box() (*Box, error) {
 	return openBox(*o.toolbox, *o.shell)
 }
 
-func (o *opts) runner(b *Box, self string, depth int, shell string) Runner {
+func (o *opts) runner(b *Box, self string, depth int, shell string, approval *mayGate) Runner {
 	r := Runner{
 		Dir:     *o.dir,
 		Path:    b.Path(),
@@ -142,6 +144,14 @@ func (o *opts) runner(b *Box, self string, depth int, shell string) Runner {
 	}
 	if effort := strings.TrimSpace(*o.effort); effort != "" {
 		r.Env = append(r.Env, "PLY_EFFORT="+effort)
+	}
+	if contractID := strings.TrimSpace(*o.contractID); contractID != "" {
+		r.Env = append(r.Env, "PLY_CONTRACT_ID="+contractID)
+	}
+	if approval != nil {
+		// Nested Ply is still a model-authored action. Inherit the same exact
+		// gate rather than silently recovering unrestricted execution.
+		r.Env = append(r.Env, "MAY="+approval.Bin, "PLY_MAY_JOB="+approval.Job)
 	}
 	return r
 }
@@ -185,6 +195,22 @@ func work(args []string) int {
 			return fail(fmt.Errorf("-C %s: not a directory", *o.dir))
 		}
 	}
+	var approval *mayGate
+	if *o.mayJob != "" {
+		canonical, err := canonicalWorkDir(*o.dir)
+		if err != nil {
+			return fail(err)
+		}
+		*o.dir = canonical
+		mayBin, err := tool("MAY", "may", "-may-job needs may: go install github.com/patrickyoung/may@latest")
+		if err != nil {
+			return fail(err)
+		}
+		approval, err = openMayGate(mayBin, *o.mayJob)
+		if err != nil {
+			return fail(err)
+		}
+	}
 	data, err := stdinData(*o.quiet)
 	if err != nil {
 		return fail(err)
@@ -212,7 +238,7 @@ func work(args []string) int {
 	// The protocol lives in the default, so replacing it is a real choice:
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
-	system := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
+	system := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil)
 	o.fs.Visit(func(f *flag.Flag) {
 		if f.Name == "S" {
 			system = *o.sys
@@ -242,7 +268,7 @@ func work(args []string) int {
 	if err != nil {
 		self = "ply"
 	}
-	runner := o.runner(box, self, depth, shell)
+	runner := o.runner(box, self, depth, shell, approval)
 	checker := o.checker(runner, box)
 
 	// make's "nothing to be done": a goal already met costs nothing, leaves
@@ -302,7 +328,7 @@ func work(args []string) int {
 		return fail(err)
 	}
 
-	v.Note("%s · %s", session, describe(box, shell, *o.check))
+	v.Note("%s · %s", session, describe(box, shell, *o.check, approval != nil))
 	if underTree(session, *o.dir) {
 		v.Note("the session is inside the work tree, so a grep or a find will\n" +
 			"     read it back into the conversation it is a record of; -f a path\n" +
@@ -322,6 +348,7 @@ func work(args []string) int {
 		View:          v,
 		ContractID:    *o.contractID,
 		Steering:      steering,
+		Approval:      approval,
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {
@@ -329,7 +356,8 @@ func work(args []string) int {
 		}
 	}
 	answer, err := loop.Run(ctx, first)
-	if answer != "" && !v.Shown() {
+	if answer != "" && !v.Shown() && !errors.Is(err, ErrApprovalParked) &&
+		!errors.Is(err, ErrApprovalDeclined) && !errors.Is(err, ErrApprovalBoundary) {
 		fmt.Println(strings.TrimRight(answer, "\n"))
 	}
 	switch {
@@ -338,6 +366,12 @@ func work(args []string) int {
 	case errors.Is(err, context.Canceled):
 		v.Note("interrupted")
 		return 130
+	case errors.Is(err, ErrApprovalParked):
+		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
+		return 75
+	case errors.Is(err, ErrApprovalDeclined):
+		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
+		return 3
 	case errors.Is(err, ErrCycles), errors.Is(err, ErrTurns), errors.Is(err, ErrOverflow), errors.Is(err, ErrProtocol):
 		fmt.Fprintf(os.Stderr, "ply: %v\n", err)
 		return 2
@@ -358,8 +392,33 @@ func (o *opts) validate() error {
 		return fmt.Errorf("-timeout %s: must be greater than zero", *o.timeout)
 	case *o.outcap < 512:
 		return fmt.Errorf("-cap %d: too small to be worth reading", *o.outcap)
+	case *o.mayJob != "":
+		return validateMayJob(*o.mayJob)
 	}
 	return nil
+}
+
+func canonicalWorkDir(dir string) (string, error) {
+	if dir == "" {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("approval working directory: %w", err)
+		}
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("approval working directory: %w", err)
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("approval working directory: %w", err)
+	}
+	info, err := os.Stat(resolved)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf("approval working directory: %s is not a directory", resolved)
+	}
+	return resolved, nil
 }
 
 func shellDefault() string {
@@ -406,7 +465,7 @@ func systemCmd(args []string) int {
 		return fail(err)
 	}
 	depth, _ := strconv.Atoi(os.Getenv("PLY_DEPTH"))
-	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth)
+	out := prompt(box, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "")
 	procedures := ""
 	if len(o.skills) > 0 {
 		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
@@ -635,7 +694,7 @@ func underTree(session, dir string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-func describe(b *Box, shell, check string) string {
+func describe(b *Box, shell, check string, approval bool) string {
 	tools := "shell"
 	if b.Dir != "" {
 		tools = fmt.Sprintf("%d tools", len(b.Tools))
@@ -644,6 +703,9 @@ func describe(b *Box, shell, check string) string {
 		}
 	}
 	tools += " · shell: " + shell
+	if approval {
+		tools += " · May approval: every action"
+	}
 	if check == "" {
 		return tools + " · no check"
 	}

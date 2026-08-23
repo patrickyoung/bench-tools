@@ -43,8 +43,10 @@ session it writes.
   world-readable in `ps(1)` on every machine this runs on and a `brief`
   skill can be a private procedure.
 - **Commands inherit the environment.** They see whatever `ply` saw,
-  including API keys. `$PATH` is the only variable `ply` sets, plus `PLY`
-  and `PLY_DEPTH`. If a secret must not be reachable by a model-authored
+  including API keys. `$PATH` is the only general variable `ply` replaces;
+  it also sets its nesting metadata and propagates selected model,
+  interpreter, contract, and May-gate settings to nested Ply. If a secret
+  must not be reachable by a model-authored
   command, it must not be in the environment `ply` was started with.
 
 ## Where the run is written
@@ -76,6 +78,28 @@ What is offered instead is real but limited:
 
 Treat a `ply` run over untrusted input as untrusted execution of that input,
 and put the boundary in the operating system.
+
+## What exact-action approval means
+
+With `-may-job`, every model-authored shell block is sent to a fresh May child
+before Runner sees it. Ply accepts only the conjunction of May exit 0 and one
+strict EOF-terminated result binding the same job and exact action bytes with
+verdict `spent`. It then seals a `ply.approval/v1` receipt before execution.
+Parked, declined, malformed, killed, oversized, or unrecordable results execute
+nothing and do not reach another model turn or the final check.
+
+This is human authority over one exact shell script, not containment or a
+safety judgment. A script can contain several commands, spawn descendants,
+touch the network, or damage May state if the surrounding OS lets it. The
+operator sees and grants those literal bytes; Cage, a container, another uid,
+or a VM must provide the resource boundary. May's state and controller/session
+evidence must be outside every worker-writable Cage root. Under an ambient
+same-user shell, seals prove order and bytes, not producer identity against a
+malicious peer process.
+
+The action envelope binds Ply's selected contract ID, physical directory,
+shell, PATH, nanosecond timeout, and script. Other inherited environment bytes
+are ambient execution context and are not frozen by the approval receipt.
 
 ## Bounds ply does enforce
 

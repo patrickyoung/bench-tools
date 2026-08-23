@@ -196,6 +196,15 @@ A run with no
 records no verifier receipt, because done is a program's opinion and there was
 no program to have one.
 .PP
+With
+.BR \-may-job ,
+each May transition is recorded as a sealed
+.B ply.approval/v1
+note before an approved action executes or a parked/declined action becomes
+terminal. The receipt binds the fresh May executable and argv, exact stdin and
+stdout digests, May exit status, job, action envelope, verdict and contract ID.
+Saved May JSON is never an authority input; Ply always spawns May itself.
+.PP
 What
 .B \-s
 loaded is recorded the same way, once the log exists:
@@ -332,6 +341,28 @@ Each line is limited to 8 KiB and each pending batch to 64 KiB. Steering is
 ordinary implementation guidance recorded in the next Ask user turn; it does
 not change tools, the verifier, or an admitted outcome contract.
 .TP
+.BI \-may-job " job"
+Before each model-authored shell block, run
+.B may request
+with this job and an exact JSON envelope on standard input. Only May status 0
+and a strict matching
+.B spent
+result permits the unchanged block to execute. Status 75 parks the exact
+action, status 3 declines it, and malformed or operational results fail closed.
+Ask, Brief, baseline and candidate checks are not gated. The May result is
+sealed in the Ask session before execution. Nested Ply processes inherit the
+same job, but a child's status 75 is ordinary command evidence to its parent,
+not a root terminal status. Approval-mode prompts do not advertise delegation.
+Defaults to
+.BR $PLY_MAY_JOB .
+The envelope binds the contract ID, physical working directory, interpreter,
+PATH, nanosecond timeout, and literal script. The May v1 digest is lowercase
+hexadecimal SHA-256 over
+.BR may-v1 ,
+NUL, job, NUL, and that exact action.
+The May request itself has a separate 10-second controller timeout; the
+approved command timeout starts only when Runner starts the shell.
+.TP
 .BI \-timeout " d"
 Per\-command timeout, as a Go duration such as
 .BR 30s .
@@ -390,9 +421,11 @@ run without parsing the human typescript. A requested control file that
 cannot be maintained is an error. It is a pointer, not a second log.
 .TP
 .BI \-contract-id " digest"
-Bind every verifier receipt to an admitted intent contract digest. This is
+Bind verifier and action-approval receipts to an admitted intent contract
+digest. This is
 normally supplied by an orchestrator such as Bench; Ply records it literally
-and does not interpret or amend the contract.
+and does not interpret or amend the contract. Defaults to
+.BR $PLY_CONTRACT_ID .
 .TP
 .B \-q
 No typescript on standard error.
@@ -445,6 +478,22 @@ binary to run, for
 Default
 .BR brief .
 .TP
+.B MAY
+The
+.BR may (1)
+binary used by
+.BR \-may-job .
+Default
+.BR may .
+.TP
+.B PLY_MAY_JOB
+Default exact-action approval job. Ply exports the resolved May path and this
+job to model-authored commands so a nested Ply cannot silently discard the
+gate.
+.TP
+.B PLY_CONTRACT_ID
+Default admitted intent-contract digest, propagated to nested Ply processes.
+.TP
 .B NO_COLOR
 Set to any value to strip color from the typescript. Color is also stripped
 when standard error is not a terminal.
@@ -486,6 +535,13 @@ Not done: the check is still failing, a bound was reached, the command
 protocol stalled, or the context window is full. It is its own status because
 a supervisor has to tell "did not work" from "broke", or it retries the
 wrong one.
+.TP
+.B 3
+The exact proposed action was declined by May and was not executed.
+.TP
+.B 75
+The exact proposed action is parked in May for an operator decision and was
+not executed.
 .TP
 .B 130
 Interrupted.
