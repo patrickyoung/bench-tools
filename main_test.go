@@ -1368,7 +1368,8 @@ func TestBrokenCheckStopsInsteadOfBecomingWork(t *testing.T) {
 
 	t.Run("after report", func(t *testing.T) {
 		work, _, askdir := sandbox(t, "A candidate report.", "should not be asked")
-		check := `if [ -s /dev/stdin ]; then
+		check := `input=$(cat)
+if [ -n "$input" ]; then
   echo verifier crashed >&2
   exit 7
 fi
@@ -1391,7 +1392,8 @@ exit 1`
 
 func TestVerifierOutputBeyondEvidenceCapIsBroken(t *testing.T) {
 	work, _, askdir := sandbox(t, "candidate")
-	check := `if [ -s /dev/stdin ]; then yes x | head -c 2000; exit 0; fi
+	check := `input=$(cat)
+if [ -n "$input" ]; then yes x | head -c 2000; exit 0; fi
 exit 1`
 	code, _, stderr := runPly(t, "-sh", "-C", work, "-cap", "512", "-check", check, "goal")
 	if code != 1 || !strings.Contains(stderr, "output exceeded the evidence cap") {
