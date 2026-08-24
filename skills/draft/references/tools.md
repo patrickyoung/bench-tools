@@ -29,7 +29,7 @@ ask — put a question through a language model, get the answer on stdout
   ask [flags] [message ...]       ask; -a attaches files, stdin composes
   ask replay [flags] [session]    re-render a session (-check verifies replay)
   ask compact [flags] [session]   continue a full conversation in a fresh one
-  ask note -s src [flags] [text]  record something a program decided
+  ask note -s src [flags] [text]  record text or sealed structured JSON
   ask system                      print the built-in system prompt
   ask login openai-codex [flags]  store subscription auth (-from-codex)
   ask logout <provider>           remove stored credentials
@@ -82,9 +82,9 @@ compact only:
                 is never touched. stdout is the new session's path.
 replay only:
   -d dir        conversation directory ($ASK_DIR)
-  -check        verify the replay invariant and exit
+  -check        verify the replay invariant before producing output
   -step n       print the normalized request at this seq, rebuilding messages
-  -json         emit the raw events instead of re-rendering
+  -json         emit raw events; combine with -check for a verified snapshot
 note only:
   -s source     program writing the note (required, one word)
   -f file       session to append to (default: current)
@@ -191,16 +191,20 @@ redirect opens a file with no program involved. The security boundary is
 the process — its user, its container, its chroot — as it always was.
 
 shell: commands and checks use /bin/sh -c by default. -shell names one other
-executable that accepts -c. Ply resolves it before calling the model and says
-exactly which interpreter it chose. The login-shell variable $SHELL is ignored.
+executable that accepts -c. -action-shell may name a separate interpreter for
+model actions while checks keep -shell. Ply resolves both before the model and
+says exactly which it chose. The login-shell variable $SHELL is ignored.
 
 loop: one model turn consumes one shell block or a report with no block. Ply
 runs the first complete action and returns its result before asking again;
 later blocks and claims are deferred. Empty or unfinished first blocks run none.
+With -require-action, a report before any command is corrected, then exit 2.
 
 done: -check cmd is a verifier. Before work it receives empty stdin; after
 the model stops it receives the candidate report. Exit 0 accepts, 1 rejects
 and sends its output back, and any other status means the verifier broke.
+Interpreter startup failure or output beyond -cap is broken too: verifier
+evidence is never silently truncated.
 A passing pre-check costs no model turn or session. Without -check, exit 0
 means only that the model stopped. The check is yours, not the model's, so it
 runs with your PATH and the toolbox merely first on it.
@@ -208,19 +212,25 @@ runs with your PATH and the toolbox merely first on it.
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
 it), and the exit code says what happened. The conversation is an ask
 session — commands in the assistant turns, their output in the user turns —
-so ask replay -check on it proves the whole run.
+and each verifier run is a sealed structured receipt, so ask replay -check
+detects changes, gaps, reordering, or an unsealed record in a retained prefix.
 
 flags:
   -t dir        toolbox: PATH becomes this directory alone ($PLY_TOOLS)
   -sh           full shell: every program on PATH, and -t's first if given
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
+  -action-shell path  model actions only ($PLY_ACTION_SHELL; default -shell)
   -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
+  -require-action  refuse a final report until at least one command runs
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
   -turns n      model turns before giving up (default 50, 0 = unbounded)
+  -steer file   read appended UTF-8 lines between model turns
+  -may-job job  require exact May approval before every model action
+  -cage         confine approved actions; needs -may-job and -contract-id
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
   -cap n        output kept per command, head and tail (default 16384)
   -C dir        run commands here (default: the current directory)
@@ -228,22 +238,25 @@ flags:
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
-  -s name       brief skill to append; repeat for more; -s - picks one
+  -s name       brief skill to compose; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
   -session-out file  atomically write the current session path here
+  -contract-id digest  bind verifier receipts to an admitted intent contract
   -q            no typescript on stderr
 
-env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_EFFORT (-effort) · PLY_DIR
+env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_ACTION_SHELL (-action-shell)
+     · PLY_EFFORT (-effort) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
-     (the brief binary) · NO_COLOR
+     (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
+     · PLY_MAY_JOB · NO_COLOR
      Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
      -q and nothing else. Commands run with $PLY naming this binary and
      $PLY_DEPTH
      counting the nesting, so a tool can start another ply: a sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
-      a bound tripped,
-      the command protocol stalled, or context is full · 130 interrupted
+      bound, protocol, or context · 3 approval declined · 75 approval required
+      · 125 confinement failed · 130 interrupted
 ```
 
 ## hone
@@ -268,10 +281,10 @@ failed and then passed teaches, and the lesson is the difference. That gate
 is arithmetic on exit statuses already in the log; a model is used to word a
 lesson, never to decide there is one.
 
-the verdict: ply -check writes it into the session as a note, so hone knows
-how a run ended without guessing. A run with no check has no verdict and is
-refused, saying so. This is the whole reason it works: everything else that
-learns from agent logs is learning from unlabelled ones.
+the verdict: ply -check writes each result as a typed, sealed receipt in the
+session, so hone knows how a run ended without guessing. Legacy signed prose
+notes still read. A run with no check has no verdict and is refused, saying
+so. This is the whole reason it works: unlabelled trajectories do not teach.
 
 no store: a lesson is a skill, brief is the catalogue, and $BRIEF_PATH is
 where it lives. hone writes what brief reads and stops -- there is no
@@ -341,6 +354,7 @@ the child. Status 2 is Cage usage. Other statuses belong to the child.
 may - ask a human before one exact action
 
   printf '%s\n' ACTION | may [JOB]  approve now, or park under JOB
+  printf '%s\n' ACTION | may request JOB  print the exact machine result
   may pending                       print pending requests as JSONL
   may decide DIGEST                 decide one request at /dev/tty
   may check                         run the offline acceptance check
