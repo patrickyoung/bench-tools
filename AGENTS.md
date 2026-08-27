@@ -59,6 +59,15 @@ When changing `hone`:
   specification's limits, the lint — stays entirely `brief`'s, and `hone`
   checks its own work by running it;
 
+- **exact review is a user-owned delta, not a second store.** `-prepare`
+  requires one operator-named file and binds the replayed source, the Ask
+  call that worded it, the resolved destination-before bytes, and the exact
+  final skill document. `show` calls nothing; `admit` calls no model,
+  replays both provenance sessions, rejects every stale hash or path, proves
+  the document is only Hone's append/scaffold delta, and writes atomically.
+  Never add a default proposal directory, list, index, implicit admission,
+  overwrite-on-prepare, or regeneration during admission;
+
 - **every write is a delta.** Append under the heading; never regenerate
   what is there. A model handed its own accumulated notes and asked for the
   next version rewrites them, and rewriting compresses away the specifics

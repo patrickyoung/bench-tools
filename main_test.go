@@ -21,6 +21,11 @@ func fakeAsk(t *testing.T, reply string) (bin, dir string) {
 	write(t, bin, `#!/bin/sh
 d=`+dir+`
 echo "$@" >> "$d/argv.log"
+next=
+for arg do
+  if [ "$next" = file ]; then printf '%s\n' '{"type":"fake-wording-session"}' > "$arg"; next=; continue; fi
+  if [ "$arg" = -f ]; then next=file; fi
+done
 case "$1" in
   replay) exit ${FAKE_REPLAY_EXIT:-0} ;;
   note)   exit 0 ;;
@@ -264,6 +269,131 @@ func TestDryRunWritesNothing(t *testing.T) {
 	}
 }
 
+func TestPreparedProposalAdmitsExactBytesWithoutAnotherModelCall(t *testing.T) {
+	sessions, skills, askdir := sandbox(t, "- Test files here declare package main.")
+	s := filepath.Join(sessions, "run.jsonl")
+	writeSession(t, s, "go test ./...", []string{"$ x\nexit 1\n", "$ y\nok\n"}, passedMark)
+	artifact := filepath.Join(t.TempDir(), "review.json")
+
+	code, stdout, stderr := runHone(t, "-into", "house", "-prepare", artifact, s)
+	if code != 0 {
+		t.Fatalf("prepare exit=%d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, proposalVersion) || !strings.Contains(stdout, "skill-bytes:") || !strings.Contains(stdout, "Test files here") {
+		t.Fatalf("proposal review output is incomplete:\n%s", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(skills, "house", "SKILL.md")); !os.IsNotExist(err) {
+		t.Fatalf("prepare changed the skill: %v", err)
+	}
+	p, err := readProposal(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.BeforeSHA256 != absentHash || p.SourceID != "run" || p.AfterSHA256 != sha256Bytes([]byte(p.Document)) {
+		t.Fatalf("proposal is not exactly bound: %#v", p)
+	}
+	modelCalls := strings.TrimSpace(read(t, filepath.Join(askdir, "n")))
+	if modelCalls != "2" { // one lesson call and one new-skill description
+		t.Fatalf("prepare model calls=%q, want 2", modelCalls)
+	}
+
+	code, shown, stderr := runHone(t, "show", artifact)
+	if code != 0 || !strings.Contains(shown, p.Document) {
+		t.Fatalf("show exit=%d stderr=%q output=%q", code, stderr, shown)
+	}
+	code, stdout, stderr = runHone(t, "admit", artifact)
+	if code != 0 {
+		t.Fatalf("admit exit=%d\n%s", code, stderr)
+	}
+	if got := read(t, filepath.Join(skills, "house", "SKILL.md")); got != p.Document {
+		t.Fatalf("admitted bytes differ from review\ngot:\n%s\nwant:\n%s", got, p.Document)
+	}
+	if !strings.Contains(stdout, "reviewed lesson") || !strings.Contains(stderr, "no model called") {
+		t.Fatalf("admit streams stdout=%q stderr=%q", stdout, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != modelCalls {
+		t.Fatalf("admit called a model: before=%q after=%q", modelCalls, got)
+	}
+	argv := read(t, filepath.Join(askdir, "argv.log"))
+	if !strings.Contains(argv, "replay -check "+p.Source) || !strings.Contains(argv, "replay -check "+p.Wording) {
+		t.Fatalf("admit did not replay both provenance sessions:\n%s", argv)
+	}
+	if code, _, stderr := runHone(t, "admit", artifact); code != 1 || !strings.Contains(stderr, "already learned from") {
+		t.Fatalf("second admit exit=%d stderr=%q", code, stderr)
+	}
+}
+
+func TestProposalAdmissionRefusesStaleOrAlteredBytes(t *testing.T) {
+	sessions, skills, askdir := sandbox(t, "- Keep exact reviewed bytes.")
+	s := filepath.Join(sessions, "run.jsonl")
+	writeSession(t, s, "check", []string{"$ check\nexit 1\n", "$ check\nok\n"}, passedMark)
+	dir := filepath.Join(skills, "house")
+	original := scaffold("house", "Existing procedure.")
+	write(t, filepath.Join(dir, "SKILL.md"), original, 0o644)
+	artifact := filepath.Join(t.TempDir(), "review.json")
+	if code, _, stderr := runHone(t, "-into", "house", "-prepare", artifact, s); code != 0 {
+		t.Fatalf("prepare exit=%d\n%s", code, stderr)
+	}
+	modelCalls := strings.TrimSpace(read(t, filepath.Join(askdir, "n")))
+	write(t, filepath.Join(dir, "SKILL.md"), scaffold("house", "Changed after review."), 0o644)
+	code, _, stderr := runHone(t, "admit", artifact)
+	if code != 2 || !strings.Contains(stderr, "changed after proposal review") {
+		t.Fatalf("stale admit exit=%d stderr=%q", code, stderr)
+	}
+	if !strings.Contains(read(t, filepath.Join(dir, "SKILL.md")), "Changed after review") {
+		t.Error("stale admission overwrote the changed skill")
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != modelCalls {
+		t.Fatalf("stale admission called a model: before=%q after=%q", modelCalls, got)
+	}
+
+	p, err := readProposal(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Document += "tampered\n"
+	body, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	altered := filepath.Join(t.TempDir(), "altered.json")
+	write(t, altered, string(body), 0o600)
+	if code, _, stderr := runHone(t, "show", altered); code != 2 || !strings.Contains(stderr, "does not match after sha256") {
+		t.Fatalf("altered proposal show exit=%d stderr=%q", code, stderr)
+	}
+
+	write(t, filepath.Join(dir, "SKILL.md"), original, 0o644)
+	p.Document = strings.TrimRight(p.Document, "\n") + "\n\n## Unreviewed rewrite\nextra authority\n"
+	p.AfterSHA256 = sha256Bytes([]byte(p.Document))
+	body, err = json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rehashed := filepath.Join(t.TempDir(), "rehashed.json")
+	write(t, rehashed, string(body), 0o600)
+	if code, _, stderr := runHone(t, "admit", rehashed); code != 2 || !strings.Contains(stderr, "not the exact Hone append") {
+		t.Fatalf("rehashed rewrite admit exit=%d stderr=%q", code, stderr)
+	}
+	if got := read(t, filepath.Join(dir, "SKILL.md")); got != original {
+		t.Error("rehashed rewrite changed the skill")
+	}
+}
+
+func TestPrepareRefusesOccupiedArtifactBeforeCallingModel(t *testing.T) {
+	sessions, _, askdir := sandbox(t, "- a lesson")
+	s := filepath.Join(sessions, "run.jsonl")
+	writeSession(t, s, "check", []string{"$ check\nexit 1\n", "$ check\nok\n"}, passedMark)
+	artifact := filepath.Join(t.TempDir(), "exists.json")
+	write(t, artifact, "keep me\n", 0o600)
+	code, _, stderr := runHone(t, "-into", "house", "-prepare", artifact, s)
+	if code != 2 || !strings.Contains(stderr, "already exists") || read(t, artifact) != "keep me\n" {
+		t.Fatalf("occupied prepare exit=%d stderr=%q artifact=%q", code, stderr, read(t, artifact))
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("occupied proposal called a model: %v", err)
+	}
+}
+
 // -why prints the evidence and asks nothing. A lesson is a claim, and being
 // able to read the evidence before paying for the claim is the difference
 // between a tool you trust and one you audit afterwards.
@@ -286,6 +416,13 @@ func TestWhyShowsTheEvidenceAndCallsNoModel(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(askdir, "n")); err == nil {
 		t.Error("-why called a model")
+	}
+	if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, "replay -check "+s) {
+		t.Fatalf("-why did not replay-verify its evidence:\n%s", argv)
+	}
+	t.Setenv("FAKE_REPLAY_EXIT", "1")
+	if code, stdout, stderr := runHone(t, "-why", s); code != 1 || stdout != "" || !strings.Contains(stderr, "does not replay") {
+		t.Fatalf("damaged -why exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 }
 
@@ -420,7 +557,7 @@ func TestDocsCoverEveryCommandAndFlag(t *testing.T) {
 			t.Errorf("verb %q is missing from README.md", v)
 		}
 	}
-	for _, f := range []string{"-into", "-n", "-m", "-N", "-why", "-d", "-no-verify", "-q"} {
+	for _, f := range []string{"-into", "-n", "-m", "-N", "-why", "-prepare", "-d", "-no-verify", "-q"} {
 		if !strings.Contains(usageText, f) {
 			t.Errorf("flag %q is missing from hone help", f)
 		}

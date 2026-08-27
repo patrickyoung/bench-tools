@@ -181,17 +181,27 @@ func taught(dir, sessionID string) bool {
 // describe writes the line a new skill is found by. It is called only when
 // one is being created, so an existing skill's description is never
 // touched: what a human curated stays curated.
-func add(dir, name string, lessons []string, from, by string, describe func() string) (int, int, error) {
+type addition struct {
+	document string
+	before   []byte
+	existed  bool
+	added    int
+	held     int
+	lessons  []string
+}
+
+// buildAddition computes the exact delta without writing it. Ordinary
+// learning saves it immediately; reviewed learning seals the same result in
+// a user-named proposal and admits those bytes later.
+func buildAddition(dir, name string, lessons []string, from, by string, describe func() string) (addition, error) {
 	path := filepath.Join(dir, "SKILL.md")
 	body, err := os.ReadFile(path)
+	existed := err == nil
 	switch {
 	case os.IsNotExist(err):
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return 0, 0, err
-		}
 		body = []byte(scaffold(name, describe()))
 	case err != nil:
-		return 0, 0, err
+		return addition{}, err
 	}
 
 	doc := string(body)
@@ -200,6 +210,7 @@ func add(dir, name string, lessons []string, from, by string, describe func() st
 	}
 
 	added := 0
+	var inserted []string
 	for _, l := range lessons {
 		// Against the growing document, not the one read from disk: two
 		// lessons in one reply can say the same thing, and the second must
@@ -209,14 +220,32 @@ func add(dir, name string, lessons []string, from, by string, describe func() st
 		}
 		doc = insert(doc, l+"\n"+mark(from, by))
 		added++
+		inserted = append(inserted, l)
 	}
 	if added == 0 {
-		return 0, 0, nil
+		return addition{document: doc, before: body, existed: existed}, nil
 	}
-	if err := save(path, doc); err != nil {
+	return addition{document: doc, before: body, existed: existed, added: added, held: total(doc), lessons: inserted}, nil
+}
+
+func add(dir, name string, lessons []string, from, by string, describe func() string) (int, int, error) {
+	change, err := buildAddition(dir, name, lessons, from, by, describe)
+	if err != nil {
 		return 0, 0, err
 	}
-	return added, total(doc), nil
+	if change.added == 0 {
+		return 0, 0, nil
+	}
+	if !change.existed {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return 0, 0, err
+		}
+	}
+	path := filepath.Join(dir, "SKILL.md")
+	if err := save(path, change.document); err != nil {
+		return 0, 0, err
+	}
+	return change.added, change.held, nil
 }
 
 // insert puts a lesson at the end of the lessons section, which is the end

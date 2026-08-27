@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 // maxLessons bounds what one run can add. It is small on purpose: a run
 // that appears to teach five things has usually taught one thing and four
@@ -40,6 +40,7 @@ type hone struct {
 	dry      bool
 	quiet    bool
 	verify   bool
+	proposal string
 }
 
 func main() { os.Exit(run(os.Args[1:])) }
@@ -51,6 +52,10 @@ func run(args []string) int {
 			return cmdForget(args[1:])
 		case "prompt":
 			return cmdPrompt(args[1:])
+		case "show":
+			return cmdShowProposal(args[1:])
+		case "admit":
+			return cmdAdmit(args[1:])
 		case "version", "-V", "--version":
 			fmt.Printf("hone %s\n", version)
 			return 0
@@ -66,7 +71,7 @@ func run(args []string) int {
 	return cmdHone(args)
 }
 
-var verbs = []string{"forget", "prompt", "version", "help"}
+var verbs = []string{"forget", "prompt", "show", "admit", "version", "help"}
 
 // nearVerb catches a mistyped command before it is read as a session path.
 // Unlike ask, everything here is a path, so a word that is not a file and
@@ -89,14 +94,15 @@ func nearVerb(word string) string {
 func cmdHone(args []string) int {
 	fs := flag.NewFlagSet("hone", flag.ContinueOnError)
 	var (
-		into   = fs.String("into", "", "fold the lessons into this skill instead of printing them")
-		mspec  = fs.String("m", "", "provider/model for the wording (default: the session's own)")
-		max    = fs.Int("n", maxLessons, "most lessons to take from one run")
-		dry    = fs.Bool("N", false, "say what would be learned, write nothing")
-		quiet  = fs.Bool("q", false, "no progress on stderr")
-		noVfy  = fs.Bool("no-verify", false, "skip the replay check on the session")
-		expl   = fs.Bool("why", false, "print the evidence a lesson would be drawn from, and stop")
-		dirArg = fs.String("d", askDir(), "session directory")
+		into    = fs.String("into", "", "fold the lessons into this skill instead of printing them")
+		mspec   = fs.String("m", "", "provider/model for the wording (default: the session's own)")
+		max     = fs.Int("n", maxLessons, "most lessons to take from one run")
+		dry     = fs.Bool("N", false, "say what would be learned, write nothing")
+		quiet   = fs.Bool("q", false, "no progress on stderr")
+		noVfy   = fs.Bool("no-verify", false, "skip the replay check on the session")
+		expl    = fs.Bool("why", false, "print the evidence a lesson would be drawn from, and stop")
+		prepare = fs.String("prepare", "", "write an exact reviewed-learning proposal, not the skill")
+		dirArg  = fs.String("d", askDir(), "session directory")
 	)
 	usage(fs, "hone [flags] [session ...]")
 	if err := fs.Parse(args); err != nil {
@@ -104,6 +110,20 @@ func cmdHone(args []string) int {
 	}
 	if *max < 1 {
 		return fail(fmt.Errorf("-n %d: a run teaches at least one thing or none of them", *max))
+	}
+	if *prepare != "" && *into == "" {
+		return fail(errors.New("-prepare needs -into SKILL"))
+	}
+	if *prepare != "" && (*dry || *expl) {
+		return fail(errors.New("-prepare cannot be combined with -N or -why"))
+	}
+	if *prepare != "" && *noVfy {
+		return fail(errors.New("-prepare always replay-verifies its source session"))
+	}
+	if *prepare != "" {
+		if err := checkProposalDestination(*prepare); err != nil {
+			return fail(err)
+		}
 	}
 
 	// Flags stop at the first path, so `hone s.jsonl -into x` reads the
@@ -119,10 +139,19 @@ func cmdHone(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	if *prepare != "" && len(paths) != 1 {
+		return fail(errors.New("-prepare accepts exactly one session"))
+	}
 
-	g := &hone{model: *mspec, max: *max, into: *into, dry: *dry, quiet: *quiet, verify: !*noVfy}
+	g := &hone{model: *mspec, max: *max, into: *into, dry: *dry, quiet: *quiet, verify: !*noVfy, proposal: *prepare}
 	if *expl {
-		return explain(paths)
+		askBin := ""
+		if g.verify {
+			if askBin, err = tool("ASK", "ask", "hone replay-verifies evidence before showing it"); err != nil {
+				return fail(err)
+			}
+		}
+		return explain(context.Background(), askBin, paths, g.verify)
 	}
 	if g.askBin, err = tool("ASK", "ask", "hone has no model of its own"); err != nil {
 		return fail(err)
@@ -194,7 +223,7 @@ func (g *hone) one(ctx context.Context, path string) (int, int) {
 	}
 
 	dir := ""
-	if into != "" && !g.dry {
+	if into != "" && (!g.dry || g.proposal != "") {
 		var err error
 		if dir, err = skillDir(into); err != nil {
 			return 0, fail(err)
@@ -220,6 +249,9 @@ func (g *hone) one(ctx context.Context, path string) (int, int) {
 	if len(lessons) == 0 {
 		g.say("%s: nothing worth keeping · ask replay -check %s", s.ID, by)
 		return 0, 1
+	}
+	if g.proposal != "" {
+		return g.prepare(ctx, g.proposal, dir, into, path, s, lessons, by)
 	}
 
 	if into == "" || g.dry {
@@ -305,15 +337,21 @@ func cmdPrompt(args []string) int {
 	return 0
 }
 
-// explain prints what would be sent and stops. A lesson is a claim, and
-// being able to see the evidence before paying for the claim is the
-// difference between a tool you trust and one you audit afterwards.
-func explain(paths []string) int {
+// explain replay-checks and prints what would be sent, then stops. A lesson
+// is a claim, and being able to see verified evidence before paying for the
+// claim is the difference between a tool you trust and one you audit later.
+func explain(ctx context.Context, askBin string, paths []string, replay bool) int {
 	found := false
 	for _, p := range paths {
 		s, err := readSession(p)
 		if err != nil {
 			return fail(err)
+		}
+		if replay {
+			if err := verify(ctx, askBin, p); err != nil {
+				fmt.Fprintf(os.Stderr, "hone: %v\n", err)
+				continue
+			}
 		}
 		ok, why := s.Teaches()
 		if !ok {
