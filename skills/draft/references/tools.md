@@ -15,7 +15,7 @@ identity or a browser and cannot see one here will invent how they work.
     ask    ask 0.1.0
     brief  brief 0.1.0
     ply    ply 0.1.0
-    hone   hone 0.1.0
+    hone   hone 0.2.0
     cage   cage 0.1.0
     may    may 0.1.0
 
@@ -264,6 +264,8 @@ hone -- read a run a program judged, write down what it teaches
 
   hone [flags] [session ...]     distil what a run teaches
   hone forget <id> <skill>...    remove what a run taught
+  hone show <proposal>            show an exact prepared skill document
+  hone admit <proposal>           admit it without another model call
   hone prompt                    print the system prompt that words a lesson
   hone version                   print the version (-V, --version)
   hone help                      print this summary (-h, --help)
@@ -291,7 +293,10 @@ index, no database, no embedding, and no daemon. Retrieval is brief find.
   hone                                  what did the last run teach?
   hone -into go-conventions             ...and keep it
   hone -into -                          ...into the skill the run followed
-  hone -why                             show the evidence, ask nothing
+  hone -why                             replay-check and show evidence, no model
+  hone -into house -prepare p.json run  prepare exact bytes for later review
+  hone show p.json                      inspect those exact skill bytes
+  hone admit p.json                     replay, stale-check, and write them
   hone -into house ~/.ask/sessions      everything, into one skill
   hone forget 20260801-2304-a3f9 house  that run taught something wrong
 
@@ -305,7 +310,9 @@ flags:
   -n N          most lessons from one run (default 3). Small on purpose
   -m spec       provider/model for the wording, e.g. anthropic/claude-sonnet-5
   -N            say what would be learned, write nothing
-  -why          print the evidence a lesson would be drawn from, and stop
+  -why          replay-check and print the evidence, then stop; no model
+  -prepare file word one verified session into a user-named exact proposal;
+                require -into, write no skill, and never overwrite the file
   -d dir        session directory ($ASK_DIR)
   -no-verify    skip ask replay -check on the session before reading it
   -q            no progress on stderr
