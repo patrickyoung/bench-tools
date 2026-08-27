@@ -145,7 +145,13 @@ func cmdHone(args []string) int {
 
 	g := &hone{model: *mspec, max: *max, into: *into, dry: *dry, quiet: *quiet, verify: !*noVfy, proposal: *prepare}
 	if *expl {
-		return explain(paths)
+		askBin := ""
+		if g.verify {
+			if askBin, err = tool("ASK", "ask", "hone replay-verifies evidence before showing it"); err != nil {
+				return fail(err)
+			}
+		}
+		return explain(context.Background(), askBin, paths, g.verify)
 	}
 	if g.askBin, err = tool("ASK", "ask", "hone has no model of its own"); err != nil {
 		return fail(err)
@@ -331,15 +337,21 @@ func cmdPrompt(args []string) int {
 	return 0
 }
 
-// explain prints what would be sent and stops. A lesson is a claim, and
-// being able to see the evidence before paying for the claim is the
-// difference between a tool you trust and one you audit afterwards.
-func explain(paths []string) int {
+// explain replay-checks and prints what would be sent, then stops. A lesson
+// is a claim, and being able to see verified evidence before paying for the
+// claim is the difference between a tool you trust and one you audit later.
+func explain(ctx context.Context, askBin string, paths []string, replay bool) int {
 	found := false
 	for _, p := range paths {
 		s, err := readSession(p)
 		if err != nil {
 			return fail(err)
+		}
+		if replay {
+			if err := verify(ctx, askBin, p); err != nil {
+				fmt.Fprintf(os.Stderr, "hone: %v\n", err)
+				continue
+			}
 		}
 		ok, why := s.Teaches()
 		if !ok {

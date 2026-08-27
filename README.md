@@ -260,8 +260,8 @@ There is no verb for that here, because there is already a program for it.
 
 ## Read the evidence first
 
-A lesson is a claim. `-why` prints what it would be drawn from and calls no
-model:
+A lesson is a claim. `-why` replay-verifies the session, prints what a lesson
+would be drawn from, and calls no model:
 
 ```
 $ hone -why

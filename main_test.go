@@ -417,6 +417,13 @@ func TestWhyShowsTheEvidenceAndCallsNoModel(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(askdir, "n")); err == nil {
 		t.Error("-why called a model")
 	}
+	if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, "replay -check "+s) {
+		t.Fatalf("-why did not replay-verify its evidence:\n%s", argv)
+	}
+	t.Setenv("FAKE_REPLAY_EXIT", "1")
+	if code, stdout, stderr := runHone(t, "-why", s); code != 1 || stdout != "" || !strings.Contains(stderr, "does not replay") {
+		t.Fatalf("damaged -why exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
 }
 
 // A directory is every session in it, which is what a batch over an archive
