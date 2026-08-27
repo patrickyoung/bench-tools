@@ -286,6 +286,37 @@ $ sed -i.bak 's/^package x$/package main/' add.go
 
 `-N` goes one step further: it words the lesson and writes nothing.
 
+## Review exact bytes, admit them later
+
+`-N` is disposable wording: running ordinary `hone` later asks the model
+again, so it may not produce the same lesson. For an exact review boundary,
+name a proposal file explicitly:
+
+```sh
+hone -into house -prepare lesson.json run.jsonl
+hone show lesson.json
+hone admit lesson.json
+```
+
+`-prepare` accepts exactly one replay-verified session. It calls the model,
+but changes no skill and never overwrites an existing proposal. The proposal
+binds the source session and its hash, the Ask session that worded the lesson
+and its hash, the resolved destination and its current hash (or absence), and
+the exact final `SKILL.md` bytes. Standard output shows those literal skill
+bytes for review.
+
+`hone show` is read-only and calls nothing. `hone admit` calls no model: it
+replay-checks both provenance sessions, rechecks their hashes and the current
+destination, asks Brief to lint the exact document when Brief is available,
+and atomically writes only those reviewed bytes. A changed session,
+destination, proposal, or catalogue resolution is refused. Re-admitting a
+run already present is the ordinary exit-1 “nothing to learn” result.
+
+This is not a Hone proposal store. There is no default proposal directory,
+index, list, retrieval path, cleanup daemon, or implicit admission; the
+operator names one ordinary file and later types the command that writes the
+skill.
+
 ## The Unix contract
 
 | stream | carries |
@@ -308,6 +339,8 @@ for s in ~/.ask/sessions/*.jsonl; do hone -into house "$s" || continue; done
 ```
 hone [flags] [session ...]       distil what a run teaches
 hone forget <id> <skill>...      remove what a run taught
+hone show <proposal>              show exact prepared skill bytes
+hone admit <proposal>             admit them without another model call
 hone prompt                      print the system prompt that words a lesson
 hone version                     print the version
 hone help                        print the summary

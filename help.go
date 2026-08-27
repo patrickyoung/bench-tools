@@ -6,6 +6,8 @@ const usageText = `hone -- read a run a program judged, write down what it teach
 
   hone [flags] [session ...]     distil what a run teaches
   hone forget <id> <skill>...    remove what a run taught
+  hone show <proposal>            show an exact prepared skill document
+  hone admit <proposal>           admit it without another model call
   hone prompt                    print the system prompt that words a lesson
   hone version                   print the version (-V, --version)
   hone help                      print this summary (-h, --help)
@@ -34,6 +36,9 @@ index, no database, no embedding, and no daemon. Retrieval is brief find.
   hone -into go-conventions             ...and keep it
   hone -into -                          ...into the skill the run followed
   hone -why                             show the evidence, ask nothing
+  hone -into house -prepare p.json run  prepare exact bytes for later review
+  hone show p.json                      inspect those exact skill bytes
+  hone admit p.json                     replay, stale-check, and write them
   hone -into house ~/.ask/sessions      everything, into one skill
   hone forget 20260801-2304-a3f9 house  that run taught something wrong
 
@@ -48,6 +53,8 @@ flags:
   -m spec       provider/model for the wording, e.g. anthropic/claude-sonnet-5
   -N            say what would be learned, write nothing
   -why          print the evidence a lesson would be drawn from, and stop
+  -prepare file word one verified session into a user-named exact proposal;
+                require -into, write no skill, and never overwrite the file
   -d dir        session directory ($ASK_DIR)
   -no-verify    skip ask replay -check on the session before reading it
   -q            no progress on stderr

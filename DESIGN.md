@@ -47,8 +47,8 @@ The version that works is narrow:
 - make every lesson **traceable to the run that taught it**, so a bad one
   can be found and deleted rather than argued with.
 
-That list is the whole design. Everything below is how to get it in four
-hundred lines instead of forty thousand.
+That list is the whole design. Everything below is how to keep it a small
+Unix program instead of a memory platform.
 
 ## What this family already has that nobody else does
 
@@ -217,7 +217,7 @@ There is no verb for that here, because there is already a program for it.
 
 | stream | carries |
 | --- | --- |
-| stdout | the lesson, and nothing else |
+| stdout | the lesson, exact proposal review, or written path |
 | stderr | which session taught it, why a run was refused |
 | exit 0 | yes: something was learned |
 | exit 1 | no: nothing to learn — no failure, no recovery, or no verdict |
@@ -231,6 +231,14 @@ an ordinary answer a script branches on rather than a failure:
     done
 
 ## Deliberately absent
+
+Exact review does not create an exception to the absence of a store.
+`-prepare FILE` requires one user-named artifact and changes no skill;
+`show` is read-only; `admit` replays both source and wording provenance,
+rejects changed evidence, destination bytes, or path resolution, proves the
+document is only the allowed append/scaffold delta, and writes those exact
+bytes without another model call. There is no default proposal directory,
+listing, retrieval path, overwrite, or implicit admission.
 
 No embedding model, no vector store, no index, no database, no daemon, no
 config file, no MCP, no scheduler, no retrieval, no ranking, no memory

@@ -1,4 +1,4 @@
-.TH HONE 1 "2026-08-01" "hone 0.1.0" "General Commands Manual"
+.TH HONE 1 "2026-08-27" "hone 0.2.0" "General Commands Manual"
 .SH NAME
 hone \- read a run a program judged, write down what it teaches
 .SH SYNOPSIS
@@ -13,6 +13,12 @@ hone \- read a run a program judged, write down what it teaches
 .br
 .B hone prompt
 .RI [ flags ]
+.br
+.B hone show
+.I proposal
+.br
+.B hone admit
+.I proposal
 .br
 .B hone version
 .br
@@ -85,6 +91,10 @@ index, no database, no embedding, no vector store and no daemon, and
 retrieval is
 .BR "brief find" .
 .PP
+An exact reviewed-learning proposal is one ordinary file explicitly named by
+the operator. It is not a store: hone provides no default proposal directory,
+index, list, retrieval path, or automatic admission.
+.PP
 Every write is a delta. Lessons are appended under a
 .B "## Lessons"
 heading and what is already there is never regenerated: a model handed its
@@ -120,6 +130,18 @@ Print the system prompt that words a lesson, on standard output. It is a
 value, not a secret, so extending it is ordinary shell.
 .B \-n
 prints it with the cap it would be sent with.
+.TP
+.B hone show \fIproposal
+Show the exact final
+.B SKILL.md
+bytes and every bound hash in a proposal. This is read-only and calls no
+model or replay command.
+.TP
+.B hone admit \fIproposal
+Replay-check the source and wording sessions, recheck their hashes and the
+destination-before bytes, lint the exact document when Brief is available,
+and atomically write it. No model is called. Changed evidence, destination,
+proposal bytes, or skill-path resolution is refused.
 .TP
 .B hone version
 Print the version.
@@ -171,6 +193,17 @@ Print the evidence a lesson would be drawn from, and stop. No model is
 called. A lesson is a claim, and reading the evidence before paying for the
 claim is the difference between a tool you trust and one you audit
 afterwards.
+.TP
+.BI \-prepare " file"
+Word one replay-verified session into an exact, user-named proposal instead
+of changing the skill. Requires
+.BR \-into ,
+accepts exactly one session, and never overwrites the proposal file. Standard
+output includes the literal final skill bytes. It cannot be combined with
+.BR \-N ,
+.BR \-why ,
+or
+.BR \-no\-verify .
 .TP
 .BI \-d " dir"
 The session directory.
