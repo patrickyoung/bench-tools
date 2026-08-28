@@ -1,0 +1,69 @@
+.TH CITE 1 "2026-08-28" "cite 0.1.0" "User Commands"
+.SH NAME
+cite \- verify Markdown citations against Context evidence
+.SH SYNOPSIS
+.B cite
+.I evidence.jsonl
+.br
+.B cite version
+.br
+.B cite help
+.SH DESCRIPTION
+.B cite
+reads normalized Context JSONL from one regular file, reads a candidate answer
+from standard input, and prints the candidate unchanged only after every ctx
+reference is validated.
+.PP
+A citation is the literal Markdown string
+.BR [ref](citation.url) .
+The ref and URL must be paired in one evidence record. At least one valid
+citation is required, and every ctx: occurrence in the candidate must belong to
+such a citation.
+.PP
+Cite checks citation identity only. It does not prove that the record supports
+the prose, every claim is cited, or a source is authoritative.
+.SH COMMANDS
+.TP
+.BI "cite " evidence.jsonl
+Validate the candidate on standard input and print it unchanged on success.
+.TP
+.B cite version
+Print the version. The aliases -V and --version are accepted.
+.TP
+.B cite help
+Print a command summary. The aliases -h and --help are accepted.
+.SH INPUT
+Evidence is normalized context/v1 JSONL. Cite reads ref and citation.url from
+each record. Records without a URL may be present but cannot be cited. One ref
+paired with two URLs is invalid evidence.
+.PP
+The candidate is limited to 4 MiB. Evidence is limited to 32 MiB and each
+evidence record to 8 MiB. Excess input is rejected, never truncated.
+.SH OUTPUT
+On success, standard output is byte-for-byte the candidate from standard input.
+On rejection or error, standard output is empty. Diagnostics go to standard
+error.
+.SH EXIT STATUS
+Zero means the candidate has at least one exact citation and no invalid ctx
+occurrence. One means a rejected candidate, empty candidate, no evidence, or no
+evidence record with a citation URL. Two means bad usage, malformed or
+unreadable evidence, an I/O failure, or input beyond a limit.
+.SH EXAMPLES
+.nf
+context query wikipedia "$q" > evidence.jsonl
+ask "Question: $q; answer with exact cited links." < evidence.jsonl |
+  cite evidence.jsonl
+
+ply -sh -check 'cite evidence.jsonl >/dev/null' \
+  "Question: $q; answer with exact cited links." < evidence.jsonl
+.fi
+.SH SECURITY
+Cite does not open URLs, make network calls, execute programs, or write state.
+It is not a Markdown sanitizer, a semantic judge, or proof that a source is
+trustworthy. Evidence files and answers may be sensitive.
+.SH SEE ALSO
+.BR context (1),
+.BR ask (1),
+.BR ply (1),
+.BR brief (1),
+.BR trail (1)
