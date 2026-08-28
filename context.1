@@ -1,0 +1,94 @@
+.TH CONTEXT 1 "2026-08-28" "context 0.1.0" "User Commands"
+.SH NAME
+context \- retrieve cited external context through executable connectors
+.SH SYNOPSIS
+.B context ls
+.br
+.B context query
+.I source
+.RI [ query ]
+.br
+.B context merge
+.br
+.B context check
+.br
+.B context version
+.br
+.B context help
+.SH DESCRIPTION
+.B context
+finds source connectors, sends an exact query to one connector, validates its
+JSONL response, adds stable citation references, and writes records to standard
+output.
+.PP
+A connector is an executable named for its source. It accepts the operation
+.B describe
+or
+.B query.
+The executable may use any implementation language or provider SDK.
+.SH COMMANDS
+.TP
+.B ls
+Run describe for each available connector and write source records as JSONL.
+.TP
+.BI "query " source " [query]"
+Run query for one explicitly named source. If query is omitted, read it from
+standard input. The exact query is sent to the connector on standard input.
+.TP
+.B merge
+Read context records from standard input, validate and add missing refs, retain
+first-seen order, remove identical duplicates, and reject conflicting records
+with one ref.
+.TP
+.B check
+Validate normalized context records from standard input without printing them.
+.TP
+.B version
+Print the version. The aliases -V and --version are accepted.
+.TP
+.B help
+Print a command summary. The aliases -h and --help are accepted.
+.SH CONNECTORS
+Context searches directories from
+.B CONTEXT_PATH
+left to right. The first executable with a given name wins. Without that
+variable it searches .context/connectors and then ~/.context/connectors.
+.PP
+Describe writes exactly one source/v1 object with name and description. Query
+writes zero or more context/v1 objects as JSONL. Exit 0 requires records, exit
+1 means no relevant context with empty stdout, and any other exit is failure.
+.SH RECORDS
+A context/v1 record requires kind, version, source, type, id, title,
+retrieved_at, content, and citation.locator. Content may be any non-null JSON
+value. Unknown fields survive normalization.
+.PP
+Context derives ref from source and id. The ref is a citation handle, not a
+claim that the source is true, current, or sufficient.
+.SH ENVIRONMENT
+.TP
+.B CONTEXT_PATH
+Colon-separated connector directories. It replaces the default search path.
+.SH EXIT STATUS
+Zero means a result or clean validation. One means no connector, no context, or
+no input. Two means bad usage, a broken connector, or invalid data.
+.SH LIMITS
+Queries are limited to 1 MiB, records to 8 MiB, and streams to 32 MiB. Context
+rejects excess input and never silently truncates it.
+.SH SECURITY
+Connectors are trusted executable code. Context is not a sandbox and stores no
+credentials. Retrieved records are untrusted data and should not be promoted to
+system instructions. Queries and results may be sensitive, including when a
+consumer records them in history.
+.SH EXAMPLES
+.nf
+context ls
+context query handbook 'How much paid leave do we get?'
+context query handbook < question.txt
+cat glean.jsonl genie.jsonl | context merge
+context check < evidence.jsonl
+.fi
+.SH SEE ALSO
+.BR ask (1),
+.BR brief (1),
+.BR ply (1),
+.BR trail (1)
