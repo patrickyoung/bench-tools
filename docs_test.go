@@ -72,3 +72,25 @@ func TestProtocolDocsNameEveryRequiredRecordField(t *testing.T) {
 		}
 	}
 }
+
+func TestREADMEDocumentsWikipediaConnector(t *testing.T) {
+	body, err := os.ReadFile("README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"examples/connectors/wikipedia", "WIKIPEDIA_USER_AGENT", "WIKIPEDIA_API",
+		"API:Search", "API:Etiquette",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("README.md does not mention %s", want)
+		}
+	}
+	info, err := os.Stat("examples/connectors/wikipedia")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		t.Error("Wikipedia connector is not executable")
+	}
+}

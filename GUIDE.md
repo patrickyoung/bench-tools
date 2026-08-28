@@ -21,6 +21,20 @@ Replace the example's local lookup with the provider client. Keep the outer
 Genie, filesystem, SQL, or proprietary source is then the same program to the
 caller.
 
+The bundled Wikipedia connector is a complete network-backed example:
+
+```sh
+install -m 755 examples/connectors/wikipedia .context/connectors/wikipedia
+WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)' \
+  context query wikipedia 'Unix filter design'
+```
+
+It is useful for general encyclopedic orientation, not as a replacement for a
+primary or authoritative source where the decision is consequential. Its
+records retain Wikipedia page identity, URL, modification time, license, and
+attribution metadata so a later consumer does not lose where the snippet came
+from.
+
 ## Who chooses sources?
 
 The user or procedure does. Context never guesses.

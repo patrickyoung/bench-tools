@@ -13,6 +13,11 @@ credential mechanism and must preserve the caller's source-system permissions.
 Do not put tokens or secrets in result records. Connector diagnostics go to
 standard error and may still be captured by a supervisor.
 
+The bundled Wikipedia connector sends its query to English Wikipedia's public
+Action API. Its `WIKIPEDIA_API` override changes where that query is sent; use
+only an endpoint or proxy you trust. `WIKIPEDIA_USER_AGENT` is sent as an HTTP
+header and should contain public contact information, never a secret.
+
 Retrieved content is untrusted data even when its provenance is valid. Keep it
 in model input, not system instructions, and assume documents may contain prompt
 injection. A citation establishes identity and location; it does not establish

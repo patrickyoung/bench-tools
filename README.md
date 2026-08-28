@@ -39,6 +39,44 @@ Put connectors in `.context/connectors` for one project or
 with a colon-separated search path. The first executable with a given name
 wins, exactly as on `PATH`.
 
+### Wikipedia connector
+
+A working English Wikipedia search connector is included. Install it like any
+other executable connector:
+
+```sh
+mkdir -p ~/.context/connectors
+install -m 755 examples/connectors/wikipedia ~/.context/connectors/wikipedia
+context ls
+context query wikipedia 'Rob Pike Unix programming philosophy'
+```
+
+It makes one serial request to Wikipedia's MediaWiki Action API and returns up
+to five article-search snippets. Each record uses the stable page ID for its
+identity and citation ref, links to the article, carries the article's last
+modified time when supplied by the API, and includes Wikipedia text licensing
+and attribution metadata. It requires Python 3 but has no package dependencies.
+
+Wikimedia requires automated clients to send a meaningful User-Agent with
+contact information. Set `WIKIPEDIA_USER_AGENT` to identify your installation:
+
+```sh
+export WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)'
+```
+
+`WIKIPEDIA_API` may override the API endpoint for a proxy or test fixture that
+returns English Wikipedia Action API responses. Citations still resolve to
+English Wikipedia, so it is not a language or wiki selector.
+
+The connector follows the official [search API][wikipedia-search] and
+[API etiquette][wikipedia-etiquette]. Wikipedia text reuse remains subject to
+the [Wikimedia developer guidelines][wikimedia-reuse]; the page URL in every
+record provides the attribution path.
+
+[wikipedia-search]: https://www.mediawiki.org/wiki/API:Search
+[wikipedia-etiquette]: https://www.mediawiki.org/wiki/API:Etiquette
+[wikimedia-reuse]: https://foundation.wikimedia.org/wiki/Legal:Wikimedia_Developer_App_Guidelines
+
 ## Four verbs
 
 ```text
