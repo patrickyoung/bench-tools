@@ -66,9 +66,24 @@ func TestProtocolDocsNameEveryRequiredRecordField(t *testing.T) {
 	for _, field := range []string{
 		"kind", "version", "source", "type", "id", "title",
 		"retrieved_at", "content", "citation.locator", "ref",
+		"retrieval", "query", "connector", "sha256",
 	} {
 		if !strings.Contains(text, field) {
 			t.Errorf("CONNECTORS.md does not mention %s", field)
+		}
+	}
+}
+
+func TestDocsExplainEvidenceHistoryOwnership(t *testing.T) {
+	for _, name := range []string{"README.md", "GUIDE.md"} {
+		body, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"evidence manifest", "ask replay -check", "Ply", "Cite"} {
+			if !strings.Contains(string(body), want) {
+				t.Errorf("%s does not mention %s", name, want)
+			}
 		}
 	}
 }

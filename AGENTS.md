@@ -22,6 +22,11 @@ When changing `context`:
   structured content survive. A table must not be flattened into a chunk just
   because one consumer reads text;
 
+- **stamp the invocation, not a session.** Query records carry the exact query
+  and selected connector executable digest in the core-owned retrieval field.
+  This is provenance, not connector attestation, and does not make Context a
+  historian;
+
 - **a ref is provenance, not truth.** Derive it from source and stable id.
   Context verifies identity and location; task checks decide authority,
   freshness, support, and sufficiency;

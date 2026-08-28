@@ -99,6 +99,12 @@ records the request, its event history holds the exact snapshot and Trail can
 find or display it later. Replay verifies that history instead of refetching
 mutable external state.
 
+For normalized Context stdin, the `user` event also carries an evidence manifest
+over the same bytes. It records the snapshot digest and location and the ordered refs,
+sources, retrieval timestamps, citations, exact retrieval query, and connector
+fingerprint. The content is not duplicated. `ask replay -check` rebuilds the
+manifest from the message and rejects drift between the two.
+
 Ply supplies iteration and acceptance. Put the single `context` executable in
 its toolbox and expose only the intended connectors through `CONTEXT_PATH`.
 Use `cite evidence.jsonl` as the final check when exact citation links are
@@ -106,6 +112,13 @@ required. It rejects unknown refs, mismatched URLs, and bare `ctx:` values and
 prints the precise link expected. A task-specific check must still decide
 whether a cited record actually supports a claim. Context deliberately does
 not parse prose or own either judgment.
+
+A direct `ask | cite` pipeline cannot put Cite's later exit status into an Ask
+session: Cite is intentionally only a filter. If the verdict belongs in the
+event history, use the same command as Ply's check. Cite keeps no session and
+has no write access to Ask; Ply asks Ask to append a sealed `ply.verifier/v1`
+record for every verifier execution while the candidate remains the preceding
+assistant event.
 
 Agent ties these focused programs to a durable goal. It need not gain one tool
 per provider: it sees `context`, while the operator controls the connector

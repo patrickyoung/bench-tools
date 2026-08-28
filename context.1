@@ -64,6 +64,12 @@ value. Unknown fields survive normalization.
 .PP
 Context derives ref from source and id. The ref is a citation handle, not a
 claim that the source is true, current, or sufficient.
+.PP
+Query also adds a retrieval object containing the exact UTF-8 query, connector
+name, and a SHA-256 fingerprint of the selected connector executable. The
+fingerprint identifies those executable bytes; it does not attest to the
+connector, its dependencies, configuration, credentials, or remote service.
+Connectors must not emit the core-owned retrieval field.
 .SH ENVIRONMENT
 .TP
 .B CONTEXT_PATH

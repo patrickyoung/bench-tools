@@ -9,7 +9,7 @@ $ context ls
 {"description":"Company handbook search","kind":"source","name":"handbook","version":1}
 
 $ context query handbook 'How much paid leave do we get?'
-{"citation":{"locator":"handbook.md#paid-leave"},"content":{"text":"..."},"id":"paid-leave","kind":"context","ref":"ctx:handbook:...","retrieved_at":"2026-08-28T16:00:00Z","source":"handbook","title":"Paid leave","type":"document","version":1}
+{"citation":{"locator":"handbook.md#paid-leave"},"content":{"text":"..."},"id":"paid-leave","kind":"context","ref":"ctx:handbook:...","retrieval":{"connector":{"name":"handbook","sha256":"sha256:..."},"query":"How much paid leave do we get?"},"retrieved_at":"2026-08-28T16:00:00Z","source":"handbook","title":"Paid leave","type":"document","version":1}
 ```
 
 A connector is one executable on `CONTEXT_PATH`. It implements two operations:
@@ -18,6 +18,13 @@ input and prints context records as JSONL. The connector can be a Python
 program using LlamaIndex, a Go program calling Glean, a Java client for an
 internal service, or a shell script over local files. Context does not know or
 care.
+
+For every query result, Context also records the exact UTF-8 query and a
+SHA-256 fingerprint of the selected connector executable. This exposes the
+source choice and connector revision to downstream event logs without giving
+Context a database or session format. The fingerprint identifies bytes; it
+does not attest to dependencies, configuration, credentials, or the remote
+service.
 
 ## Install
 
@@ -109,6 +116,19 @@ every `ctx:` occurrence is an exact ref/URL pair from `evidence.jsonl`. With
 Ply, the same filter can reject a candidate and give the model a correction
 turn. It checks citation identity, not whether a source supports the claim.
 
+Ask recognizes normalized Context JSONL on stdin. Its `user` event keeps the
+exact snapshot in the message and adds a compact evidence manifest: snapshot
+digest and byte location, plus ordered refs, sources, retrieval times, citation
+locations, query, and connector fingerprint. `ask replay -check` reconstructs
+that manifest from the recorded bytes. A missing artifact cannot be silently
+refetched because there is no external artifact: the session is self-contained.
+
+The direct `ask | cite` pipeline records the evidence and answer, but Cite is a
+downstream filter and does not write Ask sessions. When the citation verdict
+must be in the same history, run the answer through Ply with
+`cite evidence.jsonl` as its check. Ply records every accepted, rejected, or
+broken verifier result as a sealed `ply.verifier/v1` note in the Ask session.
+
 ## Four verbs
 
 ```text
@@ -158,7 +178,14 @@ Every result has a common envelope:
     "locator": "space/7/conversation/abc/result/1",
     "url": "https://example.test/genie/abc"
   },
-  "ref": "ctx:genie:7a3b..."
+  "ref": "ctx:genie:7a3b...",
+  "retrieval": {
+    "query": "revenue by quarter",
+    "connector": {
+      "name": "genie",
+      "sha256": "sha256:..."
+    }
+  }
 }
 ```
 
@@ -175,6 +202,11 @@ Ply can use Cite or a domain check before accepting that answer. If the context
 records are supplied to Ask, Ask's event history and Trail retain the exact
 retrieved snapshot. Replay therefore reads history; it does not silently
 refetch a source that may have changed.
+
+The `retrieval` field is owned by Context, not the connector. It records the
+invocation that produced the observation. `merge` preserves stamps from each
+source, which is how an aggregated snapshot retains more than one query or
+connector identity without a hidden router.
 
 See [CONNECTORS.md](CONNECTORS.md) for the complete connector contract and
 [GUIDE.md](GUIDE.md) for use with Brief, Ask, Ply, Agent, and Trail.

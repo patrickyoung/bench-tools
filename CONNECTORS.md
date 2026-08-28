@@ -69,6 +69,24 @@ Context adds a deterministic `ref` from `source` and `id`. If a connector emits
 no stable result ID, derive one from its stable object locator, not from rank or
 position in today's search results.
 
+For `query`, Context also adds the core-owned `retrieval` object:
+
+```json
+{
+  "query": "the exact query bytes as UTF-8 text",
+  "connector": {
+    "name": "handbook",
+    "sha256": "sha256:..."
+  }
+}
+```
+
+The digest fingerprints the connector executable Context selected. It is a
+more exact replay identifier than a release label, but it is not an attestation
+of the connector, its dependencies, configuration, credentials, or remote
+service. Connectors must not emit `retrieval`; Context rejects the ambiguity.
+`merge` and `check` preserve and validate an existing retrieval stamp.
+
 ## Bounded, honest results
 
 A query is limited to 1 MiB, one JSONL record to 8 MiB, and a stream to 32 MiB.

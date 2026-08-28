@@ -12,29 +12,47 @@ import (
 	"time"
 )
 
+type retrievalStamp struct {
+	Query     string         `json:"query"`
+	Connector connectorStamp `json:"connector"`
+}
+
+type connectorStamp struct {
+	Name   string `json:"name"`
+	SHA256 string `json:"sha256"`
+}
+
 const (
 	maxQueryBytes  = 1 << 20
 	maxLineBytes   = 8 << 20
 	maxStreamBytes = 32 << 20
 )
 
-func normalizeRecords(raw []byte, wantSource string, addRef bool) ([][]byte, error) {
+func normalizeRecords(raw []byte, wantSource string, addRef bool, stamp *retrievalStamp) ([][]byte, error) {
 	lines, err := splitJSONL(raw)
 	if err != nil {
 		return nil, err
 	}
 	out := make([][]byte, 0, len(lines))
+	total := 0
 	for i, line := range lines {
-		normalized, err := normalizeRecord(line, wantSource, addRef)
+		normalized, err := normalizeRecord(line, wantSource, addRef, stamp)
 		if err != nil {
 			return nil, fmt.Errorf("record %d: %w", i+1, err)
+		}
+		if len(normalized) > maxLineBytes {
+			return nil, fmt.Errorf("record %d exceeds %d bytes after normalization", i+1, maxLineBytes)
+		}
+		total += len(normalized) + 1 // writeRecords adds one newline per record
+		if total > maxStreamBytes {
+			return nil, fmt.Errorf("normalized output exceeds %d bytes", maxStreamBytes)
 		}
 		out = append(out, normalized)
 	}
 	return out, nil
 }
 
-func normalizeRecord(line []byte, wantSource string, addRef bool) ([]byte, error) {
+func normalizeRecord(line []byte, wantSource string, addRef bool, stamp *retrievalStamp) ([]byte, error) {
 	var row map[string]json.RawMessage
 	if err := json.Unmarshal(line, &row); err != nil {
 		return nil, fmt.Errorf("invalid JSON: %w", err)
@@ -96,7 +114,39 @@ func normalizeRecord(line []byte, wantSource string, addRef bool) ([]byte, error
 	} else {
 		return nil, fmt.Errorf("ref is required")
 	}
+	if stamp != nil {
+		if _, exists := row["retrieval"]; exists {
+			return nil, fmt.Errorf("retrieval is stamped by context and must not be emitted by a connector")
+		}
+		row["retrieval"], _ = json.Marshal(stamp)
+	} else if raw, exists := row["retrieval"]; exists {
+		if err := validateRetrieval(raw); err != nil {
+			return nil, err
+		}
+	}
 	return json.Marshal(row)
+}
+
+func validateRetrieval(raw json.RawMessage) error {
+	var stamp retrievalStamp
+	if err := json.Unmarshal(raw, &stamp); err != nil {
+		return fmt.Errorf("retrieval must be an object")
+	}
+	if strings.TrimSpace(stamp.Query) == "" {
+		return fmt.Errorf("retrieval.query must be a nonempty string")
+	}
+	if !validName(stamp.Connector.Name) {
+		return fmt.Errorf("retrieval.connector.name must be a valid name")
+	}
+	const prefix = "sha256:"
+	digest := strings.TrimPrefix(stamp.Connector.SHA256, prefix)
+	if len(digest) != sha256.Size*2 || prefix+digest != stamp.Connector.SHA256 {
+		return fmt.Errorf("retrieval.connector.sha256 must be a sha256 digest")
+	}
+	if _, err := hex.DecodeString(digest); err != nil {
+		return fmt.Errorf("retrieval.connector.sha256 must be a sha256 digest")
+	}
+	return nil
 }
 
 func mergeRecords(records [][]byte) ([][]byte, error) {

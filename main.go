@@ -7,6 +7,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode/utf8"
 )
 
 const version = "0.1.0"
@@ -39,7 +42,7 @@ describe to read one source record, or query with the exact query on stdin.
 Connectors live on CONTEXT_PATH, searched left to right like PATH.
 
 stdout is JSONL and nothing else. query and merge emit context/v1 records
-with stable ref fields for citations. Diagnostics go to stderr.
+with stable refs and retrieval provenance. Diagnostics go to stderr.
 
 env: CONTEXT_PATH  connector directories (default .context/connectors,
        ~/.context/connectors)
@@ -161,6 +164,13 @@ func (a *app) cmdQuery(args []string) int {
 	if len(query) > maxQueryBytes {
 		return a.fail(fmt.Errorf("query exceeds %d bytes", maxQueryBytes))
 	}
+	if !utf8.Valid(query) {
+		return a.fail(errors.New("query is not valid UTF-8"))
+	}
+	stamp, err := stampRetrieval(name, path, string(query))
+	if err != nil {
+		return a.fail(fmt.Errorf("source %s: %w", name, err))
+	}
 	raw, stderr, code, runErr := a.invoke(path, "query", query)
 	a.relay(name, stderr)
 	if code == exitNo && runErr != nil && len(bytes.TrimSpace(raw)) == 0 {
@@ -172,7 +182,7 @@ func (a *app) cmdQuery(args []string) int {
 		}
 		return a.fail(fmt.Errorf("source %s: %w", name, runErr))
 	}
-	records, err := normalizeRecords(raw, name, true)
+	records, err := normalizeRecords(raw, name, true, &stamp)
 	if err != nil {
 		return a.fail(fmt.Errorf("source %s: %w", name, err))
 	}
@@ -180,6 +190,24 @@ func (a *app) cmdQuery(args []string) int {
 		return a.fail(fmt.Errorf("source %s: exit 0 with no context", name))
 	}
 	return a.writeRecords(records)
+}
+
+func stampRetrieval(name, path, query string) (retrievalStamp, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return retrievalStamp{}, fmt.Errorf("open connector: %w", err)
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return retrievalStamp{}, fmt.Errorf("hash connector: %w", err)
+	}
+	return retrievalStamp{
+		Query: query,
+		Connector: connectorStamp{
+			Name: name, SHA256: "sha256:" + hex.EncodeToString(h.Sum(nil)),
+		},
+	}, nil
 }
 
 func (a *app) cmdMerge(args []string) int {
@@ -190,7 +218,7 @@ func (a *app) cmdMerge(args []string) int {
 	if err != nil {
 		return a.fail(err)
 	}
-	records, err := normalizeRecords(raw, "", true)
+	records, err := normalizeRecords(raw, "", true, nil)
 	if err != nil {
 		return a.fail(err)
 	}
@@ -212,7 +240,7 @@ func (a *app) cmdCheck(args []string) int {
 	if err != nil {
 		return a.fail(err)
 	}
-	records, err := normalizeRecords(raw, "", false)
+	records, err := normalizeRecords(raw, "", false, nil)
 	if err != nil {
 		return a.fail(err)
 	}

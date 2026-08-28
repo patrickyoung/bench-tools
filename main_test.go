@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -130,10 +132,42 @@ esac
 	if content["text"] != "Twenty days" {
 		t.Fatalf("structured content lost: %#v", content)
 	}
+	retrieval := rows[0]["retrieval"].(map[string]any)
+	if retrieval["query"] != "paid leave policy?" {
+		t.Fatalf("retrieval query = %#v", retrieval["query"])
+	}
+	connector := retrieval["connector"].(map[string]any)
+	rawConnector, err := os.ReadFile(filepath.Join(dir, "handbook"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(rawConnector)
+	wantDigest := "sha256:" + hex.EncodeToString(sum[:])
+	if connector["name"] != "handbook" || connector["sha256"] != wantDigest {
+		t.Fatalf("connector provenance = %#v, want handbook %s", connector, wantDigest)
+	}
 
 	code, stdout2, _ := runContext(t, dir, "", "query", "handbook", "paid leave policy?")
 	if code != exitYes || stdout2 != stdout {
 		t.Fatalf("argv query differs: exit=%d output=%q", code, stdout2)
+	}
+}
+
+func TestQueryOwnsRetrievalStampAndRequiresTextQuery(t *testing.T) {
+	dir := t.TempDir()
+	writeConnector(t, dir, "docs", `
+[ "$1" = query ] || exit 2
+cat >/dev/null
+printf '%s\n' '{"kind":"context","version":1,"source":"docs","type":"document","id":"1","title":"Doc","retrieved_at":"2026-08-28T12:00:00Z","content":"text","citation":{"locator":"docs/1"},"retrieval":{"query":"forged","connector":{"name":"docs","sha256":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}'
+`)
+	code, stdout, stderr := runContext(t, dir, "real", "query", "docs")
+	if code != exitErr || stdout != "" || !strings.Contains(stderr, "stamped by context") {
+		t.Fatalf("reserved retrieval: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+
+	code, stdout, stderr = runContext(t, dir, string([]byte{0xff}), "query", "docs")
+	if code != exitErr || stdout != "" || !strings.Contains(stderr, "valid UTF-8") {
+		t.Fatalf("binary query: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 }
 
@@ -200,7 +234,7 @@ func TestCheckRequiresNormalizedCitationRef(t *testing.T) {
 	if code != exitErr || stdout != "" || !strings.Contains(stderr, "ref is required") {
 		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
-	normalized, err := normalizeRecord([]byte(raw), "", true)
+	normalized, err := normalizeRecord([]byte(raw), "", true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,5 +266,23 @@ func TestBoundedBufferReportsOverflowWithoutGrowingPastLimit(t *testing.T) {
 	n, err := b.Write([]byte("abcdef"))
 	if err != nil || n != 6 || !b.exceeded || string(b.bytes()) != "abcd" {
 		t.Fatalf("n=%d err=%v exceeded=%v bytes=%q", n, err, b.exceeded, b.bytes())
+	}
+}
+
+func TestRetrievalStampCannotExpandPastStreamLimit(t *testing.T) {
+	var raw strings.Builder
+	for i := range 33 {
+		raw.WriteString(record("docs", fmt.Sprintf("%d", i), "Doc", `"x"`))
+		raw.WriteByte('\n')
+	}
+	stamp := &retrievalStamp{
+		Query: strings.Repeat("q", maxQueryBytes),
+		Connector: connectorStamp{
+			Name: "docs", SHA256: "sha256:" + strings.Repeat("a", 64),
+		},
+	}
+	if _, err := normalizeRecords([]byte(raw.String()), "docs", true, stamp); err == nil ||
+		!strings.Contains(err.Error(), "normalized output exceeds") {
+		t.Fatalf("expanded normalization error = %v", err)
 	}
 }
