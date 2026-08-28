@@ -30,7 +30,7 @@ func TestWikipediaConnectorDescribe(t *testing.T) {
 	for _, row := range rows {
 		if row["name"] == "wikipedia" {
 			found = true
-			if !strings.Contains(row["description"].(string), "encyclopedic") {
+			if !strings.Contains(row["description"].(string), "article extracts") {
 				t.Fatalf("description=%q", row["description"])
 			}
 		}
@@ -47,9 +47,9 @@ func TestWikipediaConnectorSearchesAndNormalizesResults(t *testing.T) {
 		requestQuery = r.URL.Query()
 		userAgent = r.UserAgent()
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"query":{"search":[`+
-			`{"pageid":123,"title":"Unix philosophy","snippet":"small &amp; <span class=\"searchmatch\">composable</span> programs","timestamp":"2026-08-01T12:00:00Z","wordcount":900},`+
-			`{"pageid":456,"title":"Pipeline (Unix)","snippet":"standard streams","timestamp":"2026-07-01T12:00:00Z","wordcount":500}`+
+		fmt.Fprint(w, `{"query":{"pages":[`+
+			`{"index":2,"pageid":456,"lastrevid":8002,"title":"Pipeline (Unix)","snippet":"standard streams","extract":"A pipeline composes programs.","canonicalurl":"https://en.wikipedia.org/wiki/Pipeline_(Unix)","timestamp":"2026-07-01T12:00:00Z","wordcount":500},`+
+			`{"index":1,"pageid":123,"lastrevid":9001,"title":"Unix philosophy","snippet":"small &amp; <span class=\"searchmatch\">composable</span> programs","extract":"The Unix philosophy favors simple, modular programs.","canonicalurl":"https://en.wikipedia.org/wiki/Unix_philosophy","timestamp":"2026-08-01T12:00:00Z","wordcount":900}`+
 			`]}}`)
 	}))
 	defer server.Close()
@@ -57,13 +57,14 @@ func TestWikipediaConnectorSearchesAndNormalizesResults(t *testing.T) {
 	t.Setenv("WIKIPEDIA_USER_AGENT", "context-test/1.0 (https://example.test/contact)")
 
 	code, stdout, stderr := runContext(t, wikipediaConnectorDir(t),
-		"unix filter design", "query", "wikipedia")
+		"How does Unix philosophy relate to Rob Pike?", "query", "wikipedia")
 	if code != exitYes || stderr != "" {
 		t.Fatalf("exit=%d stderr=%q", code, stderr)
 	}
-	if requestQuery.Get("action") != "query" || requestQuery.Get("list") != "search" ||
-		requestQuery.Get("srsearch") != "unix filter design" ||
-		requestQuery.Get("srlimit") != "5" || requestQuery.Get("srnamespace") != "0" {
+	if requestQuery.Get("action") != "query" || requestQuery.Get("generator") != "search" ||
+		requestQuery.Get("gsrsearch") != "Unix philosophy Rob Pike" ||
+		requestQuery.Get("gsrlimit") != "5" || requestQuery.Get("gsrnamespace") != "0" ||
+		requestQuery.Get("prop") != "extracts|info" || requestQuery.Get("explaintext") != "1" {
 		t.Fatalf("query=%v", requestQuery)
 	}
 	if userAgent != "context-test/1.0 (https://example.test/contact)" {
@@ -74,17 +75,21 @@ func TestWikipediaConnectorSearchesAndNormalizesResults(t *testing.T) {
 		t.Fatalf("rows=%#v", rows)
 	}
 	first := rows[0]
-	if first["source"] != "wikipedia" || first["id"] != "123" ||
-		first["ref"] != citationRef("wikipedia", "123") ||
+	if first["source"] != "wikipedia" || first["id"] != "123@9001" ||
+		first["ref"] != citationRef("wikipedia", "123@9001") ||
 		first["modified_at"] != "2026-08-01T12:00:00Z" {
 		t.Fatalf("first=%#v", first)
 	}
 	content := first["content"].(map[string]any)
-	if content["text"] != "small & composable programs" || content["search_rank"] != json.Number("1") {
+	if content["text"] != "The Unix philosophy favors simple, modular programs." ||
+		content["match"] != "small & composable programs" ||
+		content["search_query"] != "Unix philosophy Rob Pike" ||
+		content["search_rank"] != json.Number("1") {
 		t.Fatalf("content=%#v", content)
 	}
 	citation := first["citation"].(map[string]any)
-	if citation["locator"] != "pageid:123" || citation["url"] != "https://en.wikipedia.org/?curid=123" {
+	if citation["locator"] != "pageid:123;revid:9001" ||
+		citation["url"] != "https://en.wikipedia.org/w/index.php?oldid=9001" {
 		t.Fatalf("citation=%#v", citation)
 	}
 	license := first["license"].(map[string]any)
@@ -99,14 +104,14 @@ func TestWikipediaConnectorSearchesAndNormalizesResults(t *testing.T) {
 
 func TestWikipediaConnectorNoResultsAndHTTPFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("srsearch") == "nothing" {
+		if r.URL.Query().Get("gsrsearch") == "nothing" {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"query":{"search":[]}}`)
+			fmt.Fprint(w, `{"query":{"pages":[]}}`)
 			return
 		}
-		if r.URL.Query().Get("srsearch") == "malformed" {
+		if r.URL.Query().Get("gsrsearch") == "malformed" {
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"query":{"search":[{}]}}`)
+			fmt.Fprint(w, `{"query":{"pages":[{}]}}`)
 			return
 		}
 		w.Header().Set("Retry-After", "10")

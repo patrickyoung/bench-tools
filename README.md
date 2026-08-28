@@ -59,10 +59,12 @@ context query wikipedia 'Rob Pike Unix programming philosophy'
 ```
 
 It makes one serial request to Wikipedia's MediaWiki Action API and returns up
-to five article-search snippets. Each record uses the stable page ID for its
-identity and citation ref, links to the article, carries the article's last
-modified time when supplied by the API, and includes Wikipedia text licensing
-and attribution metadata. It requires Python 3 but has no package dependencies.
+to five ranked article extracts plus the matching search snippets. For a plain
+natural-language question it removes common question words transparently and
+records the effective search query in each result. Each record binds the page
+ID to the retrieved revision for its identity and citation ref, links to that
+exact revision, and includes modification, licensing, and attribution metadata.
+It requires Python 3 but has no package dependencies.
 
 Wikimedia requires automated clients to send a meaningful User-Agent with
 contact information. Set `WIKIPEDIA_USER_AGENT` to identify your installation:
@@ -75,14 +77,30 @@ export WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)'
 returns English Wikipedia Action API responses. Citations still resolve to
 English Wikipedia, so it is not a language or wiki selector.
 
-The connector follows the official [search API][wikipedia-search] and
+The connector follows the official [search API][wikipedia-search],
+[plain-text extract API][wikipedia-extracts], and
 [API etiquette][wikipedia-etiquette]. Wikipedia text reuse remains subject to
 the [Wikimedia developer guidelines][wikimedia-reuse]; the page URL in every
 record provides the attribution path.
 
 [wikipedia-search]: https://www.mediawiki.org/wiki/API:Search
+[wikipedia-extracts]: https://www.mediawiki.org/wiki/Extension:TextExtracts#API
 [wikipedia-etiquette]: https://www.mediawiki.org/wiki/API:Etiquette
 [wikimedia-reuse]: https://foundation.wikimedia.org/wiki/Legal:Wikimedia_Developer_App_Guidelines
+
+To turn retrieval into a cited answer, give the question to both programs. Ask
+treats its argument as the instruction and stdin as evidence, so the question
+does not travel from one to the other implicitly:
+
+```sh
+q='How does the Unix philosophy relate to Rob Pike?'
+./context query wikipedia "$q" |
+  ask -q "Question: $q
+
+Answer using only the supplied context records. After each factual claim, add
+a Markdown link whose label is the exact ref and whose URL is citation.url
+from that same record. Do not invent references."
+```
 
 ## Four verbs
 

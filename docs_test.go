@@ -80,7 +80,7 @@ func TestREADMEDocumentsWikipediaConnector(t *testing.T) {
 	}
 	for _, want := range []string{
 		".context/connectors/wikipedia", "WIKIPEDIA_USER_AGENT", "WIKIPEDIA_API",
-		"API:Search", "API:Etiquette",
+		"API:Search", "TextExtracts", "API:Etiquette", "Question: $q",
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("README.md does not mention %s", want)

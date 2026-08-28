@@ -31,9 +31,9 @@ WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)' \
 
 It is useful for general encyclopedic orientation, not as a replacement for a
 primary or authoritative source where the decision is consequential. Its
-records retain Wikipedia page identity, URL, modification time, license, and
-attribution metadata so a later consumer does not lose where the snippet came
-from.
+records retain Wikipedia page and revision identity, an exact revision URL,
+modification time, license, and attribution metadata so a later consumer does
+not lose where the extract came from.
 
 ## Who chooses sources?
 
@@ -81,8 +81,15 @@ Ask reasons over records:
 
 ```sh
 context query handbook "$q" |
-  ask 'Answer the question from these records. Cite every claim with its ref.'
+  ask "Question: $q
+
+Answer from these records. Cite every factual claim with its exact ref."
 ```
+
+The question is deliberately present twice: Context needs it for retrieval and
+Ask needs it as the task. A pipe carries Context's stdout, not Context's argv.
+Leaving the question out of Ask asks the model to infer a task from evidence,
+and an honest model may answer that no question was provided.
 
 The Context record is evidence, not a system prompt. Keep it in request input;
 do not splice retrieved text into Brief instructions or `ASK_SYSTEM`. When Ask
