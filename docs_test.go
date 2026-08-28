@@ -94,3 +94,17 @@ func TestREADMEDocumentsWikipediaConnector(t *testing.T) {
 		t.Error("Wikipedia connector is not executable")
 	}
 }
+
+func TestDocsComposeCiteAsASeparateFilter(t *testing.T) {
+	for _, name := range []string{"README.md", "GUIDE.md"} {
+		body, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"cite evidence.jsonl", "supports"} {
+			if !strings.Contains(string(body), want) {
+				t.Errorf("%s does not mention %s", name, want)
+			}
+		}
+	}
+}

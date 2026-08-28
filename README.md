@@ -94,13 +94,20 @@ does not travel from one to the other implicitly:
 
 ```sh
 q='How does the Unix philosophy relate to Rob Pike?'
-./context query wikipedia "$q" |
-  ask -q "Question: $q
+./context query wikipedia "$q" > evidence.jsonl
+
+ask -q "Question: $q
 
 Answer using only the supplied context records. After each factual claim, add
 a Markdown link whose label is the exact ref and whose URL is citation.url
-from that same record. Do not invent references."
+from that same record. Do not invent references." < evidence.jsonl |
+  cite evidence.jsonl
 ```
+
+The separate [`cite`](../cite/README.md) filter prints the answer only when
+every `ctx:` occurrence is an exact ref/URL pair from `evidence.jsonl`. With
+Ply, the same filter can reject a candidate and give the model a correction
+turn. It checks citation identity, not whether a source supports the claim.
 
 ## Four verbs
 
@@ -163,11 +170,11 @@ denominator chunk format. Unknown connector fields are preserved.
 The connector owns `source`, `id`, `retrieved_at`, and `citation.locator`
 because it is closest to the source. Context verifies them and derives `ref`
 from `source` plus `id`. Brief can tell an agent when citations are required;
-Ask can cite the refs in its answer; Ply can use `context check` or a domain
-check before accepting that answer. If the context records are supplied to
-Ask, Ask's event history and Trail retain the exact retrieved snapshot. Replay
-therefore reads history; it does not silently refetch a source that may have
-changed.
+Ask can cite the refs in its answer; Cite can verify exact ref/URL pairs; and
+Ply can use Cite or a domain check before accepting that answer. If the context
+records are supplied to Ask, Ask's event history and Trail retain the exact
+retrieved snapshot. Replay therefore reads history; it does not silently
+refetch a source that may have changed.
 
 See [CONNECTORS.md](CONNECTORS.md) for the complete connector contract and
 [GUIDE.md](GUIDE.md) for use with Brief, Ask, Ply, Agent, and Trail.

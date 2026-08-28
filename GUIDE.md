@@ -80,10 +80,12 @@ not contain provider transport code; that belongs in the connector.
 Ask reasons over records:
 
 ```sh
-context query handbook "$q" |
-  ask "Question: $q
+context query handbook "$q" > evidence.jsonl
+ask "Question: $q
 
-Answer from these records. Cite every factual claim with its exact ref."
+Answer from these records. Cite every factual claim as an exact
+[ref](citation.url) Markdown link." < evidence.jsonl |
+  cite evidence.jsonl
 ```
 
 The question is deliberately present twice: Context needs it for retrieval and
@@ -99,10 +101,11 @@ mutable external state.
 
 Ply supplies iteration and acceptance. Put the single `context` executable in
 its toolbox and expose only the intended connectors through `CONTEXT_PATH`.
-Use a check when the outcome requires citations or a domain invariant. The
-check can validate captured JSONL with `context check` and then inspect the
-candidate report for the refs the task requires. Context deliberately does not
-parse prose to decide whether a citation supports a claim.
+Use `cite evidence.jsonl` as the final check when exact citation links are
+required. It rejects unknown refs, mismatched URLs, and bare `ctx:` values and
+prints the precise link expected. A task-specific check must still decide
+whether a cited record actually supports a claim. Context deliberately does
+not parse prose or own either judgment.
 
 Agent ties these focused programs to a durable goal. It need not gain one tool
 per provider: it sees `context`, while the operator controls the connector
