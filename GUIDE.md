@@ -24,7 +24,7 @@ caller.
 The bundled Wikipedia connector is a complete network-backed example:
 
 ```sh
-install -m 755 examples/connectors/wikipedia .context/connectors/wikipedia
+install -m 755 .context/connectors/wikipedia ~/.context/connectors/wikipedia
 WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)' \
   context query wikipedia 'Unix filter design'
 ```

@@ -41,12 +41,19 @@ wins, exactly as on `PATH`.
 
 ### Wikipedia connector
 
-A working English Wikipedia search connector is included. Install it like any
-other executable connector:
+A working English Wikipedia search connector is included on the project's
+default connector path, so it works directly from this source tree:
+
+```sh
+./context query wikipedia 'Rob Pike Unix programming philosophy'
+```
+
+To make it available outside this checkout, install it on your user connector
+path:
 
 ```sh
 mkdir -p ~/.context/connectors
-install -m 755 examples/connectors/wikipedia ~/.context/connectors/wikipedia
+install -m 755 .context/connectors/wikipedia ~/.context/connectors/wikipedia
 context ls
 context query wikipedia 'Rob Pike Unix programming philosophy'
 ```

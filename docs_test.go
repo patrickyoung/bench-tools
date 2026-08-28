@@ -79,14 +79,14 @@ func TestREADMEDocumentsWikipediaConnector(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"examples/connectors/wikipedia", "WIKIPEDIA_USER_AGENT", "WIKIPEDIA_API",
+		".context/connectors/wikipedia", "WIKIPEDIA_USER_AGENT", "WIKIPEDIA_API",
 		"API:Search", "API:Etiquette",
 	} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("README.md does not mention %s", want)
 		}
 	}
-	info, err := os.Stat("examples/connectors/wikipedia")
+	info, err := os.Stat(".context/connectors/wikipedia")
 	if err != nil {
 		t.Fatal(err)
 	}

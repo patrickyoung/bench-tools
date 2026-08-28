@@ -13,7 +13,7 @@ import (
 
 func wikipediaConnectorDir(t *testing.T) string {
 	t.Helper()
-	dir, err := filepath.Abs(filepath.Join("examples", "connectors"))
+	dir, err := filepath.Abs(filepath.Join(".context", "connectors"))
 	if err != nil {
 		t.Fatal(err)
 	}

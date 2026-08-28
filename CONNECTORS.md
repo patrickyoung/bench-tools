@@ -92,7 +92,7 @@ identity, not claim that retrieval made the content trustworthy.
 ## Minimal Python shape
 
 The local [handbook connector](examples/connectors/handbook) and the live
-[Wikipedia connector](examples/connectors/wikipedia) are runnable examples. A
+[Wikipedia connector](.context/connectors/wikipedia) are runnable examples. A
 provider-backed connector has the same outer shape:
 
 ```python
