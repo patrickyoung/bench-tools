@@ -12,7 +12,7 @@ identity or a browser and cannot see one here will invent how they work.
 
 ## Versions
 
-    ask    ask 0.1.0
+    ask    ask 0.2.0
     brief  brief 0.1.0
     ply    ply 0.1.1
     hone   hone 0.2.0
@@ -29,9 +29,6 @@ ask — put a question through a language model, get the answer on stdout
   ask compact [flags] [session]   continue a full conversation in a fresh one
   ask note -s src [flags] [text]  record text or sealed structured JSON
   ask system                      print the built-in system prompt
-  ask login openai-codex [flags]  store subscription auth (-from-codex)
-  ask logout <provider>           remove stored credentials
-  ask auth [list]                 list stored credential providers
   ask version                     print the version (-V, --version)
   ask help                        print this summary (-h, --help)
 
@@ -67,12 +64,15 @@ flags:
                 mapping varies (default: the provider's own)
   -max-tokens n max output tokens (default 16384). openai-codex does not
                 support this flag and refuses it
+  -header-fd n  descriptor containing one HTTP Authorization header;
+                use: oauth with PROFILE -- ask -header-fd 3 ...
   -schema file  constrain the answer with JSON Schema ("-" reads stdin)
   -json         emit this invocation's raw events instead of the answer
   -q            no progress on stderr; errors still print
 compact only:
   -m spec       summarizer provider/model (default: the session's own)
   -d dir        conversation directory ($ASK_DIR)
+  -header-fd n  descriptor containing one HTTP Authorization header
   -q            no progress on stderr; errors still print
                 The note lands as the first message of a new session,
                 stamped source=summary, with the parent and the
@@ -88,27 +88,12 @@ note only:
   -f file       session to append to (default: current)
   -d dir        conversation directory ($ASK_DIR)
   -q            no progress on stderr; errors still print
-login only:
-  -from-codex       import auth from the official Codex CLI — the usual path
-  -access-token t   store this access token ('-' reads stdin)
-  -refresh-token t  store this refresh token ('-' reads stdin; only one may)
-  -token-url u      OAuth token endpoint used to refresh
-  -client-id i      OAuth client id sent when refreshing
-  -scope s          OAuth scope sent when refreshing
-  -expires d        access token lifetime, e.g. 1h
-                    A token in argv shows up in ps and in shell history:
-                    prefer stdin, and -from-codex over both.
-
 keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
-stored auth: ~/.ask/auth.json (or ASK_AUTH_FILE) for openai-codex/<model>;
-  CODEX_HOME selects the Codex CLI directory used by -from-codex
 env: ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
 gateway: ANTHROPIC_BASE_URL · OPENAI_BASE_URL · OPENAI_CODEX_BASE_URL ·
-  GEMINI_BASE_URL · OPENROUTER_BASE_URL replace provider endpoints;
-  ASK_AUTH_URL adds OAuth bearer auth to API-key providers. Optional auth:
-  ASK_AUTH_CLIENT_ID · ASK_AUTH_CLIENT_SECRET · ASK_AUTH_REFRESH_TOKEN ·
-  ASK_AUTH_SCOPE. Vendor keys become optional. Token endpoints must be https
-  except on loopback
+  GEMINI_BASE_URL · OPENROUTER_BASE_URL replace provider endpoints. Supply
+  OAuth through -header-fd; OPENAI_CODEX_ACCOUNT_ID supplies its non-secret
+  account routing id when that provider requires one
 vertex: ANTHROPIC_VERTEX_PROJECT_ID + CLOUD_ML_REGION route anthropic/ models
   through Google Vertex AI (ANTHROPIC_VERTEX_BASE_URL overrides the endpoint)
 exit: 0 answered · 1 error · 2 context window full · 130 interrupted
