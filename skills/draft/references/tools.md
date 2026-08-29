@@ -14,7 +14,7 @@ identity or a browser and cannot see one here will invent how they work.
 
     ask    ask 0.1.0
     brief  brief 0.1.0
-    ply    ply 0.1.0
+    ply    ply 0.1.1
     hone   hone 0.2.0
     cage   cage 0.1.0
     may    may 0.1.0
@@ -239,6 +239,7 @@ flags:
   -s name       brief skill to compose; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
   -session-out file  atomically write the current session path here
+  -checkpoint file  lock and resume one durable current-session pointer
   -contract-id digest  bind verifier receipts to an admitted intent contract
   -q            no typescript on stderr
 
