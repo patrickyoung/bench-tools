@@ -21,7 +21,7 @@ import (
 	"github.com/patrickyoung/oauth/internal/state"
 )
 
-const Version = "0.1.0"
+const Version = "0.1.1"
 
 func CLI(ctx context.Context, argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(argv) == 0 {
@@ -34,7 +34,7 @@ func CLI(ctx context.Context, argv []string, stdin io.Reader, stdout, stderr io.
 		usage(stdout)
 		return 0
 	case "version", "--version":
-		fmt.Fprintln(stdout, Version)
+		fmt.Fprintln(stdout, "oauth "+Version)
 		return 0
 	case "discover":
 		err = discover(ctx, argv[1:], stdout, stderr)

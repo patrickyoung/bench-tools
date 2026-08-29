@@ -48,6 +48,16 @@ func oauthServer(t *testing.T, token http.HandlerFunc) (*httptest.Server, string
 	return server, resource
 }
 
+func TestVersionContract(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := CLI(context.Background(), []string{"version"}, strings.NewReader(""), &stdout, &stderr); code != 0 {
+		t.Fatalf("version exit=%d stderr=%q", code, stderr.String())
+	}
+	if stdout.String() != "oauth 0.1.1\n" {
+		t.Fatalf("version output = %q", stdout.String())
+	}
+}
+
 func TestClientCredentialsLoginStatusHeaderAndLogout(t *testing.T) {
 	t.Setenv("OAUTH_HOME", t.TempDir())
 	var resource string
