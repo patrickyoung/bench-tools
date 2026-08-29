@@ -164,12 +164,12 @@ runtime. Each has an answer, and the answer is in `GUIDE.md`:
 
 - **a task record, or `ply resume`.** The state of the work is the work
   tree, and `-check` is how you read it — `make` keeps no record either, it
-  stats the targets. Resuming is running it again: the pre-check makes
-  re-entry free when the work is done, `-f` continues the conversation
-  rather than starting over, and the log outlives the process. The
-  conversation is an *optimization, not the state*; lose it and the run is
-  still correct, only more expensive. Two tests pin that, and they are the
-  contract;
+  stats the targets. Resuming is running the same command again.
+  `-checkpoint` is deliberately only a locked pointer to Ask's current
+  session: it preserves conversation context across process death and
+  compaction without becoming a second log, task record, retry policy, or
+  claim that an interrupted external effect is safe to repeat. The pre-check
+  still decides whether any work remains;
 - **recovering `-cycles` or `-turns` from the log.** It is derivable — turns
   are `assistant` events, compactions are the `parent` chain — and it is
   still wrong. Bounds are per invocation because the process is the unit;

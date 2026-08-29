@@ -1776,6 +1776,165 @@ func TestSessionOutCannotOverwriteTheSession(t *testing.T) {
 	}
 }
 
+func TestCheckpointResumesTheCurrentSession(t *testing.T) {
+	work, _, askdir := sandbox(t, "First.", "Second.")
+	checkpoint := filepath.Join(t.TempDir(), "current")
+
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-checkpoint", checkpoint, "a goal")
+	if code != 0 {
+		t.Fatalf("first run exit = %d\n%s", code, stderr)
+	}
+	session := strings.TrimSpace(read(t, checkpoint))
+	if !filepath.IsAbs(session) {
+		t.Fatalf("checkpoint session = %q, want an absolute path", session)
+	}
+
+	code, _, stderr = runPly(t, "-sh", "-C", work, "-checkpoint", checkpoint, "a goal")
+	if code != 0 {
+		t.Fatalf("resumed run exit = %d\n%s", code, stderr)
+	}
+	if got := strings.TrimSpace(read(t, checkpoint)); got != session {
+		t.Fatalf("resumed checkpoint = %q, want %q", got, session)
+	}
+	if n := strings.Count(read(t, filepath.Join(askdir, "argv.log")), "-f "+session); n != 2 {
+		t.Fatalf("Ask received checkpoint session %d times, want 2", n)
+	}
+}
+
+func TestCheckpointTracksCompaction(t *testing.T) {
+	work, _, askdir := sandbox(t, "unused")
+	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
+	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
+d=`+askdir+`
+for a in "$@"; do
+  if [ "$a" = compact ]; then touch "$d/compacted"; echo `+fresh+`; exit 0; fi
+done
+cat >/dev/null
+[ -f "$d/compacted" ] || exit 2
+echo done
+`, 0o755)
+	checkpoint := filepath.Join(t.TempDir(), "current")
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-compact",
+		"-checkpoint", checkpoint, "goal")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	want, err := filepath.Abs(fresh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(read(t, checkpoint)); got != want {
+		t.Fatalf("checkpoint after compaction = %q, want %q", got, want)
+	}
+}
+
+func TestCheckpointSerializesWholeRuns(t *testing.T) {
+	t.Setenv("PLY_DIR", t.TempDir())
+	checkpoint := filepath.Join(t.TempDir(), "current")
+	first, session, err := acquireCheckpoint(checkpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Close()
+	if err := writeSessionOut(checkpoint, session); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := acquireCheckpoint(checkpoint); err == nil || !strings.Contains(err.Error(), "already in use") {
+		t.Fatalf("concurrent checkpoint acquisition = %v, want already in use", err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second, resumed, err := acquireCheckpoint(checkpoint)
+	if err != nil {
+		t.Fatalf("checkpoint remained locked after release: %v", err)
+	}
+	defer second.Close()
+	if resumed != session {
+		t.Fatalf("resumed session = %q, want %q", resumed, session)
+	}
+}
+
+func TestCheckpointRejectsMalformedAndConflictingForms(t *testing.T) {
+	work, _, askdir := sandbox(t, "should not run")
+	checkpoint := filepath.Join(t.TempDir(), "current")
+	write(t, checkpoint, "relative.jsonl\n", 0o600)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-checkpoint", checkpoint, "goal")
+	if code != 1 || !strings.Contains(stderr, "not clean and absolute") {
+		t.Fatalf("malformed checkpoint exit = %d stderr = %q", code, stderr)
+	}
+	code, _, stderr = runPly(t, "-sh", "-C", work, "-checkpoint", checkpoint,
+		"-f", filepath.Join(t.TempDir(), "run.jsonl"), "goal")
+	if code != 1 || !strings.Contains(stderr, "replaces -f") {
+		t.Fatalf("conflicting checkpoint exit = %d stderr = %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); err == nil {
+		t.Error("Ask ran after invalid checkpoint arguments")
+	}
+}
+
+func TestCheckpointSurvivesProcessDeath(t *testing.T) {
+	work := t.TempDir()
+	plydir := t.TempDir()
+	askdir := t.TempDir()
+	started := filepath.Join(askdir, "started")
+	argvLog := filepath.Join(askdir, "argv.log")
+	ask := filepath.Join(askdir, "ask")
+	write(t, ask, `#!/bin/sh
+echo "$@" >> `+shellQuote(argvLog)+`
+cat >/dev/null
+if [ ! -f `+shellQuote(started)+` ]; then
+  touch `+shellQuote(started)+`
+  while :; do sleep 1; done
+fi
+echo resumed
+`, 0o755)
+	checkpoint := filepath.Join(t.TempDir(), "current")
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(executable, "-sh", "-C", work, "-checkpoint", checkpoint, "goal")
+	cmd.Env = append(os.Environ(), "PLY_TEST_PROGRAM=1", "ASK="+ask, "PLY_DIR="+plydir)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(started); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			_ = cmd.Wait()
+			t.Fatal("first checkpointed model turn never started")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	session := strings.TrimSpace(read(t, checkpoint))
+	if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+
+	resumed := exec.Command(executable, "-sh", "-C", work, "-checkpoint", checkpoint, "goal")
+	resumed.Env = append(os.Environ(), "PLY_TEST_PROGRAM=1", "ASK="+ask, "PLY_DIR="+plydir)
+	out, err := resumed.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resumed checkpoint: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "resumed") {
+		t.Fatalf("resumed output = %q", out)
+	}
+	if got := strings.TrimSpace(read(t, checkpoint)); got != session {
+		t.Fatalf("checkpoint moved after process death: got %q want %q", got, session)
+	}
+	if n := strings.Count(read(t, argvLog), "-f "+session); n != 2 {
+		t.Fatalf("Ask received checkpoint session %d times, want 2", n)
+	}
+}
+
 func TestModelFailureIsExitOne(t *testing.T) {
 	work, _, _ := sandbox(t, "unused")
 	t.Setenv("FAKE_ASK_EXIT", "1")

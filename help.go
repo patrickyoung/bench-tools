@@ -75,6 +75,7 @@ flags:
   -s name       brief skill to compose; repeat for more; -s - picks one
   -f file       session log to write (default: a new one under $PLY_DIR)
   -session-out file  atomically write the current session path here
+  -checkpoint file  lock and resume one durable current-session pointer
   -contract-id digest  bind verifier receipts to an admitted intent contract
   -q            no typescript on stderr
 

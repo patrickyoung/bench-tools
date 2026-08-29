@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 const (
 	maxStdin     = 16 << 20 // as much as ask will carry in one message
@@ -76,6 +76,7 @@ type opts struct {
 	skills          list
 	file            *string
 	sessionOut      *string
+	checkpoint      *string
 	quiet           *bool
 	compact         *bool
 	compacts        *int
@@ -107,6 +108,7 @@ func newOpts(name string) *opts {
 		sys:             fs.String("S", "", "system prompt, replacing the default"),
 		file:            fs.String("f", "", "session log to write"),
 		sessionOut:      fs.String("session-out", "", "write the current session path to this file"),
+		checkpoint:      fs.String("checkpoint", "", "resume through one locked session pointer"),
 		quiet:           fs.Bool("q", false, "no typescript on stderr"),
 		compact:         fs.Bool("compact", false, "carry on through a full context window"),
 		compacts:        fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
@@ -238,6 +240,28 @@ func work(args []string) int {
 		if _, err := executableDigest("Cage", cageBin); err != nil {
 			return fail(err)
 		}
+	}
+	data, err := stdinData(*o.quiet)
+	if err != nil {
+		return fail(err)
+	}
+	if goal == "" {
+		// Piped input alone is the goal, exactly as it is for ask and mu.
+		if goal = strings.TrimSpace(string(data)); goal == "" {
+			return usage(errors.New("no goal"))
+		}
+		data = nil
+	}
+	var checkpointLease *checkpointLease
+	if *o.checkpoint != "" {
+		checkpointLease, *o.file, err = acquireCheckpoint(*o.checkpoint)
+		if err != nil {
+			return fail(err)
+		}
+		defer checkpointLease.Close()
+		*o.sessionOut = checkpointLease.Path
+	}
+	if *o.cage {
 		probe := *o.file
 		if probe == "" {
 			dir, dirErr := defaultSessionDir()
@@ -251,17 +275,6 @@ func work(args []string) int {
 			askBin, approval.Bin, cageBin, actionShell, shell, self); err != nil {
 			return fail(err)
 		}
-	}
-	data, err := stdinData(*o.quiet)
-	if err != nil {
-		return fail(err)
-	}
-	if goal == "" {
-		// Piped input alone is the goal, exactly as it is for ask and mu.
-		if goal = strings.TrimSpace(string(data)); goal == "" {
-			return usage(errors.New("no goal"))
-		}
-		data = nil
 	}
 	var steering *steeringInbox
 	if strings.TrimSpace(*o.steer) != "" {
@@ -439,6 +452,8 @@ func work(args []string) int {
 
 func (o *opts) validate() error {
 	switch {
+	case *o.checkpoint != "" && (*o.file != "" || *o.sessionOut != ""):
+		return errors.New("-checkpoint replaces -f and -session-out; use only one form")
 	case *o.cage && strings.TrimSpace(*o.mayJob) == "":
 		return errors.New("-cage requires -may-job")
 	case *o.cage && strings.TrimSpace(*o.contractID) == "":
@@ -728,10 +743,25 @@ func writeSessionOut(control, session string) error {
 		_ = f.Close()
 		return fmt.Errorf("-session-out %s: %w", control, err)
 	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("-session-out %s: %w", control, err)
 	}
 	if err := os.Rename(tmp, control); err != nil {
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	dir, err := os.Open(filepath.Dir(control))
+	if err != nil {
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	if err := dir.Sync(); err != nil {
+		_ = dir.Close()
+		return fmt.Errorf("-session-out %s: %w", control, err)
+	}
+	if err := dir.Close(); err != nil {
 		return fmt.Errorf("-session-out %s: %w", control, err)
 	}
 	ok = true

@@ -1,4 +1,4 @@
-.TH PLY 1 "2026-08-01" "ply 0.1.0" "General Commands Manual"
+.TH PLY 1 "2026-08-28" "ply 0.1.1" "General Commands Manual"
 .SH NAME
 ply \- work a goal with a toolbox until a check says it is done
 .SH SYNOPSIS
@@ -460,6 +460,18 @@ followed by a newline. It is written before the first model turn and replaced
 after every successful compaction, so a supervising process can follow the
 run without parsing the human typescript. A requested control file that
 cannot be maintained is an error. It is a pointer, not a second log.
+.TP
+.BI \-checkpoint " file"
+Resume through one durable current-session pointer. Ply takes a nonblocking
+whole-run lock beside the pointer, resumes the absolute Ask session it names,
+or mints and publishes a new session before the first model turn. Compaction
+atomically and durably advances the pointer. This option replaces
+.B \-f
+and
+.BR \-session-out ;
+using either with it is an error. The work tree and verifier remain the state
+of the job; the checkpoint preserves conversation context and does not make an
+interrupted external effect safe to repeat.
 .TP
 .BI \-contract-id " digest"
 Bind verifier and action-approval receipts to an admitted intent contract

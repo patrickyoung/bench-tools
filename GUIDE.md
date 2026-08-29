@@ -523,16 +523,18 @@ request.
 The quiet runs are free: the check passes, `ply` prints nothing, exits 0,
 and never calls a model.
 
-## Resuming, and why there is no task record
+## Checkpoints without a task runtime
 
 A `ply` run can be killed, lose its machine, or outlast its context window.
-There is no `ply resume`, no task file, and no daemon holding the run open,
-and that is not an omission. It is the same answer `make` gives:
+There is no `ply resume`, task file, or daemon holding the run open. There is
+one optional checkpoint: a locked pointer to the current Ask session. It is
+enough for another process invocation to continue the conversation, without
+making Ply the owner of scheduling or job state.
 
 **The state of the work is the work tree. `-check` is how you read it.**
 
 `make` keeps no record of what it was doing either. It stats the targets.
-So the way to resume a `ply` run is to run it again:
+The direct form is still running the same command again:
 
 ```
 $ ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass"    # killed
@@ -551,6 +553,28 @@ Three properties make that correct, and all three are already true:
   `flock(2)`, so a writer that dies releases it on the way out and strands
   nothing.
 
+For a supervisor, compaction makes a fixed `-f` path insufficient because the
+current conversation may move. `-checkpoint` owns that one mechanical seam:
+
+```
+$ ply -checkpoint /var/lib/build.current -compact -sh \
+      -check 'go test ./...' "make the tests pass"       # killed
+$ ply -checkpoint /var/lib/build.current -compact -sh \
+      -check 'go test ./...' "make the tests pass"       # continues
+```
+
+The pointer is published durably before the first model turn and advanced
+after compaction. A nonblocking whole-run lock rejects a second process using
+the same checkpoint, rather than allowing two valid Ask appends to interleave
+into an invalid conversation. `-checkpoint` replaces `-f` and `-session-out`;
+those lower-level flags remain useful when another controller already owns
+the lock and pointer policy.
+
+This is a conversation checkpoint, not a filesystem snapshot. If the process
+dies during an external effect, whether that effect happened is still
+uncertain. Inspect the work and external system before choosing to run again;
+the checkpoint does not turn arbitrary effects into exactly-once operations.
+
 The consequence is worth stating plainly, because it is what makes all of
 this small: **the conversation is an optimization, not the state.** It saves
 the model from rediscovering what it already knew. Lose it and the run is
@@ -558,10 +582,10 @@ still correct — it is only more expensive. Drop `-f` entirely and a fresh
 run against the same tree still does the right thing, because the check
 reads the tree and not the transcript.
 
-So a long-lived task is `cron` and a check:
+So a long-lived task is still a scheduler, a checkpoint, and a check:
 
 ```
-*/30 * * * * ply -sh -q -f /var/lib/slo.jsonl -check '/usr/local/bin/slo-ok' \
+*/30 * * * * ply -sh -q -checkpoint /var/lib/slo.current -check '/usr/local/bin/slo-ok' \
              "bring the error budget back"
 ```
 
@@ -586,7 +610,7 @@ tools:
 
 ```sh
 for i in 1 2 3; do
-    ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass" && break
+    ply -sh -checkpoint run.current -check 'go test ./...' "make the tests pass" && break
 done
 ```
 
@@ -617,7 +641,7 @@ the pre-check makes correct and merely more expensive. This is the one place
 the "conversation is an optimization" rule costs you something real, and it
 is better to know it than to discover it at three in the morning.
 
-A supervising program should not scrape that human typescript. Give Ply a
+A supervising program that already owns locking may use the lower-level
 control file instead:
 
 ```

@@ -66,6 +66,15 @@ command prints a secret, the secret is in the log. Piped input past 64 KB is
 spooled next to the session as a `.stdin` file, with the same modes and the
 same caveat.
 
+`-checkpoint FILE` adds a small controller artifact containing only the
+absolute current session path. A separate regular lock file serializes whole
+invocations, and both remain after the process exits. Keep them outside a
+model-writable workspace just as you keep the session outside it. Ply rejects
+symlinked or malformed checkpoint and lock files, but it does not defend
+against a hostile same-user peer racing controller paths. The checkpoint is
+not rollback: work-tree and external effects survive interruption exactly as
+they would without it.
+
 ## Prompt injection is not solved here, and cannot be
 
 The output of every command goes back to the model as text. A file, a log

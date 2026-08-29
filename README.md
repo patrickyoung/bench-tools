@@ -482,6 +482,19 @@ ok: 20260801-142233-a3f9c1e0.jsonl replays exactly (24 events)
 
 One log format, one replay invariant, no second pipeline to drift.
 
+For a crash-durable invocation, `-checkpoint FILE` holds a nonblocking
+whole-run lock, resumes the Ask session named by that pointer, or publishes a
+new one before the first model turn. It follows compaction automatically:
+
+```sh
+ply -checkpoint "$HOME/.local/state/ply/release.current" -compact -sh \
+  -check './release-ready' "prepare the release"
+```
+
+Run the same command again after interruption to continue. The checkpoint is
+conversation context, not a task database or filesystem snapshot; an effect
+interrupted in flight remains uncertain and must not be blindly repeated.
+
 Every verifier run goes in it too, as a typed `ply.verifier/v1` Ask note
 followed by a prefix seal. The record is not folded, so it does not change
 the conversation; it binds the candidate, verifier, interpreter, result,
