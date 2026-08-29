@@ -3,8 +3,8 @@
 #
 # Line 2 is the synopsis, without the name on it, because ply reads it as
 # the catalogue entry and the name is already the filename. That is the
-# same place mcpbox and edit write theirs, and the same place a shell
-# script has kept its one-line description since long before any of this.
+# same place generated tools and edit write theirs, and the same place a
+# shell script has kept its one-line description since long before this.
 #
 # This file is the example the field guide points at, and the point it is
 # making is that it needed nothing built. A ply invocation already carries

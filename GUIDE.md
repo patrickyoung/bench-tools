@@ -397,51 +397,30 @@ answering a different question than the one you asked.
 ### MCP
 
 `ply` does not speak MCP and is not going to. An MCP server is a tool
-cabinet and a bridge CLI is the key — the same answer `mu` gives, for the
-same reason: the protocol lives at the edge, as an adapter, not in the loop.
+cabinet and an edge adapter is the key — the same answer `mu` gives, for the
+same reason: the protocol lives at the edge, not in the loop.
 
-Install a bridge. [`mcptools`][mcptools] is one binary, no config file, all
-three transports:
-
-```
-go install github.com/f/mcptools/cmd/mcptools@latest
-```
-
-Then the whole integration is one symlink, and the cabinet is open:
+The standalone [`mcp`](https://github.com/patrickyoung/mcp) project can
+discover a server and produce a reviewed capability directory. Provision that
+directory before Ply starts, then grant it exactly like any handwritten
+toolbox:
 
 ```
-ln -s $(which mcptools) tools/
-ply -t tools "list what the jira server offers, then file the bug I described"
+$ ply tools -t tools
+  create_issue  File a bug on the corporate tracker
+  list_issues   List matching issues
+$ ply -t tools "file the bug I described"
 ```
 
-[mcptools]: https://github.com/f/mcptools
-[mcpc]: https://github.com/apify/mcpc
+The model gets only the programs admitted to `tools`: not the protocol
+client, not the server catalogue, and not an unapproved `delete_project`.
+Once a remote capability is a program, it is not a special kind of thing any
+more.
 
-That is the `mu` form, and it works. But `ply` can do better, because in
-`ply` a blessing is *enforced* rather than advised — the model can only
-name what is in the directory. So make each MCP tool its own program:
-
-```sh
-#!/bin/sh
-# file a bug on the corp jira -- {"title": string, "body": string}
-exec /usr/local/bin/mcptools call create_issue --params "$1" \
-     /usr/local/bin/mcpc @jira
-```
-
-Now the model gets `create_issue` and nothing else from that server: not
-`delete_project`, not `list_users`. `ply tools` shows it beside `git` and
-`sed`, because at that point it *is* beside `git` and `sed` — once an MCP
-tool is a program, it is not a special kind of thing any more.
-
-Writing those by hand is tedium, and it is unnecessary: `tools/list` already
-returns a name, a sentence and a JSON schema, which is exactly a synopsis, a
-`-h`, and a call. [`contrib/mcpbox`](contrib/mcpbox) turns one into the
-other:
+Writing wrappers by hand is optional. An external capability compiler can
+turn a protocol catalogue into a reviewed directory before Ply starts:
 
 ```
-$ mcpbox tools/ npx -y @modelcontextprotocol/server-everything
-mcpbox: wrote 13 programs to tools
-$ rm tools/get-env                 # bless by deleting
 $ ply tools -t tools
   echo     Echoes back the input string -- {"message": string}
   get-sum  Returns the sum of two numbers -- {"a": number, "b": number}
@@ -455,13 +434,8 @@ The arguments are positional, in schema order, and typed from the schema —
 JSON form still works for anything awkward:
 `get-sum '{"a":17,"b":25}'`.
 
-That is not a convenience. The first cut of `mcpbox` took JSON only, and a
-model handed `resolve-library-id` read its `-h`, saw `usage: <json>`, and
-typed `resolve-library-id zod` anyway — then did it twice more. It was
-right and the wrapper was wrong: a Unix program that takes a library name
-takes a library name. Half the run went on arguing about it.
-
-The directory is the allowlist. `rm` is how you revoke.
+That interface is the contract Ply consumes. The directory is the allowlist;
+the compiler, protocol, endpoint, and admission workflow remain outside Ply.
 
 And the catalogue earns its keep hardest here, because an MCP description is
 written to be injected into a model's context whole, so it is routinely a
@@ -470,7 +444,6 @@ page long. [Context7][context7] spends **2,435 bytes** describing two tools
 that is **347 bytes**:
 
 ```
-$ mcpbox tools/ npx -y @upstash/context7-mcp
 $ ply tools -t tools
   query-docs          Retrieves and queries up-to-date documentation and code exam...
   resolve-library-id  Resolves a package/product name to a Context7-compatible lib...
@@ -483,26 +456,18 @@ which is not a coincidence, because it was never an argument about prose.
 
 [context7]: https://github.com/upstash/context7
 
-Four things that bite, three of them found the hard way:
+Three properties belong to the capability producer, not Ply:
 
-- **A server needs a `PATH` of its own.** `npx` is `#!/usr/bin/env node` and
-  `uvx` is much the same, so under `-t` — where the toolbox is the entire
-  `PATH` — the server never starts and you get `initialization timed out`.
-  `mcpbox` bakes a `PATH` into each wrapper for this. It does not leak: the
-  model still cannot name `node`, because it cannot name a program's
-  insides. This is the same rule as the check — a blessed program is the
-  caller's, not the model's.
-- **Absolute paths, always**, for the bridge and the server both. Same
-  reason.
-- **A tool error is not always a non-zero exit.** `mcptools` prints
-  `MCP error -32602: ...` and exits 0. The model reads the text and copes;
-  a `-check` written against the exit status will not. Check the artifact,
-  not the call.
-- **stdio servers spawn per call** with `mcptools`, so nothing persists
-  between them. When the integration needs a session, OAuth in the
-  keychain, or exit codes you can branch on, [`mcpc`][mcpc] is the fuller
-  key and the operator connects it once — the wrapper names only `@jira`
-  and never holds the token.
+- A wrapper must remain runnable when its directory is the whole `PATH`, so it
+  resolves its own runtime dependencies rather than exposing them to Ply.
+- A complete peer or application error must become a dependable nonzero exit;
+  an uncertain remote effect must remain distinguishable from a clean failure.
+- Admission must survive regeneration and bind the reviewed contract, rather
+  than trusting a name or a server's own safety annotation.
+
+The standalone [`mcp`](https://github.com/patrickyoung/mcp) project provides
+one such edge. Ply has no MCP code or provisioning command and no runtime
+dependency on that project; it consumes only the resulting Unix programs.
 
 ### As a filter, mid-pipe
 

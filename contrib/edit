@@ -3,8 +3,8 @@
 #
 # Line 2 is the synopsis, without the name on it, because ply reads it as
 # the catalogue entry and the name is already the filename. That is the
-# same place mcpbox writes one, and the same place a shell script has kept
-# its one-line description since long before either.
+# same place a capability compiler writes one, and the same place a shell
+# script has kept its one-line description since long before either.
 #
 # `ply` ships no tools, and a tool is a program. This is that program for
 # the one job a shell is genuinely bad at: changing a few lines in the
@@ -57,8 +57,8 @@
 #
 #     ln -s "$(command -v python3)" tools/
 #
-# mcpbox avoids this by baking absolute paths into what it generates. The
-# same fix works here if you prefer it: change line 1 to the output of
+# Generated wrappers avoid this by baking absolute paths into their output.
+# The same fix works here if you prefer it: change line 1 to the output of
 # `command -v python3`.
 
 import argparse

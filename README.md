@@ -149,23 +149,18 @@ Ask decides which effort names a provider supports.
 
 ### "But does it do MCP?"
 
-No, and it does not need to. An MCP server is a tool cabinet and a bridge
-CLI is the key, so MCP arrives the way everything else does — as a program:
+No, and it does not need to. MCP belongs at the protocol edge. Give Ply an
+ordinary capability directory produced and reviewed outside Ply:
 
 ```
-$ mcpbox tools/ npx -y @modelcontextprotocol/server-everything
-mcpbox: wrote 13 programs to tools
-$ rm tools/get-env                        # bless by deleting
 $ ply -t tools "add 17 and 25, put the number in answer.txt"
-$ get-sum -h                              # ...which the model found itself
+$ tools/get-sum -h                        # an ordinary program
 ```
 
-`tools/list` already returns a name, a sentence and a JSON schema — which
-is exactly a synopsis, a `-h`, and a call — so
-[`contrib/mcpbox`](contrib/mcpbox) turns the manifest into a directory of
-programs. After that an MCP tool sits beside `git` and `sed` and is not a
-special kind of thing any more, and `-t` makes the blessing real: the model
-cannot name what you deleted. `GUIDE.md` has the pitfalls.
+The standalone [`mcp`](https://github.com/patrickyoung/mcp) edge can compile
+and admit such directories, but that is provisioning, not a Ply dependency.
+At runtime an admitted MCP capability sits beside `git` and `sed`; Ply neither
+knows nor cares how any program in the directory reaches its implementation.
 
 ### "But how does it edit a file?"
 
