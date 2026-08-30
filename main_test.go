@@ -32,6 +32,13 @@ func TestPolicyAllowRecordsCompleteEventChain(t *testing.T) {
 	}
 }
 
+func TestVersionFollowsSuiteContract(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"version"}, strings.NewReader(""), &stdout, &stderr); code != 0 || stdout.String() != "action 0.1.0\n" || stderr.String() != "" {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestPolicyAllowDoesNotResolveOrInvokeMay(t *testing.T) {
 	fixture := newFixture(t)
 	fixture.policyDecision = "allow"

@@ -163,7 +163,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		usage(stdout)
 		return 0
 	case "version", "--version", "-V":
-		fmt.Fprintln(stdout, version)
+		fmt.Fprintln(stdout, "action "+version)
 		return 0
 	case "ls":
 		return listConnectors(stdout, stderr)
