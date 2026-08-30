@@ -148,22 +148,38 @@ func briefCat(ctx context.Context, bin, name string) (string, error) {
 	return out.String(), nil
 }
 
-// briefFind is `-s -`: let the catalogue pick. brief refuses to guess, and
-// exit 1 means nothing matched — which is an answer, not a failure, so the
-// run goes on without a skill and stderr says so.
-func briefFind(ctx context.Context, bin, task string) (string, error) {
-	var out, errb bytes.Buffer
-	cmd := exec.CommandContext(ctx, bin, "find", "-ask", "-q", task)
-	cmd.Stdout, cmd.Stderr = &out, &errb
-	err := cmd.Run()
+// briefFind is `-s -`: let the catalogue pick. Try Brief's deterministic,
+// offline ranker first and spend a selector model call only when it reports no
+// match. Brief refuses to guess, and exit 1 from both stages means nothing
+// matched — which is an answer, not a failure, so the run goes on without a
+// skill and stderr says so.
+func briefFind(ctx context.Context, bin, task string) (string, string, error) {
+	name, evidence, err := runBriefFind(ctx, bin, []string{"find", "-q"}, task)
+	if err == nil {
+		return name, "brief: deterministic catalogue match " + name, nil
+	}
 	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != 1 {
+		return "", "", fmt.Errorf("%s find: %s", bin, firstLine(evidence))
+	}
+
+	name, evidence, err = runBriefFind(ctx, bin, []string{"find", "-ask"}, task)
 	if errors.As(err, &ee) && ee.ExitCode() == 1 {
-		return "", nil
+		return "", strings.TrimSpace(evidence), nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("%s find: %s", bin, firstLine(errb.String()))
+		return "", "", fmt.Errorf("%s find -ask: %s", bin, firstLine(evidence))
 	}
-	return strings.TrimSpace(out.String()), nil
+	return name, strings.TrimSpace(evidence), nil
+}
+
+func runBriefFind(ctx context.Context, bin string, args []string, task string) (string, string, error) {
+	var out, errb bytes.Buffer
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Stdin = strings.NewReader(task)
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err := cmd.Run()
+	return strings.TrimSpace(out.String()), strings.TrimSpace(errb.String()), err
 }
 
 // tool resolves a program ply depends on, naming what to install rather

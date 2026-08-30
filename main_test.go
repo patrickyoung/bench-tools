@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -122,6 +125,7 @@ if [ "${1-}" = note ]; then
   esac
   exit ${FAKE_ASK_NOTE_EXIT:-0}
 fi
+[ -z "${FAKE_ASK_MUTATE_ACTION_SHELL:-}" ] || printf '#!/bin/sh\nexit 0\n' > "$FAKE_ASK_MUTATE_ACTION_SHELL"
 n=$(cat "$d/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/n"
 [ -f "$d/reply.$n" ] && cat "$d/reply.$n"
 exit ${FAKE_ASK_EXIT:-0}
@@ -542,13 +546,13 @@ func TestCageRejectsSpoolSymlinkIntoWritableRoot(t *testing.T) {
 	_ = fakeCage(t, "run")
 	state := t.TempDir()
 	session := filepath.Join(state, "run.jsonl")
-	spool := filepath.Join(state, "run.stdin")
+	spool := filepath.Join(state, "run.stdin.d")
 	if err := os.Symlink(filepath.Join(work, "worker-input"), spool); err != nil {
 		t.Fatal(err)
 	}
 	code, _, stderr := runPly(t, "-sh", "-B", "-C", work, "-f", session,
 		"-contract-id", "contract-caged", "-may-job", "bench-caged", "-cage", "goal")
-	if code != 1 || !strings.Contains(stderr, "piped input spool") ||
+	if code != 1 || !strings.Contains(stderr, "piped input spool directory") ||
 		!strings.Contains(stderr, "inside the writable workspace") {
 		t.Fatalf("exit=%d stderr=%q", code, stderr)
 	}
@@ -972,6 +976,151 @@ func TestActionShellRunsOnlyModelBlocksWhileChecksKeepShell(t *testing.T) {
 	}
 	if replayInput := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(replayInput, `"shell":`+string(checkShellJSON)) {
 		t.Fatalf("verifier receipt did not bind check shell %s:\n%s", checkShell, replayInput)
+	}
+}
+
+func TestExternalActionBoundaryExitStopsBeforeAnotherModelTurn(t *testing.T) {
+	work, _, askdir := sandbox(t,
+		"```ply\nprintf should-not-run\n```",
+		"the model must not get another turn",
+	)
+	actionShell := filepath.Join(t.TempDir(), "action-shell")
+	write(t, actionShell, "#!/bin/sh\nprintf 'adapter setup failed\\n' >&2\nexit 125\n", 0o755)
+
+	code, stdout, stderr := runPly(t, "-sh", "-action-shell", actionShell,
+		"-action-boundary-exit", "125", "-C", work, "exercise the adapter")
+	if code != 125 || stdout != "" || !strings.Contains(stderr, "action confinement failed") ||
+		!strings.Contains(stderr, "adapter setup failed") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(askdir, "n"))); got != "1" {
+		t.Fatalf("model calls=%s, want 1: boundary failure was fed back as an ordinary tool result", got)
+	}
+	if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, externalActionBoundaryReceiptKind) {
+		t.Fatalf("boundary failure has no typed sealed receipt invocation:\n%s", argv)
+	}
+	if recorded := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(recorded, `"adapter_path"`) || !strings.Contains(recorded, `"may_have_run":true`) ||
+		!strings.Contains(recorded, `"exit_code":125`) {
+		t.Fatalf("boundary receipt omitted conservative evidence:\n%s", recorded)
+	}
+}
+
+func TestExternalActionAdapterChangeBeforeLaunchFailsClosed(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\ntouch should-not-exist\n```")
+	actionShell := filepath.Join(t.TempDir(), "action-shell")
+	write(t, actionShell, "#!/bin/sh\nexec /bin/sh \"$@\"\n", 0o755)
+	t.Setenv("FAKE_ASK_MUTATE_ACTION_SHELL", actionShell)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-action-shell", actionShell,
+		"-action-boundary-exit", "125", "perform one action")
+	if code != 125 || !strings.Contains(stderr, "action did not start") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(work, "should-not-exist")); !os.IsNotExist(err) {
+		t.Fatalf("changed adapter still launched the action: %v", err)
+	}
+	if recorded := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(recorded, `"may_have_run":false`) {
+		t.Fatalf("pre-launch receipt did not rule out execution:\n%s", recorded)
+	}
+}
+
+func TestExternalActionAdapterChangeAfterLaunchIsUncertain(t *testing.T) {
+	work, _, askdir := sandbox(t, "```ply\ntouch launched\n```")
+	actionShell := filepath.Join(t.TempDir(), "action-shell")
+	marker := filepath.Join(t.TempDir(), "adapter-launched")
+	t.Setenv("POST_LAUNCH_MARKER", marker)
+	write(t, actionShell, "#!/bin/sh\ntouch \"$POST_LAUNCH_MARKER\"\nprintf '#!/bin/sh\\nexit 0\\n' > \"$0\"\nchmod 755 \"$0\"\nexec /bin/sh \"$@\"\n", 0o755)
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-action-shell", actionShell,
+		"-action-boundary-exit", "125", "perform one action")
+	if code != 125 || !strings.Contains(stderr, "effects may exist") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("fixture adapter did not launch: %v", err)
+	}
+	if recorded := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(recorded, `"may_have_run":true`) ||
+		!strings.Contains(recorded, "adapter changed during the run") {
+		t.Fatalf("post-launch receipt was not conservative:\n%s", recorded)
+	}
+}
+
+func TestGoalFileKeepsTaskOutOfSelectorArgv(t *testing.T) {
+	work, _, askdir := sandbox(t, "Done.")
+	secret := "repair customer case private-7f92"
+	goalFile := filepath.Join(t.TempDir(), "goal.md")
+	write(t, goalFile, secret+"\n", 0o600)
+	capture := t.TempDir()
+	briefBin := filepath.Join(t.TempDir(), "brief")
+	write(t, briefBin, "#!/bin/sh\ncase \"$1\" in\n  find) printf '%s\\n' \"$@\" > "+shellQuote(filepath.Join(capture, "argv"))+"; cat > "+shellQuote(filepath.Join(capture, "stdin"))+"; [ \"$2\" = -q ] && exit 1; printf 'house\\n'; printf 'brief: house · ask replay -check /evidence/selector.jsonl\\n' >&2 ;;\n  cat) printf 'Use the fixture.\\n' ;;\nesac\n", 0o755)
+	t.Setenv("BRIEF", briefBin)
+
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-s", "-", "-goal-file", goalFile)
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if got := read(t, filepath.Join(capture, "argv")); strings.Contains(got, secret) {
+		t.Fatalf("task leaked into Brief argv: %q", got)
+	}
+	if got := strings.TrimSpace(read(t, filepath.Join(capture, "stdin"))); got != secret {
+		t.Fatalf("Brief selection stdin=%q, want task", got)
+	}
+	if got := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(got, secret) {
+		t.Fatalf("model did not receive goal-file task:\n%s", got)
+	}
+	if got := read(t, filepath.Join(askdir, "stdin.log")); !strings.Contains(got, "selector evidence: brief: house") ||
+		!strings.Contains(got, "/evidence/selector.jsonl") {
+		t.Fatalf("selector replay pointer was not linked into run evidence:\n%s", got)
+	}
+	if code, _, stderr := runPly(t, "-sh", "-goal-file", goalFile, "also positional"); code != 1 || !strings.Contains(stderr, "cannot be combined") {
+		t.Fatalf("mixed goal sources: exit=%d stderr=%q", code, stderr)
+	}
+}
+
+func TestSkillSelectionUsesDeterministicMatchBeforeModelFallback(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "brief")
+	marker := filepath.Join(dir, "model-selector-called")
+	write(t, bin, "#!/bin/sh\n[ \"$1\" = find ] || exit 2\nif [ \"$2\" = -q ]; then cat >/dev/null; printf 'house\\n'; exit 0; fi\ntouch "+shellQuote(marker)+"\nexit 99\n", 0o755)
+	name, evidence, err := briefFind(context.Background(), bin, "repair the house")
+	if err != nil || name != "house" || !strings.Contains(evidence, "deterministic catalogue match") {
+		t.Fatalf("name=%q evidence=%q err=%v", name, evidence, err)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("deterministic match still called model selector: %v", err)
+	}
+}
+
+func TestPrivateSkillPathUsesStableDisplayIdentity(t *testing.T) {
+	root := t.TempDir()
+	ref := filepath.Join(root, "agent-context")
+	if err := os.Mkdir(ref, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	briefBin := filepath.Join(t.TempDir(), "brief")
+	write(t, briefBin, "#!/bin/sh\n[ \"$1\" = cat ] && printf 'Private governing procedure.\\n'\n", 0o755)
+	t.Setenv("BRIEF", briefBin)
+
+	system, got, err := brief(context.Background(), list{ref}, "goal", newView(io.Discard, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(system, root) || strings.Contains(skillNote(got), root) {
+		t.Fatalf("ephemeral skill path leaked into stable composition:\n%s\n%s", system, skillNote(got))
+	}
+	if !strings.Contains(system, "`agent-context`") || !strings.Contains(skillNote(got), "agent-context") {
+		t.Fatalf("stable private identity missing:\n%s\n%s", system, skillNote(got))
+	}
+}
+
+func TestNoDelegateOmitsGenericNestedPlyRecipe(t *testing.T) {
+	work, _, askdir := sandbox(t, "Done.")
+	code, _, stderr := runPly(t, "-sh", "-no-delegate", "-C", work, "report status")
+	if code != 0 {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	system := read(t, filepath.Join(askdir, "system"))
+	if strings.Contains(system, "another ordinary ply process is a subagent") ||
+		strings.Contains(system, "ply-team.XXXXXX") {
+		t.Fatalf("delegation recipe survived -no-delegate:\n%s", system)
 	}
 }
 
@@ -1525,6 +1674,57 @@ func TestBadInvocationLeavesNoLitter(t *testing.T) {
 	}
 }
 
+func TestLargeInputSpoolIsContentAddressedAndBound(t *testing.T) {
+	dir := t.TempDir()
+	session := filepath.Join(dir, "run.jsonl")
+	first := []byte(strings.Repeat("first-evidence\n", 5000))
+	message, err := spool("inspect it", first, session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(first)
+	digestHex := hex.EncodeToString(digest[:])
+	path := filepath.Join(spoolDirectory(session), digestHex)
+	for _, want := range []string{path, strconv.Itoa(len(first)), digestHex} {
+		if !strings.Contains(message, want) {
+			t.Errorf("spool message omitted %q: %s", want, message)
+		}
+	}
+	if got := read(t, path); got != string(first) {
+		t.Fatalf("spooled bytes changed: got %d, want %d", len(got), len(first))
+	}
+	if info, statErr := os.Stat(path); statErr != nil || info.Mode().Perm() != 0o400 {
+		t.Fatalf("spool mode=%v err=%v, want 0400", info, statErr)
+	}
+
+	second := []byte(strings.Repeat("second-evidence\n", 5000))
+	if _, err := spool("inspect it", second, session); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(t, path); got != string(first) {
+		t.Fatal("reusing a session overwrote its first evidence object")
+	}
+	entries, err := os.ReadDir(spoolDirectory(session))
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("spool objects=%d err=%v, want 2", len(entries), err)
+	}
+}
+
+func TestLargeInputSpoolRejectsCorruptExistingObject(t *testing.T) {
+	dir := t.TempDir()
+	session := filepath.Join(dir, "run.jsonl")
+	data := []byte(strings.Repeat("evidence\n", 9000))
+	digest := sha256.Sum256(data)
+	spoolDir := spoolDirectory(session)
+	if err := os.Mkdir(spoolDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(spoolDir, hex.EncodeToString(digest[:])), "different", 0o400)
+	if _, err := spool("inspect it", data, session); err == nil || !strings.Contains(err.Error(), "corrupt object") {
+		t.Fatalf("spool error=%v, want corrupt object refusal", err)
+	}
+}
+
 // TestContextFullIsExitTwo: ask's exit 2 exists so a retry loop can stop.
 // ply is that loop.
 func TestContextFullIsExitTwo(t *testing.T) {
@@ -1620,7 +1820,7 @@ func TestBadSteeringFailsBeforeSpoolOrSessionControlArtifacts(t *testing.T) {
 	if code != 1 || !strings.Contains(stderr, "open steering file") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
-	for _, path := range []string{strings.TrimSuffix(session, ".jsonl") + ".stdin", sessionOut, session} {
+	for _, path := range []string{spoolDirectory(session), sessionOut, session} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("failed invocation left %s: %v", path, err)
 		}
@@ -2052,7 +2252,30 @@ func flags(t *testing.T) []string {
 	return names
 }
 
-func verbs() []string { return []string{"tools", "system", "version", "help"} }
+func verbs() []string { return []string{"tools", "system", "capabilities", "version", "help"} }
+
+func TestCapabilitiesAreMachineReadableAndVersioned(t *testing.T) {
+	code, stdout, stderr := runPly(t, "capabilities")
+	if code != 0 || stderr != "" {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	var got struct {
+		Schema   string         `json:"schema"`
+		Version  string         `json:"version"`
+		Features map[string]any `json:"features"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+		t.Fatalf("capabilities are not JSON: %v\n%s", err, stdout)
+	}
+	if got.Schema != "ply.capabilities/v1" || got.Version != version {
+		t.Fatalf("capabilities identity=%q version=%q", got.Schema, got.Version)
+	}
+	for _, name := range []string{"action_boundary_receipt", "content_addressed_stdin", "goal_file", "no_delegate"} {
+		if _, ok := got.Features[name]; !ok {
+			t.Errorf("capabilities omitted %q", name)
+		}
+	}
+}
 
 func TestHelpFitsEightyColumns(t *testing.T) {
 	for i, line := range strings.Split(help, "\n") {
@@ -2257,6 +2480,29 @@ func TestPassingPrecheckRecordsReceiptInExistingContractSession(t *testing.T) {
 	}
 }
 
+func TestPassingPrecheckDoesNotSelectOrLoadSkills(t *testing.T) {
+	work, plydir, askdir := sandbox(t)
+	marker := filepath.Join(t.TempDir(), "brief-called")
+	briefBin := filepath.Join(t.TempDir(), "brief")
+	write(t, briefBin, "#!/bin/sh\nprintf called > "+shellQuote(marker)+"\ncase \"$1\" in\n  find) printf 'house\\n' ;;\n  cat) printf 'Use tabs.\\n' ;;\nesac\n", 0o755)
+	t.Setenv("BRIEF", briefBin)
+
+	code, _, stderr := runPly(t, "-sh", "-C", work, "-s", "-",
+		"-check", "true", "already done with skills available")
+	if code != 0 || !strings.Contains(stderr, "nothing to do") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("passing precheck consulted Brief: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(askdir, "n")); !os.IsNotExist(err) {
+		t.Fatalf("passing precheck called the model: %v", err)
+	}
+	if entries, err := os.ReadDir(plydir); err != nil || len(entries) != 0 {
+		t.Fatalf("passing precheck left a session: entries=%v err=%v", entries, err)
+	}
+}
+
 // TestWhatWasLoadedLandsInTheLog closes the joint between brief and hone.
 // `brief cat` prints a body without its frontmatter, so a skill reaches the
 // system prompt as anonymous prose: what shaped a run is provable byte for
@@ -2283,6 +2529,11 @@ func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
 	if !strings.Contains(stderr, "Brief procedure house loaded (named)") {
 		t.Fatalf("typescript hid the loaded procedure:\n%s", stderr)
 	}
+	system := read(t, filepath.Join(askdir, "system"))
+	if !strings.Contains(system, "loaded as Brief skill `house`") ||
+		!strings.Contains(system, "brief cat house/references/NAME.md") {
+		t.Fatalf("loaded procedure has no usable identity/resource path:\n%s", system)
+	}
 	argv := read(t, filepath.Join(askdir, "argv.log"))
 	if !strings.Contains(argv, "note") {
 		t.Fatalf("no note was written:\n%s", argv)
@@ -2291,9 +2542,9 @@ func TestWhatWasLoadedLandsInTheLog(t *testing.T) {
 	if !strings.Contains(sent, "loaded skill house (named)") {
 		t.Errorf("the log does not say which skill was loaded:\n%s", sent)
 	}
-	system := read(t, filepath.Join(askdir, "system"))
+	system = read(t, filepath.Join(askdir, "system"))
 	procedure := strings.Index(system, "Use tabs.")
-	reminder := strings.Index(system, "PLY ACTION PROTOCOL REMINDER")
+	reminder := strings.Index(system, "PLY CONTROLLER INVARIANTS")
 	if procedure < 0 || reminder < procedure || !strings.Contains(system[reminder:], "exactly one complete fenced ply block") {
 		t.Fatalf("skill hid the trailing action protocol:\n%s", system)
 	}

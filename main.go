@@ -8,8 +8,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -24,7 +26,7 @@ import (
 	"time"
 )
 
-const version = "0.1.1"
+const version = "0.1.2"
 
 const (
 	maxStdin     = 16 << 20 // as much as ask will carry in one message
@@ -33,7 +35,7 @@ const (
 	defaultTurns = 50       // one invocation must eventually return control
 )
 
-const synopsis = "ply [flags] <goal> | ply tools | ply system | ply version | ply help"
+const synopsis = "ply [flags] <goal> | ply tools | ply system | ply capabilities | ply version | ply help"
 
 func main() { os.Exit(run(os.Args[1:])) }
 
@@ -44,6 +46,9 @@ func run(args []string) int {
 			return toolsCmd(args[1:])
 		case "system":
 			return systemCmd(args[1:])
+		case "capabilities":
+			fmt.Printf("{\"schema\":\"ply.capabilities/v1\",\"version\":%q,\"features\":{\"action_boundary_receipt\":\"ply.action-boundary/v1\",\"content_addressed_stdin\":true,\"goal_file\":true,\"no_delegate\":true}}\n", version)
+			return 0
 		case "version", "-V", "--version":
 			fmt.Println("ply " + version)
 			return 0
@@ -62,9 +67,11 @@ type opts struct {
 	shell           *bool
 	shellExec       *string
 	actionShellExec *string
+	actionBoundary  *int
 	check           *string
 	force           *bool
 	requireAct      *bool
+	noDelegate      *bool
 	cycles          *int
 	turns           *int
 	timeout         *time.Duration
@@ -72,6 +79,7 @@ type opts struct {
 	dir             *string
 	spec            *string
 	effort          *string
+	goalFile        *string
 	sys             *string
 	skills          list
 	file            *string
@@ -95,9 +103,11 @@ func newOpts(name string) *opts {
 		shell:           fs.Bool("sh", false, "hand the model every program on PATH"),
 		shellExec:       fs.String("shell", shellDefault(), "command interpreter; must accept -c"),
 		actionShellExec: fs.String("action-shell", os.Getenv("PLY_ACTION_SHELL"), "model-action interpreter; checks keep -shell"),
+		actionBoundary:  fs.Int("action-boundary-exit", 0, "treat this model-action status as a failed external boundary (0 disables)"),
 		check:           fs.String("check", "", "verifier: candidate stdin; 0 accept, 1 reject, other broken"),
 		force:           fs.Bool("B", false, "work the goal even if the check already passes"),
 		requireAct:      fs.Bool("require-action", false, "refuse a final report until at least one command runs"),
+		noDelegate:      fs.Bool("no-delegate", false, "omit the nested Ply delegation recipe"),
 		cycles:          fs.Int("cycles", 5, "rejected candidates before giving up (0 = unbounded)"),
 		turns:           fs.Int("turns", defaultTurns, "model turns before giving up (0 = unbounded)"),
 		timeout:         fs.Duration("timeout", 2*time.Minute, "per-command timeout"),
@@ -105,6 +115,7 @@ func newOpts(name string) *opts {
 		dir:             fs.String("C", "", "run commands here"),
 		spec:            fs.String("m", "", "provider/model, passed to ask"),
 		effort:          fs.String("effort", os.Getenv("PLY_EFFORT"), "reasoning effort, passed to ask"),
+		goalFile:        fs.String("goal-file", "", "read the task from a bounded regular file instead of argv"),
 		sys:             fs.String("S", "", "system prompt, replacing the default"),
 		file:            fs.String("f", "", "session log to write"),
 		sessionOut:      fs.String("session-out", "", "write the current session path to this file"),
@@ -177,9 +188,12 @@ func work(args []string) int {
 	if err := o.fs.Parse(args); err != nil {
 		return usage(err)
 	}
-	goal := strings.Join(o.fs.Args(), " ")
 	if err := o.validate(); err != nil {
 		return usage(err)
+	}
+	goal, err := o.goalText()
+	if err != nil {
+		return fail(err)
 	}
 
 	depth, err := descend()
@@ -199,6 +213,18 @@ func work(args []string) int {
 		actionShell, err = resolveShellFlag("-action-shell", *o.actionShellExec)
 		if err != nil {
 			return fail(err)
+		}
+	}
+	var actionBoundary *externalActionBoundary
+	if *o.actionBoundary != 0 {
+		digest, digestErr := executableDigest("external action adapter", actionShell)
+		if digestErr != nil {
+			return fail(digestErr)
+		}
+		actionBoundary = &externalActionBoundary{
+			ExitCode: *o.actionBoundary,
+			Path:     actionShell,
+			SHA256:   digest,
 		}
 	}
 	askBin, err := tool("ASK", "ask", "ply runs ask for the model: go install github.com/patrickyoung/ask@latest")
@@ -292,7 +318,7 @@ func work(args []string) int {
 	// The protocol lives in the default, so replacing it is a real choice:
 	// `ply system` prints what you would be dropping, and the manual says
 	// to compose with it rather than around it.
-	system := promptWithCheckShell(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil)
+	system := promptWithDelegation(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, approval != nil, !*o.noDelegate)
 	if *o.cage {
 		system += confinementPrompt()
 	}
@@ -302,25 +328,6 @@ func work(args []string) int {
 		}
 	})
 	v := newView(os.Stderr, *o.quiet)
-	var skills []loaded
-	if len(o.skills) > 0 {
-		s, got, err := brief(ctx, o.skills, goal, v)
-		if err != nil {
-			return fail(err)
-		}
-		system = composeSystem(system, s, *o.requireAct)
-		skills = got
-		for _, skill := range skills {
-			how := "named"
-			if skill.Chosen {
-				how = "selected by Brief"
-			}
-			v.Note("Brief procedure %s loaded (%s)", skill.Name, how)
-		}
-	} else {
-		system = composeSystem(system, "", *o.requireAct)
-	}
-
 	runner := o.runner(box, self, depth, actionShell, shell, approval)
 	checker := o.checker(runner, box, shell)
 
@@ -355,6 +362,28 @@ func work(args []string) int {
 			return fail(checkError(r))
 		}
 		initialCheck = &r
+	}
+
+	// Procedure selection may itself use Ask. Keep it behind the executable
+	// pre-check so an already-satisfied goal remains a genuinely zero-model,
+	// zero-session invocation even when a skill catalogue is available.
+	var skills []loaded
+	if len(o.skills) > 0 {
+		s, got, err := brief(ctx, o.skills, goal, v)
+		if err != nil {
+			return fail(err)
+		}
+		system = composeSystem(system, s, *o.requireAct)
+		skills = got
+		for _, skill := range skills {
+			how := "named"
+			if skill.Chosen {
+				how = "selected by Brief"
+			}
+			v.Note("Brief procedure %s loaded (%s)", skill.Name, how)
+		}
+	} else {
+		system = composeSystem(system, "", *o.requireAct)
 	}
 
 	// Everything that can fail has failed by here. Only now does ply put a
@@ -401,20 +430,21 @@ func work(args []string) int {
 			"     outside the tree keeps the record out of the work")
 	}
 	loop := &Loop{
-		Model:         Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
-		Runner:        runner,
-		Checker:       checker,
-		Check:         *o.check,
-		RequireAction: *o.requireAct,
-		Loaded:        skillNote(skills),
-		Cycles:        *o.cycles,
-		Compact:       *o.compact,
-		Compacts:      *o.compacts,
-		Turns:         *o.turns,
-		View:          v,
-		ContractID:    *o.contractID,
-		Steering:      steering,
-		Approval:      approval,
+		Model:          Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
+		Runner:         runner,
+		Checker:        checker,
+		Check:          *o.check,
+		RequireAction:  *o.requireAct,
+		Loaded:         skillNote(skills),
+		Cycles:         *o.cycles,
+		Compact:        *o.compact,
+		Compacts:       *o.compacts,
+		Turns:          *o.turns,
+		View:           v,
+		ContractID:     *o.contractID,
+		Steering:       steering,
+		Approval:       approval,
+		ActionBoundary: actionBoundary,
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {
@@ -452,6 +482,8 @@ func work(args []string) int {
 
 func (o *opts) validate() error {
 	switch {
+	case *o.goalFile != "" && o.fs.NArg() != 0:
+		return errors.New("-goal-file cannot be combined with a positional goal")
 	case *o.checkpoint != "" && (*o.file != "" || *o.sessionOut != ""):
 		return errors.New("-checkpoint replaces -f and -session-out; use only one form")
 	case *o.cage && strings.TrimSpace(*o.mayJob) == "":
@@ -466,6 +498,8 @@ func (o *opts) validate() error {
 		return fmt.Errorf("-turns %d: must be zero or greater", *o.turns)
 	case *o.compacts < 0:
 		return fmt.Errorf("-compactions %d: must be zero or greater", *o.compacts)
+	case *o.actionBoundary < 0 || *o.actionBoundary > 255:
+		return fmt.Errorf("-action-boundary-exit %d: must be 0 through 255", *o.actionBoundary)
 	case *o.timeout <= 0:
 		return fmt.Errorf("-timeout %s: must be greater than zero", *o.timeout)
 	case *o.outcap < 512:
@@ -474,6 +508,31 @@ func (o *opts) validate() error {
 		return validateMayJob(*o.mayJob)
 	}
 	return nil
+}
+
+func (o *opts) goalText() (string, error) {
+	if *o.goalFile == "" {
+		return strings.Join(o.fs.Args(), " "), nil
+	}
+	info, err := os.Lstat(*o.goalFile)
+	if err != nil {
+		return "", fmt.Errorf("-goal-file %s: %w", *o.goalFile, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return "", fmt.Errorf("-goal-file %s: must be a regular file, not a symlink", *o.goalFile)
+	}
+	if info.Size() > maxStdin {
+		return "", fmt.Errorf("-goal-file %s: larger than %d MB", *o.goalFile, maxStdin>>20)
+	}
+	b, err := os.ReadFile(*o.goalFile)
+	if err != nil {
+		return "", fmt.Errorf("-goal-file %s: %w", *o.goalFile, err)
+	}
+	goal := strings.TrimSpace(string(b))
+	if goal == "" {
+		return "", fmt.Errorf("-goal-file %s: empty task", *o.goalFile)
+	}
+	return goal, nil
 }
 
 func canonicalWorkDir(dir string) (string, error) {
@@ -534,6 +593,10 @@ func systemCmd(args []string) int {
 	if err := o.validate(); err != nil {
 		return usage(err)
 	}
+	goal, err := o.goalText()
+	if err != nil {
+		return fail(err)
+	}
 	box, err := o.box()
 	if err != nil {
 		return fail(err)
@@ -550,13 +613,13 @@ func systemCmd(args []string) int {
 			return fail(err)
 		}
 	}
-	out := promptWithCheckShell(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "")
+	out := promptWithDelegation(box, actionShell, shell, *o.dir, *o.check, *o.timeout, *o.outcap, depth, *o.mayJob != "", !*o.noDelegate)
 	if *o.cage {
 		out += confinementPrompt()
 	}
 	procedures := ""
 	if len(o.skills) > 0 {
-		s, _, err := brief(context.Background(), o.skills, strings.Join(o.fs.Args(), " "), newView(os.Stderr, false))
+		s, _, err := brief(context.Background(), o.skills, goal, newView(os.Stderr, false))
 		if err != nil {
 			return fail(err)
 		}
@@ -573,8 +636,9 @@ func systemCmd(args []string) int {
 // there. The distinction is worth keeping: a skill somebody named is a
 // choice, and a skill brief picked is a guess that the run then tested.
 type loaded struct {
-	Name   string
-	Chosen bool // brief find picked it, rather than being named
+	Name              string
+	Chosen            bool   // brief find picked it, rather than being named
+	SelectionEvidence string // Brief's replay pointer, outside the system prompt
 }
 
 func brief(ctx context.Context, names list, goal string, v *view) (string, []loaded, error) {
@@ -586,12 +650,17 @@ func brief(ctx context.Context, names list, goal string, v *view) (string, []loa
 	var got []loaded
 	for _, name := range names {
 		chosen := false
+		selectionEvidence := ""
 		if name == "-" {
-			if name, err = briefFind(ctx, bin, goal); err != nil {
+			if name, selectionEvidence, err = briefFind(ctx, bin, goal); err != nil {
 				return "", nil, err
+			}
+			if selectionEvidence != "" {
+				v.Note("%s", selectionEvidence)
 			}
 			if name == "" {
 				v.Note("brief matched no skill for this goal; continuing without one")
+				got = append(got, loaded{Chosen: true, SelectionEvidence: selectionEvidence})
 				continue
 			}
 			chosen = true
@@ -601,8 +670,17 @@ func brief(ctx context.Context, names list, goal string, v *view) (string, []loa
 		if err != nil {
 			return "", nil, err
 		}
-		s.WriteString("\n\nThe procedure below applies to this goal. Follow it.\n\n" + strings.TrimSpace(body) + "\n")
-		got = append(got, loaded{Name: name, Chosen: chosen})
+		display := name
+		catalogueSkill := !filepath.IsAbs(name) && filepath.Base(name) == name
+		if !catalogueSkill {
+			display = filepath.Base(filepath.Clean(name))
+		}
+		if catalogueSkill {
+			fmt.Fprintf(&s, "\n\nThe procedure below was loaded as Brief skill `%s`. Follow it. If it names a bundled file such as `references/NAME.md`, read that exact resource with `brief cat %s/references/NAME.md`; the current working directory is not the skill root.\n\n%s\n", display, display, strings.TrimSpace(body))
+		} else {
+			fmt.Fprintf(&s, "\n\nThe private procedure below was loaded as `%s`. Follow it. Its ephemeral source path is intentionally omitted from the prompt identity.\n\n%s\n", display, strings.TrimSpace(body))
+		}
+		got = append(got, loaded{Name: display, Chosen: chosen, SelectionEvidence: selectionEvidence})
 	}
 	return s.String(), got, nil
 }
@@ -610,10 +688,9 @@ func brief(ctx context.Context, names list, goal string, v *view) (string, []loa
 // skillNote is what ply records about its own composition.
 //
 // The system prompt reaches the log whole and verbatim, so what shaped a
-// run is already provable byte for byte. What is not in it is where any of
-// those bytes came from: `brief cat` prints a body without its frontmatter,
-// so a skill arrives as anonymous prose and its name lives only on stderr,
-// where it dies with the terminal.
+// run is already provable byte for byte. Ply also gives each procedure a
+// stable display identity and records Brief's selector replay pointer outside
+// the system prompt, where a random session path cannot spoil prompt identity.
 //
 // That matters to whatever reads the log afterwards. A run that loaded a
 // procedure and stumbled anyway is not just a run that stumbled -- it is
@@ -627,29 +704,91 @@ func brief(ctx context.Context, names list, goal string, v *view) (string, []loa
 func skillNote(got []loaded) string {
 	var b strings.Builder
 	for _, l := range got {
-		how := "named"
-		if l.Chosen {
-			how = "chosen by brief find"
+		if l.Name == "" {
+			if l.Chosen {
+				b.WriteString("Brief selected no skill\n")
+			}
+		} else {
+			how := "named"
+			if l.Chosen {
+				how = "chosen by brief find"
+			}
+			fmt.Fprintf(&b, "loaded skill %s (%s)\n", l.Name, how)
 		}
-		fmt.Fprintf(&b, "loaded skill %s (%s)\n", l.Name, how)
+		if l.SelectionEvidence != "" {
+			fmt.Fprintf(&b, "selector evidence: %s\n", l.SelectionEvidence)
+		}
 	}
 	return b.String()
 }
 
 // spool decides what the first message says. Input past spoolOver becomes a
-// file the model greps instead of a tax on every request for the rest of
-// the run, and it is never silently dropped: too much is an error naming
-// the limit, because an answer about the first part of a file presented as
-// an answer about the file is what nothing downstream can detect.
+// content-addressed object, made mode 0400 at creation, that the model greps
+// instead of paying for on every request. Its digest and size are carried in
+// the replayed message. Input is never silently dropped: too much is an error
+// naming the limit, because an answer about the first part of a file presented
+// as an answer about the file is what nothing downstream can detect.
 func spool(goal string, data []byte, session string) (string, error) {
 	if len(data) <= spoolOver {
-		return firstMessage(goal, strings.TrimSpace(string(data)), ""), nil
+		return firstMessage(goal, strings.TrimSpace(string(data)), "", 0, ""), nil
 	}
-	path := strings.TrimSuffix(session, ".jsonl") + ".stdin"
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return "", fmt.Errorf("spooling stdin: %w", err)
+	digest := sha256.Sum256(data)
+	digestHex := hex.EncodeToString(digest[:])
+	dir := spoolDirectory(session)
+	if err := os.Mkdir(dir, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+		return "", fmt.Errorf("create stdin spool directory: %w", err)
 	}
-	return firstMessage(goal, "", path), nil
+	dirInfo, err := os.Lstat(dir)
+	if err != nil {
+		return "", fmt.Errorf("inspect stdin spool directory: %w", err)
+	}
+	if dirInfo.Mode()&os.ModeSymlink != 0 || !dirInfo.IsDir() {
+		return "", fmt.Errorf("stdin spool directory is not a real directory: %s", dir)
+	}
+	path := filepath.Join(dir, digestHex)
+	if info, statErr := os.Lstat(path); statErr == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return "", fmt.Errorf("stdin spool object is not a regular file: %s", path)
+		}
+		existing, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return "", fmt.Errorf("read existing stdin spool object: %w", readErr)
+		}
+		if !bytes.Equal(existing, data) {
+			return "", fmt.Errorf("stdin spool digest collision or corrupt object: %s", path)
+		}
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return "", fmt.Errorf("inspect stdin spool object: %w", statErr)
+	} else {
+		f, openErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if openErr != nil {
+			return "", fmt.Errorf("create stdin spool object: %w", openErr)
+		}
+		written, writeErr := f.Write(data)
+		if writeErr == nil && written != len(data) {
+			writeErr = io.ErrShortWrite
+		}
+		if writeErr == nil {
+			writeErr = f.Sync()
+		}
+		closeErr := f.Close()
+		if writeErr != nil {
+			_ = os.Remove(path)
+			return "", fmt.Errorf("write stdin spool object: %w", writeErr)
+		}
+		if closeErr != nil {
+			_ = os.Remove(path)
+			return "", fmt.Errorf("close stdin spool object: %w", closeErr)
+		}
+		if chmodErr := os.Chmod(path, 0o400); chmodErr != nil {
+			return "", fmt.Errorf("protect stdin spool object: %w", chmodErr)
+		}
+	}
+	return firstMessage(goal, "", path, len(data), digestHex), nil
+}
+
+func spoolDirectory(session string) string {
+	return strings.TrimSuffix(session, ".jsonl") + ".stdin.d"
 }
 
 func stdinData(quiet bool) ([]byte, error) {

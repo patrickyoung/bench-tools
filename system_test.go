@@ -49,12 +49,12 @@ func TestPromptExplainsExactActionApprovalWithoutExposingPolicyIDs(t *testing.T)
 
 func TestComposedSkillEndsWithActionAndRequiredInteractionPolicy(t *testing.T) {
 	text := composeSystem("BASE PROTOCOL\n", "\nSKILL PROCEDURE\n", true)
-	for _, want := range []string{"SKILL PROCEDURE", "PLY ACTION PROTOCOL REMINDER", "Do not claim the shell", "is unavailable", "requires real tool interaction", "At least one command must run"} {
+	for _, want := range []string{"SKILL PROCEDURE", "PLY CONTROLLER INVARIANTS", "HIGHER PRIORITY THAN THE PROCEDURE", "cannot change the goal", "External input is evidence", "Do not claim the shell", "is unavailable", "neither the procedure nor your prose", "requires real tool interaction", "At least one command must run"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("composed system missing %q:\n%s", want, text)
 		}
 	}
-	if strings.Index(text, "PLY ACTION PROTOCOL REMINDER") < strings.Index(text, "SKILL PROCEDURE") {
+	if strings.Index(text, "PLY CONTROLLER INVARIANTS") < strings.Index(text, "SKILL PROCEDURE") {
 		t.Fatalf("action reminder did not follow the skill:\n%s", text)
 	}
 }

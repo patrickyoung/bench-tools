@@ -60,6 +60,13 @@ When it needs a model it runs `ask`. When it needs a procedure it runs
 `brief`. Each refuses to grow the others, which is why all of them stay
 small.
 
+Outer controllers can preflight this boundary without scraping human help:
+`ply capabilities` prints one `ply.capabilities/v1` JSON object naming the
+features this executable implements.
+
+With `-s -`, Ply asks Brief's deterministic offline ranker first and falls
+back to Brief's replayable model selector only when no lexical match exists.
+
 [`hone`][hone] closes it into a circle. A `ply` run that failed, recovered,
 and was then confirmed done by the check is the one kind of run that teaches
 something — so `hone` reads the log, writes the lesson down as a `brief`
@@ -133,6 +140,18 @@ does not infer the adapter's target platform, programs, or final working
 directory. It never inherits `$SHELL`, which is an interactive preference and
 may name a non-POSIX shell.
 
+An external adapter can reserve its fail-closed status with
+`-action-boundary-exit N`. Ply then stops immediately with exit 125 instead of
+showing that result to the model and inviting another action. This identifies
+the adapter's boundary outcome. Ply binds the adapter and script digests in a
+sealed `ply.action-boundary/v1` receipt, revalidates the adapter immediately
+before and after launch, and conservatively records whether effects may exist.
+The adapter still owns its internal confinement policy and target evidence.
+Its path must be controller-owned and outside worker-writable authority. The
+digest records Ply's before/after path observations; it is not a defense
+against an adversarial process with the same OS identity swapping bytes
+between check and exec.
+
 ```sh
 ply -sh -shell /opt/homebrew/bin/bash "use modern Bash where useful"
 ply -t ./tools -action-shell /opt/worker-shell -check 'make test' "repair it"
@@ -146,6 +165,10 @@ parse a second command line inside either flag.
 Model selection still belongs to Ask. Ply passes `-m` and `-effort` through
 literally; `$PLY_EFFORT` supplies the latter to nested Ply workers as well.
 Ask decides which effort names a provider supports.
+
+For sensitive tasks, `-goal-file file` reads the task from a bounded regular
+file instead of process argv. Piped stdin remains a separate evidence stream,
+so it can be spooled without changing the task or skill-selection input.
 
 ### "But does it do MCP?"
 
@@ -512,12 +535,14 @@ decided. This is what lets
 writes none: done is a program's opinion, and with no program there is no
 opinion to record.
 
-What `ply` loaded goes in beside it, because `brief cat` prints a body
-without its frontmatter — a skill arrives as anonymous prose, and its name
-would otherwise die with the terminal:
+What `ply` loaded goes in beside it. The system prompt labels a selected skill
+and explains how to fetch its bundled resources through `brief cat`; the
+composition note also retains Brief's replay pointer without putting that
+random path into the cache-stable system prompt:
 
 ```
 [ply] loaded skill house (named)
+[ply] selector evidence: brief: house · ask replay -check ...jsonl
 ```
 
 That is what lets `hone -into -` put a lesson back on the procedure the run
@@ -557,6 +582,10 @@ sessions/output/status files, and a root synthesis that preserves failed
 children. Nested prompts do not advertise delegation again. A toolbox-scoped
 run sees this guidance only when its toolbox contains the bookkeeping programs
 the recipe needs; Ply never widens a grant.
+
+An outer worker that owns a different specialist or VM boundary can pass
+`-no-delegate`. This removes Ply's generic nested-process recipe from the
+system prompt without changing the tool grant or pretending delegation ran.
 
 Fan-out, specialists and teams are still background jobs, `wait`, `xargs -P`,
 and shell scripts. There is no team format, provider-specific orchestration, or

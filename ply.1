@@ -1,4 +1,4 @@
-.TH PLY 1 "2026-08-28" "ply 0.1.1" "General Commands Manual"
+.TH PLY 1 "2026-08-30" "ply 0.1.2" "General Commands Manual"
 .SH NAME
 ply \- work a goal with a toolbox until a check says it is done
 .SH SYNOPSIS
@@ -224,19 +224,25 @@ What
 loaded is recorded the same way, once the log exists:
 .BR brief (1)
 prints a skill's body without its frontmatter, so a procedure reaches the
-prompt as anonymous prose and its name would otherwise live only on standard
-error. A run that loaded none claims none. This is what
+prompt with a stable display identity and a command for reading bundled
+resources. The composition note retains Brief's selector replay pointer
+without putting that random path in the system prompt. A run that loaded none
+records that selection. This is what
 .B hone \-into \-
 reads to put a lesson back on the procedure the run was following.
 .SH COMMANDS
 .TP
 .B ply \fR[\fIflags\fR] \fIgoal\fR
 Work the goal. Piped standard input rides with it, or is the goal when
-there is no other. Input past 64 KB is written beside the session as a
-.B .stdin
-file and the model is told the path, so a large log is something to grep
-rather than a cost on every request. Past 16 MB is an error naming the
-limit, never a truncation.
+there is no other. Input past 64 KB is written once into a content-addressed
+object beside the session under
+.BR .stdin.d ,
+with mode 0400 at creation, and the model is told its path, byte count, and
+SHA-256 digest. Reusing a session cannot overwrite earlier input. Mode 0400 is
+not an immutability claim against another unconfined process with the same OS
+identity. A large log is therefore something
+to grep rather than a cost on every request. Past 16 MB is an error naming
+the limit, never a truncation.
 .TP
 .B ply tools \fR[\fIflags\fR]
 Print the catalogue the model would be given, and the
@@ -262,6 +268,11 @@ and
 A goal may follow, because
 .B \-s \-
 asks brief to choose a skill for one.
+.TP
+.B ply capabilities
+Print one JSON object describing the versioned public boundary features that
+an outer controller may require before it starts a model call. The schema is
+.BR ply.capabilities/v1 .
 .TP
 .B ply version
 Print the version.
@@ -324,6 +335,30 @@ when that is unset. This is an ordinary executable seam for an
 operator-owned container or remote runner, not a sandbox provided by Ply.
 Ply does not infer the adapter's target platform, programs, or final working
 directory.
+.TP
+.BI \-action-boundary-exit " status"
+Reserve one nonzero model-action status for an external action adapter's
+boundary failure. Ply stops immediately and exits 125 instead of feeding the
+failure back as an ordinary tool result. Zero disables this convention; the
+default is zero. Ply hashes the adapter before the first model call,
+revalidates it immediately before and after launch, and seals
+.B ply.action-boundary/v1
+with the adapter and script digests, captured result, and a conservative
+effects-may-exist flag. The adapter still owns the meaning, internal policy,
+and target evidence behind the reserved status. Its path must be
+controller-owned and outside worker-writable authority. The digest is a
+before/after path observation, not protection from an adversarial process with
+the same OS identity swapping bytes between check and exec.
+.TP
+.BI \-goal-file " file"
+Read the task from a bounded regular file instead of process arguments. It
+cannot be combined with a positional goal. Symlinks, non-regular files, empty
+tasks, and files larger than the stdin limit are refused. Stdin remains the
+separate evidence stream.
+.TP
+.B \-no-delegate
+Omit the generic nested Ply delegation recipe from the system prompt. Use this
+when an outer worker owns a different specialist or VM boundary.
 .TP
 .BI \-check " cmd"
 Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any
@@ -584,8 +619,9 @@ Session logs, in
 .BR ask (1)
 format, mode 0600.
 .TP
-.B ~/.ply/sessions/*.stdin
-Piped input too large to carry in the conversation.
+.B ~/.ply/sessions/*.stdin.d/*
+Content-addressed piped input too large to carry in the conversation. The
+conversation binds each object's path, byte count, and SHA-256 digest.
 .SH EXIT STATUS
 .TP
 .B 0

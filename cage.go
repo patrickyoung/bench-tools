@@ -256,7 +256,7 @@ func validateCageControlPaths(workspace, temp, session, sessionOut, steering, as
 		exists      bool
 	}{
 		{"Ask session", session, false},
-		{"piped input spool", strings.TrimSuffix(session, ".jsonl") + ".stdin", false},
+		{"piped input spool directory", spoolDirectory(session), false},
 		{"session pointer", sessionOut, false},
 		{"steering file", steering, true},
 		{"Ask executable", ask, true},

@@ -32,10 +32,11 @@ type Loop struct {
 	Compacts       int    // compactions before giving up; 0 unbounded
 	Turns          int    // model turns before giving up; 0 unbounded
 	View           *view
-	SessionChanged func(string) error // process-boundary notification after compaction
-	ContractID     string             // admitted intent contract digest, when a caller supplied one
-	Steering       *steeringInbox     // optional operator input, read only at model-turn boundaries
-	Approval       *mayGate           // optional exact-action human gate, outside the model toolbox
+	SessionChanged func(string) error      // process-boundary notification after compaction
+	ContractID     string                  // admitted intent contract digest, when a caller supplied one
+	Steering       *steeringInbox          // optional operator input, read only at model-turn boundaries
+	Approval       *mayGate                // optional exact-action human gate, outside the model toolbox
+	ActionBoundary *externalActionBoundary // fail-closed status owned by an external adapter
 }
 
 // Run works the goal. The returned string is the model's final report even
@@ -140,11 +141,50 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 						return last, fmt.Errorf("%w: unknown verdict %q", ErrApprovalBoundary, receipt.Verdict)
 					}
 				}
+				if l.ActionBoundary != nil {
+					if digestErr := l.ActionBoundary.checkDigest(); digestErr != nil {
+						detail := digestErr.Error() + "; action did not start"
+						r := Result{Cmd: c, Code: l.ActionBoundary.ExitCode, StartError: true,
+							Output: detail, Total: int64(len(detail))}
+						l.View.Result(r)
+						if err := l.recordExternalActionBoundary(ctx, c, r, detail, false); err != nil {
+							return last, fmt.Errorf("%w: %s; %v", ErrConfinement, detail, err)
+						}
+						return last, fmt.Errorf("%w: %s", ErrConfinement, detail)
+					}
+				}
 				r := l.Runner.Run(ctx, c)
 				if ctx.Err() != nil {
 					return last, ctx.Err()
 				}
+				if l.ActionBoundary != nil {
+					if digestErr := l.ActionBoundary.checkDigest(); digestErr != nil {
+						detail := digestErr.Error() + "; action effects may exist"
+						if r.Output != "" && !strings.HasSuffix(r.Output, "\n") {
+							r.Output += "\n"
+							r.Total++
+						}
+						r.Output += detail
+						r.Total += int64(len(detail))
+						r.Code = l.ActionBoundary.ExitCode
+						l.View.Result(r)
+						if err := l.recordExternalActionBoundary(ctx, c, r, detail, true); err != nil {
+							return last, fmt.Errorf("%w: %s; %v", ErrConfinement, detail, err)
+						}
+						return last, fmt.Errorf("%w: %s", ErrConfinement, detail)
+					}
+				}
 				l.View.Result(r)
+				if l.ActionBoundary != nil && r.Code == l.ActionBoundary.ExitCode {
+					detail := firstLine(r.Output)
+					if detail == "failed with no diagnostic" {
+						detail = fmt.Sprintf("external action adapter exited %d", r.Code)
+					}
+					if err := l.recordExternalActionBoundary(ctx, c, r, detail, true); err != nil {
+						return last, fmt.Errorf("%w: %s; %v", ErrConfinement, detail, err)
+					}
+					return last, fmt.Errorf("%w: %s", ErrConfinement, detail)
+				}
 				if r.ConfinementFailed {
 					if err := l.recordConfinement(ctx, admitted, r); err != nil {
 						return last, fmt.Errorf("%w: %s; %v", ErrConfinement, r.ConfinementDetail, err)

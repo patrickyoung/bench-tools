@@ -8,6 +8,7 @@ const help = `ply — work a goal with a toolbox until a check says it is done
   ply [flags] <goal>       work the goal; stdin rides with it, or is it
   ply tools [flags]        print the toolbox exactly as the model sees it
   ply system [flags] [goal] print the system prompt that would be sent
+  ply capabilities         print machine-readable boundary capabilities
   ply version              print the version (-V, --version)
   ply help                 print this summary (-h, --help)
 
@@ -54,9 +55,12 @@ flags:
   -sh           full shell: every program on PATH, and -t's first if given
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
   -action-shell path  model actions only ($PLY_ACTION_SHELL; default -shell)
+  -action-boundary-exit n  stop with 125 when an external action adapter
+                returns this reserved status (default 0, disabled)
   -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
   -require-action  refuse a final report until at least one command runs
+  -no-delegate   omit the generic nested Ply delegation recipe
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
@@ -70,6 +74,7 @@ flags:
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
+  -goal-file file  read the task from a bounded regular file, never argv
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
   -s name       brief skill to compose; repeat for more; -s - picks one
