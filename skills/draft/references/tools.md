@@ -13,8 +13,8 @@ identity or a browser and cannot see one here will invent how they work.
 ## Versions
 
     ask    ask 0.2.0
-    brief  brief 0.1.0
-    ply    ply 0.1.1
+    brief  brief 0.1.1
+    ply    ply 0.1.2
     hone   hone 0.2.0
     cage   cage 0.1.0
     may    may 0.1.0
@@ -144,6 +144,7 @@ flags:
 env: BRIEF_PATH  where skills live (default .claude/skills, ~/.claude/skills,
        ~/.brief/skills), searched left to right
      BRIEF_MODEL the model find -ask uses, when it should not be $ASK_MODEL
+     BRIEF_EFFORT the reasoning effort find -ask passes literally to ask
      BRIEF_DIR   where find -ask keeps its ask sessions (default ~/.brief)
      ASK         the ask binary to run (default: ask, found on $PATH)
 exit: 0 yes · 1 no — nothing matched, or lint had something to say · 2 error
@@ -157,6 +158,7 @@ ply — work a goal with a toolbox until a check says it is done
   ply [flags] <goal>       work the goal; stdin rides with it, or is it
   ply tools [flags]        print the toolbox exactly as the model sees it
   ply system [flags] [goal] print the system prompt that would be sent
+  ply capabilities         print machine-readable boundary capabilities
   ply version              print the version (-V, --version)
   ply help                 print this summary (-h, --help)
 
@@ -203,9 +205,12 @@ flags:
   -sh           full shell: every program on PATH, and -t's first if given
   -shell path   command interpreter ($PLY_SHELL; default /bin/sh)
   -action-shell path  model actions only ($PLY_ACTION_SHELL; default -shell)
+  -action-boundary-exit n  stop with 125 when an external action adapter
+                returns this reserved status (default 0, disabled)
   -check cmd    verifier: candidate stdin; 0 accepts, 1 rejects, other breaks
   -B            work the goal even if the check already passes
   -require-action  refuse a final report until at least one command runs
+  -no-delegate   omit the generic nested Ply delegation recipe
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
@@ -219,6 +224,7 @@ flags:
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
+  -goal-file file  read the task from a bounded regular file, never argv
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
   -s name       brief skill to compose; repeat for more; -s - picks one
