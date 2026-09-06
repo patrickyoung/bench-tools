@@ -2,7 +2,7 @@
 // the reason brief and ply hold none: the one thing it needs a model for is
 // done by running the program that already does that.
 //
-// It runs `ask -n -f` into a session of its own under ~/.hone/, never the
+// It runs `ask -f` with a fresh, explicit path under ~/.hone/, never the
 // conversation you are having — a lesson landing in your current session
 // would answer your next question with somebody else's typescript on the
 // model's mind. The session is kept, not deleted: a lesson is a claim about
@@ -30,7 +30,7 @@ func (g *hone) runAsk(ctx context.Context, evidence string) (answer, session str
 	}
 	session = filepath.Join(dir, "find-"+stamp()+".jsonl")
 
-	args := []string{"-q", "-n", "-f", session}
+	args := []string{"-q", "-f", session}
 	if g.model != "" {
 		args = append(args, "-m", g.model)
 	}
@@ -69,7 +69,7 @@ func (g *hone) describe(ctx context.Context, name string, lessons []string) stri
 	if err != nil {
 		return ""
 	}
-	args := []string{"-q", "-n", "-f", filepath.Join(dir, "describe-"+stamp()+".jsonl")}
+	args := []string{"-q", "-f", filepath.Join(dir, "describe-"+stamp()+".jsonl")}
 	if g.model != "" {
 		args = append(args, "-m", g.model)
 	}

@@ -23,6 +23,9 @@ d=`+dir+`
 echo "$@" >> "$d/argv.log"
 next=
 for arg do
+	# Ask creates a named session when -f does not exist. Its removed -n flag
+	# must not be accepted by this stand-in while the real suite rejects it.
+	if [ "$arg" = -n ]; then echo 'ask: unsupported -n' >&2; exit 1; fi
   if [ "$next" = file ]; then printf '%s\n' '{"type":"fake-wording-session"}' > "$arg"; next=; continue; fi
   if [ "$arg" = -f ]; then next=file; fi
 done
