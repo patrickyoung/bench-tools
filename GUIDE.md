@@ -104,6 +104,12 @@ The schema is limited to 1 MB and must be one JSON object. Local fragment
 references work. External references do not. With `-schema -`, stdin contains
 the schema, so put the question in argv.
 
+Cerebras supports native schemas through `-m cerebras/MODEL`. DeepSeek's
+Chat API provides JSON mode only, so `-m deepseek/MODEL` refuses `-schema`
+before creating a session. It does not insert a schema instruction into the
+prompt. Both connectors accept `-header-fd` from the external OAuth filter;
+API keys use `CEREBRAS_API_KEY` and `DEEPSEEK_API_KEY`, respectively.
+
 ## Attach files
 
 Use `-a` for a regular file:

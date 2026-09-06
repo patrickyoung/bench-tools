@@ -22,6 +22,8 @@ var accepts = map[string][]string{
 	"openai-codex": {"image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"},
 	"gemini":       {"image/", "audio/", "video/", "application/pdf"},
 	"openrouter":   {"image/", "application/pdf", "audio/wav", "audio/mpeg"},
+	"deepseek":     {"image/jpeg", "image/png", "image/gif", "image/webp"},
+	"cerebras":     {}, // text attachments are inlined before this boundary
 }
 
 // Accepts reports whether the provider named by a model spec takes this
@@ -39,6 +41,9 @@ func Accepts(spec, mediaType string) error {
 		if pat == mediaType || (strings.HasSuffix(pat, "/") && strings.HasPrefix(mediaType, pat)) {
 			return nil
 		}
+	}
+	if len(list) == 0 {
+		return fmt.Errorf("%s does not accept %s (it takes text only)", name, mediaType)
 	}
 	return fmt.Errorf("%s does not accept %s (it takes %s)", name, mediaType, strings.Join(families(list), ", "))
 }

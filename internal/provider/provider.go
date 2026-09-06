@@ -248,7 +248,16 @@ func (e *Error) Overflow() bool {
 
 // Providers are the adapter names New accepts. Named once, so help text,
 // the man page, and the completions cannot drift from the code.
-var Providers = []string{"anthropic", "openai", "openai-codex", "gemini", "openrouter"}
+var Providers = []string{"anthropic", "openai", "openai-codex", "gemini", "openrouter", "deepseek", "cerebras"}
+
+// CheckSchema rejects a provider-wide unsupported feature before a session is
+// created. Model-specific schema restrictions remain the provider's to report.
+func CheckSchema(spec string, schema json.RawMessage) error {
+	if strings.HasPrefix(spec, "deepseek/") && len(schema) > 0 {
+		return errDeepSeekSchema
+	}
+	return nil
+}
 
 // Options carries invocation-scoped transport inputs. Authorization is an
 // already-formed HTTP Authorization value supplied through Ask's descriptor
@@ -314,6 +323,18 @@ func New(spec string, opts Options) (Provider, string, error) {
 			return nil, "", err
 		}
 		return NewOpenRouter(k, os.Getenv("OPENROUTER_BASE_URL"), authClient), model, nil
+	case "deepseek":
+		k, err := key("DEEPSEEK_API_KEY", authClient != nil)
+		if err != nil {
+			return nil, "", err
+		}
+		return NewDeepSeek(k, os.Getenv("DEEPSEEK_BASE_URL"), authClient), model, nil
+	case "cerebras":
+		k, err := key("CEREBRAS_API_KEY", authClient != nil)
+		if err != nil {
+			return nil, "", err
+		}
+		return NewCerebras(k, os.Getenv("CEREBRAS_BASE_URL"), authClient), model, nil
 	}
 	return nil, "", fmt.Errorf("unknown provider %q (want %s)", name, strings.Join(Providers, ", "))
 }

@@ -73,11 +73,14 @@ flags:
   -d dir        conversation directory ($ASK_DIR, or ~/.ask/sessions)
   -effort e     reasoning effort: off, low, medium, high, xhigh; provider
                 mapping varies (default: the provider's own)
+                DeepSeek: medium/xhigh -> high; off disables thinking
+                Cerebras: xhigh -> high; off -> none (model dependent)
   -max-tokens n positive max output tokens (default 16384). Gemini accepts
                 at most 2147483647; openai-codex refuses this flag
   -header-fd n  descriptor containing one HTTP Authorization header;
                 use: oauth with PROFILE -- ask -header-fd 3 ...
   -schema file  constrain the answer with JSON Schema ("-" reads stdin)
+                DeepSeek refuses this flag; JSON mode is not a schema
   -json         emit this invocation's raw events instead of the answer
   -q            no progress on stderr; errors still print
 compact only:
@@ -103,10 +106,14 @@ note only:
   -k kind       structured record kind; requires -json and -seal
   -json body    note JSON ("-" reads stdin); requires -k and -seal
   -seal         durably seal the structured note; requires -k and -json
+providers: anthropic · openai · openai-codex · gemini · openrouter ·
+  deepseek · cerebras
 keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
+  DEEPSEEK_API_KEY, CEREBRAS_API_KEY
 env: ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
 gateway: ANTHROPIC_BASE_URL · OPENAI_BASE_URL · OPENAI_CODEX_BASE_URL ·
-  GEMINI_BASE_URL · OPENROUTER_BASE_URL replace provider endpoints. Supply
+  GEMINI_BASE_URL · OPENROUTER_BASE_URL · DEEPSEEK_BASE_URL · CEREBRAS_BASE_URL
+  replace provider endpoints. Supply
   OAuth through -header-fd; OPENAI_CODEX_ACCOUNT_ID supplies its non-secret
   account routing id when that provider requires one
 vertex: ANTHROPIC_VERTEX_PROJECT_ID + CLOUD_ML_REGION route anthropic/ models
@@ -288,6 +295,9 @@ func cmdAsk(args []string) (code int) {
 	}
 	if strings.HasPrefix(*spec, "gemini/") && *maxTokens > math.MaxInt32 {
 		return fail(fmt.Errorf("-max-tokens for gemini must not exceed %d", math.MaxInt32))
+	}
+	if err := provider.CheckSchema(*spec, outputSchema.requestSchema()); err != nil {
+		return fail(err)
 	}
 	authorization, err := readAuthorizationFD(*headerFD)
 	if err != nil {

@@ -196,6 +196,10 @@ wins when nonempty. Otherwise a continued session uses the model it was
 started with. A new session with neither is an error.
 OpenRouter models keep their own slash:
 .IR openrouter/vendor/model .
+DeepSeek and Cerebras use
+.I deepseek/model
+and
+.IR cerebras/model .
 .TP
 .BI \-S " text"
 System prompt for this invocation. Without
@@ -245,6 +249,25 @@ levels. Anthropic and Gemini do not distinguish those levels; each
 enables the same thinking configuration. For OpenRouter,
 .I off
 omits the reasoning parameter rather than sending an explicit disable value.
+DeepSeek disables thinking for
+.IR off ;
+.I medium
+and
+.I xhigh
+map to
+.IR high .
+Cerebras maps
+.I off
+to
+.I none
+and
+.I xhigh
+to
+.IR high .
+Its effort support is model dependent; always-reasoning models may reject
+or ignore none. Cerebras reasoning is requested in parsed form, separate
+from answer text. Both adapters log reasoning and replay it in its native
+field. DeepSeek ignores historical reasoning when no tools are supplied.
 .TP
 .BI \-max\-tokens " n"
 Maximum output tokens for the answer. Default 16384 on adapters that support
@@ -359,6 +382,10 @@ Schemas are at most 1 MB and must be one JSON object. Definitions may use
 fragment references within that object; external references are refused.
 Schema numbers retain their exact values on the wire and during local
 validation, including large integers and precise decimals.
+DeepSeek's Chat API offers JSON mode but no native JSON Schema output;
+.B \-schema
+is refused before a session is created. Cerebras receives the exact schema
+with strict mode; unsupported constraints produce a provider error.
 These checks happen before a new session file is created. Provider support
 is model dependent: an unsupported model returns a provider error rather
 than falling back to prompt instructions. OpenRouter is restricted to
@@ -415,6 +442,8 @@ anthropic:images, PDF
 openai, openai\-codex:images, PDF
 gemini:images, audio, video, PDF
 openrouter:images, PDF, WAV and MP3
+deepseek:JPEG, PNG, GIF and WebP (vision models)
+cerebras:text only
 .TE
 .PP
 An attachment a provider cannot carry is refused before the session log is
@@ -487,6 +516,8 @@ Default for
 .BR \-d .
 .TP
 .B ANTHROPIC_API_KEY\fR, \fBOPENAI_API_KEY\fR, \fBGEMINI_API_KEY\fR, \fBOPENROUTER_API_KEY
+.TQ
+.B DEEPSEEK_API_KEY\fR, \fBCEREBRAS_API_KEY
 Vendor API keys. Each is required only for the provider that uses it, and
 becomes optional when
 .B \-header\-fd
@@ -499,8 +530,16 @@ Replace a provider endpoint. The exact names are
 .BR OPENAI_BASE_URL ,
 .BR OPENAI_CODEX_BASE_URL ,
 .BR GEMINI_BASE_URL ,
+.BR OPENROUTER_BASE_URL ,
+.BR DEEPSEEK_BASE_URL ,
 and
-.BR OPENROUTER_BASE_URL .
+.BR CEREBRAS_BASE_URL .
+DeepSeek defaults to https://api.deepseek.com; Cerebras defaults to
+https://api.cerebras.ai/v1. Both accept authorization through
+.B \-header\-fd
+when the service or gateway accepts that credential. OAuth login and refresh
+remain the responsibility of the external credential filter.
+.TP
 .B ANTHROPIC_VERTEX_PROJECT_ID
 Route
 .I anthropic/

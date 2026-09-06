@@ -50,6 +50,8 @@ The model syntax is `provider/model`. The supported providers are:
 - `openai-codex`
 - `gemini`
 - `openrouter`
+- `deepseek`
+- `cerebras`
 
 OpenRouter model names retain their slash, for example
 `openrouter/anthropic/your-model`.
@@ -64,6 +66,24 @@ oauth with llm -- ask -header-fd 3 -m openai/your-model 'Hello.'
 
 The same boundary serves `openai-codex`. Set `OPENAI_CODEX_ACCOUNT_ID` when
 that account requires its non-secret routing id.
+
+DeepSeek and Cerebras use `DEEPSEEK_API_KEY` and `CEREBRAS_API_KEY`, or the
+same `-header-fd` boundary for a service or gateway that accepts OAuth:
+
+```sh
+ask -m deepseek/your-model 'Hello.'
+oauth with cerebras -- ask -header-fd 3 -m cerebras/your-model 'Hello.'
+```
+
+`DEEPSEEK_BASE_URL` and `CEREBRAS_BASE_URL` override their endpoints.
+Ask does not perform OAuth login or refresh for either provider.
+DeepSeek's `-effort off` disables thinking; `medium` and `xhigh` map to `high`.
+Cerebras maps `off` to `none` and `xhigh` to `high`; support depends on the
+model, and always-reasoning models may reject or ignore `none`. Omitting
+`-effort` leaves the provider's default. Cerebras reasoning is requested in
+parsed form so it stays separate from the answer. Both providers' reasoning
+is logged and replayed in its native field; DeepSeek ignores historical
+reasoning when no tools are supplied.
 
 ## Input
 
@@ -174,6 +194,10 @@ Schema numbers retain their exact values on the wire and in local validation,
 including large integers and precise decimals; Ask does not round them through
 floating-point values.
 
+Cerebras receives native JSON Schema with strict mode. An unsupported schema
+is a provider error; Ask does not rewrite its constraints. DeepSeek's Chat API
+only offers JSON mode, so `-schema` is refused before creating a session.
+
 In normal answer mode, invalid JSON, a schema mismatch, a refusal, or an
 incomplete provider stop exits 1 and emits no answer on stdout. The provider
 turn remains in the append-only log. With `-json`, stdout still contains the
@@ -210,6 +234,8 @@ Empty files are refused. `-a -` is not supported; pipe stdin instead.
 | `openai-codex` | images, PDF |
 | `gemini` | images, audio, video, PDF |
 | `openrouter` | images, PDF, WAV, MP3 |
+| `deepseek` | JPEG, PNG, GIF, WebP (requires a vision model) |
+| `cerebras` | text only |
 
 The table is per provider. A particular model may support less and can still
 reject the request.

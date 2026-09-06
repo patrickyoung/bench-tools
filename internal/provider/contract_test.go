@@ -196,11 +196,13 @@ data: [DONE]
 
 `
 
-var wireCases = []struct {
+type wireCase struct {
 	name string
 	wire string
 	make func(url string) Provider
-}{
+}
+
+var wireCases = append([]wireCase{
 	{
 		name: "anthropic",
 		wire: anthropicWire,
@@ -240,7 +242,7 @@ var wireCases = []struct {
 			}}}
 		},
 	},
-}
+}, completionCases...)
 
 // serve returns a server that answers every request with body.
 func serve(t *testing.T, status int, header http.Header, body string) *httptest.Server {
@@ -372,12 +374,25 @@ func TestExactSchemaReachesEveryProvider(t *testing.T) {
 		"openai":     {"text", "format", "schema"},
 		"gemini":     {"generationConfig", "responseJsonSchema"},
 		"openrouter": {"response_format", "json_schema", "schema"},
+		"cerebras":   {"response_format", "json_schema", "schema"},
 	}
 	for _, c := range wireCases {
 		if c.name == "replay" {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {
+			if c.name == "deepseek" {
+				req := contractReq()
+				req.Schema = json.RawMessage(schema)
+				var got error
+				for _, err := range c.make("http://unused.invalid").Stream(context.Background(), req) {
+					got = err
+				}
+				if !errors.Is(got, errDeepSeekSchema) {
+					t.Fatalf("unsupported schema was not refused before transport: %v", got)
+				}
+				return
+			}
 			body := make(chan string, 1)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				b, _ := io.ReadAll(r.Body)
@@ -406,9 +421,8 @@ func TestExactSchemaReachesEveryProvider(t *testing.T) {
 
 // TestReplayableReasoning pins the property the whole log rests on: every
 // adapter that streams reasoning also logs something that can be sent back
-// to it. A signature on a reasoning block or an opaque provider block both
-// count; nothing at all does not, because the next turn would then arrive
-// with reasoning the provider cannot verify.
+// to it. Some providers require signed or opaque state; DeepSeek and Cerebras
+// accept plain reasoning in a native field, checked on the wire below.
 func TestReplayableReasoning(t *testing.T) {
 	for _, c := range wireCases {
 		if c.name == "replay" {
@@ -418,6 +432,9 @@ func TestReplayableReasoning(t *testing.T) {
 			srv := serve(t, 200, sseHeader(), c.wire)
 			d := checkContract(t, c.make(srv.URL).Stream(context.Background(), contractReq()))
 			for _, b := range d.blocks {
+				if (c.name == "deepseek" || c.name == "cerebras") && b.Type == Reasoning && b.Text == d.deltaReason && b.Provider == c.name {
+					return // TestCompletionReasoningRoundTrip checks the next request
+				}
 				if b.Type == Opaque && len(b.Raw) > 0 && b.Provider == c.name {
 					return
 				}
@@ -496,6 +513,8 @@ func TestLiveContract(t *testing.T) {
 		"openai/gpt-5-mini",
 		"gemini/gemini-2.5-flash",
 		"openrouter/anthropic/claude-sonnet-4.5",
+		"deepseek/deepseek-v4-flash",
+		"cerebras/qwen-3.8-27b",
 	}
 	for _, spec := range specs {
 		name, _, _ := strings.Cut(spec, "/")
