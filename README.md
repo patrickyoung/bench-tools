@@ -1,234 +1,193 @@
 # Context
 
-Context retrieves cited external evidence through small, executable source
-connectors. It gives every source the same interface without forcing every
-source into the same language or SDK.
+**Give an answer its sources. Keep those sources usable all the way through the pipeline.**
+
+Context retrieves evidence through small executable connectors and gives the
+results a common shape: content, source identity, retrieval time, and a citation.
+A document can stay a document; a table can stay a table. Your model receives
+the evidence, and a later reader can see where it came from.
 
 ```sh
-$ context ls
-{"description":"Company handbook search","kind":"source","name":"handbook","version":1}
-
-$ context query handbook 'How much paid leave do we get?'
-{"citation":{"locator":"handbook.md#paid-leave"},"content":{"text":"..."},"id":"paid-leave","kind":"context","ref":"ctx:handbook:...","retrieval":{"connector":{"name":"handbook","sha256":"sha256:..."},"query":"How much paid leave do we get?"},"retrieved_at":"2026-08-28T16:00:00Z","source":"handbook","title":"Paid leave","type":"document","version":1}
+context query wikipedia 'How does a ring buffer work?' > evidence.jsonl
 ```
 
-A connector is one executable on `CONTEXT_PATH`. It implements two operations:
-`describe` prints one catalogue entry and `query` reads the query on standard
-input and prints context records as JSONL. The connector can be a Python
-program using LlamaIndex, a Go program calling Glean, a Java client for an
-internal service, or a shell script over local files. Context does not know or
-care.
-
-For every query result, Context also records the exact UTF-8 query and a
-SHA-256 fingerprint of the selected connector executable. This exposes the
-source choice and connector revision to downstream event logs without giving
-Context a database or session format. The fingerprint identifies bytes; it
-does not attest to dependencies, configuration, credentials, or the remote
-service.
+You choose the source. Context retrieves and validates; it does not answer the
+question or decide which source is authoritative.
 
 ## Install
 
-Context requires Go 1.26 or later and a Unix.
+Requires **Go 1.26+** and **Unix or WSL**. Install current `main`:
 
 ```sh
-go install github.com/patrickyoung/context@latest
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/context@main
+export PATH="$HOME/.local/bin:$PATH"
+context version
 ```
 
-From this source tree:
+Keep the PATH setting in your shell startup file. The binary and connectors
+are separate: installing the binary alone does not install a source connector.
+
+## First, make a small evidence file
+
+This example is offline and needs no account. Create one fictional source
+record and let Context add its stable reference:
 
 ```sh
-go build .
-go test ./...
+cat > source.jsonl <<'JSON'
+{"kind":"context","version":1,"source":"demo","type":"document","id":"hours","title":"Demo opening hours","retrieved_at":"2026-01-01T00:00:00Z","content":{"text":"The demo library opens at 09:00."},"citation":{"locator":"hours","url":"https://example.com/hours"}}
+JSON
+
+context merge < source.jsonl > evidence.jsonl
+context check < evidence.jsonl
+cat evidence.jsonl
 ```
 
-Put connectors in `.context/connectors` for one project or
-`~/.context/connectors` for your user. `CONTEXT_PATH` replaces those defaults
-with a colon-separated search path. The first executable with a given name
-wins, exactly as on `PATH`.
+The output includes `ref`, derived from `source` and `id`. The check succeeds
+without output. This fixture illustrates the format; it is not a claim about
+an actual library or a live retrieval.
 
-### Wikipedia connector
+## Retrieve from a real source
 
-A working English Wikipedia search connector is included on the project's
-default connector path, so it works directly from this source tree:
+A Python 3 Wikipedia connector is shipped in this repository. Install it
+alongside the binary:
 
 ```sh
-./context query wikipedia 'Rob Pike Unix programming philosophy'
+git clone https://github.com/patrickyoung/context.git context-source
+mkdir -p "$HOME/.context/connectors"
+install -m 755 context-source/.context/connectors/wikipedia \
+  "$HOME/.context/connectors/wikipedia"
 ```
 
-To make it available outside this checkout, install it on your user connector
-path:
+Set a meaningful User-Agent with your contact URL, replacing the example:
 
 ```sh
-mkdir -p ~/.context/connectors
-install -m 755 .context/connectors/wikipedia ~/.context/connectors/wikipedia
+export WIKIPEDIA_USER_AGENT='my-context/1.0 (https://YOUR_SITE/contact)'
 context ls
-context query wikipedia 'Rob Pike Unix programming philosophy'
+context query wikipedia 'Rob Pike Unix programming philosophy' > evidence.jsonl
+context check < evidence.jsonl
 ```
 
-It makes one serial request to Wikipedia's MediaWiki Action API and returns up
-to five ranked article extracts plus the matching search snippets. For a plain
-natural-language question it removes common question words transparently and
-records the effective search query in each result. Each record binds the page
-ID to the retrieved revision for its identity and citation ref, links to that
-exact revision, and includes modification, licensing, and attribution metadata.
-It requires Python 3 but has no package dependencies.
+This calls Wikipedia, not a model. The connector returns up to five article
+extracts with search snippets and citations to their retrieved revisions. It
+requires Python 3, with no additional Python packages.
 
-Wikimedia requires automated clients to send a meaningful User-Agent with
-contact information. Set `WIKIPEDIA_USER_AGENT` to identify your installation:
+It uses the [search API](https://www.mediawiki.org/wiki/API:Search) and
+[TextExtracts](https://www.mediawiki.org/wiki/Extension:TextExtracts#API),
+following [API etiquette](https://www.mediawiki.org/wiki/API:Etiquette).
+`WIKIPEDIA_API` selects a compatible proxy/test endpoint; citations still refer
+to English Wikipedia. Keep the supplied attribution and licensing metadata
+when reusing source text.
 
-```sh
-export WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)'
-```
+## Turn evidence into a cited answer
 
-`WIKIPEDIA_API` may override the API endpoint for a proxy or test fixture that
-returns English Wikipedia Action API responses. Citations still resolve to
-English Wikipedia, so it is not a language or wiki selector.
-
-The connector follows the official [search API][wikipedia-search],
-[plain-text extract API][wikipedia-extracts], and
-[API etiquette][wikipedia-etiquette]. Wikipedia text reuse remains subject to
-the [Wikimedia developer guidelines][wikimedia-reuse]; the page URL in every
-record provides the attribution path.
-
-[wikipedia-search]: https://www.mediawiki.org/wiki/API:Search
-[wikipedia-extracts]: https://www.mediawiki.org/wiki/Extension:TextExtracts#API
-[wikipedia-etiquette]: https://www.mediawiki.org/wiki/API:Etiquette
-[wikimedia-reuse]: https://foundation.wikimedia.org/wiki/Legal:Wikimedia_Developer_App_Guidelines
-
-To turn retrieval into a cited answer, give the question to both programs. Ask
-treats its argument as the instruction and stdin as evidence, so the question
-does not travel from one to the other implicitly:
+Install and configure [Ask](https://github.com/patrickyoung/ask), and install
+[Cite](https://github.com/patrickyoung/cite). Give the question to both the
+retriever and the writer:
 
 ```sh
 q='How does the Unix philosophy relate to Rob Pike?'
-./context query wikipedia "$q" > evidence.jsonl
-
+context query wikipedia "$q" > evidence.jsonl &&
 ask -q "Question: $q
-
-Answer using only the supplied context records. After each factual claim, add
-a Markdown link whose label is the exact ref and whose URL is citation.url
-from that same record. Do not invent references." < evidence.jsonl |
-  cite evidence.jsonl
+Answer from the supplied records. After each factual claim, add an exact
+[ref](citation.url) Markdown link from that record. Do not invent refs." \
+  < evidence.jsonl > candidate.md &&
+cite evidence.jsonl < candidate.md > answer.md
 ```
 
-The separate [`cite`](../cite/README.md) filter prints the answer only when
-every `ctx:` occurrence is an exact ref/URL pair from `evidence.jsonl`. With
-Ply, the same filter can reject a candidate and give the model a correction
-turn. It checks citation identity, not whether a source supports the claim.
+Check the final status before using `answer.md`. Cite prints the candidate
+unchanged only when its citation identities match the evidence. It does not
+prove that a source supports the prose or that every claim has a citation.
 
-Ask recognizes normalized Context JSONL on stdin. Its `user` event keeps the
-exact snapshot in the message and adds a compact evidence manifest: snapshot
-digest and byte location, plus ordered refs, sources, retrieval times, citation
-locations, query, and connector fingerprint. `ask replay -check` reconstructs
-that manifest from the recorded bytes. A missing artifact cannot be silently
-refetched because there is no external artifact: the session is self-contained.
+```mermaid
+flowchart LR
+    S[Named source connector] --> C[Context validates and stamps]
+    C --> E[Evidence JSONL]
+    E --> A[Ask writes an answer]
+    E --> V[Cite checks reference pairs]
+    A --> V
+    V --> O[Accepted answer]
+```
 
-The direct `ask | cite` pipeline records the evidence and answer, but Cite is a
-downstream filter and does not write Ask sessions. When the citation verdict
-must be in the same history, run the answer through Ply with
-`cite evidence.jsonl` as its check. Ply records every accepted, rejected, or
-broken verifier result as a sealed `ply.verifier/v1` note in the Ask session.
+For correction turns, use [Ply](https://github.com/patrickyoung/ply) with
+`cite evidence.jsonl` as the candidate check. Ask records the supplied Context
+evidence manifest, including the exact snapshot, query, and connector fingerprint.
+`ask replay -check` verifies it from recorded bytes without refetching anything.
+Ply also records Cite's verifier result in that same session; a direct downstream
+Cite invocation does not write to Ask's log.
 
-## Four verbs
+## Add sources without changing Context
+
+A connector is an executable with two operations:
+
+| Operation | Contract |
+| --- | --- |
+| `describe` | Print one source catalogue entry |
+| `query` | Read the query from stdin; print Context records as JSONL |
+
+Put connectors in `.context/connectors` for a project or
+`~/.context/connectors` for your user. `CONTEXT_PATH` replaces both with a
+colon-separated search path; the first matching executable wins.
+
+```sh
+export CONTEXT_PATH="$PWD/connectors:$HOME/.context/connectors"
+context ls
+context query handbook 'What is the leave policy?'
+```
+
+`handbook` here is a connector you supply. It may use a service SDK, an API,
+a database, or local files. See [CONNECTORS.md](CONNECTORS.md) for a complete
+implementation contract and [examples](examples) for supporting material.
+
+Every record carries `kind`, `version`, `source`, `type`, `id`, `title`,
+`retrieved_at`, non-null `content`, and `citation.locator`. Context derives
+`ref`; query results also receive a core-owned `retrieval` field containing
+the exact query and selected connector's SHA-256. Unknown fields and structured
+content survive. The fingerprint identifies the executable bytes, not all its
+dependencies or the truth of the remote service.
+
+## Combine sources explicitly
+
+With two installed connectors:
+
+```sh
+context query handbook "$q" > handbook.jsonl &&
+context query policies "$q" > policies.jsonl &&
+cat handbook.jsonl policies.jsonl | context merge > combined.jsonl
+```
+
+`merge` preserves first-seen order and retrieval stamps, removes identical
+duplicates, and rejects conflicting records for one ref. You decide how to
+handle a source with no results or a failure.
+
+[Brief](https://github.com/patrickyoung/brief) can hold source-selection
+procedure; Ask supplies reasoning; Cite checks citation identities; Ply owns
+iteration; [Trail](https://github.com/patrickyoung/trail) browses the resulting
+Ask history. Retrieved content remains **data**, not instructions to insert
+into a system prompt or skill.
+
+## Outcomes and reference
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Records returned or a clean check |
+| 1 | No connector, result, or input |
+| 2 | Bad usage, broken connector, invalid data, or an exceeded bound |
+
+Stdout is records only; diagnostics are stderr. Query output is fully
+validated before printing. Queries are bounded at 1 MiB, records at 8 MiB,
+and streams at 32 MiB; excess input is refused, not truncated.
 
 ```text
 context ls
 context query source [query]
 context merge
 context check
+context help
+context version
 ```
 
-`ls` lists the sources an agent may choose from. `query` sends one exact query
-to one explicitly named source. If the query argument is omitted, it is read
-from standard input. `merge` validates, adds any missing citation references,
-keeps first-seen order, removes identical duplicates, and rejects two different
-records that claim the same reference. `check` validates already-normalized
-records without printing them.
-
-Multiple sources remain ordinary composition:
-
-```sh
-context query glean "$q" > glean.jsonl
-context query genie "$q" > genie.jsonl
-cat glean.jsonl genie.jsonl | context merge > evidence.jsonl
-```
-
-The caller chooses whether one source is enough, whether both are required,
-and what to do when one has no result. Context does not hide that policy in a
-router.
-
-## The record
-
-Every result has a common envelope:
-
-```json
-{
-  "kind": "context",
-  "version": 1,
-  "source": "genie",
-  "type": "table",
-  "id": "conversation/abc/result/1",
-  "title": "Revenue by quarter",
-  "retrieved_at": "2026-08-28T16:00:00Z",
-  "content": {
-    "columns": ["quarter", "revenue"],
-    "rows": [["Q1", 42]]
-  },
-  "citation": {
-    "locator": "space/7/conversation/abc/result/1",
-    "url": "https://example.test/genie/abc"
-  },
-  "ref": "ctx:genie:7a3b...",
-  "retrieval": {
-    "query": "revenue by quarter",
-    "connector": {
-      "name": "genie",
-      "sha256": "sha256:..."
-    }
-  }
-}
-```
-
-`content` may be any non-null JSON value. A document can carry text and
-headings; a table can carry columns and rows; an entity can carry fields. The
-common envelope is for composition and provenance, not a lowest-common-
-denominator chunk format. Unknown connector fields are preserved.
-
-The connector owns `source`, `id`, `retrieved_at`, and `citation.locator`
-because it is closest to the source. Context verifies them and derives `ref`
-from `source` plus `id`. Brief can tell an agent when citations are required;
-Ask can cite the refs in its answer; Cite can verify exact ref/URL pairs; and
-Ply can use Cite or a domain check before accepting that answer. If the context
-records are supplied to Ask, Ask's event history and Trail retain the exact
-retrieved snapshot. Replay therefore reads history; it does not silently
-refetch a source that may have changed.
-
-The `retrieval` field is owned by Context, not the connector. It records the
-invocation that produced the observation. `merge` preserves stamps from each
-source, which is how an aggregated snapshot retains more than one query or
-connector identity without a hidden router.
-
-See [CONNECTORS.md](CONNECTORS.md) for the complete connector contract and
-[GUIDE.md](GUIDE.md) for use with Brief, Ask, Ply, Agent, and Trail.
-[DESIGN.md](DESIGN.md) explains why source selection and answer synthesis stay
-outside this program.
-
-## Unix contract
-
-Standard output is records only. Connector progress and diagnostics go to
-standard error. Exit status 0 means records or a clean check, 1 means no source,
-no result, or no input, and 2 means bad usage, a broken connector, or invalid
-data. Query output is buffered and fully validated before it is printed, so a
-bad final record cannot leave a plausible partial answer in a pipeline.
-
-## Scope
-
-Context has no provider SDK, credentials, model, source-selection algorithm,
-answer synthesis, cache, index, database, daemon, server, workflow engine, or
-session format. Provider variability belongs in connectors. Procedure belongs
-in Brief, reasoning and history in Ask, iteration and checks in Ply, and durable
-goal coordination in Agent.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+[GUIDE.md](GUIDE.md) has more compositions; [context.1](context.1) is the
+manual. Read [AGENTS.md](AGENTS.md) before contributing and run
+`go test ./...`, `go test -race ./...`, and `go vet ./...`.
+[Security](SECURITY.md) · [Design](DESIGN.md) · [MIT license](LICENSE).
