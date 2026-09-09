@@ -1,367 +1,184 @@
-# hone
+# Hone
 
-Read a run that a program judged. Write down what it teaches.
+**Turn a checked recovery into a lesson the next run can use.**
 
-```
-$ ply -sh -check 'go test ./...' "make the tests pass"
-$ hone
-- Go files in this module root declare `package main`, matching
-  `add_test.go`; `package x` fails at setup with "found packages x (add.go)
-  and main (add_test.go)" before any test runs.
-```
+A useful lesson is more specific than “the task succeeded.” Something failed,
+something changed, and a check finally passed. Hone reads that evidence from
+an Ask session, asks a model to word the lesson, and can save it as an ordinary
+Brief skill.
 
-That is a real lesson from a real run, and the thing worth noticing is what
-it is *not*. The same run also failed a `git status` in a directory that was
-not a repository. `hone` threw that away, because a stumble that teaches
-nothing is most of them.
+**Hone learns from recoveries.** A run that never failed offers no recovery to
+study. A run that never passed offers no verified resolution. Either can
+produce exit 1: there is nothing to learn, and nothing is written.
 
-It is a filter: the lesson is stdout, progress is stderr, and the exit code
-says whether anything was learned.
-
-```
-ask     the model      — no tools, no loop
-brief   the procedure  — no model, no loop
-ply     the loop       — no model, no procedure
-hone    the lesson     — no store, no retrieval, no format
-```
-
-## The idea that does not work
-
-Watch everything an agent does, summarize it, embed it, retrieve by
-similarity. That is most of what ships, and the evidence against it is not
-subtle.
-
-An agent adding every experience to memory accumulated 2,400 records and
-scored 13% on medical reasoning. The same agent keeping only high-quality
-experiences and deleting stale ones held 248 records and scored **39%**. Ten
-times the memory, a third of the accuracy.
-
-Worse, wrong memories do not sit quietly. Agents that retrieved notes from
-earlier incorrect runs reused them *with more confidence than before* —
-memory had given the wrong answer the appearance of established precedent.
-Over 90% of tested agents were vulnerable to memory poisoning, with a 100%
-relapse rate when teams tried to fix it by correcting the agent in
-conversation.
-
-And the input matters more than the algorithm: skills distilled from
-verified trajectories were worth roughly **13x** what the same method
-produced from unverified ones. Almost nobody collects the verification,
-because a chat transcript has no ground truth in it.
-
-So a memory system that writes down a lot is not a better memory system. It
-is a machine for manufacturing confident falsehoods.
-
-## The one rule
-
-**`hone` learns from recoveries.**
-
-- a run that **never failed** teaches nothing — everything worked first
-  try, so there is no counterfactual;
-- a run that **never passed** proves nothing — the last thing tried might be
-  wrong, and a wrong lesson is worse than a missing one, because the next
-  agent reads it as established practice and cannot tell;
-- a run that **failed and then passed** is the only one that teaches, and
-  the lesson is the difference between the two.
-
-The gate is arithmetic on exit statuses already in the log. A model is used
-to *word* a lesson, never to decide there is one — a model asked whether a
-transcript contains a lesson will always find one.
-
-Three runs in four teach nothing:
-
-```
-$ hone
-hone: 20260801-2304: the check passed and nothing ever failed: the run had
-       nothing to teach because it needed nothing
-$ echo $?
-1
-```
-
-That is the design working. It is also why the corpus stays small enough to
-stay true.
-
-## Why this family can do it
-
-`ply -check 'go test ./...'` is a ground-truth label. `make` does not ask an
-oracle whether the build worked, and neither does `ply` — the outcome is a
-program's opinion, and `ask replay -check` proves the run months later.
-
-That is exactly the input the research says you need, produced as a side
-effect of ordinary use. It was not quite recorded, though, and finding that
-out was the first thing that happened here. Two real runs, one that passed
-and one that gave up:
-
-```
-$ jq -c '{seq,type}' pass.jsonl | tail -2
-{"seq":16,"type":"assistant"}
-{"seq":17,"type":"done"}
-$ jq -c '{seq,type}' fail.jsonl | tail -2
-{"seq":4,"type":"assistant"}
-{"seq":5,"type":"done"}
-```
-
-Structurally identical. A session recorded everything that was *tried* and
-nothing about whether it *worked*; the verdict lived on stderr and in an
-exit status, and both are gone the moment the shell moves on. `ply` now
-writes every verifier result as a typed `ply.verifier/v1` Ask note followed
-by a replay-verified prefix seal. It is attributed and not folded.
-
-```
-$ jq 'select(.type=="note" and .data.kind=="ply.verifier/v1") | .data.body' pass.jsonl
-{"phase":"candidate","outcome":"accepted","exit_code":0,...}
-```
-
-A run with no `-check` writes no verdict, and `hone` refuses it rather than
-taking the model's word:
-
-```
-$ hone chat.jsonl
-hone: chat: no check ran, so nothing judged it but the model. Run it again
-       with ply -check, and the verdict lands in the log
-```
+[Install](#install) · [Inspect a run](#start-with-a-run-that-has-a-check) ·
+[Review a lesson](#review-the-exact-lesson-before-saving) · [Field guide](GUIDE.md)
 
 ## Install
 
-```
-go install github.com/patrickyoung/hone@latest
-```
-
-Go 1.26 or newer, and a Unix. It needs [`ask`][ask] on `$PATH` — that is
-where the model, the keys and the log live — and [`brief`][brief] only to
-lint what it writes.
-
-[ask]: https://github.com/patrickyoung/ask
-[brief]: https://github.com/patrickyoung/brief
-[ply]: https://github.com/patrickyoung/ply
-
-## No store, no retrieval, no format
-
-A lesson is a skill. `brief` is already the catalogue — `$BRIEF_PATH` is a
-search path with shadowing, `brief find` ranks a task against it and
-**refuses to guess**, and `brief lint` holds the format to the
-specification. So `hone` writes what `brief` reads, and stops.
-
-```
-$ hone -into go-house
-hone: go-house is new; writing the line brief will find it by
-~/.claude/skills/go-house/SKILL.md: 1 lesson(s) added (1 total)
-
-$ brief find "go test package mismatch"
-go-house
-
-$ ply -sh -s go-house -check 'go test ./...' "add a ring buffer"
-```
-
-There is no index, no database, no embedding model, no vector store and no
-daemon. The loop closes as a shell pipeline rather than a runtime:
+Requires **Go 1.26+**, **Unix or WSL**, and
+[Ask](https://github.com/patrickyoung/ask). Install current `main`:
 
 ```sh
-ply -sh -s "$(brief find "$task")" -check "$check" "$task"   # act
-hone -into house                                            # learn
-brief find "$next"                                           # recall
+mkdir -p "$HOME/.local/bin"
+for tool in ask brief hone; do
+  GOBIN="$HOME/.local/bin" go install "github.com/patrickyoung/$tool@main"
+done
+export PATH="$HOME/.local/bin:$PATH"
+hone version
 ```
 
-Every write is a delta. Lessons are appended under a `## Lessons` heading
-and what is already there is never regenerated — a model handed its own
-accumulated notes and asked for the next version rewrites them, and
-rewriting compresses away the specifics that made them worth keeping.
+Keep the PATH setting in your shell startup file. Configure Ask with your
+provider/model and credentials before asking Hone to word a lesson. Inspecting
+evidence with `-why` does not call a model. Brief validates written skills;
+without it, some inspection and wording operations remain available.
 
-## The skill that was in play
+## Start with a run that has a check
 
-`ply -s house` loads a procedure, and `brief cat` prints a body *without its
-frontmatter* — so a skill reaches the system prompt as anonymous prose. What
-shaped a run was provable byte for byte; which of those bytes were a skill
-called `house` lived only on stderr.
-
-`ply` records it now, and `-into -` reads it back:
-
-```
-$ hone -into -
-hone: wire: the run was following house -- the lesson belongs to it
-~/.claude/skills/house/SKILL.md: 1 lesson(s) added (3 total)
-```
-
-This is the joint that makes the family a loop rather than a line. A run
-that loaded a procedure and stumbled **anyway** is not merely a run that
-stumbled — it is evidence that procedure is incomplete, and the lesson
-belongs to it rather than to wherever you happened to point `-into`. The
-model is told so, and words the lesson as an amendment:
-
-```markdown
-## Lessons
-
-- Run `make check`, not `go test`, to verify work here.
-
-- Every source file must begin with the project's SPDX header on line 1;
-  `make check` rejects files with `add.go: line 1 must be the SPDX header`.
-<!-- hone wire find-20260802-104011-290336 -->
-```
-
-A run that loaded no skill, or more than one, is refused rather than guessed
-at. And there is a second reading worth watching for: a skill accumulating
-lessons faster than it is used is a **pressure gauge**, not a growing asset.
-The procedure itself is missing a step, and the fix is to rewrite it — which
-is a goal with a check, which is `ply`.
-
-## Provenance is the feature
-
-```markdown
-## Lessons
-
-- Go files in this module root declare `package main`, matching
-  `add_test.go`; `package x` fails at setup with "found packages x".
-<!-- hone 20260801-230441-4c8100cf68ff97f5 20260802-024255-9f1a2b3c -->
-```
-
-The first id is the run it was learned from, the second the call that worded
-it. Both replay:
-
-```
-$ ask replay -check ~/.ask/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
-ok: replays exactly (18 events)
-```
-
-Which is what makes a bad lesson something to **delete** rather than argue
-with. That 100% relapse rate came from teams trying to correct a poisoned
-memory *in conversation*. Here it is a file with a name on it:
-
-```
-$ hone forget 20260801-230441-4c8100cf68ff97f5 go-house
-hone: ~/.claude/skills/go-house/SKILL.md: forgot 2 lesson(s)
-```
-
-The unit is a run, because a session that taught one wrong thing usually
-taught its neighbours too.
-
-## Bounded by construction
-
-A run teaches once. The mark records it, so a second pass over an archive
-costs nothing — not even a model call:
-
-```
-$ hone -into house run.jsonl
-hone: run: already learned from, in house -- hone forget run house to
-       learn it again
-```
-
-Nothing else bounds it, because nothing else needs to: the only thing that
-enters the corpus is a recovery from a verified run, `-n` caps one run at
-three lessons, and a skill has the size budget the specification already
-sets and `brief lint` already warns about.
-
-Refining a skill that has grown is a goal with a check, which is to say it
-is `ply`:
-
-```
-$ ply -check 'brief lint -strict go-house' "merge duplicate lessons in go-house/SKILL.md"
-```
-
-There is no verb for that here, because there is already a program for it.
-
-## Read the evidence first
-
-A lesson is a claim. `-why` replay-verifies the session, prints what a lesson
-would be drawn from, and calls no model:
-
-```
-$ hone -why
-GOAL
-make the test pass
-
-CHECK (this passed, so the work was done)
-go test ./... 2>&1
-
-STUMBLE 1
-this failed:
-$ cat > add.go <<'EOF'
-package x
-...
-it printed:
-found packages x (add.go) and main (add_test.go)
-FAIL	x [setup failed]
-exit 1
-then this was done, and worked:
-$ sed -i.bak 's/^package x$/package main/' add.go
-```
-
-`-N` goes one step further: it words the lesson and writes nothing.
-
-## Review exact bytes, admit them later
-
-`-N` is disposable wording: running ordinary `hone` later asks the model
-again, so it may not produce the same lesson. For an exact review boundary,
-name a proposal file explicitly:
+Use [Ply](https://github.com/patrickyoung/ply) on a real task with an executable
+definition of success. For example, from a Go repository with failing tests:
 
 ```sh
-hone -into house -prepare lesson.json run.jsonl
+ply -sh -f repair.jsonl -check 'go test ./...' 'Fix the failing tests.'
+ask replay -check repair.jsonl
+hone -why repair.jsonl
+```
+
+Ply must be installed separately. Its `-sh` option grants shell execution.
+Use a check appropriate to your project, and let the run finish before
+inspecting it.
+
+`hone -why` shows the replay-verified goal, passing check, and recoveries it
+could learn from. It changes no skill and makes no model call. If there is no
+qualifying recovery, Hone explains why and exits 1. A clean first attempt,
+an unfinished attempt, or a transcript with no verifier verdict is not enough.
+
+```mermaid
+flowchart LR
+    S[Ask session] --> R[Verify replay and recovery]
+    R -->|No qualifying evidence| N[Nothing to learn]
+    R -->|Failed then passed| W[Ask words a lesson]
+    W --> P[Review exact proposal]
+    P --> A[Admit to a Brief skill]
+    A --> U[Next Ply run uses the skill]
+```
+
+The check establishes the task-specific outcome. Replay establishes the
+retained record's integrity. Neither makes an inferred lesson universally true;
+read it before using it as a future instruction.
+
+## Review the exact lesson before saving
+
+For a qualifying `repair.jsonl`, choose a project-local skill directory:
+
+```sh
+mkdir -p .claude/skills
+export BRIEF_PATH="$PWD/.claude/skills"
+hone -into go-house -prepare lesson.json repair.jsonl
 hone show lesson.json
-hone admit lesson.json
 ```
 
-`-prepare` accepts exactly one replay-verified session. It calls the model,
-but changes no skill and never overwrites an existing proposal. The proposal
-binds the source session and its hash, the Ask session that worded the lesson
-and its hash, the resolved destination and its current hash (or absence), and
-the exact final `SKILL.md` bytes. Standard output shows those literal skill
-bytes for review.
-
-`hone show` is read-only and calls nothing. `hone admit` calls no model: it
-replay-checks both provenance sessions, rechecks their hashes and the current
-destination, asks Brief to lint the exact document when Brief is available,
-and atomically writes only those reviewed bytes. A changed session,
-destination, proposal, or catalogue resolution is refused. Re-admitting a
-run already present is the ordinary exit-1 “nothing to learn” result.
-
-This is not a Hone proposal store. There is no default proposal directory,
-index, list, retrieval path, cleanup daemon, or implicit admission; the
-operator names one ordinary file and later types the command that writes the
-skill.
-
-## The Unix contract
-
-| stream | carries |
-| --- | --- |
-| stdout | the lesson, or the path written — the answer, and nothing else |
-| stderr | which session taught it, why a run was refused |
-| exit 0 | yes: something was learned |
-| exit 1 | no: nothing to learn |
-| exit 2 | error: bad usage, unreadable session, `ask` failed |
-
-`grep`'s contract, not `ask`'s, because `hone` asks a question where no is
-a real answer — and it is the common one:
+Preparation calls Ask and writes a new proposal file. It leaves the installed
+skill unchanged. `show` prints the exact proposed skill bytes without a model
+call. If the lesson is useful, admit those reviewed bytes:
 
 ```sh
-for s in ~/.ask/sessions/*.jsonl; do hone -into house "$s" || continue; done
+hone admit lesson.json
+brief cat go-house
+brief lint -strict go-house
 ```
 
-## Commands
+Admission rechecks the source and wording sessions, destination, and hashes,
+then writes only the permitted append/scaffold change. A stale proposal is
+refused. Existing proposal files are never overwritten; use a new filename
+for a new proposal.
 
+Next time, load that procedure explicitly:
+
+```sh
+ply -sh -s go-house -check 'go test ./...' 'Fix the next failing test.'
 ```
-hone [flags] [session ...]       distil what a run teaches
-hone forget <id> <skill>...      remove what a run taught
-hone show <proposal>              show exact prepared skill bytes
-hone admit <proposal>             admit them without another model call
-hone prompt                      print the system prompt that words a lesson
-hone version                     print the version
-hone help                        print the summary
+
+## Choose how much to do
+
+| Command | Model call? | Skill write? |
+| --- | --- | --- |
+| `hone -why repair.jsonl` | No | No |
+| `hone -N repair.jsonl` | Yes, if the run qualifies | No |
+| `hone -into go-house -prepare lesson.json repair.jsonl` | Yes, if needed | No; creates a proposal |
+| `hone show lesson.json` | No | No |
+| `hone admit lesson.json` | No | Exact reviewed change only |
+| `hone -into go-house repair.jsonl` | Yes, if needed | Direct append/scaffold |
+
+`-N` previews wording, not a durable approval token: a later ordinary call may
+produce different words. Use prepare/show/admit when the exact wording matters.
+Flags go **before** session paths.
+
+## Keep lessons small and traceable
+
+Each appended lesson carries the ID of the source run and the Ask call that
+worded it. A run teaches once; repeating it is detected before another model
+call. `-n N` caps lessons per run, defaulting to three. New lessons append under
+`## Lessons`; existing instructions are not regenerated.
+
+If a run followed exactly one named skill, `-into -` finds that skill from
+Ply's record. Zero or multiple skills are refused rather than guessed:
+
+```sh
+hone -into - -prepare lesson.json repair.jsonl
 ```
 
-Flags come before sessions: after one, a word is a filename. Full reference
-in `hone.1`, and `hone help` fits eighty columns.
+Remove lessons from a particular source when review finds them wrong:
 
-## The prompt is a value
+```sh
+hone forget SOURCE_SESSION_ID go-house
+```
 
-`hone prompt` prints exactly what is sent, so you can read the bar a lesson
-has to clear before it is written down — four tests, and a paragraph
-explaining that `none` is the expected answer.
+Use the source ID recorded in the skill. A skill that accumulates many similar
+lessons probably needs a clearer procedure; revise that file and test it on
+representative work. Hone does not silently consolidate or rewrite it.
 
-## Deliberately absent
+## Where it fits
 
-No embedding model, no vector store, no index, no database, no daemon, no
-config file, no MCP, no scheduler, no memory types, no consolidation pass,
-and no automatic learning. Nothing writes to a skill unless somebody typed a
-command that says to.
+| Tool | Responsibility |
+| --- | --- |
+| [Ask](https://github.com/patrickyoung/ask) | Model calls and the session record |
+| [Ply](https://github.com/patrickyoung/ply) | Actions, checks, and sealed verifier receipts |
+| Hone | Identify qualifying recoveries and word an explicit lesson |
+| [Brief](https://github.com/patrickyoung/brief) | Find, read, and lint the resulting skill |
+| [Agent](https://github.com/patrickyoung/agent) | Scope learning to a particular worker home |
+| [Trail](https://github.com/patrickyoung/trail) | Search the source history |
 
-That last one is load-bearing. A system that learns silently is a system
-that silently learns the wrong thing, and the failure mode is a confident
-agent citing a precedent nobody wrote.
+Hone owns no memory database, index, scheduler, or automatic learning hook.
+Lessons remain readable files you can review and version.
+
+## Settings, outcomes, and reference
+
+| Setting | Meaning |
+| --- | --- |
+| `ASK` / `BRIEF` | Select dependency executables |
+| `ASK_DIR` | Session directory, default `~/.ask/sessions` |
+| `BRIEF_PATH` | Skill search path; new skills use its first entry |
+| `HONE_DIR` | Wording-session directory, default `~/.hone/lessons` |
+
+No session argument uses the current Ask conversation. A directory argument
+processes its sessions oldest first. Explicit session paths are easiest to
+reason about when you are learning from a particular task.
+
+Exit 0 means a successful requested operation; exit 1 means nothing to learn;
+exit 2 means invalid input or an operational failure. Stdout is the requested
+lesson, document, or result; stderr explains progress and refusals.
+
+```text
+hone [flags] [session ...]
+hone forget ID SKILL...
+hone show PROPOSAL
+hone admit PROPOSAL
+hone prompt
+hone version
+hone help
+```
+
+Continue with [GUIDE.md](GUIDE.md) and [hone.1](hone.1). Contributors: read
+[AGENTS.md](AGENTS.md), then run `go test ./...` and `go test -race ./...`.
+See [SECURITY.md](SECURITY.md). [MIT license](LICENSE).
