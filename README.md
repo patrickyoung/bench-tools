@@ -1,132 +1,179 @@
-# oauth
+# OAuth
 
-OAuth at the edge; ordinary Unix inside.
+**Log in once, refresh when needed, and hand a credential to one command.**
 
-`oauth` logs a person or machine into one exact resource, refreshes rotating
-credentials safely, and gives one exact child process an HTTP Authorization
-header on file descriptor 3. It is not an HTTP proxy, SDK, daemon, identity
-provider, browser host, or secret service.
+OAuth connects an ordinary Unix program to an OAuth-protected resource. It
+handles login and refresh, then gives the selected child one Authorization
+header on file descriptor 3. The child keeps its normal stdin and stdout;
+access tokens do not need to appear in command arguments or environment variables.
+
+```sh
+oauth with docs -- mcp discover -header-fd 3 -- https://YOUR_SERVICE/mcp
+```
+
+This requires a configured `docs` profile and a real service URL. The steps
+below create that profile.
 
 ## Install
 
-Requires Go 1.26 or newer.
+Requires **Go 1.26+**, Git, and a Unix environment. Clone current `main`:
 
 ```sh
+git clone https://github.com/patrickyoung/oauth.git
+cd oauth
 ./install.sh
+export PATH="$HOME/.local/bin:$PATH"
+oauth help
 ```
 
-The default destination is `$HOME/.local/bin/oauth`. Use
-`./install.sh -prefix DIR` to install as `DIR/bin/oauth`.
+The installer tests and builds the program into `~/.local/bin`. Use
+`./install.sh -prefix DIR` for `DIR/bin`, and keep the PATH setting in your
+shell startup file.
 
-## The shortest MCP use
+## Before your first login
 
-First log in. The resource publishes its authorization server and endpoints;
-the CLI uses authorization code with PKCE S256 when available:
+You need two values from the service you are connecting to:
+
+- **Resource URL:** the API or MCP resource that will receive the credential.
+- **Client ID:** a registered client accepted by its authorization server.
+
+For a public command-line client, use authorization code with PKCE; there is
+no embedded client secret. If your provider issued a secret, use the
+confidential-client instructions below. This tool does not register an app
+for you or import a provider-specific CLI login.
+
+## Connect and make one request
+
+Replace the placeholders with your resource and client ID:
 
 ```sh
-oauth login github -client-id YOUR_CLIENT_ID https://mcp.example.com/mcp
+oauth discover https://YOUR_SERVICE/mcp
+oauth login docs -client-id YOUR_CLIENT_ID https://YOUR_SERVICE/mcp
+oauth status docs
 ```
 
-That form is for a **public CLI client**, where PKCE replaces a client secret.
-If the MCP provider issued both a client ID and a client secret, keep the
-secret out of shell arguments and supply it on stdin:
+Follow the browser login instructions. OAuth checks the callback and saves
+the profile. `status` shows non-secret information; it never prints a token.
+The profile name `docs` is your local name for this exact connection.
+
+With [MCP](https://github.com/patrickyoung/mcp) installed:
 
 ```sh
-read -s -p 'Client secret: ' secret; printf '\n' >&2; \
-  printf %s "$secret" | oauth login github \
-    -client-id YOUR_CLIENT_ID \
-    -client-auth client_secret_basic \
-    -client-secret-stdin \
-    https://mcp.example.com/mcp; unset secret
+oauth with docs -- \
+  mcp request -header-fd 3 tools/list -- https://YOUR_SERVICE/mcp
 ```
 
-There is deliberately no `-client-secret VALUE` option because process
-arguments are visible to other local tooling and commonly retained in shell
-history. The secret may instead come from a protected file with
-`-client-secret-file`.
+You should receive the service's tool-list result on stdout. If a refresh is
+needed, it happens **before** MCP starts. OAuth never retries the child command.
 
-Then run the exact MCP command. The access token exists only in the pipe
-behind descriptor 3:
-
-```sh
-oauth with github -- \
-  mcp request -header-fd 3 tools/list -- https://mcp.example.com/mcp
+```mermaid
+flowchart LR
+    P[Saved resource-bound profile] --> R[Refresh if needed]
+    R --> H[Header on descriptor 3]
+    H --> C[One explicitly named child]
+    C --> O[Normal stdout, stderr, and exit status]
 ```
 
-`oauth` refreshes before starting `mcp` when necessary. It never retries
-`mcp`; a possibly effectful request remains the caller's decision.
+## Choose the login flow the service supports
 
-## Public browser clients
+| Need | Options |
+| --- | --- |
+| Browser sign-in for a public CLI | `-flow code -client-id ID` |
+| Device code sign-in | `-flow device -client-id ID` |
+| Machine-to-machine credentials | `-flow client-credentials` plus client authentication |
+| Explicit scopes | `-scope 'files:read files:write'` |
+| Show the authorization URL without opening a browser | `-no-browser` |
 
-Native command-line applications are public clients: an embedded client
-secret would not remain secret. They use authorization code with PKCE S256:
+The server must support the selected flow. Code login uses PKCE S256, a random
+state, and an exact loopback callback on `127.0.0.1`. Device login prints the
+verification URI and user code on stderr and observes polling/expiry limits.
 
-```sh
-oauth login docs -flow code -client-id public-cli \
-  -scope 'files:read files:write' https://docs.example.com/mcp
-```
+### A client secret stays out of arguments
 
-The callback listener binds to a random port on `127.0.0.1`, checks a random
-state, uses the exact redirect URI, and validates the response issuer whenever
-it is present or advertised as required. `-no-browser` prints the URL without
-opening it, which is useful over SSH.
-
-## Device authorization
-
-When server metadata advertises a device endpoint:
-
-```sh
-oauth login tv -flow device -client-id public-cli \
-  https://device.example.com/api
-```
-
-The verification URI and user code go to stderr. Polling honors
-`authorization_pending`, `slow_down`, expiry, cancellation, and the login
-timeout.
-
-## Confidential and machine clients
-
-Never put a client secret in argv. Read it from stdin:
-
-```sh
-secret-command | oauth login build \
-  -flow client-credentials \
-  -client-id build-worker \
-  -client-auth client_secret_basic \
-  -client-secret-stdin \
-  https://build.example.com/api
-```
-
-Or use an operator-owned file whose mode is 0600 or stricter:
+Use an operator-owned file with mode 0600 or stricter:
 
 ```sh
 oauth login build -flow client-credentials \
-  -client-id build-worker \
-  -client-secret-file /run/secrets/build-oauth \
-  https://build.example.com/api
+  -client-id YOUR_CLIENT_ID \
+  -client-auth client_secret_basic \
+  -client-secret-file /absolute/path/to/protected-secret \
+  https://YOUR_SERVICE/api
 ```
 
-`client_secret_post` is available for authorization servers that require it.
-`none`, `client_secret_basic`, and `client_secret_post` are checked against
-server metadata when it advertises supported methods.
+Or pipe a secret from your credential manager into `login` with
+`-client-secret-stdin`. There is no `-client-secret VALUE` flag.
+`client_secret_post` is also available when required. The selected method is
+checked against server metadata when advertised.
 
-## Providers without resource metadata
+### A service without discovery metadata
 
-Modern discovery is preferred. For a provider that does not publish RFC 9728
-and RFC 8414 metadata, make every boundary explicit:
+Supply its boundaries explicitly:
 
 ```sh
 oauth login legacy \
-  -issuer https://login.example.com \
-  -authorization-endpoint https://login.example.com/authorize \
-  -token-endpoint https://login.example.com/token \
-  -client-id public-cli \
-  https://api.example.com
+  -issuer https://YOUR_LOGIN_SERVICE \
+  -authorization-endpoint https://YOUR_LOGIN_SERVICE/authorize \
+  -token-endpoint https://YOUR_LOGIN_SERVICE/token \
+  -client-id YOUR_CLIENT_ID \
+  https://YOUR_API_RESOURCE
 ```
 
-Explicit endpoints are still validated before storage and again before use.
+All values are placeholders. Use the service's documented endpoints and
+resource identity; endpoints remain validated before storage and use.
 
-## Commands
+## Connect to Ask or your own program
+
+[Ask](https://github.com/patrickyoung/ask) accepts the same header boundary:
+
+```sh
+oauth with llm -- ask -header-fd 3 -m openai/YOUR_MODEL_ID 'Hello.'
+```
+
+Create `llm` for the exact resource and authentication setup accepted by your
+model service first. Choosing a model name does not create an OAuth profile or
+guarantee that a particular provider accepts this login flow.
+
+Your own child can use the same inherited descriptor. `oauth with` invokes
+literal argv after `--`, without a shell, and preserves standard streams and
+child status. It binds credentials to the profile's resource, issuer, client,
+and requested scopes. Protocol clients still own where they send the header.
+
+For comparison, [Vouch](https://github.com/patrickyoung/vouch) also supports
+imported CLI credentials, static keys, and browser-session references. OAuth
+supplies the explicit OAuth lifecycle and descriptor transfer used by Ask/MCP;
+neither tool supplies permission to perform a particular external action.
+[Action](https://github.com/patrickyoung/action) and
+[May](https://github.com/patrickyoung/may) provide that separate boundary.
+
+## Manage a connection
+
+```sh
+oauth status
+oauth refresh docs
+oauth logout docs
+```
+
+State lives under `$OAUTH_HOME`, then `$XDG_STATE_HOME/oauth`, or
+`~/.local/state/oauth`. Each private profile has separate definition and
+credential files plus a stable lock. Refresh is serialized so a rotating
+refresh token is not spent twice. Logout removes the local profile; consult
+the provider when you also need remote revocation.
+
+`oauth header docs` deliberately prints a secret header. Prefer `with` for
+normal use so the header cannot accidentally become an ordinary output log.
+
+## Troubleshooting and supported scope
+
+If discovery fails, check the exact resource URL and its metadata. If login
+fails, check the client registration, supported flow, scopes, and authentication
+method. Token requests do not follow redirects. HTTPS is required except for
+exact loopback endpoints.
+
+The implementation supports authorization code with PKCE, resource metadata,
+authorization-server/OIDC discovery, resource indicators, issuer checks, device
+authorization, client credentials, refresh tokens, and bearer headers. It does
+not approximate implicit/password grants, DPoP, mutual TLS, token exchange,
+private-key assertions, dynamic registration, or provider-specific login imports.
 
 ```text
 oauth discover [flags] RESOURCE
@@ -135,31 +182,9 @@ oauth refresh [flags] NAME
 oauth status [NAME]
 oauth logout NAME
 oauth header [flags] NAME
-oauth with [flags] NAME -- COMMAND [ARG ...]
+oauth with [flags] NAME -- COMMAND [ARG...]
 ```
 
-`status` is tab-separated and never prints credentials. `header` deliberately
-prints a secret header for expert pipeline use; prefer `with`, which cannot
-accidentally send it to an ordinary stdout log.
-
-State lives under `$OAUTH_HOME`, `$XDG_STATE_HOME/oauth`, or
-`~/.local/state/oauth`. Each profile is a directory containing separate
-definition and credential JSON files plus a stable lock. See
-[SECURITY.md](SECURITY.md) and [DESIGN.md](DESIGN.md).
-
-## Supported standards and boundaries
-
-- OAuth 2.1 authorization code behavior with PKCE S256.
-- OAuth 2.0 Protected Resource Metadata (RFC 9728).
-- OAuth 2.0 Authorization Server Metadata (RFC 8414) and OIDC discovery.
-- Resource Indicators (RFC 8707).
-- Authorization Server Issuer Identification (RFC 9207).
-- Device Authorization Grant (RFC 8628).
-- Client Credentials and Refresh Token grants.
-- Bearer Token Usage (RFC 6750).
-
-The implicit and password grants are deliberately absent. DPoP, mutual-TLS
-sender-constrained tokens, token exchange, private-key client assertions,
-dynamic client registration, and provider-specific login imports are not
-silently approximated; a server requiring one is refused until that contract
-is implemented explicitly.
+See [DESIGN.md](DESIGN.md) and [SECURITY.md](SECURITY.md). Contributors: read
+[AGENTS.md](AGENTS.md), run `go test ./...` and `go test -race ./...`.
+[MIT license](LICENSE).
