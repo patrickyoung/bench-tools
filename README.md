@@ -1,655 +1,272 @@
-# ply
+# Ply
 
-Give a model a goal and a toolbox. Get the work done, and a program's word
-that it was.
+**Give a model a goal, give it some programs, and let a check decide when the work is done.**
 
+Ply asks a model what to do, runs its shell command, returns the actual result,
+and repeats. When the model offers a final answer, your check accepts it or
+sends it back with feedback. This makes tasks such as repairing a failing test
+usable from an ordinary shell script.
+
+```sh
+ply -sh -check 'go test ./...' 'Fix the failing tests.'
 ```
-$ ply -sh -check 'go test ./...' "make the tests pass" && make release
-```
 
-That `&&` means something, because exit 0 is `go test`'s opinion and not the
-model's.
+The final answer is stdout. Commands and their results are stderr. With a
+check, exit 0 means the check passed. Without one, it means the model stopped.
 
-`ply` is an agent loop built as a filter. It asks a model, runs the shell
-commands the model writes, hands back what they printed, and repeats — then
-runs the check, and hands its failure back if it failed. The answer is
-stdout, the typescript is stderr, the exit code says what happened.
-
-Two ideas hold it up, and both are older than any of this:
-
-**A tool is a program, and the toolbox is `$PATH`.** Not a JSON schema. Not
-a plugin. Not a registry.
-
-**Done is a program's opinion.** `make` doesn't ask an oracle whether the
-build worked; it runs the compiler and checks the status.
+[Install](#install) · [First checked task](#your-first-checked-task) ·
+[Skills and history](#add-a-procedure-and-keep-the-evidence) · [Field guide](GUIDE.md)
 
 ## Install
 
-```
-go install github.com/patrickyoung/ply@latest
-```
-
-Go 1.26 or newer, and a Unix. It needs [`ask`][ask] on `$PATH` — that is
-where the model, the keys and the log live — and [`brief`][brief] only if
-you use `-s`.
-
-```
-export ASK_MODEL=anthropic/claude-sonnet-5
-export ANTHROPIC_API_KEY=...
-```
-
-[ask]: https://github.com/patrickyoung/ask
-[brief]: https://github.com/patrickyoung/brief
-
-**[GUIDE.md](GUIDE.md)** is the field guide: what `ply` is good at, what it
-is not, the recipes, and the six things that will bite you — including the
-one that bit the person who wrote it (an `ask` inside a check continues
-*your* conversation unless you say `-n -f`).
-
-## The family
-
-    ask     the model         — no tools, no loop
-    brief   the procedure     — no model, no loop
-    ply     the loop          — no model, no procedure
-    hone    the lesson        — no store, no retrieval, no format
-
-`ask` is a model and no loop. `brief` is a procedure and no model. Between
-them there was nothing that *acts*, and `ply` is that and nothing else: it
-has no provider code, no credentials, no session format and no catalogue.
-When it needs a model it runs `ask`. When it needs a procedure it runs
-`brief`. Each refuses to grow the others, which is why all of them stay
-small.
-
-Outer controllers can preflight this boundary without scraping human help:
-`ply capabilities` prints one `ply.capabilities/v1` JSON object naming the
-features this executable implements.
-
-With `-s -`, Ply asks Brief's deterministic offline ranker first and falls
-back to Brief's replayable model selector only when no lexical match exists.
-
-[`hone`][hone] closes it into a circle. A `ply` run that failed, recovered,
-and was then confirmed done by the check is the one kind of run that teaches
-something — so `hone` reads the log, writes the lesson down as a `brief`
-skill, and the next run loads it with `-s`. It has no store of its own
-either: a lesson is a skill, and `brief` was already the catalogue.
-
-You brief it, you ask it, it plies, and it hones.
-
-## A tool is a program
-
-Every agent in the world defines tools as JSON schemas: `read`, `write`,
-`edit`, `grep`, `list`. Those are `cat`, `tee`, `sed`, `grep` and `ls` with
-a worse interface, re-implemented once per agent, and each one is a fresh
-place to have a bug that `grep` does not have.
-
-Unix already shipped the tools. What it never shipped was a way to hand a
-model *some* of them.
-
-```
-$ mkdir tools && ln -s $(which git rg sed) tools/
-$ ply -t tools -check 'git diff --quiet' "stage the obvious typo fixes"
-```
-
-`-t` makes `$PATH` that directory **and nothing else**. The model can reach
-what you put there and cannot name what you did not. Adding a tool is `ln
--s`. Removing one is `rm`. There is no manifest to keep in sync, nothing to
-version, and no second way to name a tool.
-
-Your own programs go in the same directory, and say what they are the way
-programs always have:
+Requires **Go 1.26+**, **Unix or WSL**, and
+[Ask](https://github.com/patrickyoung/ask). Install both from current `main`:
 
 ```sh
-#!/bin/sh
-# ship the current branch to staging
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/ask@main
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/ply@main
+export PATH="$HOME/.local/bin:$PATH"
+ply version
 ```
 
-That comment is the catalogue. `ply tools` prints exactly what the model
-gets:
-
-```
-$ ply tools -t tools
-Your tools are the programs on PATH, and PATH holds these and
-nothing else:
-
-  deploy  ship the current branch to staging
-  git
-  rg
-  sed
-
-Use a program's documented read-only help form when its synopsis is not
-enough; do not guess a help flag because it may be an operand. Shell builtins
-work as usual.
-```
-
-That is level 1 of progressive disclosure. Level 2 is a program's documented
-interface or help form, when it has one. Level 3 is running it. Unix does not
-define a universal `-h` or `--help` option.
-
-`-sh` hands over the whole machine instead, for when you mean it.
-
-The command interpreter is a separate choice from that tool grant. Commands
-and checks use `/bin/sh -c` by default. `-shell executable` selects another
-interpreter that accepts `-c`; `$PLY_SHELL` provides the same Ply-specific
-default. `-action-shell executable` (or `$PLY_ACTION_SHELL`) may select a
-different interpreter for model-authored blocks while the configured verifier
-keeps `-shell`. This is the ordinary Unix seam for an operator-owned container
-or remote-execution adapter: the adapter receives the exact script as the
-argument following `-c`; it is not a sandbox claim made by Ply. Ply resolves
-both executables before calling the model and names them in the prompt. It
-does not infer the adapter's target platform, programs, or final working
-directory. It never inherits `$SHELL`, which is an interactive preference and
-may name a non-POSIX shell.
-
-An external adapter can reserve its fail-closed status with
-`-action-boundary-exit N`. Ply then stops immediately with exit 125 instead of
-showing that result to the model and inviting another action. This identifies
-the adapter's boundary outcome. Ply binds the adapter and script digests in a
-sealed `ply.action-boundary/v1` receipt, revalidates the adapter immediately
-before and after launch, and conservatively records whether effects may exist.
-The adapter still owns its internal confinement policy and target evidence.
-Its path must be controller-owned and outside worker-writable authority. The
-digest records Ply's before/after path observations; it is not a defense
-against an adversarial process with the same OS identity swapping bytes
-between check and exec.
+Keep the PATH setting in your shell startup file. Configure Ask with a model
+your account supports; replace these placeholders:
 
 ```sh
-ply -sh -shell /opt/homebrew/bin/bash "use modern Bash where useful"
-ply -t ./tools -action-shell /opt/worker-shell -check 'make test' "repair it"
+export ASK_MODEL='anthropic/YOUR_MODEL_ID'
+export ANTHROPIC_API_KEY='YOUR_API_KEY'
+ask 'Reply with hello.'
 ```
 
-Fence labels remain protocol markers: a `bash` or `zsh` fence does not switch
-interpreters. If an interpreter needs fixed options, put them in a wrapper
-program and give that one program to `-shell` or `-action-shell`; Ply does not
-parse a second command line inside either flag.
+See [Ask's setup](https://github.com/patrickyoung/ask#install) for other
+providers and OAuth. Ply makes its model calls through Ask and uses the same
+account. It stores no credentials itself.
 
-Model selection still belongs to Ask. Ply passes `-m` and `-effort` through
-literally; `$PLY_EFFORT` supplies the latter to nested Ply workers as well.
-Ask decides which effort names a provider supports.
+## Your first checked task
 
-For sensitive tasks, `-goal-file file` reads the task from a bounded regular
-file instead of process argv. Piped stdin remains a separate evidence stream,
-so it can be spooled without changing the task or skill-selection input.
-
-### "But does it do MCP?"
-
-No, and it does not need to. MCP belongs at the protocol edge. Give Ply an
-ordinary capability directory produced and reviewed outside Ply:
-
-```
-$ ply -t tools "add 17 and 25, put the number in answer.txt"
-$ tools/get-sum -h                        # an ordinary program
-```
-
-The standalone [`mcp`](https://github.com/patrickyoung/mcp) edge can compile
-and admit such directories, but that is provisioning, not a Ply dependency.
-At runtime an admitted MCP capability sits beside `git` and `sed`; Ply neither
-knows nor cares how any program in the directory reaches its implementation.
-
-### "But how does it edit a file?"
-
-With a program, and for most of what a model does the program is `>`. A
-file it is writing whole is `cat > x <<'EOF'`, and a shell has always had
-that. The awkward case is the other one — three lines in the middle of
-nine hundred — where rewriting the file is not on and `sed` needs an
-expression escaped out of the very code being changed.
-
-[`contrib/edit`](contrib/edit) is that program. It replaces text by
-matching it, exactly and exactly once:
-
-```
-$ edit ring.go 'r.head = r.head + 1' 'r.head = (r.head + 1) % len(r.buf)'
-ring.go: 1 replacement
-```
-
-Nothing is fuzzy-matched, ever, and every edit in a call is located before
-any file is written — so a call that cannot be satisfied changes nothing,
-across as many files as it names. What a fuzzy matcher would have guessed
-at, this reports instead:
-
-```
-$ edit ring.go '    r.n++' '    r.n += 2'
-edit: ring.go: the search text was not found. It matches at line 6 once
-whitespace is ignored, so the difference is tabs: the file indents with
-tabs and the search text uses spaces.
-```
-
-It reads both edit dialects models actually write — `<<<<<<< SEARCH` blocks
-and `*** Begin Patch` hunks — because which one a model reaches for is
-trained in, and refusing the one it knows costs a turn and ends in a
-hand-rolled `sed`. `GUIDE.md` has the toolbox recipe and the one trap
-(`-t` means PATH is the toolbox alone, so link `python3` in beside it).
-
-> **The toolbox aims the model; it does not sandbox it.** `sh` has builtins,
-> and a redirect opens a file with no program involved. The security
-> boundary is the process — its user, its container, its `chroot` — as it
-> always was. Run `ply` somewhere you would be willing to hand a shell,
-> because that is what you are doing.
-
-## Done is a program's opinion
-
-```
-$ ply -sh -check 'go test ./...' "make the tests pass"
-```
-
-The loop is: ask → run what it wrote → repeat until it stops → run the
-check → if it rejects the candidate, hand the failure back → go again.
-`-cycles` bounds that; exit 2 means it ran out.
-
-The check runs **before** the first turn too, so a goal already met costs
-nothing and leaves no session behind:
-
-```
-$ ply -sh -check 'go test ./...' "make the tests pass"
-ply: check passed: go test ./...
-ply: nothing to do
-$ echo $?
-0
-```
-
-That is `make`'s oldest manner, and it is what makes `ply` safe in a git
-hook, a `Makefile`, or a loop.
-
-When that first check rejects the empty baseline, its terminal output is not
-thrown away. It rides with the goal in the first model turn and therefore
-lands in the Ask session as the run's first evidence. It does not count
-against `-cycles`: that bound still counts only checks after the model has had
-a chance to work.
-
-The check is a verifier process with a deliberately small contract. Before
-work it receives empty stdin. After the model stops it receives the candidate
-final report on stdin, terminated by a newline. Exit 0 accepts, exit 1 rejects
-and supplies feedback, and any other exit status, signal, or timeout means the
-verifier itself is broken and stops Ply with exit 1. A file or code check can
-ignore stdin; a question check can inspect the answer. If a wrapped program
-uses other statuses for an ordinary negative result, normalize those to 1 in
-the check command. Interpreter startup failure or verifier output beyond
-`-cap` is also broken; executable evidence is never silently truncated.
-
-The check is **yours**, not the model's, so it runs with your `$PATH` — with
-the toolbox merely first on it. Scoping it the way the model is scoped would
-mean `go test ./...` needed a toolbox holding `go`, `git` and a linker.
-
-When the judgment genuinely needs a model, nothing about the mechanism
-changes — because `ask` is a program:
-
-```
-ply -sh -check 'ask -n -q -f /tmp/judge.jsonl "Does this cover install?
-    Answer only yes or no." < README.md | grep -qi "^yes"' "document the installer"
-```
-
-(`-n -f` gives the judge its own thread — `ask` continues *your* conversation
-otherwise, which is the sharpest edge in the whole system and has its own
-section in the guide.)
-
-Without `-check`, exit 0 means only that the model stopped. That is a real
-answer for a goal no program can judge, and it is a weaker one than it
-looks. The default prompt says so to the model, too: *nothing checks this
-work but you; run the command that would show somebody else you are right.*
-
-## The protocol is a terminal session
-
-The model runs a command by writing a fenced shell block:
-
-````
-```ply
-go test ./... 2>&1 | tail -20
-```
-````
-
-An assistant turn is one action or one report. An action is optional leading
-prose followed by exactly one nonempty fenced shell block as the final content
-of the turn. Ply executes that one shell program and returns its result before
-the model can continue. A report contains no shell block and ends the loop.
-
-This is enforced rather than suggested. Ply consumes only the first complete
-command block. Later blocks and trailing prose are explicitly deferred and do
-not run; the first result comes back before the model chooses again. An empty
-or unfinished first block runs nothing and receives a correction. Commands
-that do not require observation can still be lines in one shell script;
-dependent work must wait for the next turn. The transcript therefore never
-pretends the model observed output that did not exist yet, without making
-useful work depend on perfect response formatting.
-
-There is no way to write a fenced shell block that is merely quoted. Indent it
-to quote it; that is the whole escape hatch. Checks and, by default, blocks run
-under the resolved `-shell` interpreter, `/bin/sh` by default. An explicit
-`-action-shell` changes blocks only. The prompt names the exact choices; fence
-labels do not select a different one. What comes back is what a terminal would
-have shown:
-
-```
-$ go test ./... 2>&1 | tail -20
---- FAIL: TestWrap (0.00s)
-    ring_test.go:41: want 3, got 2
-FAIL
-exit 1
-```
-
-A report with no block ends the run, and that report is the answer.
-
-`-require-action` tightens only that stopping rule: before any command has
-run, a prose-only reply is returned for correction rather than accepted as a
-final report. A third actionless reply stops at exit 2. This is useful for a
-caller whose public mode promises tool-mediated work; it remains optional for
-plain Ply because a question or review may legitimately need no command.
-
-The default prompt reads a goal by its outcome. An answer, review or diagnosis
-means inspecting relevant evidence and reporting it without unrequested
-changes. A requested artifact or system change means using programs to make
-the effect real, then inspecting the resulting state. Text in the final reply
-is only a report; it is not a substitute for writing the file or doing the
-work.
-
-That is guidance for the loop, not a second verdict. Ply does not mistake
-"some command ran" for completion: without `-check`, exit 0 still means only
-that the model stopped. When completion has an executable meaning, give it to
-`-check`.
-
-Two things fall out of choosing text over a tool-use API. It works with
-**any model `ask` can reach**, including ones whose tool support is an
-afterthought. And the trace is a typescript — the one format every model
-has read a million of, and every human already knows.
-
-## The Unix contract
-
-| stream | carries |
-| --- | --- |
-| stdout | the answer, and nothing else |
-| stderr | the typescript: what ran, what it printed, what it exited |
-| exit 0 | done — the check passed, or, with no check, the model stopped |
-| exit 1 | error — usage, no `ask`, provider failure, or broken verifier |
-| exit 2 | not done — check failing, a bound tripped, protocol stalled, context full |
-| exit 3 | the exact proposed action was declined and did not run |
-| exit 75 | the exact proposed action is parked for approval and did not run |
-| exit 125 | Cage boundary failure or reserved child status; effects may exist |
-| exit 130 | interrupted |
-
-Exit 2 earns its row, as it does in `ask`: a supervisor has to tell "did not
-work" from "broke", or it retries the wrong one.
-
-Commands run with stdin on `/dev/null`, in their own process group, under
-`-timeout` — and a kill reports **124**, `timeout(1)`'s number. Output is
-capped per command, keeping both ends, and the elision is announced *in the
-text the model reads*, because truncation it cannot see is the one failure
-nothing downstream can detect.
-
-An invocation gives up after 50 model turns by default, including a model
-that keeps emitting commands and never stops for the check. `-turns 0`
-deliberately removes that bound. An empty or unfinished first command block is
-returned for correction twice; a third malformed reply stops at exit 2 instead
-of being guessed at or mistaken for unchecked completion. With
-`-require-action`, the same bound applies to actionless final reports before
-the first command runs.
-
-An interactive controller can steer a running invocation without owning its
-loop. Pass `-steer FILE` and append newline-terminated UTF-8 guidance to that
-ordinary file. Ply reads complete lines only between model turns and sends
-them in the next Ask user message. Partial lines wait; malformed or oversized
-input stops the run instead of being truncated. Steering changes neither the
-tool grant nor the verifier.
-
-## Exact-action approval
-
-`-may-job JOB` puts [May](https://github.com/patrickyoung/may) immediately in
-front of every model-authored shell block. Ply sends May one canonical JSON
-envelope containing the admitted contract ID, physical working directory,
-resolved interpreter, exact PATH, nanosecond timeout, and literal script. May status 75 parks those
-exact bytes; status 3 declines them; only status 0 with a strict matching
-`spent` result permits the unchanged script to run.
-
-This is a Unix process seam, not a risk classifier or a second tool protocol:
+Use a fresh directory so the input and expected result are easy to see:
 
 ```sh
-ply -sh -may-job bench-demo -f run.jsonl "prepare the report"
-# exit 75; stderr names the digest and says NOT EXECUTED
-may pending
-may decide DIGEST
-ply -sh -may-job bench-demo -f run.jsonl "continue the same outcome"
+mkdir ply-demo
+cd ply-demo
+printf '%s\n' pear apple pear banana > names.txt
+
+ply -sh -f run.jsonl -turns 8 \
+  -check 'test -f sorted.txt && printf "apple\nbanana\npear\n" | diff -u - sorted.txt' \
+  'Read names.txt. Write sorted.txt with one name per line, sorted and deduplicated.'
+
+cat sorted.txt
 ```
 
-The decision still happens on `/dev/tty`; neither model text nor JSON can
-create a grant. Ply starts a fresh absolute-path May process for each proposed
-block, checks its exit status and exact result, seals a `ply.approval/v1`
-receipt into the Ask session, and only then executes a spent action. Failure to
-seal loses the one-shot grant and executes nothing. Ask, Brief, pre-checks and
-final checks remain outside the gate. Nested Ply processes inherit the same
-job and contract ID, but a nested child's 75 is ordinary command evidence to
-its parent, not a root terminal event. The approval-mode prompt therefore does
-not advertise delegation; a controller that deliberately launches nested Ply
-must inspect the child session separately.
-
-May owns the state transition; its public v1 digest is SHA-256 over
-`may-v1`, NUL, job, NUL, and exact action. Ply independently checks that wire
-value so a result cannot name unrelated May state.
-The May request has its own 10-second controller bound. The command's admitted
-timeout starts only if the action is spent, sealed, and handed to Runner.
-
-The exact May action schema is deliberately small and public:
-
-```json
-{"version":1,"contract_id":"...","directory":"/work","shell":"/bin/sh","path":"/tools","timeout_ns":120000000000,"script":"make test"}
-```
-
-Ply marshals that object canonically and adds one newline; those are the bytes
-May stores, displays, digests, and returns.
-
-Approval says that one exact shell script may run. It does not say the script
-is safe and it does not confine what the script can reach. Put May state and
-controller evidence outside the worker's writable boundary and compose Ply
-with Cage or another OS boundary when the worker is not trusted as the same
-user.
-
-### Confine the approved action, not the model client
-
-`-cage` composes that exact May decision with
-[Cage](https://github.com/patrickyoung/cage). It is intentionally one fixed
-policy in this release: the physical workspace and a private per-session temp
-directory are writable, host networking is denied, and the rest of the host
-filesystem remains readable. It requires `-may-job` and `-contract-id`:
-
-```sh
-PLY_DIR="$HOME/.local/state/ply/demo" \
-  ply -sh -C "$PWD" -f "$HOME/.local/state/ply/demo/run.jsonl" \
-  -contract-id contract-demo -may-job bench-demo -cage \
-  -check 'test -s report.txt' "create report.txt"
-```
-
-Ask, Brief, May, and the verifier are not caged. Only the literal
-model-authored action becomes:
+Expected file:
 
 ```text
-/absolute/cage -w /physical/workspace -- /absolute/sh -c SCRIPT
+apple
+banana
+pear
 ```
 
-The verifier keeps caller authority. A read-only predicate such as
-`test -s report.txt` is different from `make test` or `go test`, which may run
-workspace code the model just changed. Cage confines the action, not code an
-operator later chooses to execute outside it.
+The check compares exact output with an independently written answer. The
+model can choose a method, but it cannot satisfy this check just by saying
+that it finished.
 
-Ply seals `ply.approval/v2` before Cage starts. That receipt retains the v1
-May evidence and additionally binds the Cage executable digest, exact argv,
-workspace, private temp root, and denied-network policy. Cage status 125 is
-reserved as confinement failure: Ply stops with 125 before another model turn
-or check, even if the child itself chose that number.
+Run the same Ply command again. Because the check runs **before the first
+model turn**, an already correct result exits 0 without calling a model.
 
-Before returning 125, Ply seals a terminal `ply.confinement/v1` receipt after
-the approval receipt. It binds the approved action, Cage identity and roots,
-status, exact captured output bytes (base64 in JSON), and whether effects may
-exist. A failure to seal still returns 125 and says the terminal evidence could
-not be recorded; it never continues to the model or verifier.
+`-sh` grants ordinary shell access with your user permissions. Use a workspace
+where you intend the model to run commands; see the boundary options below.
 
-Controller state is authority, so Ply refuses Cage mode when the Ask session,
-steering file, session pointer, Ask/May/Cage executable, or May state sits
-inside the writable workspace. Put sessions in an external absolute state
-directory. This is write and network confinement, not secrecy: actions can
-still read host files, consume CPU, signal same-user processes where the host
-backend permits it, and exploit programs they run. Ply also rejects a writable
-root containing a pre-existing hard link to a file outside the admitted roots;
-without that scan, a pathname boundary would not protect the shared inode.
+![Animated diagram: The check closes the loop. A rejected check returns feedback to Ply. Limits bound the work.](docs/readme/flow.gif)
 
-## The log is somebody else's problem
+[Static version of the diagram](docs/readme/flow.png). This illustrates the workflow; it is not a recorded run.
 
-`ply` keeps no log. The conversation is an `ask` session: each consumed action
-is in an assistant turn, its output and any explicit deferral are in the next
-user turn, so the file is the entire run — and `ask` already proves those.
+## Understand the loop
 
-```
-$ ask replay -check ~/.ply/sessions/20260801-142233-a3f9c1e0.jsonl
-ok: 20260801-142233-a3f9c1e0.jsonl replays exactly (24 events)
+```mermaid
+flowchart LR
+    G[Goal] --> P[Run the check]
+    P -->|Already passes| D[Done]
+    P -->|Rejects| A[Ask the model]
+    A -->|Shell command| R[Run one command]
+    R -->|Actual output| A
+    A -->|Final report| C[Check the candidate]
+    C -->|Accepts| D
+    C -->|Rejects with feedback| A
 ```
 
-One log format, one replay invariant, no second pipeline to drift.
+Each turn contributes one command or one report. Ply executes the first
+complete shell block and returns its result before another turn. Extra blocks
+and trailing claims are deferred. An incomplete block runs nothing.
 
-For a crash-durable invocation, `-checkpoint FILE` holds a nonblocking
-whole-run lock, resumes the Ask session named by that pointer, or publishes a
-new one before the first model turn. It follows compaction automatically:
+Your verifier receives empty stdin before work and the proposed final report
+on stdin afterwards:
+
+| Check status | Ply's response |
+| --- | --- |
+| 0 | Accept the result |
+| 1 | Give the feedback to the model and try again within the limits |
+| Anything else, a signal, or timeout | Stop: the verifier is broken |
+
+File and code checks can ignore stdin. Answer checks can read it. Normalize
+an underlying program's ordinary negative status to 1 when necessary. The
+check runs with the caller's PATH, with any toolbox prepended.
+
+## Choose the tools and limits
+
+| Option | Use it for |
+| --- | --- |
+| `-sh` | Ordinary programs on your current PATH |
+| `-t DIR` | A directory of programs as the model's PATH |
+| `-C DIR` | A particular working directory |
+| `-turns N` | A model-turn limit; default 50, zero removes it |
+| `-cycles N` | A limit on candidate/check cycles |
+| `-timeout 90s` | A time limit for each command |
+| `-m provider/model` / `-effort NAME` | Pass model policy through to Ask |
+| `-goal-file FILE` | Read a private goal from a bounded regular file |
+
+A toolbox is an ordinary directory. For example, in a fresh workspace:
 
 ```sh
-ply -checkpoint "$HOME/.local/state/ply/release.current" -compact -sh \
-  -check './release-ready' "prepare the release"
+mkdir tools
+ln -s "$(command -v cat)" tools/cat
+ln -s "$(command -v sort)" tools/sort
+ply tools -t tools
+ply -t tools -turns 8 'Read names.txt and explain what is duplicated.'
 ```
 
-Run the same command again after interruption to continue. The checkpoint is
-conversation context, not a task database or filesystem snapshot; an effect
-interrupted in flight remains uncertain and must not be blindly repeated.
+**The toolbox is scope, not a sandbox.** Shell builtins, redirection, and
+absolute paths still exist. Adding or removing a PATH entry does not confine
+the process. [Cage](https://github.com/patrickyoung/cage) or an external OS
+boundary supplies confinement.
 
-Every verifier run goes in it too, as a typed `ply.verifier/v1` Ask note
-followed by a prefix seal. The record is not folded, so it does not change
-the conversation; it binds the candidate, verifier, interpreter, result,
-captured output, and optional intent-contract digest:
+Commands use `/bin/sh -c`, have no interactive stdin, and run in their own
+process group. `-shell` selects another interpreter; `-action-shell` selects
+one for model commands only, leaving the verifier separate. These must be
+executables accepting `-c`, not command strings. Ply never inherits `$SHELL`.
 
-```
-$ jq 'select(.type=="note" and .data.kind=="ply.verifier/v1") | .data.body' run.jsonl
-{"phase":"candidate","outcome":"accepted","exit_code":0,...}
-```
+## Add a procedure and keep the evidence
 
-Without that receipt a session holds every command that ran and nothing
-machine-checkable about whether the work was *done*. Rejections, acceptance,
-and broken verifiers are all recorded. `ask replay -check` verifies event
-sequence and seals, so changes, gaps, reordering, or an unsealed record within
-a retained prefix fail. A prefix seal is not an external proof against
-truncating the file to an earlier valid prefix. It does not claim the verifier
-was wise; it proves the retained record of what ran and what that program
-decided. This is what lets
-[`hone`][hone] learn from the run without guessing. A run with no `-check`
-writes none: done is a program's opinion, and with no program there is no
-opinion to record.
-
-What `ply` loaded goes in beside it. The system prompt labels a selected skill
-and explains how to fetch its bundled resources through `brief cat`; the
-composition note also retains Brief's replay pointer without putting that
-random path into the cache-stable system prompt:
-
-```
-[ply] loaded skill house (named)
-[ply] selector evidence: brief: house · ask replay -check ...jsonl
-```
-
-That is what lets `hone -into -` put a lesson back on the procedure the run
-was following. A run that loaded a procedure and stumbled *anyway* is
-evidence that procedure is incomplete.
-
-[hone]: https://github.com/patrickyoung/hone
-
-## Brief it first
-
-```
-$ ply -sh -s web-perf -check './budget.sh' "get LCP under 2.5s"
-$ ply -sh -s -       "make my page load faster"     # brief picks the skill
-```
-
-`-s` appends a [`brief`][brief] skill to the system prompt; `-s -` lets the
-catalogue choose. `brief` refuses to guess, so nothing matching says so on
-stderr and the run continues without one — a confidently wrong procedure is
-worse than none.
-
-## A sub-agent is a program
-
-Every command `ply` runs gets `$PLY` naming the running binary and
-`$PLY_DEPTH` counting the nesting. So a tool that starts another `ply` is
-just a tool:
+Install [Brief](https://github.com/patrickyoung/brief) to supply skills:
 
 ```sh
-#!/bin/sh
-# review one file and print the findings
-exec $PLY -t "$(dirname "$0")" -q "review $1 for concurrency bugs"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/brief@main
+ply -sh -s go-review -check 'go test ./...' 'Fix the failing tests.'
 ```
 
-When the goal explicitly asks for subagents or parallel agent work, the root
-prompt teaches the same mechanism directly. It recommends no more than three
-independent, read-heavy children, 12 turns per child, indexed
-sessions/output/status files, and a root synthesis that preserves failed
-children. Nested prompts do not advertise delegation again. A toolbox-scoped
-run sees this guidance only when its toolbox contains the bookkeeping programs
-the recipe needs; Ply never widens a grant.
+That example requires a `go-review` skill in Brief's catalogue. Use `-s -` to
+let Brief choose: offline matching first, then its model selector if needed.
+No match leaves the run without a skill and says so.
 
-An outer worker that owns a different specialist or VM boundary can pass
-`-no-delegate`. This removes Ply's generic nested-process recipe from the
-system prompt without changing the tool grant or pretending delegation ran.
+Inspect a named run with Ask:
 
-Fan-out, specialists and teams are still background jobs, `wait`, `xargs -P`,
-and shell scripts. There is no team format, provider-specific orchestration, or
-daemon. `PLY_DEPTH` stops at 8, because a loop that spawns itself is otherwise
-a fork bomb with a credit card. Concurrent writers should use disjoint
-worktrees; one shared tree has one writer.
-
-## Think in shell
-
-```bash
-# a goal per package, four at a time, each in its own tree
-ls -d ./pkg/*/ | xargs -P4 -I{} ply -sh -C {} -check 'go vet ./...' "fix the vet warnings"
-
-# in a Makefile, where the check is already written
-release: ; ply -sh -check 'go test ./...' "make the tests pass" && goreleaser
-
-# as a filter, mid-pipe
-kubectl logs deploy/api | ply -t tools "find the cause of the 500s" | tee triage.md
-
-# until it holds, on a schedule; the pre-check makes the quiet runs free
-*/30 * * * * ply -sh -q -check '/usr/local/bin/slo-ok' "bring the SLO back"
+```sh
+ask replay run.jsonl
+ask replay -check run.jsonl
+ply capabilities
+ply system
 ```
 
-## Commands
+The conversation is an Ask session. Every candidate verifier outcome is a
+typed, sealed `ply.verifier/v1` receipt; loaded skills are recorded too. Replay
+checks the retained history's integrity, not the wisdom of the verifier or the
+truth of the answer. A run without `-check` has no verifier verdict.
 
-```
-ply [flags] <goal>       work the goal; stdin rides with it, or is it
-ply tools [flags]        print the toolbox exactly as the model sees it
-ply system [flags] [goal] print the system prompt that would be sent
-ply version              print the version
-ply help                 print the flag summary
-```
+[Hone](https://github.com/patrickyoung/hone) can turn a verified recovery into
+a reviewed lesson for the next run. [Cite](https://github.com/patrickyoung/cite)
+can be the answer verifier when you need exact citation identities.
 
-Anything that is not a command is the goal; `--` sends a word that is one.
-Full reference in `ply.1`, and tests keep it true: every flag and verb
-appears in the man page and in `ply help`, help fits eighty columns and goes
-to stdout while misuse goes to stderr, and the man page is lint-clean pure
-ASCII carrying the version the binary reports.
+## Continue longer work
 
-## What it deliberately is not
+A named session (`-f run.jsonl`) retains conversation. A checkpoint also tracks
+the current session after compaction:
 
-No daemon, no config file, no MCP, no REPL or TUI — the shell is the REPL
-and `ply` is a filter. No provider code, no session format, no permission
-prompt (the toolbox is the policy and the process is the boundary), no
-plugin API, and no second way to name a tool besides putting it on `$PATH`.
-
-The list is in [AGENTS.md](AGENTS.md), which is short and is the whole set
-of rules a change is held to. [DESIGN.md](DESIGN.md) is why it is shaped
-this way. Adding one of the missing things back is a conversation before it
-is a patch.
-
-## Contributing
-
-```
-go test ./...
+```sh
+mkdir -p "$HOME/.local/state/ply"
+ply -sh -checkpoint "$HOME/.local/state/ply/demo.current" -compact \
+  -check './check-result' 'Finish the current task.'
 ```
 
-The two rules that matter most: the Unix contract (stdout is the answer
-alone, exit 2 means not-done and never broke) and the sentence the whole
-program has to keep fitting inside — *ask, run, check, repeat*.
+Supply your own `./check-result`. Repeating the same invocation resumes its
+context, and the pre-check still decides whether work remains. Limits are per
+invocation. A checkpoint is not a filesystem snapshot or permission to repeat
+an uncertain external effect.
 
-Security issues go through [SECURITY.md](SECURITY.md), not the issue
-tracker.
+`-steer FILE` reads newly appended, newline-terminated guidance between model
+turns. It does not change the tool grant or verifier. For durable scheduling,
+wrap the invocation with [Tend](https://github.com/patrickyoung/tend).
 
-## License
+## Review actions and constrain writes
 
-[MIT](LICENSE).
+`-may-job JOB` asks [May](https://github.com/patrickyoung/may) to authorize
+each exact model-authored shell action. Status 75 means it is parked without
+execution; inspect `may pending`, run `may decide DIGEST` at a terminal, and
+continue the same task. Only a byte-identical proposal can spend that grant.
+
+`-cage` adds action-only confinement and requires both `-may-job` and
+`-contract-id`. Place controller state outside the writable workspace:
+
+```sh
+mkdir -p "$HOME/.local/state/ply/caged-demo"
+PLY_DIR="$HOME/.local/state/ply/caged-demo" \
+  ply -sh -C "$PWD" \
+  -f "$HOME/.local/state/ply/caged-demo/run.jsonl" \
+  -contract-id demo-v1 -may-job demo-v1 -cage \
+  -check 'test -s report.txt' 'Create report.txt.'
+```
+
+The workspace and private action temp directory are writable; host network
+access is denied; **host reads remain unrestricted**. Ask, Brief, May, and
+the verifier stay outside Cage. A verifier that executes model-modified code
+needs its own appropriate boundary. Approval and confinement receipts remain
+in the Ask session. See [SECURITY.md](SECURITY.md) before using this boundary
+with untrusted work.
+
+External action adapters can use `-action-boundary-exit N` to stop with 125
+when their own boundary fails. Their implementation and authority remain the
+operator's responsibility; see the [manual](ply.1).
+
+## More tools, same interface
+
+- [MCP](https://github.com/patrickyoung/mcp) can expose reviewed remote
+  capabilities as ordinary executable files for a toolbox.
+- [Agent](https://github.com/patrickyoung/agent) adds a standing goal, skills,
+  separate work/state directories, checks, and history in one home folder.
+- [Bench](https://github.com/patrickyoung/bench) adds a terminal interface for
+  negotiating an outcome and following the work.
+- [contrib/edit](contrib/edit) provides exact text replacement and patch input.
+  It is a separate program; its toolbox also needs Python 3.
+
+When explicitly asked for parallel work, Ply can guide the root model to
+launch bounded child Ply processes and collect their results. Children are
+ordinary programs, not a team service. Use separate worktrees for independent
+writers. `-no-delegate` disables the generic delegation guidance.
+
+## Outcomes and reference
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | Check passed, or the model stopped when no check was supplied |
+| 1 | Usage, provider, infrastructure, or verifier failure |
+| 2 | Not done: a check still fails, context is full, or a bound/protocol limit was reached |
+| 3 / 75 | Exact action declined / waiting for approval |
+| 125 | A confinement or action-boundary failure; effects may exist |
+| 130 | Interrupted |
+
+If a run stops at 2, inspect stderr and its session before choosing new
+limits. If it stops at 125, investigate the recorded boundary outcome before
+any retry. Per-command output is bounded; omitted text is explicitly marked.
+
+```text
+ply [flags] goal
+ply tools [flags]
+ply system [flags] [goal]
+ply capabilities
+ply version
+ply help
+```
+
+[GUIDE.md](GUIDE.md) has recipes, [ply.1](ply.1) has every option, and
+[DESIGN.md](DESIGN.md) explains the design. Contributors: read
+[AGENTS.md](AGENTS.md), run `go test ./...`, and add `go test -race ./...`
+for loop or runner changes. [MIT license](LICENSE).
