@@ -1,95 +1,123 @@
-# rules
+# Rules
 
-`rules` prints the bounded repository instructions that apply at a directory.
-It makes workspace context available to agents without hiding prompt input
-inside an agent runner.
+**Read the repository instructions that apply exactly where you are working.**
+
+Rules gathers `AGENTS.md` and `CLAUDE.md` from a project's root down to a target
+directory. It prints the complete instructions in a predictable order, so you
+can inspect them yourself or explicitly give them to an agent.
 
 ```sh
-rules
-rules -list ./internal/auth
-ASK_SYSTEM="$(ask system; rules)" ply -sh -check 'go test ./...' 'fix it'
+rules                     # instructions for the current directory
+rules -list ./internal    # applicable file paths for a subdirectory
 ```
 
-Instruction text is stdout. Root and file provenance are stderr. `-list`
-replaces the text with one logical instruction path per line, while performing
-the same validation as a normal read.
-
-## The rule
-
-The project root is the nearest ancestor containing either a `.git` directory
-or a regular `.git` file, as used by a Git worktree. No language manifest,
-configuration file, or environment variable changes that decision.
-
-Starting at the root, `rules` walks down to the target directory. At every
-level it reads, in this order:
-
-1. `AGENTS.md`
-2. `CLAUDE.md`
-
-Broader instructions therefore appear before narrower ones. Both names apply
-when both exist. If multiple applicable paths have the same fully resolved
-path, `rules` emits that file body only at its first position. `-list` still
-prints every logical path, and stderr identifies later paths as aliases. Two
-distinct files remain distinct even when their contents match. `rules` does
-not interpret, merge, or override their text.
-
-The unique applicable file bodies may contain at most 32 KiB in total, so one
-file is necessarily subject to the same bound. The byte count is compiled
-into the program: there is no config file and no environment override. A
-normal read copies file bodies in order and inserts one newline only when
-adjacent bodies would otherwise share a line.
-
-The whole set is resolved, read, and checked before stdout is written. An
-oversized file, oversized set, special file, or unsafe symlink therefore
-produces no partial prompt. Empty instruction sets are successful and produce
-empty stdout.
-
-Instruction symlinks are followed only when the fully resolved target remains
-inside the canonical project root. The logical path appears under `-list`;
-stderr shows both the logical and resolved paths. This lets a repository use
-the common compatibility link `CLAUDE.md -> AGENTS.md` without spending prompt
-space on the same instructions twice.
+No model, account, configuration file, or background service is needed.
 
 ## Install
 
-`rules` requires Go 1.26 or newer.
+Requires **Go 1.26+**. Install current `main`:
 
 ```sh
-go install github.com/patrickyoung/rules@latest
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/rules@main
+export PATH="$HOME/.local/bin:$PATH"
+rules help
 ```
 
-Or build the local checkout:
+Keep the PATH setting in your shell startup file. Examples below use a Unix
+shell and Git.
+
+## See it work in a minute
+
+Make a disposable repository with broad and local instructions:
 
 ```sh
-go build -o rules .
+mkdir rules-demo
+cd rules-demo
+git init -q
+mkdir -p internal
+printf '%s\n' 'Use clear names and explain behavior changes.' > AGENTS.md
+printf '%s\n' 'Preserve the public API in this directory.' > internal/AGENTS.md
+
+rules -list internal
+rules internal
 ```
 
-## Exit status
+`-list` prints the two applicable instruction paths. The second command prints
+both bodies, with the root instruction first. File provenance goes to stderr;
+only the instructions go to stdout.
 
-| status | meaning |
-| --- | --- |
-| 0 | the complete set was printed, including an empty set |
-| 1 | no project root was found, or an instruction was refused |
-| 2 | invalid invocation, filesystem error, or output error |
+Now try `rules .`: only the root instruction applies. A directory with no
+applicable instructions produces empty stdout and exits successfully.
 
-`rules` is a reader only. It has no model, cache, watcher, prompt template,
-configuration file, or automatic connection to `ask` or `ply`.
+## Give the same context to an agent
 
-Repository instructions are guidance, not authorization. Putting their text
-in any prompt role does not grant permission to expose secrets, widen network
-access, approve actions, or escape the agent's execution boundary. Those
-decisions belong to the runner and operator.
+With [Ask](https://github.com/patrickyoung/ask) installed and configured:
 
-For an unattended script, check both prompt-producing commands before starting
-the agent. A shell does not propagate a failed command substitution through an
-environment assignment that prefixes another command:
+```sh
+system=$(ask system) &&
+workspace=$(rules internal) &&
+ASK_SYSTEM="$system
+$workspace" ask 'Summarize the conventions I should follow here.'
+```
+
+For executable work, install [Ply](https://github.com/patrickyoung/ply) and run
+this from the repository you want it to change:
 
 ```sh
 system=$(ask system) &&
 workspace=$(rules) &&
 ASK_SYSTEM="$system
-$workspace" ply -sh -check 'go test ./...' 'fix it'
+$workspace" ply -sh -check 'go test ./...' 'Fix the failing tests.'
 ```
 
-See [GUIDE.md](GUIDE.md) for examples and [SECURITY.md](SECURITY.md) for the
-trust boundary.
+Both reads are checked before the model starts. Use your project's actual
+verifier instead of `go test ./...` when appropriate. Ply's `-sh` grants shell
+execution; repository instructions are **guidance, not authorization**.
+
+## What gets included
+
+1. The root is the nearest ancestor containing a `.git` directory or regular
+   `.git` file, including a Git worktree marker.
+2. Rules walks from that root to the target directory.
+3. At each level, it reads `AGENTS.md` before `CLAUDE.md`.
+4. It validates the whole set before printing any instruction text.
+
+Rules does not interpret or reconcile conflicting prose. Broader instructions
+appear first, and narrower instructions follow them.
+
+Symlinks may resolve only inside the canonical project root. If two paths
+resolve to the same canonical file, its body appears once; `-list` still
+shows both logical paths. Separate files with identical text remain separate.
+The complete set of unique bodies is limited to **32 KiB**. Oversized files,
+unsafe symlinks, and special files are refused without a partial prompt.
+
+## Combine the right kinds of context
+
+| Tool | Supplies |
+| --- | --- |
+| Rules | Repository conventions that apply at a directory |
+| [Brief](https://github.com/patrickyoung/brief) | A reusable procedure selected for a task |
+| [Context](https://github.com/patrickyoung/context) | Retrieved evidence, supplied as message data |
+| [Ask](https://github.com/patrickyoung/ask) / [Ply](https://github.com/patrickyoung/ply) | Reasoning, or actions judged by an explicit check |
+
+Rules connects to nothing automatically. You choose when its output is used,
+and it never grants file access, network access, or approval.
+
+## Troubleshooting and reference
+
+| Status | Meaning and next step |
+| --- | --- |
+| 0 | Complete output, including a legitimately empty instruction set |
+| 1 | No project root or refused instruction; check location, size, and symlinks |
+| 2 | Invalid invocation, filesystem error, or output error |
+
+```text
+rules [-list] [directory]
+rules help
+rules version
+```
+
+See [GUIDE.md](GUIDE.md), [rules.1](rules.1), and [SECURITY.md](SECURITY.md).
+For changes, read [AGENTS.md](AGENTS.md) and run `go test ./...`,
+`go test -race ./...`, and `go vet ./...`. [MIT license](LICENSE).
