@@ -1,230 +1,190 @@
-# brief
+# Brief
 
-Find the skill that fits a task. Print it on stdout.
+**Give an agent the right procedure, without loading your whole library.**
 
+Brief finds, reads, and checks Agent Skills: folders containing a `SKILL.md`
+with a name, description, and Markdown instructions. Use it to share house
+rules, repeat a reliable method, or keep a growing skill collection usable.
+
+```sh
+brief find 'release notes'
+brief cat release-notes
 ```
-$ brief find "my page is slow"
-web-perf
 
-$ ask -S "$(brief cat web-perf)" "why is this slow?" < trace.json
+Brief works offline. A model is optional for finding a skill by meaning;
+executing the procedure belongs to your agent.
 
-$ ask -S "$(ask system; brief cat pdf-processing)" "pull the tables from q3.pdf"
-```
-
-A skill is a directory with a `SKILL.md` in it: YAML frontmatter saying what
-it does and when to use it, then Markdown instructions. That is the [Agent
-Skills specification][spec], and it is all `brief` knows. It does not run
-skills, install them, or wrap an agent around them. It is the catalogue, as
-a filter — it lists, it chooses, it prints, and it stops there.
-
-[`ask`][ask] is the companion, and the name is the whole idea: **you brief
-the agent, then you ask it.** `ask` has the model, `brief` has the
-procedure, and the seam between them is a pipe.
-
-[spec]: https://agentskills.io/specification
-[ask]: https://github.com/patrickyoung/ask
+[Install](#install) · [First skill](#make-your-first-skill) ·
+[Use with Ask and Ply](#put-the-procedure-to-work) · [Field guide](GUIDE.md)
 
 ## Install
 
-```
-go install github.com/patrickyoung/brief@latest
-```
-
-Go 1.26 or newer, and a Unix. Nothing to configure: `brief` reads the skills
-you already have. If you use Claude Code, that is `~/.claude/skills` and
-`.claude/skills` in the project, and both are on the default path.
-
-`ask` is optional. Everything except `brief find -ask` works without it, and
-without a network, a key, or an account.
-
-## Progressive disclosure is a pipeline
-
-The specification asks agents to load skills in three stages: the names and
-descriptions at startup, one skill's instructions when it is chosen, and its
-bundled files only when they are needed. That is not a runtime. It is `ls`
-and `cat`.
-
-| level | the specification says | `brief` |
-| --- | --- | --- |
-| 1 | name and description, ~100 tokens each, always loaded | `brief ls` |
-| 2 | the instructions, under 5k tokens, when the skill is chosen | `brief cat name` |
-| 3 | scripts, references and assets, only when needed | `brief ls name`, `brief cat name/references/FORMS.md` |
-
-So the whole mechanism is two programs and a pipe:
-
-```
-$ brief ls
-agents-sdk	Build AI agents on Cloudflare Workers using the Agents SDK. Load when …
-cloudflare	Comprehensive Cloudflare platform skill covering Workers, Pages, storage …
-durable-objects	Create and review Cloudflare Durable Objects. Use when building …
-…
-
-$ brief ls | ask -q 'which of these fits "my page is slow"? name only'
-web-perf
-```
-
-`brief find -ask` is that pipeline with the failure modes handled, and the
-numbers are the reason it exists: those nine skills are **3.7 KB** as a
-catalogue and **88 KB** as instructions. Choosing costs about 900 tokens
-instead of 22,000, and 21,000 of those tokens would have been about the
-eight skills that were wrong.
-
-## The two ways to choose
-
-```
-$ brief find "durable object websocket chat room"     # words: free, instant, offline
-durable-objects
-
-$ brief find "make my website load faster"            # nothing matched
-$ echo $?
-1
-
-$ brief find -ask "make my website load faster"       # a model, via ask
-brief: web-perf · ask replay -check ~/.brief/find/20260801-205940-a0b7e2fa.jsonl
-web-perf
-```
-
-The default is a weighted word match over names and descriptions. A word
-only one skill uses decides; a word most of them use is dropped, not scored
-low — which is why the second command above says nothing rather than naming
-whichever skill sorted first. **A confidently wrong skill is worse than no
-skill**, because the agent that loads it is then following the wrong
-procedure with no way to tell.
-
-`-ask` runs `ask` for the ones words cannot reach. "Make my website load
-faster" shares no word with "Measures Core Web Vitals (LCP, INP, CLS)", and
-a model closes that gap for about a tenth of a cent.
-
-Three things hold that flag together:
-
-- **The disclosure invariant.** `-ask` sends the catalogue and the task.
-  Never a body, never a script, never a bundled file. The catalogue is a
-  private, stable-named text attachment containing exactly the bytes `brief
-  ls` prints; the task is user text on Ask's stdin. A test records both.
-  Task text therefore appears in neither process argv nor the higher-priority
-  selector system prompt.
-- **Every choice is replayable.** `-ask` runs `ask` in a fresh session of
-  its own under `~/.brief/find/`, never the conversation you are having, and
-  prints where it went. `ask replay -check` proves that session months
-  later. A skill selection is a decision an agent made on your behalf, and
-  it should be possible to read it back.
-- **The answer is checked, not trusted.** A model that invents a plausible
-  skill name is an ordinary event. That name is about to become a path, so
-  it is matched against the catalogue and refused if it is not there.
-
-## The Unix contract
-
-| stream | carries |
-| --- | --- |
-| stdout | names, instructions, findings — the answer, and nothing else |
-| stderr | which session recorded a choice, why a ranking went that way |
-| exit 0 | yes: found, or clean |
-| exit 1 | no: nothing matched, or lint had something to say |
-| exit 2 | error: bad usage, unreadable skill, `ask` failed |
-
-Yes and no are both ordinary answers a script branches on, so they are
-separated from *broken*:
+Requires **Go 1.26+** and a **Unix system or WSL**. Install current `main`:
 
 ```sh
-s=$(brief find -ask "$task") || { echo "no skill for that" >&2; exit 1; }
-ask -S "$(ask system; brief cat "$s")" "$task"
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/brief@main
+export PATH="$HOME/.local/bin:$PATH"
+brief version
 ```
 
-This is grep's contract, not `ask`'s. `ask` answers a question, where
-anything other than an answer is a failure; `brief` asks one, and "no" is a
-real answer. When they are composed, the difference matters exactly once —
-`brief find` returning 1 means nothing fit, and should not be retried.
+Keep the PATH setting in your shell startup file. No account or API key is
+needed for this tutorial.
 
-## Where skills live
+## Make your first skill
 
-`$BRIEF_PATH` is `$PATH`, for skills: colon-separated, searched left to
-right, first match wins. The default is
+Start in a project directory. This creates a project-local skill:
 
-```
-.claude/skills : ~/.claude/skills : ~/.brief/skills
+```sh
+brief new -d .claude/skills release-notes
 ```
 
-so a skill in the project shadows the one in your home directory, the same
-way `./bin/foo` shadows `/usr/bin/foo`. Shadowing is silent by design and
-visible on request:
+Replace its starter text with a short, usable procedure:
 
-```
-$ brief path -a cloudflare
-/Users/you/work/api/.claude/skills/cloudflare
-/Users/you/.claude/skills/cloudflare
-```
+```sh
+cat > .claude/skills/release-notes/SKILL.md <<'SKILL'
+---
+name: release-notes
+description: Write concise release notes from a change list. Use when announcing a release or summarizing shipped changes.
+---
 
-A skill can also be named by path, which is how you use one that is not
-installed anywhere yet: `brief cat ./draft`, `brief lint .`.
+# Release notes
 
-## lint
+1. Lead with the change a user will notice.
+2. Group the remaining changes into Added, Fixed, and Changed.
+3. Explain required user action explicitly.
+4. Omit empty sections and do not invent changes.
+SKILL
 
-The specification has rules with numbers in them, and a skill that breaks
-one usually fails silently — it loads with the wrong name, or it does not
-load at all, and nothing says why.
-
-```
-$ brief lint
-~/.claude/skills/cloudflare/SKILL.md:4: warning: unknown field "references"; …
-~/.claude/skills/cloudflare/SKILL.md:11: warning: 320 file(s) in references/ …
-~/.claude/skills/wrangler/SKILL.md:5: warning: the body is 919 lines (the
-  specification asks for under 500); move detail into references/
-brief: 9 skill(s), 0 error(s), 6 warning(s)
+brief lint -strict .claude/skills/release-notes
+brief find 'release notes'
+brief cat release-notes
 ```
 
-Errors are violations: a name that is not the directory name (the skill will
-not load, and nothing will tell you), a description over 1024 characters, a
-`metadata` that is not a mapping, a duplicate key that YAML silently drops.
-Warnings are the specification's advice and its silences — the 500-line
-budget, a description that says what a skill does but never when to use it,
-and the two that only show up in production:
+The check should pass, `find` should print `release-notes`, and `cat` should
+print the instructions without their YAML frontmatter. You now have a reusable
+procedure in an ordinary, versionable file.
 
-- **a reference that is not there.** `SKILL.md` tells the agent to read
-  `references/FORMS.md`, and there is no such file. Progressive disclosure
-  makes this invisible until the moment the skill is used.
-- **a file nothing mentions.** Twelve files in `references/` that no
-  instruction names. No agent reads a directory it was never told about, so
-  they are not disclosed progressively — they are not disclosed at all.
+## Put the procedure to work
 
-`-strict` promotes warnings to errors, which is what CI wants. `-q` prints
-nothing and leaves the exit status, which is what a hook wants.
+Install and configure [Ask](https://github.com/patrickyoung/ask) for your
+provider, then combine its default prompt with your chosen skill:
 
-## Writing one
-
-```
-$ brief new pdf-processing
-pdf-processing/SKILL.md
-$ brief lint -strict pdf-processing
-brief: 1 skill(s), 0 error(s), 0 warning(s)
+```sh
+printf '%s\n' 'Added CSV export. Fixed duplicate notifications.' > changes.txt
+system=$(ask system) &&
+procedure=$(brief cat release-notes) &&
+ASK_SYSTEM="$system
+$procedure" ask 'Write this release note.' < changes.txt
 ```
 
-The scaffold passes `-strict` on the way out, because the first file an
-author sees teaches them the shape.
+The shell checks both reads before calling Ask. Your file is the input, the
+skill is the method, and Ask supplies the wording.
 
-## The prompt is a value
+For work that needs file edits or repeated checks, use
+[Ply](https://github.com/patrickyoung/ply):
 
-`brief prompt` prints the system prompt `find -ask` sends, so extending it is
-ordinary shell rather than a fork:
-
-```
-$ brief prompt | tail -1
-none is a real answer and often the right one. A skill loaded for a task it
-does not fit costs the agent its context and points it at the wrong
-procedure, which is worse than no skill at all.
+```sh
+ply -sh -s release-notes -check 'test -s RELEASE.md' \
+  'Read changes.txt and write RELEASE.md using the release-notes procedure.'
 ```
 
-`brief help` prints every command and flag inside eighty columns, and
-`brief version` prints one number. Both go to stdout, so `brief help | less`
-works and a misuse still leaves stdout empty for whatever was parsing it.
+This example grants shell execution. The check proves that a nonempty file
+exists; review its content or supply a stronger check for publication quality.
 
-## Deliberately absent
+## Find what fits, then load only what you need
 
-No install command, no registry, no marketplace, no cache, no config file,
-no daemon, no MCP server, and no way to execute a skill. `brief` prints
-things. Running what it prints is the shell's job, and there is already a
-program for the part that needs a model.
+| Step | Command | What is disclosed |
+| --- | --- | --- |
+| Browse | `brief ls` | Names and descriptions |
+| Choose offline | `brief find 'release notes'` | Matching skill names |
+| Choose with a model | `brief find -ask 'announce what shipped'` | Catalogue and task, never skill bodies |
+| Read instructions | `brief cat release-notes` | The named skill's body |
+| Inspect resources | `brief ls release-notes` | Files bundled with that skill |
+| Read one resource | `brief cat release-notes/references/example.md` | That explicitly named file, if present |
 
-**[GUIDE.md](GUIDE.md)** has the recipes: the shell function that turns any
-task into a skilled `ask`, using `brief` with agents that are not `ask`,
-keeping a project's skills honest in CI, and the three things that will bite
-you.
+Offline finding ranks names and descriptions. It can return **no match**
+(exit 1), which is preferable to guessing. `-v` explains the ranking and
+`-n 3` requests up to three names. `-ask` requires configured Ask, makes a
+provider call, validates the returned name, and records its own replayable
+session under `~/.brief/find/` by default.
+
+## Use the skills you already have
+
+The default search path is, in order:
+
+```text
+.claude/skills
+~/.claude/skills
+~/.brief/skills
+```
+
+A project skill shadows a personal skill of the same name. Inspect the winner
+with `brief path release-notes`, or every location with
+`brief path -a release-notes`.
+
+For another layout:
+
+```sh
+export BRIEF_PATH="$PWD/skills:$HOME/shared-skills"
+brief ls
+```
+
+`BRIEF_PATH` is colon-separated and replaces the defaults. Direct paths also
+work: `brief cat ./skills/release-notes` and `brief lint ./skills`.
+
+## Keep the library healthy
+
+```sh
+brief lint                 # validate the catalogue
+brief lint -strict         # also fail on warnings
+brief lint -q .claude/skills/release-notes # status only, useful in scripts
+brief prompt               # inspect the model selector's system prompt
+```
+
+Lint checks the Agent Skills format, including frontmatter, names, descriptions,
+and bundled references. Errors are violations; warnings are advice, such as
+an overly long body or an unresolved reference. `-strict` makes warnings fail
+as well. A clean skill is structurally valid; try representative tasks to
+judge whether its procedure is useful.
+
+[Hone](https://github.com/patrickyoung/hone) can add a reviewed lesson after a
+Ply run failed, recovered, and passed its check. Brief then finds that same
+skill on the next task. [Bench](https://github.com/patrickyoung/bench) adds an
+interactive skill browser over these commands.
+
+## Outcomes and common fixes
+
+| Status | Meaning |
+| --- | --- |
+| 0 | A result, a match, or a clean check |
+| 1 | No match, or lint findings; inspect stderr |
+| 2 | Invalid invocation, unreadable input, or a failed dependency |
+
+Stdout contains only the requested names, text, or findings. Diagnostics go
+to stderr. If a skill is missing, check `BRIEF_PATH`, its directory name, and
+its frontmatter. If offline matching returns nothing, improve the description
+or deliberately use `find -ask`.
+
+Optional settings: `BRIEF_MODEL` and `BRIEF_EFFORT` choose the model policy for
+selection; `BRIEF_DIR` chooses its session root; `ASK` selects the Ask binary.
+Brief has no installer, registry, execution engine, cache, or background service.
+
+## Reference and development
+
+```text
+brief ls [ref]
+brief cat ref...
+brief find [flags] task
+brief lint [flags] [path]
+brief new [flags] name
+brief path [flags] name
+brief prompt [flags]
+brief version
+brief help
+```
+
+Continue with [GUIDE.md](GUIDE.md) or the [manual](brief.1).
+Contributors: read [AGENTS.md](AGENTS.md), then run `go test ./...` and
+`go test -race ./...`. See [SECURITY.md](SECURITY.md) for the trust boundary.
+[MIT license](LICENSE).
