@@ -1,148 +1,226 @@
 # Action
 
-Action is the effect-side companion to Context. Context gives heterogeneous
-evidence sources one read interface; Action gives heterogeneous state-changing
-connectors one controlled execution interface.
+**Let an agent propose a change. Keep permission and execution in an explicit, inspectable step.**
+
+Creating a ticket, posting a message, or changing a service needs more than
+well-written model output. Action takes one exact JSON request, checks the
+operator's policy, obtains human review when required, and gives the approved
+request to one named connector. It can record the whole decision in the same
+Ask session as the task.
+
+The model proposes **what** to do. The controller supplies the connector,
+policy, approval path, and credentials that determine **whether and how** it
+may happen.
+
+## Install
+
+Requires **Go 1.26+** and **Unix or WSL**. Install current `main` and the
+standalone May approval tool:
 
 ```sh
-export ACTION_PATH=/operator/owned/actions
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/action@main
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/may@main
+export PATH="$HOME/.local/bin:$PATH"
+action version
+```
+
+Keep the PATH setting in your shell startup file.
+[Ask](https://github.com/patrickyoung/ask) is additionally required for
+`-record`; the session must already exist. Action itself makes no model call.
+
+## Start with a harmless connector
+
+This example only echoes the approved JSON. It needs no service or credentials.
+Run it as the operator in a fresh directory:
+
+```sh
+mkdir action-demo
+cd action-demo
+mkdir connectors
+cat > connectors/echo-request <<'SH'
+#!/bin/sh
+set -eu
+case "${1:-}" in
+  describe)
+    printf '%s\n' '{"version":1,"name":"echo-request","description":"Return the approved input unchanged","input_schema":{"type":"object"}}'
+    ;;
+  run) cat ;;
+  *) exit 2 ;;
+esac
+SH
+chmod +x connectors/echo-request
+export ACTION_PATH="$PWD/connectors"
 
 action ls
-action show create-ticket
-action inspect work/actions/ticket.json
-action run -job support-ticket-42 -record run.jsonl \
-  -proposal work/actions/ticket.json
+action show echo-request
 ```
 
-The proposal is deliberately small:
+A connector is just an executable with `describe` and `run`. Discovery tells
+you what is available; it does not approve an operation.
 
-```json
-{"version":1,"connector":"create-ticket","input":{"title":"Broken login"}}
+## Inspect, approve, then run
+
+Create a proposal naming the connector and input:
+
+```sh
+cat > proposal.json <<'JSON'
+{"version":1,"connector":"echo-request","input":{"message":"Hello from Action"}}
+JSON
+
+action check proposal.json
+action inspect proposal.json
 ```
 
-It does not name a command, executable path, approval mode, policy, or
-credential. The controller supplies those authorities. Action resolves and
-hashes the named connector, asks it for a descriptor, canonicalizes the input,
-and constructs the exact action envelope used by every later stage.
+`check` validates the proposal's shape. `inspect` prints its canonical form.
+Neither starts the connector's `run` operation.
 
-## Connector interface
+Now request execution:
 
-Every executable on `ACTION_PATH` implements two operations:
+```sh
+action run -job echo-demo -proposal proposal.json
+```
+
+With no `-policy`, Action sends the exact envelope to May. The first request
+parks with **exit 75** and no execution. At a terminal, inspect the pending
+request and decide its full digest:
+
+```sh
+may pending
+may decide DIGEST
+```
+
+Replace `DIGEST` with the value printed for `echo-demo`. If you approve, repeat
+the identical Action command:
+
+```sh
+action run -job echo-demo -proposal proposal.json
+```
+
+You should receive `{"message":"Hello from Action"}`. The grant is single-use;
+a different input or connector cannot spend it.
+
+```mermaid
+flowchart LR
+    P[JSON proposal] --> V[Validate and bind exact bytes]
+    V --> R[Operator policy]
+    R -->|Review| M[May decision]
+    R -->|Allow| C[Connector receives input]
+    M -->|Approved| C
+    R -->|Deny| S[Stop without release]
+    M -->|Pending or declined| S
+    C --> O[Record terminal result]
+```
+
+## Add real capabilities
+
+Put reviewed connectors on a controller-owned `ACTION_PATH`, a colon-separated
+search path. The first matching executable wins. Each connector implements:
 
 ```text
-CONNECTOR describe  -> one JSON descriptor on stdout
-CONNECTOR run       <- one canonical JSON object on stdin
+CONNECTOR describe   -> one JSON descriptor
+CONNECTOR run       <- one complete canonical JSON object on stdin
                     -> one JSON result on stdout
 ```
 
-Example descriptor:
+A connector must cause no effect before it has read its complete stdin object.
+Action fingerprints its executable and descriptor, then checks them again
+after authorization before releasing input. Provider-specific behavior stays
+inside the connector.
 
-```json
-{"version":1,"name":"create-ticket","description":"Create one support ticket","input_schema":{"type":"object"}}
+[MCPbox](https://github.com/patrickyoung/mcp) can generate this same interface:
+
+```sh
+mcpbox admit service.mcp actions create_ticket
 ```
 
-Connector discovery is not admission. Put only reviewed connectors on the
-controller-owned `ACTION_PATH`. The first matching executable wins, as with
-`PATH`. Action hashes both its bytes and its canonical descriptor, then checks
-both again after authorization and before releasing the request.
+Here `service.mcp` is a previously created, inspected capability folder and
+`create_ticket` is a tool it exposes. Use its `actions/` directory as
+`ACTION_PATH`. MCP annotations do not grant permission.
 
-MCP fits without a protocol branch in Action. `mcpbox admit BOX actions NAME`
-generates a connector with this interface and pins the MCP tool descriptor.
-The same shape covers the action surfaces in issue trackers, calendars,
-storage, CRM, messaging, music, shopping, finance, design, infrastructure,
-and other app catalogues. Provider-specific schemas stay in connectors; the
-control plane stays one filter contract.
+## Use an operator policy
 
-## Policy and human review
+`-policy /absolute/path/to/policy` selects a program that receives the exact
+action envelope on stdin. It returns one strict JSON result and a matching
+exit status:
 
-Without `-policy`, every proposal is reviewed by May. A deterministic policy
-receives the exact canonical action envelope on stdin and must emit one
-canonical JSON line:
+| Status | Decision |
+| --- | --- |
+| 0 | `allow` |
+| 3 | `deny` |
+| 75 | `review` through May |
 
-```json
-{"version":1,"action_sha256":"sha256:...","decision":"allow","reason":"matched operator rule"}
+The result includes `version: 1`, the exact `action_sha256`, `decision`, and a
+nonempty `reason`. This is an operator-written rule, not a model classifier or
+an approval flag. See [DESIGN.md](DESIGN.md) for the full envelope contract.
+
+## Keep the execution evidence
+
+To append to an existing Ask session:
+
+```sh
+action run -job ticket-42 -record run.jsonl -proposal ticket.json
+ask replay -check run.jsonl
 ```
 
-The exit status and result must agree:
+Supply an existing `run.jsonl` and an actual proposal. The sealed sequence is:
 
 ```text
-0   allow
-3   deny
-75  review through May
+proposal → decision → prepared attempt → request released → terminal result
 ```
 
-There is no model decision, MCP-annotation bypass, or auto-approve flag.
-Review calls `may request JOB` with the same exact envelope. Only a matching,
-single-use `spent` result releases the connector input.
+The corresponding records are `action.proposal/v1`, `action.decision/v1`,
+`action.attempt/v1`, `action.sent/v1`, and `action.result/v1`. The connector
+starts behind a closed stdin pipe; recording and approval precede release.
+Stdout is published only after the terminal result is validated and recorded.
 
-## Replay events
+If an effect may have happened but the result cannot be trusted or sealed,
+Action exits **125**. Inspect the external service and receipts; do not retry
+automatically. Replay verifies retained record integrity, not the business
+correctness of the effect.
 
-`-record SESSION` appends sealed structured notes through Ask:
+## Use it with a worker
 
-```text
-action.proposal/v1
-action.decision/v1
-action.attempt/v1
-action.sent/v1
-action.result/v1
-```
-
-The connector starts behind an unreleased stdin pipe. Action seals `attempt`,
-releases the complete canonical input, seals `sent`, waits for the connector,
-then seals `result` before publishing connector stdout. Each receipt binds the
-prior receipt body by SHA-256. Ask remains the only event-log implementation,
-so ordinary `ask replay -check SESSION` and Trail verify and browse the same
-history as model and verifier events.
-
-This sequence distinguishes denial, approval parking, a prepared process, a
-released effect, and a trustworthy terminal result. If the request may have
-escaped but the terminal result cannot be validated or sealed, Action returns
-125, suppresses result stdout, and tells the caller not to retry automatically.
-
-## Agent integration
-
-An Agent worker writes proposals beneath `work/actions/`; it does not receive
-Action, May, policy, or connector paths in its Ply environment.
+[Agent](https://github.com/patrickyoung/agent) lets a worker write proposals
+under `work/actions/`. The operator reviews and executes them separately:
 
 ```sh
 agent actions HOME
-agent actions HOME create-ticket.json
+agent actions HOME ticket.json
 AGENT_ACTION_PATH=/operator/owned/actions \
-  agent act HOME create-ticket.json SESSION
+  agent act HOME ticket.json SESSION
 ```
 
-`agent actions` is bounded and read-only. `agent act` runs outside Cage,
-selects controller-only connectors, derives a stable May job from the current
-definition and proposal hashes, and records into an existing Ask session under
-that home. `-policy PROGRAM` can select an operator policy. Action's status is
-returned unchanged.
+Replace the home, proposal, session, and connector path with real values.
+Agent calls Action outside the worker's Cage boundary. Action, May, policy,
+credentials, and controller evidence must stay outside worker-writable roots.
+[Context](https://github.com/patrickyoung/context) supplies the complementary
+read side: retrieve evidence first, propose an effect afterwards.
 
-## Exit status
+## Outcomes and reference
+
+| Exit | Meaning |
+| --- | --- |
+| 0 / 1 | Trustworthy positive / negative connector result |
+| 2 | Invalid or broken before release, or a trustworthy connector rejection |
+| 3 | Policy or human denial before release |
+| 75 | Pending May decision, or a receipted unfinished connector result |
+| 125 | An effect may exist without a trustworthy terminal receipt |
+| 130 | Interrupted before release |
 
 ```text
-0    trustworthy successful connector result
-1    trustworthy negative connector result
-2    invalid or broken before release, or a trustworthy connector rejection
-3    policy or human denial before release
-75   waiting for May, or a receipted unfinished connector result
-125  an effect may exist without a complete trustworthy receipt; do not retry
-130  interrupted before release
+action ls
+action show NAME
+action inspect PROPOSAL.json
+action check PROPOSAL.json
+action run -job JOB [options] -proposal PROPOSAL.json
+action run -job JOB [options] NAME
+action help
+action version
 ```
 
-Connector exits 0, 1, and 75 require one JSON result object. A connector that
-crosses its own remote effect boundary must itself use 125 when it cannot
-determine the outcome.
-
-## Install and verify
-
-Action requires Go 1.26 or later and a Unix.
-
-```sh
-go install github.com/patrickyoung/action@latest
-go test ./...
-go test -race ./...
-go vet ./...
-```
-
-See [DESIGN.md](DESIGN.md) for the event model and [SECURITY.md](SECURITY.md)
-for the authority and crash boundaries.
+The named-connector form reads its input object from stdin.
+See [action.1](action.1), [DESIGN.md](DESIGN.md), and
+[SECURITY.md](SECURITY.md). Contributors: read [AGENTS.md](AGENTS.md), then run
+`go test ./...`, `go test -race ./...`, and `go vet ./...`.
+[MIT license](LICENSE).
