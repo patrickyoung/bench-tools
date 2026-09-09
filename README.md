@@ -1,335 +1,249 @@
-# agent
+# Agent
 
-Compile a directory-shaped digital worker and run its standing goal through
-the existing Bench tools.
+**Give a recurring job a home: its instructions, working files, checks, and history.**
 
-Bench begins with a Unix premise: give a digital worker its own machine, deep
-fluency in the operating system, the right set of programs, and enough
-intelligence to get useful work done. It is not an agent framework, an SDK, or
-a hosted platform. Programs are capabilities; `PATH` is the tool registry;
-streams and files are protocols and durable state; exit status, signals, shell,
-Make, schedulers, and process groups provide control flow and orchestration.
+A one-off prompt ends when the conversation ends. An Agent home keeps a
+standing goal, a procedure, mutable work, and a clear test of success in an
+ordinary directory. You can inspect it, version its definition, run it again,
+and see the evidence from each attempt.
 
-The pinned suite supplies a strong semantic core assembled from capabilities
-commonly spread across several 2026 products: Ask's append-only event history
-reconstructs and verifies exact model requests; Ply turns executable checks
-into sealed evaluations and can compose nested process workers; Agent supplies
-isolated homes and multiple kinds of memory; POSIX supplies workflow topology;
-and Tend adds transactional, event-sourced durability for any ordinary
-process. It does not yet supply a sealed per-task VM, workload identity and
-credential mediation, a signed capability lock, or one durable cross-VM effect
-ledger. Those are the important outer-system boundaries.
+Agent connects [Brief](https://github.com/patrickyoung/brief),
+[Ply](https://github.com/patrickyoung/ply), [Ask](https://github.com/patrickyoung/ask),
+and [Cage](https://github.com/patrickyoung/cage). The goal lives in Markdown;
+`bin/check` decides whether the work is done.
 
-For the architecture at a glance, open the
-[one-page visual explainer](https://patrickyoung.github.io/agent/). The
-[Claude Code and Cowork tutorial](https://patrickyoung.github.io/agent/guide.html)
-shows a business process expert how to move from a guided interview to a
-reviewed contract, proved design, durable Agent home, controlled pilot, and
-operating loop without reading the Bench source repositories. The
-[sixteen-component map](https://patrickyoung.github.io/agent/components.html)
-compares every released Bench component with prominent 2026 systems that solve
-the same class of problem, shows the conventional industry stack for each
-capability, and identifies ideas Bench can borrow without moving away from
-Unix composition. [MCP, the Unix way](MCP.md) gives the concrete design for
-using the complete MCP surface through filters and capability directories
-without putting an MCP runtime inside Ply or Agent; its first edge release is
-the standalone [`mcp` edge](https://github.com/patrickyoung/mcp).
+[Install](#install) · [First worker](#build-your-first-worker) ·
+[Recurring work](#run-again-or-wake-only-when-needed) ·
+[Visual guide](https://patrickyoung.github.io/agent/)
 
-Agent ships in the sixteen-component Bench suite. Its fourteen-component core
-contains Bench, Ask, Brief, Ply, Context, Action, Cite, Cage, May, Hone, Trail,
-Tend, and Draft; the pinned `mcp` and `oauth` edges add reviewed protocol and
-authorization boundaries. Context retrieves normalized external evidence
-through executable connectors; Cite is the separate deterministic filter that
-accepts only exact Context ref-to-URL Markdown citations.
+## Install
 
-## Claude Code and Cowork skills
+For the complete compatible toolset, follow the
+[Bench suite installer](https://github.com/patrickyoung/bench#install).
+It includes Agent and its companion programs.
 
-The versioned [`bench-system-builder`](plugins/bench-system-builder) plugin
-contains three Agent Skills:
-
-- `building-with-bench` for process discovery through controlled-pilot readiness;
-- `operating-bench-agents` for runs, incidents, safe change, and retirement;
-- `stewarding-bench-platform` for source-free suite installation, compatibility,
-  connections, credentials, and platform controls.
-
-Install it in Claude Code from this repository's marketplace:
-
-```text
-/plugin marketplace add patrickyoung/agent
-/plugin install bench-system-builder@bench-agent-tools
-```
-
-Cowork users can download the complete plugin or an individual skill from the
-[tutorial download section](https://patrickyoung.github.io/agent/guide.html#downloads).
-Checksums are published in [`docs/downloads/SHA256SUMS`](docs/downloads/SHA256SUMS).
-The skills carry the Bench method and versioned public-command contracts; they
-do not embed the Bench runtime or silently grant execution authority.
-
-After the tutorial records **SUITE-READY** and the selected non-secret
-`provider/model` records **MODEL-READY**, the same shipped Agent can be reached
-through Bench's transparent home boundary:
+To work directly from current `main`, you need **Git, a Unix shell, and Go 1.26+**:
 
 ```sh
-bench home new support-chief
-$EDITOR support-chief/AGENTS.md support-chief/GOAL.md support-chief/bin/check
-bench home check support-chief
-bench home show support-chief
-bench home run -m provider/model support-chief
-bench home tick -m provider/model support-chief
-```
-
-An agent home separates authored definition, mutable data, and evidence:
-
-```text
-support-chief/
-  AGENTS.md       operating instructions (required)
-  GOAL.md         durable outcome and constraints (required)
-  SOUL.md         optional persona and tone
-  PLAN.md         optional standing strategy
-  MEMORY.md       optional curated facts; never automatic learning
-  HEARTBEAT.md    recurring watch instructions; schedule stays external
-  skills/         ordinary Brief-readable Agent Skills
-  agents/         nested specialist homes with isolated runs and evidence
-  tools/          agent-specific programs
-  bin/check       executable completion verdict (required)
-  bin/wake        cheap tick probe: 0 quiet, 1 wake, other broken
-  work/           mutable deliverables and working directory
-    proposals/    model-authored unified diffs awaiting human review
-    actions/      strict external-effect proposals awaiting controller action
-  state/          mutable durable state, not injected into context
-    kv/           file-shaped key/value state for simple durable facts
-  .agent/runs/    replayable Ask sessions and Ply verifier receipts
-  .agent/checkpoints/ home-scoped conversation checkpoint pointers
-  .agent/learning/ Hone wording sessions and reviewed proposal evidence
-    proposals/     exact user-named lesson artifacts awaiting admission
-  .agent/amendments/ controller receipts for approved definition patches
-```
-
-`agent run` defaults to full shell access inside Cage, with writes limited to
-`work/`, `state/`, and a fresh private action temporary directory outside the
-agent home, and with network denied. An ambient `TMPDIR` inside the home is
-refused rather than widened into a model-writable path.
-Use `-net` when the work genuinely needs network access. Use `-no-cage` only
-when you deliberately want the ordinary Ply host boundary. Neither choice can
-be made by a Markdown file.
-
-The agent-specific `tools/` directory is prepended even in full-shell mode, so
-small domain programs are discovered beside ordinary host tools. Agent Skills
-under `skills/` are selected by Brief from the standing goal. The skill path
-is agent-local by default: ambient host skills are not silently inherited.
-Ply tries Brief's deterministic offline match before the replayable model
-selector, and records which path chose the skill. Empty skill and tool
-directories are fine.
-
-Agent disables Ply's generic nested-process delegation recipe. Its specialist
-homes are an explicit external controller boundary with separate definition,
-authority, and evidence; a confined model reports a bounded specialist job
-for the controller instead of attempting a nested provider call inside Cage.
-
-The required `bin/check` runs from `work/` before the first model turn and
-after every candidate completion. Exit 0 accepts, exit 1 rejects and returns
-feedback to the worker, and any other status means the verifier is broken.
-This is Ply's existing contract; `agent` does not reinterpret it.
-
-Agent passes the durable GOAL/HEARTBEAT text and explicit invocation focus as
-Ply's task through a private `-goal-file`, never process argv. PLAN, wake
-output, and piped bytes are a separate stdin evidence stream, so large input
-can use Ply's content-addressed spool and untrusted evidence does not choose a
-system-level skill. The task channel is capped at 64 KiB and piped evidence at
-16 MiB before Ply or a model is invoked.
-
-## Commands
-
-```text
-agent new DIR [description ...]
-agent check [DIR]
-agent show [DIR]
-agent run [-net] [-no-cage] [-m MODEL] [-effort NAME] [-checkpoint NAME] [DIR] [-- input ...]
-agent tick [-net] [-no-cage] [-m MODEL] [-effort NAME] [-checkpoint NAME] [DIR] [-- input ...]
-agent specialist PARENT NAME [run flags] [-- input ...]
-agent learn -into SKILL [-m MODEL] [-n COUNT] [-N] [-why] [-prepare PROPOSAL] [-q] HOME SESSION
-agent learn -show PROPOSAL HOME
-agent learn -admit PROPOSAL HOME
-agent history HOME [ls|find|show|window|lineage|check ...]
-agent actions HOME [PROPOSAL]
-agent act [-policy PROGRAM] HOME PROPOSAL SESSION
-agent proposals HOME [PATCH]
-agent amend HOME PATCH
-agent help
+git clone https://github.com/patrickyoung/agent.git
+cd agent
+mkdir -p "$HOME/.local/bin"
+for tool in ask brief ply cage hone trail may action; do
+  GOBIN="$HOME/.local/bin" go install "github.com/patrickyoung/$tool@main"
+done
+ln -s "$PWD/bin/agent" "$HOME/.local/bin/agent"
+ln -s "$PWD/bin/agent-action-shell" "$HOME/.local/bin/agent-action-shell"
+export PATH="$HOME/.local/bin:$PATH"
 agent version
+cage check
 ```
 
-Additional CLI words and piped stdin are appended as invocation context to
-the active goal (`GOAL.md` for `run`, `HEARTBEAT.md` for `tick`). They do not
-rewrite either definition file.
+Choose either the suite or this source installation. If an Agent command is
+already installed, use that installation instead of replacing its links
+blindly. Keep the source checkout in place and the PATH setting in your shell
+startup file. Linux Cage requires Bubblewrap and usable kernel namespaces;
+macOS uses the system Seatbelt backend.
 
-`agent tick` reads `HEARTBEAT.md` but leaves cadence to cron, launchd, CI, or
-another external scheduler. It runs `bin/wake` before resolving Ply or calling
-a model. Exit 0 is quiet and creates no Ask session; exit 1 starts a normal
-confined run with the probe's stdout as initial evidence; any other status is
-broken. An empty heartbeat is also quiet.
-
-`-checkpoint NAME` gives a run one portable, home-scoped conversation
-checkpoint under `.agent/checkpoints/`. Running the same command again resumes
-the current Ask session, including the session selected by Ply compaction. Ply
-holds a nonblocking whole-run lock, so concurrent use fails instead of
-interleaving two loops. The work tree and `bin/check` remain authoritative:
-the checkpoint is not a filesystem snapshot, and a process killed during an
-external effect still requires inspection before retry.
+Configure [Ask](https://github.com/patrickyoung/ask#install) with a supported
+model and credential before running model work. For example, replacing both
+placeholders:
 
 ```sh
-agent run -m provider/model -checkpoint release support-chief
-agent run -m provider/model -checkpoint release support-chief   # continue after interruption
+export ASK_MODEL='anthropic/YOUR_MODEL_ID'
+export ANTHROPIC_API_KEY='YOUR_API_KEY'
+ask 'Reply with hello.'
 ```
 
-`agent specialist` runs one direct child beneath `PARENT/agents/` in the
-foreground. The child gets its own instructions, goal, mutable roots, check,
-skills, authority flags, and `.agent/runs`; it receives only the explicit
-invocation task, never the parent's conversation. This is an external
-controller operation rather than an escape from a network-denied parent Cage.
-Nested work remains visible as ordinary repeated invocations.
+## Build your first worker
 
-`agent learn` is the only learning path. It requires an explicit local skill
-name and a regular session beneath that home's `.agent/runs/`, then composes
-Hone with `BRIEF_PATH` scoped to the home. Hone still decides mechanically
-whether the session failed and later passed; exit 1 means nothing trustworthy
-was learned. `-N` previews without writing, and `.agent/learning/` keeps the
-model calls that word accepted lessons. There is no automatic `MEMORY.md`
-rewrite.
-
-Use `-why` to inspect the replay-verified goal, passing check, and failed-then-
-successful evidence without calling a model or changing a skill. `-N` goes
-further and asks a model to word possible lessons without writing them, but it
-is not an exact preview token: a later ordinary `learn` call generates wording
-again. Controllers must not present `-N` followed by `learn` as admission of
-the same reviewed bytes.
-
-For exact review, `-prepare NAME.json` accepts one verified home session and
-writes a new artifact beneath `.agent/learning/proposals/`, never the skill.
-It binds the source and wording sessions, current destination, and literal
-final `SKILL.md` bytes. `learn -show NAME.json HOME` is read-only and invokes
-Hone's no-call `show`. `learn -admit NAME.json HOME` invokes Hone's model-free
-admission: both provenance sessions replay, every hash and destination path is
-rechecked, the allowed append/scaffold delta is reconstructed, and only the
-exact reviewed bytes are atomically written. Portable direct-child names,
-regular files, and single links are required; existing proposal files are
-never overwritten. This is an explicit operator path, not automatic learning
-or a proposal index.
-
-`agent history` is the read-only evidence browser. It composes Trail over the
-home's `.agent/runs/` archive and returns Trail's JSONL and exit status
-unchanged. `ls` is the default; `find QUERY`, `show SESSION`, bounded `window`,
-`lineage SESSION`, and replay `check` mirror Trail's public commands. Session
-commands accept only regular non-symlinked evidence files beneath that home;
-`check` delegates replay integrity to Ask through Trail.
-
-External effects use the standalone Action filter. A worker can prepare only
-the connector name and JSON input under `work/actions/`; policy, approval,
-credentials, and connector paths remain controller authority. Review never
-causes an effect:
+This small worker turns a list of names into a sorted, deduplicated file.
+There is an exact expected answer, so success is easy to inspect.
 
 ```sh
-agent actions support-chief
-agent actions support-chief create-ticket.json
+agent new names-worker 'Maintain a clean list of names'
+printf '%s\n' pear apple pear banana > names-worker/work/names.txt
+
+cat > names-worker/GOAL.md <<'GOAL'
+# Outcome
+Read names.txt and write sorted.txt with one name per line, sorted and deduplicated.
+
+## Acceptance evidence
+The exact output is apple, banana, pear, each on its own line.
+
+## Constraints
+Keep names.txt unchanged. Work only in the mutable work and state directories.
+GOAL
+
+cat > names-worker/bin/check <<'SH'
+#!/bin/sh
+set -eu
+test -f sorted.txt || exit 1
+printf 'apple\nbanana\npear\n' | diff -u - sorted.txt
+SH
+chmod +x names-worker/bin/check
+
+agent check names-worker
+agent show names-worker
+agent run names-worker
+cat names-worker/work/sorted.txt
 ```
 
-Execute one exact proposal outside Cage and append its sealed Action events to
-an existing home Ask session:
+`agent check` validates the home's structure; `agent show` prints the compiled
+instructions and authority. Neither is a model verdict. `agent run` asks Ply
+to pursue the goal until `bin/check` accepts, or a limit/error stops it.
+The check runs from `work/` before the first model turn and after a candidate.
+
+Expected result:
+
+```text
+apple
+banana
+pear
+```
+
+Run `agent run names-worker` again. A passing pre-check means there is no work
+to do and no model call is needed. For a larger job, write a check that covers
+its real requirements; a nonempty file alone rarely proves a useful result.
+
+![Animated diagram: A standing job has a home. Cage denies action networking by default. Host reads remain unrestricted.](docs/readme/flow.gif)
+
+[Static version of the diagram](docs/readme/flow.png). This illustrates the workflow; it is not a recorded run.
+
+## Understand the home
+
+```text
+names-worker/
+  AGENTS.md       operating instructions
+  GOAL.md         standing outcome and constraints
+  SOUL.md         optional tone/persona
+  PLAN.md         optional strategy
+  MEMORY.md       small, curated facts
+  HEARTBEAT.md    optional recurring instructions
+  skills/         Brief-readable procedures
+  tools/          ordinary programs
+  agents/         specialist homes
+  bin/check       executable definition of done
+  bin/wake        cheap probe: quiet, wake, or broken
+  work/           mutable inputs and deliverables
+    proposals/    definition patches awaiting review
+    actions/      external-effect proposals awaiting controller execution
+  state/          mutable durable state
+  .agent/         controller-owned runs, checkpoints, learning, and receipts
+```
+
+Definition, mutable work, and controller evidence are separate write domains.
+Agent does not inject every state file into every model call. The worker reads
+state when it needs it; memory and skills change through explicit operations.
+
+By default, Cage permits action writes to `work/`, `state/`, and a private
+per-action temporary directory, with network denied. **Host reads remain
+unrestricted.** `-net` deliberately enables action networking; `-no-cage`
+uses the ordinary host boundary. Markdown cannot choose either permission.
+The verifier remains outside the action boundary.
+
+## Run again, or wake only when needed
 
 ```sh
+agent run -checkpoint daily names-worker
+agent history names-worker
+agent history names-worker check
+```
+
+A checkpoint keeps the current Ply/Ask conversation across interruption and
+compaction. It is not a snapshot or a reason to repeat an uncertain effect.
+History uses Trail and Ask's replay verification without modifying sessions.
+
+For recurring work, fill in `HEARTBEAT.md` and supply `bin/wake`:
+
+| Wake status | Meaning |
+| --- | --- |
+| 0 | Quiet; no model call or new Ask session |
+| 1 | Work is needed; run the heartbeat with the probe's output as evidence |
+| Anything else | Broken probe; stop |
+
+`agent tick HOME` runs that process once. Scheduling belongs outside Agent.
+[Tend](https://github.com/patrickyoung/tend) can durably submit an exact Agent
+invocation, retain output, and hold uncertain attempts for review.
+[Hire](https://github.com/patrickyoung/bench-hire) adds a web interface for
+assigning tasks, reviewing results, and setting routines.
+
+## Give it skills and specialists
+
+Put a skill under `skills/NAME/SKILL.md`. Brief selects from the home's own
+catalogue; ambient personal skills are not silently inherited. Programs in
+`tools/` are prepended to PATH. An empty skills or tools directory is fine.
+
+Create a separate specialist and edit its goal and check before running it:
+
+```sh
+agent new names-worker/agents/reviewer 'Review one bounded result'
+agent check names-worker
+agent specialist names-worker reviewer -- 'Review the supplied evidence.'
+```
+
+A specialist gets its own definition, check, state, and history. It does not
+inherit the parent's conversation. Supply actual evidence explicitly; the
+example task text is not permission to inspect arbitrary private context.
+Specialist invocation is an external controller operation, not an escape
+from a parent's network-denied action process.
+
+## Improve through review
+
+For a home session that failed and later passed its verifier:
+
+```sh
+agent learn -into house -why HOME SESSION.jsonl
+agent learn -into house -prepare recovery.json HOME SESSION.jsonl
+agent learn -show recovery.json HOME
+agent learn -admit recovery.json HOME
+```
+
+Replace `HOME` and `SESSION.jsonl` with a real home and one of its run files.
+Hone owns the recovery test. Inspection and admission make no model call;
+preparation words a lesson and saves exact bytes for review. Exit 1 can mean
+nothing useful was learned. Source teaching and curated facts are distinct
+from verified-recovery learning.
+
+A worker may also write one proposed root-definition patch under
+`work/proposals/`. `agent proposals HOME PATCH` shows it without applying it.
+`agent amend HOME PATCH` validates it and asks May for exact approval. A parked
+request exits 75; decide its digest at a terminal and retry the same amendment.
+Agent rechecks the hashes, applies it, validates the home, and rolls back on
+failure. Evidence stays under `.agent/amendments/`.
+
+## Keep external effects explicit
+
+```sh
+agent actions HOME
+agent actions HOME ticket.json
 AGENT_ACTION_PATH=/operator/owned/actions \
-  agent act support-chief create-ticket.json SESSION
+  agent act HOME ticket.json SESSION.jsonl
 ```
 
-With no policy, Action routes the exact canonical envelope through May.
-`-policy PROGRAM` selects a deterministic operator policy whose 0/3/75 result
-means allow/deny/review. Agent preserves Action's status; 125 means the effect
-may exist without a complete trustworthy receipt and must not be retried
-automatically. Action, May, policy, and connector paths are scrubbed from Ply's
-worker environment.
+The worker prepares strict proposals under `work/actions/`; the controller
+executes them through Action and May outside Cage. Credentials, connector
+paths, policy, and approval state stay out of the worker's environment.
+Exit 125 means an effect may exist without a trustworthy result: inspect
+before retrying.
 
-`agent amend` is the reviewed definition-change path. `PATCH` must be a
-regular, non-symlinked direct child of `HOME/work/proposals/`, have a portable
-`.patch` filename, and be a conventional unified diff that changes exactly one
-existing root definition file. Before requesting approval, inspect one patch
-or the bounded catalogue without side effects:
+## Reference and learning resources
 
-```sh
-agent proposals support-chief
-agent proposals support-chief tighten-checking.patch
-```
+`agent help` lists every command: `agent new`, `agent check`, `agent show`,
+`agent run`, `agent tick`, `agent specialist`, `agent learn`, `agent history`,
+`agent actions`, `agent act`, `agent proposals`, `agent amend`, and `agent version`.
+Run flags include `-m`, `-effort`, `-checkpoint`, `-net`, `-no-cage`, and `-q`.
 
-The review output contains the literal patch bytes, current definition and
-proposal hashes, target, stable May job, and the exact May action including
-its final newline. It never invokes May or changes the home. At most 16 patches
-and 64 KiB of aggregate proposal bytes are shown per catalogue invocation.
+Run/specialist preserve Ply outcomes: 0 accepted, 1 broken, 2 unfinished.
+Other operations preserve their component's status, including 75 for approval
+pending and 125 for an uncertain effect/boundary. `AGENT_ASK`, `AGENT_PLY`,
+`AGENT_BRIEF`, `AGENT_CAGE`, `AGENT_HONE`, `AGENT_TRAIL`, `AGENT_MAY`, and
+`AGENT_ACTION` select exact dependency executables.
 
-Agent then parses and dry-runs it with Git, binds the physical home, current
-definition hash, target, proposal path, and proposal hash into one exact May
-request, and exits 75 without changing the definition while that request is
-parked. Review and decide the digest from a separate terminal, then retry the
-identical command:
+- [Guided business-process tutorial](https://patrickyoung.github.io/agent/guide.html)
+- [System-builder skills](plugins/bench-system-builder/README.md) for guided design and operation
+- [MCP integration](MCP.md), [design](DESIGN.md), and [security boundary](SECURITY.md)
+- [Evaluation corpus](eval/README.md) for offline behavior checks
 
-```sh
-agent amend support-chief tighten-checking.patch  # exits 75; prints JSON
-may pending
-may decide DIGEST
-agent amend support-chief tighten-checking.patch  # spends grant and applies
-```
-
-After approval, Agent rechecks both hashes and patch applicability, stages a
-receipt, applies the patch, and reruns the complete home check. A rejected
-home is restored byte-for-byte and exits 2. A successful change records its
-before/after hashes and May result under `.agent/amendments/`. The model can
-propose words, but only a human can authorize these exact bytes; the May path
-is scrubbed before Ply starts.
-
-## Dependencies
-
-`run` needs `ply`, `brief`, `ask`, and (by default) `cage` on `PATH`. Agent
-resolves Ask itself and pins it into Ply, so a relocatable suite does not
-depend on its `bin` directory remaining on `PATH`. Learning needs Hone and
-Brief; evidence review, preparation, and admission also pin Ask for replay or
-wording, while `learn -show` calls only Hone. `history` needs Trail, and its
-`check` command also needs Ask.
-`actions` needs Action; `act` needs Action, Ask, May, and `AGENT_ACTION_PATH`.
-`proposals` needs Git; `amend` needs Git and May.
-Environment overrides `AGENT_PLY`, `AGENT_BRIEF`, `AGENT_CAGE`, `AGENT_HONE`,
-`AGENT_TRAIL`, `AGENT_ASK`, `AGENT_MAY`, and `AGENT_ACTION` are available for a pinned suite
-and offline tests. `check` only needs Brief when `skills/` contains a skill.
-
-`just install` links `agent` and its Cage action wrapper into `~/.local/bin`,
-beside the other standalone Bench filters.
-
-The Bench suite also ships Tend as an independent local process
-supervisor. It is not an Agent dependency: compose it outside an exact
-`agent run -m provider/model -checkpoint NAME HOME` invocation when the whole process needs
-durable submission, waits, output evidence, and conservative crash recovery.
-The standalone `mcp` distribution provides the MCP edge in the same style:
-exact protocol requests plus reviewed Unix programs, prompt filters, resource
-readers, catalogues, continuations, Tasks, and JSONL subscriptions. Agent
-depends only on any admitted programs placed in its toolbox, never on the
-compiler that produced them.
-
-`just eval` runs the frozen representative-home corpus in `eval/corpus/`.
-It proves already-complete re-entry makes no model call, quiet heartbeats stop
-before resolving Ply, broken wake protocols return 2, nested homes validate
-recursively, and a tiny real Ask archive replay-checks through Trail. The TSV
-report also exposes definition and compiled-view byte counts without turning
-them into a synthetic quality score.
-
-See `SECURITY.md` before running downloaded or adversarial homes. Cage limits
-writes and networking; it does not hide host-readable files, environment
-values, credentials, or programs from the worker.
-
-## Status
-
-The implemented vertical slices scaffold, validate, inspect, run, cheaply
-tick, invoke direct specialists, explicitly learn from verified recovery,
-prepare/show/admit exact reviewed lesson bytes, browse replay history without
-writing it, and apply one exact human-approved definition patch with rollback
-and evidence. Proposal bytes and approval actions are also inspectable through
-a bounded, read-only public command.
-The Bench suite pins Agent, Ply's checkpoint support, Tend, and the other
-public filters as one tested install. Bench has a core interactive home view
-and exposes every Agent command through its headless boundary.
+Contributors: read [AGENTS.md](AGENTS.md), then run
+`sh -n bin/agent bin/agent-action-shell` and `sh bin/agent_test.sh`.
+[MIT license](LICENSE).
