@@ -1,154 +1,73 @@
-# mcp
+# MCP, as ordinary Unix programs
 
-MCP at the edge; ordinary Unix inside.
+**Use an MCP service from your shell—or expose your own programs as an MCP service.**
 
-This repository now works in both directions:
+This repository connects MCP to the tools you already use. Send JSON on stdin,
+get the result on stdout, and branch on the exit status. You can also turn
+reviewed capabilities into executable files that an agent can use through PATH.
 
-- `mcp` turns one MCP request into a Unix filter invocation.
-- `mcp-legacy` does the same through an explicit pre-2026 compatibility path.
-- `mcpbox` compiles discovery into an explicitly admitted capability folder.
-- `mcpserve` turns ordinary Unix filters into a modern MCP server.
+| Program | What it does |
+| --- | --- |
+| `mcp` | Make one request using the stateless `2026-07-28` protocol |
+| `mcp-legacy` | Make one request using an explicitly selected earlier protocol lifecycle |
+| `mcpbox` | Discover capabilities, inspect them, and admit selected ones as programs |
+| `mcpserve` | Expose an ordinary dispatcher program as an MCP server |
 
-`mcp` implements the current stateless MCP `2026-07-28` wire protocol through
-the official Go SDK. `mcp-legacy` uses that SDK's stateful lifecycle for
-`2025-11-25`, `2025-06-18`, `2025-03-26`, and `2024-11-05`. Neither program is
-an agent framework, hosted platform, application SDK, model host, daemon,
-workflow engine, or credential store.
+[Install](#install) · [First request](#make-your-first-request) ·
+[Toolbox](#turn-a-capability-into-a-command) · [Serve your own tools](#serve-your-own-programs)
 
 ## Install
 
-Requires Go 1.26 or newer.
+Requires **Go 1.26+**, Git, and a Unix shell. Clone current `main`:
 
 ```sh
+git clone https://github.com/patrickyoung/mcp.git
+cd mcp
 ./install.sh
+export PATH="$HOME/.local/bin:$PATH"
+mcp help
 ```
 
-This installs `mcp`, `mcp-legacy`, `mcpbox`, and `mcpserve` under
-`$HOME/.local/bin` by default. Use `./install.sh -prefix DIR` to choose another
-prefix.
+The installer runs the tests and installs all four commands under
+`~/.local/bin`. Use `./install.sh -prefix DIR` for `DIR/bin`. Keep the PATH
+setting in your shell startup file. Stay in the checkout for the examples below.
 
-## Consume MCP as a filter
+## Make your first request
 
-The endpoint always follows `--`. A stdio endpoint is exact argv:
+The included hello server needs no account, model, or public service:
 
 ```sh
 printf '%s\n' '{"name":"hello","arguments":{"name":"Unix"}}' |
   mcp request tools/call -- go run ./examples/hello-server
 ```
 
-A Streamable HTTP endpoint is one URL:
+You receive an MCP result object with a greeting in its `content`. The endpoint
+comes after `--`; here it is the exact command used to start the local server.
+The first `go run` may download Go dependencies.
+
+Discover what that server offers:
 
 ```sh
-printf '%s\n' '{}' | mcp request tools/list -- https://example.net/mcp
+mcp discover -- go run ./examples/hello-server
+printf '%s\n' '{}' | mcp request tools/list -- go run ./examples/hello-server
 ```
 
-stdin is empty or one bounded JSON object. stdout is the exact MCP result.
-Server stderr stays stderr. `-event-fd 3` emits progress and request-scoped
-extension notifications as JSONL on an explicit descriptor. `-timeout`,
-`-max-input`, and `-max-output` provide
-operator-owned bounds. There is no default timeout, redirect, reconnect, or
-automatic retry.
-
-HTTP credentials remain outside argv and capability folders. A line-oriented
-header file can be opened on an explicit descriptor:
+For Streamable HTTP, replace the server command with one URL:
 
 ```sh
-mcp discover -header-fd 3 -- https://example.net/mcp 3<headers
+printf '%s\n' '{}' | mcp request tools/list -- https://YOUR_SERVICE/mcp
 ```
 
-For OAuth-protected endpoints, the standalone
-[`oauth`](https://github.com/patrickyoung/oauth) filter can discover the
-authorization server, perform public or confidential login, refresh before
-use, and supply that descriptor without exposing a token in argv or the
-environment:
+Replace the URL with a service that supports the selected protocol. Earlier
+servers require `mcp-legacy`; there is no hidden fallback.
 
-```sh
-oauth login example -client-id YOUR_CLIENT_ID https://example.net/mcp
-oauth with example -- mcp discover -header-fd 3 -- https://example.net/mcp
-```
+![Animated diagram: A remote capability becomes a program. Use Action connectors when an operation needs effect policy and human review.](docs/readme/flow.gif)
 
-`mcp` owns the protocol request and `oauth` owns credential lifecycle; neither
-imports or stores the other's state.
+[Static version of the diagram](docs/readme/flow.png). This illustrates the workflow; it is not a recorded run.
 
-`Host`, content framing, and every `Mcp-*` routing header are protocol-owned
-and cannot be injected this way. `Mcp-Method`, `Mcp-Protocol-Version`, and the
-standard capability name are generated by the protocol implementation.
-`-route-name NAME` supplies the name for a custom extension request; Tasks
-derive it from `taskId`.
+## Turn a capability into a command
 
-All current server request surfaces are available:
-
-```text
-server/discover
-tools/list                   tools/call
-prompts/list                 prompts/get
-resources/list               resources/templates/list
-resources/read               completion/complete
-subscriptions/listen         extension methods, including Tasks
-```
-
-Use `mcp discover`, rather than sending lifecycle machinery yourself. Client
-capabilities are explicit JSON with `-capabilities FILE`; Tasks are advertised
-by default because this filter preserves task handles and supports
-`tasks/get`, `tasks/update`, and `tasks/cancel`.
-
-An `input_required` result is printed intact and exits 75. The caller retains
-the opaque `requestState`, obtains the requested input through Ask, May, or any
-other ordinary program, then issues a new request with `inputResponses`.
-`mcp` never invokes a user, model, or approval system behind the caller's back.
-
-## Use a legacy server explicitly
-
-Legacy negotiation is never an implicit fallback in `mcp`. Select the
-compatibility executable at the process boundary instead:
-
-```sh
-mcp-legacy discover -- \
-  uvx --from git+https://github.com/Rudra-ravi/wikipedia-mcp wikipedia-mcp
-
-printf '%s\n' '{"name":"search_wikipedia","arguments":{"query":"Unix"}}' |
-  mcp-legacy request tools/call -- \
-  uvx --from git+https://github.com/Rudra-ravi/wikipedia-mcp wikipedia-mcp
-```
-
-`mcp-legacy` forces the official SDK's `initialize`/`initialized` lifecycle and
-prints the exact initialize result from `discover`. It otherwise keeps the
-same one-request, bounded-I/O, no-retry, and exit-status contract as `mcp`.
-It supports stdio and Streamable HTTP where the negotiated revision defines
-them; it does not implement the deprecated HTTP+SSE transport or the modern
-`subscriptions/listen` method.
-
-Capability folders compose by selecting the compatibility executable once:
-
-```sh
-mcpbox make -mcp "$(command -v mcp-legacy)" wikipedia.mcp -- \
-  uvx --from git+https://github.com/Rudra-ravi/wikipedia-mcp wikipedia-mcp
-mcpbox tools wikipedia.mcp
-mcpbox admit wikipedia.mcp tools search_wikipedia
-printf '%s\n' '{"query":"Unix"}' | wikipedia.mcp/tools/search_wikipedia
-```
-
-The generated wrappers retain that exact `mcp-legacy` path and perform the
-same descriptor check immediately before each admitted operation.
-
-## Observe subscriptions
-
-`mcp listen` sends a real `subscriptions/listen` request and emits accepted
-notifications as JSON Lines until interrupted or disconnected:
-
-```sh
-printf '%s\n' '{"notifications":{"toolsListChanged":true,"resourceSubscriptions":["repo://README.md"]}}' |
-  mcp listen -- https://example.net/mcp
-```
-
-Empty input selects tool, prompt, and resource list changes. Standard and
-extension notifications are preserved; task filters can be supplied inside
-`notifications`. The stream never reconnects. Losing it is an observable
-failure, not an invented continuous history.
-
-## Compile a capability folder
-
-Discovery grants nothing:
+First create and inspect a capability folder:
 
 ```sh
 mcpbox make hello.mcp -- go run ./examples/hello-server
@@ -156,68 +75,110 @@ mcpbox show hello.mcp
 mcpbox tools hello.mcp
 ```
 
-Admission is a separate literal action:
+Discovery has not authorized any operation. Admit the `hello` tool explicitly:
 
 ```sh
 mcpbox admit hello.mcp tools hello
-printf '%s\n' '{"name":"Pike"}' | hello.mcp/tools/hello
+printf '%s\n' '{"name":"Pike"}' | ./hello.mcp/tools/hello
 ```
 
-An admitted wrapper pins the endpoint, capability identity, and reviewed
-descriptor digest. Immediately before use, `mcp` re-lists that descriptor on
-the same connection and refuses changed or missing capabilities before
-sending the requested operation.
+The wrapper accepts only that tool's argument object. It pins the endpoint,
+name, and reviewed descriptor digest, and checks the descriptor immediately
+before a call. A changed or missing capability is refused.
 
-For an effectful tool, admit it as an Action connector instead of making it a
-direct toolbox program:
+For this demo, keep invoking from the repository directory because the recorded
+endpoint uses a relative `go run` path. For a reusable deployment, build the
+server and create the folder with its stable absolute executable path.
+
+```mermaid
+flowchart LR
+    S[MCP server] --> D[Discover into a folder]
+    D --> R[Operator reviews capabilities]
+    R --> A[Admit selected names]
+    A --> P[Executable files]
+    P --> C[Shell, Ply, or Agent]
+```
+
+[Ply](https://github.com/patrickyoung/ply) and
+[Agent](https://github.com/patrickyoung/agent) can use admitted programs as a
+toolbox. They need no MCP implementation of their own. MCPbox is provisioning;
+generated programs invoke the selected MCP client directly.
+
+## Keep effectful tools behind Action
+
+For a tool that changes something, admit an
+[Action](https://github.com/patrickyoung/action) connector:
 
 ```sh
-mcpbox admit server.mcp actions publish_release
-printf '%s\n' '{"version":"1.4.2"}' |
-  ACTION_PATH=$PWD/server.mcp/actions \
-  action run -job release-142 publish_release
+mcpbox admit service.mcp actions create_ticket
 ```
 
-The generated connector implements `describe` and `run`, pins the same MCP
-descriptor digest, and rechecks it before the tool call. MCP annotations are
-preserved in that digest but never supply approval authority. Action owns
-policy, May, and sealed replay receipts. Do not also admit the same effectful
-tool under `tools/` unless direct invocation is intentionally authorized.
+Use that inspected folder's `actions/` directory as `ACTION_PATH`, then submit
+a proposal through Action. Action owns operator policy, May review, request
+release, and receipts. Server annotations such as a read-only hint do not
+grant authority. Admitting the same tool under `tools/` deliberately permits
+direct invocation, so choose the appropriate path.
 
-`mcpbox` is provisioning only. Generated programs execute `mcp` directly and
-have no runtime dependency on `mcpbox`; Ply, Agent, Pack, and other consumers
-need only the admitted capability directory.
+## Authenticate without putting tokens in argv
 
-Prompts, exact resources, and resource templates keep distinct authority:
+With an [OAuth](https://github.com/patrickyoung/oauth) profile:
 
 ```sh
-mcpbox admit server.mcp prompts review-pr
-printf '%s\n' '{"tone":"brief"}' | server.mcp/prompts/review-pr
-
-mcpbox admit server.mcp resources 'repo://README.md'
-server.mcp/bin/read 'repo://README.md'
-
-mcpbox admit server.mcp templates 'repo://file/{path}'
-server.mcp/bin/read-template 'repo://file/{path}' 'repo://file/README.md'
+oauth with docs -- mcp discover -header-fd 3 -- https://YOUR_SERVICE/mcp
 ```
 
-The template reader verifies both the reviewed descriptor and the concrete
-RFC 6570 expansion before `resources/read`. For HTTP folders, set
-`MCP_HEADERS=/operator/owned/header-file` at invocation time; the folder stores
-no credential. Refresh into a new folder and use the ordinary system diff:
+OAuth refreshes when needed and passes the header on descriptor 3. Alternatively,
+an operator-owned header file can be opened with `3<headers`. Protocol headers
+such as `Mcp-*`, Host, and framing fields cannot be injected this way.
+For generated HTTP capability folders, `MCP_HEADERS` names the header file at
+invocation time; credentials are not stored in the folder.
+
+## Select legacy compatibility explicitly
+
+`mcp-legacy` supports the SDK lifecycle for `2025-11-25`, `2025-06-18`,
+`2025-03-26`, and `2024-11-05` servers:
 
 ```sh
-mcpbox make server.next.mcp -- SERVER [ARG ...]
-mcpbox diff server.mcp server.next.mcp
+mcp-legacy discover -- /absolute/path/to/your-server
+mcpbox make -mcp "$(command -v mcp-legacy)" legacy.mcp -- \
+  /absolute/path/to/your-server
 ```
 
-Generation is staged and atomic. A catalogue change never inherits admission
-by name.
+Replace the server path with an installed executable and its literal arguments.
+The generated folder retains the selected compatibility client. Legacy stdio
+and Streamable HTTP are supported where the revision defines them; deprecated
+HTTP+SSE transport and modern `subscriptions/listen` are not legacy features.
 
-## Serve Unix filters as MCP
+## Use more than tools
 
-`mcpserve` is the reverse edge. Its manifest contains MCP descriptions; an
-ordinary executable contains behavior:
+The request boundary covers discovery, tools, prompts, resource lists and
+reads, resource templates, completion, subscriptions, and extension methods
+including Tasks. For an inspected folder that actually offers these capabilities:
+
+```sh
+mcpbox admit service.mcp prompts review
+mcpbox admit service.mcp resources 'repo://README.md'
+mcpbox admit service.mcp templates 'repo://file/{path}'
+```
+
+Prompts, exact resources, and templates are separate grants. Template reads
+validate both the reviewed descriptor and concrete RFC 6570 expansion.
+
+`mcp listen -- ENDPOINT` emits JSONL notifications until interrupted or
+disconnected. Empty stdin selects list changes; explicit JSON can select
+subscriptions. It never reconnects silently.
+
+`input_required` and nonterminal Tasks return intact with exit 75. The caller
+retains the state, obtains the needed input, and issues another request.
+Progress can be sent as JSONL on `-event-fd 3`. `-timeout`, `-max-input`, and
+`-max-output` provide explicit bounds; there is no default request timeout.
+
+To review a changed service, create a new folder and compare it with
+`mcpbox diff OLD NEW`. New discovery does not inherit old admission by name.
+
+## Serve your own programs
+
+Try the supplied dispatcher:
 
 ```sh
 printf '%s\n' '{"name":"hello","arguments":{"name":"Unix"}}' |
@@ -225,70 +186,37 @@ printf '%s\n' '{"name":"hello","arguments":{"name":"Unix"}}' |
   mcpserve examples/filter-server/manifest.json -- examples/filter-server/dispatch
 ```
 
-For every call, `mcpserve` appends the MCP method to the dispatcher's exact
-argv, writes one params object to stdin, preserves stderr, and reads one result
-object from stdout. The dispatcher may route again to smaller filters:
+The manifest supplies capability descriptions. For each call, MCPserve appends
+the method to the dispatcher's literal argv, writes params to stdin, and reads
+one result object from stdout. Stderr remains diagnostics; descriptor 3 can
+carry request notifications. The SDK handles discovery and protocol framing.
 
 ```text
-dispatch tools/call
-         ^ method appended by mcpserve
-
-stdin    MCP params object
-stdout   MCP result object
-stderr   diagnostics
-fd 3     JSONL notifications while the call is active
-exit 0   result
-exit 1   stdout must be a JSON-RPC error object
-other    local execution failure
+MCP request → mcpserve → dispatch tools/call → your program
+MCP result  ← mcpserve ← JSON result        ← your program
 ```
 
-The manifest can declare `tools`, `prompts`, `resources`,
-`resourceTemplates`, `completion` capability, and arbitrary extension
-`methods`. List methods, pagination, discovery metadata, routing,
-subscriptions, framing, cancellation, and protocol negotiation remain the
-SDK's job. Call behavior remains a replaceable process. Progress or deprecated
-log messages can be emitted on fd 3 as exact JSONL notification envelopes.
+Use `mcpserve -http 127.0.0.1:8080 MANIFEST -- DISPATCH` for a local HTTP
+listener. Nonlocal deployments need operator-managed TLS and authentication.
+Manifests remain fixed for a process lifetime. Task persistence belongs to the
+dispatcher or a tool such as Tend, not a hidden MCPserve database.
 
-For the Tasks extension, the manifest advertises
-`io.modelcontextprotocol/tasks` and lists `tasks/get`, `tasks/update`, and
-`tasks/cancel` as methods. `mcpserve` preserves the polymorphic `resultType:
-"task"` result, checks the per-request capability and HTTP task routing,
-validates the task envelopes, and dispatches every lifecycle operation as a
-new filter call. Durable task state belongs to that filter—Tend, SQLite, or
-another ordinary program—not to a hidden server database.
-
-Manifests are immutable for the lifetime of a process. Their list-change and
-legacy resource-subscription flags are therefore rejected instead of falsely
-advertised; deploy a new process for a new capability set. Independent
-`mcp listen` clients and servers that genuinely have changing lists still use
-the complete `subscriptions/listen` path.
-
-Without options, MCP itself uses stdin/stdout. To expose stateless Streamable
-HTTP instead:
-
-```sh
-mcpserve -http 127.0.0.1:8080 manifest.json -- ./dispatch
-```
-
-The HTTP listener deliberately contains no account system or token database.
-Put it behind the operator's TLS/OAuth-aware reverse proxy when it is not
-strictly local. Legacy stateful sessions belong in a separate, explicit
-compatibility process.
-
-## Outcomes
+## Outcomes and development
 
 | Exit | Meaning |
-| ---: | --- |
-| 0 | complete positive result |
-| 1 | complete peer or application negative, including `isError` |
-| 2 | local usage, validation, discovery, or pre-transmission failure |
-| 75 | valid but unfinished: `input_required` or a nonterminal Task |
-| 125 | the requested effect was transmitted but no unique trustworthy terminal result arrived |
-| 130 | interrupted before transmission |
+| --- | --- |
+| 0 | Complete positive result |
+| 1 | Complete peer/application negative, including `isError` |
+| 2 | Usage, validation, discovery, or pre-transmission failure |
+| 75 | Valid but unfinished: input needed or a nonterminal Task |
+| 125 | Request transmitted without a unique trustworthy terminal result |
+| 130 | Interrupted before transmission |
 
-Once an effectful request write succeeds, a missing or ambiguous terminal
-response is 125 and is never retried. That outcome composes directly with
-Tend's `unknown` state.
+Once a request may have caused an effect, **125 must not trigger an automatic
+retry**. Inspect the service and evidence first. Each request is independent;
+there is no endpoint registry, token database, or background agent loop.
 
-See [DESIGN.md](DESIGN.md) for the boundaries and [SECURITY.md](SECURITY.md)
-for authority and deployment guidance.
+Run each command's `help` for its options. See [DESIGN.md](DESIGN.md),
+[SECURITY.md](SECURITY.md), and [examples](examples). Contributors: read
+[AGENTS.md](AGENTS.md), then run `go test ./...` and `go test -race ./...`.
+[MIT license](LICENSE).
