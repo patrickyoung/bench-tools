@@ -1,52 +1,133 @@
 # Cite
 
-Cite verifies Markdown citations against Context evidence and then gets out of
-the way.
+**Catch invented or mismatched citation links before an answer leaves your pipeline.**
 
-```sh
-q='How does the Unix philosophy relate to Rob Pike?'
-context query wikipedia "$q" > evidence.jsonl
+Cite compares a Markdown answer with the Context evidence that was supplied
+to its author. Every `ctx:` reference must be an exact `[ref](citation.url)`
+link from that evidence. On success, the answer passes through unchanged.
+On rejection, stdout stays empty and stderr explains what to fix.
 
-ask -q "Question: $q
-
-Answer from the supplied records. After every factual claim, add a Markdown
-link whose label is the exact ref and whose URL is citation.url from the same
-record." < evidence.jsonl |
-  cite evidence.jsonl
-```
-
-On success, stdout is the Ask answer byte for byte. On rejection, stdout is
-empty and stderr says what is wrong:
-
-```text
-cite: unknown ref "ctx:wikipedia:made-up"
-cite: ref "ctx:wikipedia:..." must appear exactly as
-      [ctx:wikipedia:...](https://en.wikipedia.org/w/index.php?oldid=...)
-```
-
-Cite proves a deliberately small fact: every `ctx:` occurrence in the answer
-is a literal Markdown link whose ref and URL are paired in the supplied
-Context records. It also requires at least one valid citation. It does not
-claim that evidence supports the prose, that every factual claim is cited, or
-that the source is authoritative. Those are semantic and policy questions for
-a task-specific check.
+Cite checks **citation identity**. It does not judge whether a source supports
+a claim, whether every claim is cited, or whether a source is trustworthy.
+That small, precise check makes it useful as a building block.
 
 ## Install
 
-Cite requires Go 1.26 or later and a Unix.
+Requires **Go 1.26+** and **Unix or WSL**. Install current `main`:
 
 ```sh
-go install github.com/patrickyoung/cite@latest
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/cite@main
+export PATH="$HOME/.local/bin:$PATH"
+cite version
 ```
 
-From this source tree:
+Keep the PATH setting in your shell startup file. Cite itself needs no model,
+API key, or network connection.
+
+## Check your first citation
+
+Create a tiny, fictional evidence fixture:
 
 ```sh
-go build .
-go test ./...
+cat > evidence.jsonl <<'JSON'
+{"kind":"context","version":1,"source":"demo","type":"document","id":"hours","title":"Demo opening hours","retrieved_at":"2026-01-01T00:00:00Z","content":{"text":"The demo library opens at 09:00."},"citation":{"locator":"hours","url":"https://example.com/hours"},"ref":"ctx:demo:a785c43849ba0d88312f120af2825527"}
+JSON
+
+printf '%s\n' 'Opens at 09:00. [ctx:demo:a785c43849ba0d88312f120af2825527](https://example.com/hours)' |
+  cite evidence.jsonl
 ```
 
-## Interface
+You should get exactly the input line back, with exit 0. Now try an invented
+reference:
+
+```sh
+printf '%s\n' 'Opens at 09:00. [ctx:demo:made-up](https://example.com/hours)' |
+  cite evidence.jsonl
+echo "$?"
+```
+
+Cite explains the unknown ref, prints no candidate, and exits **1**. A bare
+ref, a mismatched URL, or no citation at all also fails.
+
+The evidence is an argument because stdin belongs to the answer being checked:
+
+```text
+evidence.jsonl ──┐
+                ├── Cite ── valid: exact candidate bytes
+candidate.md ───┘           invalid: empty stdout + diagnostics
+```
+
+## Put it after a model
+
+With [Context](https://github.com/patrickyoung/context) and its Wikipedia
+connector installed, and [Ask](https://github.com/patrickyoung/ask) configured:
+
+```sh
+q='How does a ring buffer work?'
+context query wikipedia "$q" > evidence.jsonl &&
+ask "Question: $q
+Answer from the supplied records. Cite factual claims with exact
+[ref](citation.url) links from the same records." \
+  < evidence.jsonl > candidate.md &&
+cite evidence.jsonl < candidate.md > answer.md
+```
+
+The `&&` sequence stops if retrieval or writing fails. Use `answer.md` only
+when the final check succeeds. The `example.com` fixture above makes no live
+source claim; this workflow replaces it with retrieved evidence.
+
+## Let a rejected answer get another turn
+
+[Ply](https://github.com/patrickyoung/ply) can give Cite's feedback to the
+model and ask it to correct the candidate:
+
+```sh
+ply -sh -f cited-run.jsonl -turns 12 \
+  -check 'cite evidence.jsonl >/dev/null' \
+  "Question: $q
+Answer using the supplied evidence. Use exact
+[ref](citation.url) links and do not modify evidence.jsonl." < evidence.jsonl
+```
+
+This reuses the question and evidence from the previous step. The initial
+empty candidate is rejected, starting the work. Later candidates arrive on Cite's stdin. A
+rejection becomes feedback; an accepted result receives a sealed Ply verifier
+receipt in the Ask session.
+
+This example grants full shell access. For a check the worker cannot change,
+keep the evidence and checker outside its write boundary. Cite itself grants
+no execution or filesystem isolation.
+
+A direct `ask | cite` pipeline is also possible, but Cite does not write the
+Ask log. Use Ply when you need the check result recorded with the run.
+
+## Understand the boundary
+
+- Input evidence is a regular file containing normalized Context JSONL.
+- Records without `citation.url` may remain in the evidence but cannot supply
+  a clickable citation.
+- Two URLs for one ref make the evidence invalid; file order cannot choose one.
+- Matching is literal, including URL bytes and link formatting. Cite does not
+  render Markdown or sanitize HTML.
+- At least one valid citation is required, and every `ctx:` occurrence must
+  be valid. Unreferenced factual claims are outside this check.
+
+Limits are **32 MiB** of evidence, **8 MiB** per evidence record, and **4 MiB**
+for the candidate. Cite buffers the candidate before printing, so a bad final
+reference cannot leak an accepted-looking prefix. Excess input is an error.
+
+## Outcomes and next steps
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | At least one exact citation; no invalid `ctx:` occurrence |
+| 1 | Candidate rejected, empty candidate, or no citeable evidence |
+| 2 | Usage, I/O, invalid evidence, or a size limit exceeded |
+
+If a candidate fails, use the exact ref and URL from its source record. If
+support or factual coverage matters, add an appropriate task-specific review
+or check rather than treating citation identity as that judgment.
 
 ```text
 cite evidence.jsonl
@@ -54,69 +135,7 @@ cite version
 cite help
 ```
 
-The evidence path is an argument because stdin belongs to the candidate. The
-file must contain normalized `context/v1` JSONL records. Records without
-`citation.url` may be present but cannot be cited as links. Conflicting URLs
-for one ref make the evidence broken rather than letting file order decide.
-
-The required citation is exact:
-
-```markdown
-[ctx:wikipedia:c15c600dd289fe907323ab4150222f29](https://en.wikipedia.org/w/index.php?oldid=1365516372)
-```
-
-Whitespace changes, a bare ref, an invented ref, or the right ref with the
-wrong URL are rejections. The exact match means URLs containing parentheses
-work without Cite inventing a partial Markdown parser.
-
-## With Ply
-
-Ply is useful when a rejected answer should go back to the model instead of
-ending the pipeline:
-
-```sh
-q='How does the Unix philosophy relate to Rob Pike?'
-context query wikipedia "$q" > evidence.jsonl
-
-ply -sh \
-  -check 'cite evidence.jsonl >/dev/null' \
-  "Question: $q
-
-Answer from the supplied records. Cite every factual claim as an exact
-[ref](citation.url) Markdown link." \
-  < evidence.jsonl
-```
-
-Ply's pre-check gives Cite an empty candidate, so Cite exits 1 and the work
-starts. When the model stops, Ply sends the proposed report to Cite on stdin.
-An unknown ref or mismatched URL becomes specific verifier feedback for the
-next turn. Acceptance is recorded in Ply's Ask session like every other
-verifier result.
-
-See [GUIDE.md](GUIDE.md) for composition patterns and limits.
-
-## Unix contract
-
-| channel | meaning |
-| --- | --- |
-| stdout | the candidate unchanged, only after complete validation |
-| stderr | rejection reasons and fatal diagnostics |
-| exit 0 | at least one exact citation and no invalid `ctx:` occurrence |
-| exit 1 | rejected candidate, empty candidate, or no citeable evidence |
-| exit 2 | bad usage, unreadable or invalid evidence, or oversized input |
-
-Both inputs are bounded and the candidate is buffered before any output, so a
-bad final citation cannot leave a plausible partial answer in a pipeline.
-Evidence is limited to 32 MiB, each evidence record to 8 MiB, and the candidate
-to 4 MiB. Excess input is an error rather than a truncated answer.
-
-## Scope
-
-Cite has no model, provider, network, source selection, retrieval, Markdown
-renderer, semantic entailment judge, policy engine, cache, database, config,
-daemon, or session format. Context retrieves; Ask writes; Cite checks literal
-references; Ply retries; Ask and Trail retain history.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+[GUIDE.md](GUIDE.md) has compositions and [cite.1](cite.1) is the manual.
+Contributors: read [AGENTS.md](AGENTS.md), then run `go test ./...`,
+`go test -race ./...`, and `go vet ./...`.
+[Security](SECURITY.md) · [MIT license](LICENSE).
