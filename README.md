@@ -1,34 +1,149 @@
 # Trail
 
-Trail is a small, read-only browser for
-[Ask](../ask) session archives. It lists sessions, searches their human text,
-prints exact events and bounded windows, follows recorded lineage, and asks Ask
-to verify replay. Every result on standard output is one JSON object per line.
+**Find the useful part of a past model run without digging through log files.**
 
-Trail does not own the archive. It never writes a session, repairs a torn
-append, invents a parent, or maintains an index. Ask remains the authority on
-whether a session replays exactly.
+Trail lists, searches, and inspects [Ask](https://github.com/patrickyoung/ask)
+session archives. You can find an old error, read the events around it, follow
+a recorded compaction, or ask Ask to verify the history. Trail is read-only:
+it never modifies a session or builds a second database.
+
+```sh
+trail ls
+trail find 'connection reset'
+trail check
+```
+
+Every result is JSON Lines: one complete JSON object per line. Use the output
+as-is or pipe it through `jq`.
 
 ## Install
 
-Trail requires Go 1.26 or later.
+Requires **Go 1.26+**. Install current `main`:
 
 ```sh
-go install github.com/patrickyoung/trail@latest
+mkdir -p "$HOME/.local/bin"
+GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/trail@main
+export PATH="$HOME/.local/bin:$PATH"
+trail version
 ```
 
-From this source tree:
+Keep the PATH setting in your shell startup file. Searching and reading need
+only session files. `trail check` also needs Ask on PATH; no provider key or
+model call is needed for replay verification.
+
+## Explore your first archive
+
+If you already use Ask, start here:
 
 ```sh
-go build .
-go test ./...
+trail ls
+trail find 'error'
 ```
 
-`trail` uses `ASK_DIR` as its default archive. If that is unset it reads
-`~/.ask/sessions`. `trail check` uses `ASK`, or `ask` from `PATH` when `ASK` is
-unset.
+Trail reads `$ASK_DIR`, or `~/.ask/sessions` by default. If your sessions came
+from another tool, supply its archive directory explicitly:
 
-## Commands
+```sh
+trail ls ~/.ply/sessions
+trail find 'error' ~/.ply/sessions
+```
+
+A listing returns `session` records; a successful search returns `match`
+records containing the original text and its event sequence. No match is
+exit 1 with no match records—it does not mean the search is broken.
+
+For a fully named example, create a tiny archive with configured Ask first:
+
+```sh
+mkdir trail-demo
+ask -f trail-demo/example.jsonl 'Explain what a connection reset means.'
+trail ls trail-demo
+trail find 'connection reset' trail-demo
+trail show trail-demo/example.jsonl
+trail check trail-demo
+```
+
+Only the `ask` question calls a model. The Trail commands read existing files.
+
+## Zoom in instead of reading everything
+
+Use the `seq` value from a search result:
+
+```sh
+trail window -before 2 -after 1 trail-demo/example.jsonl SEQUENCE
+```
+
+Replace `SEQUENCE` with that numeric event sequence. You get the matching
+event and its neighboring events, which is often enough to understand what
+was tried and what happened next. `show` prints every event instead.
+
+With `jq` installed, turn a raw archive view back into event JSONL:
+
+```sh
+trail show trail-demo/example.jsonl |
+  jq -c 'select(.kind == "event") | .event'
+```
+
+`show` and `window` preserve unknown event types and fields under `event`.
+They do not rewrite Ask's format.
+
+## Follow a longer run
+
+```sh
+trail lineage trail-demo/example.jsonl trail-demo
+trail check trail-demo
+```
+
+Lineage follows only `parent` and `summary` fields recorded in session headers.
+Copying a session file does not invent a new branch relationship. A copied ID
+is shown as one identity with multiple paths.
+
+Verification runs `ask replay -check FILE` once per archive member. Ask owns
+that verdict. Replay consistency does not prove an answer is correct or a
+job passed its business check.
+
+[Agent](https://github.com/patrickyoung/agent) exposes the same functionality
+as `agent history HOME`. [Ply](https://github.com/patrickyoung/ply) records
+its work in Ask sessions, so actions and verifier evidence can be inspected
+without learning another log format. [Hone](https://github.com/patrickyoung/hone)
+uses qualifying checked recoveries from that history to propose lessons.
+
+## Know what a search covers
+
+Search ignores case and folds whitespace for matching, but prints original
+text. It covers user/assistant text, reasoning, attachment names and media
+types, notes, retry/terminal errors, and request model/effort labels.
+
+It does not search system prompts, attachment bytes, provider-native opaque
+state, digests, schemas, or unknown event fields. Use `show` when you need
+those raw records. Output is not redacted; archives can contain private data.
+
+Archive scans visit regular `.jsonl` files in lexical path order. A damaged
+file produces an `error` record while the scan continues. A torn final line
+is reported as a `warning` and ignored in memory; the file stays unchanged.
+Events larger than 64 MiB are refused, never truncated.
+
+## Output and outcomes
+
+| `kind` | What it carries |
+| --- | --- |
+| `session` | One archive entry |
+| `match` | Matching event text |
+| `event` | An original event from `show` or `window` |
+| `node`, `edge` | Recorded lineage |
+| `check` | Ask's replay result |
+| `warning`, `error` | A condition encountered while reading |
+
+Exit 0 means a successful result or an all-good check. Exit 1 means no match,
+damage, a missing sequence, or failed replay; already printed records may
+still be useful. Exit 2 means usage or an operational failure prevented the
+requested scan. Fatal diagnostics go to stderr.
+
+`ASK_DIR` selects the default archive; `ASK` selects the Ask executable used
+for checks. Existing file paths work as session arguments; bare IDs resolve
+under the default archive.
+
+## Reference and development
 
 ```text
 trail ls [dir]
@@ -37,78 +152,11 @@ trail show session
 trail window [-before n] [-after n] session seq
 trail lineage session [dir]
 trail check [dir]
+trail help
+trail version
 ```
 
-A session may be an existing path. Otherwise it is a bare session id resolved
-under the default archive.
-
-Examples:
-
-```sh
-trail ls
-trail find 'connection reset'
-trail show 01JY6D7RFJFE2K6EJNW4QNNZ8G
-trail window -before 2 -after 1 01JY6D7RFJFE2K6EJNW4QNNZ8G 14
-trail lineage 01JY6D7RFJFE2K6EJNW4QNNZ8G
-trail check
-```
-
-Archive commands visit regular `.jsonl` files in lexical path order. Damage
-in one file produces an `error` record and does not hide later files. An
-invalid final record is reported as a `warning` because Ask treats it as a
-torn append; Trail ignores it in memory and leaves the file alone.
-
-`find` matches Unicode case-insensitively after collapsing whitespace. It
-searches user and assistant text, reasoning, attachment names and media types,
-notes, retry and terminal errors, and request model/effort labels. It does not
-search system prompts, base64 media, provider-native state, digests, schemas,
-or fields in unknown event types. The `text` in a match is the original text,
-not the folded comparison value.
-
-`lineage` emits only `parent` and `summary` relationships recorded in session
-headers. A copied file with the same session id is one ambiguous node with
-multiple paths, not a guessed branch.
-
-`check` runs this command once for every archive file:
-
-```text
-ask replay -check FILE
-```
-
-Trail does not duplicate Ask's replay logic or interpret the session itself to
-decide whether it is sound.
-
-## Output
-
-Standard output is JSONL. The `kind` field selects the record shape:
-
-- `session`: archive summary from `ls`
-- `match`: one matching event from `find`
-- `event`: an exact archived event wrapped by `show` or `window`
-- `node`, `edge`: a recorded lineage graph
-- `check`: Ask's replay verdict for one file
-- `warning`: a non-fatal condition, currently a torn final record
-- `error`: damage confined to one archive file
-
-`show` and `window` put the original event under `event`; unknown event types
-and unknown fields therefore survive unchanged. Paths are always data. Fatal
-usage and operating-system diagnostics go to standard error.
-
-Exit status is 0 for a successful result, 1 for no match, archive damage, a
-missing event sequence, or a failed replay check, and 2 for bad usage or an
-operating error. Thus JSONL already written to standard output remains useful
-when status 1 reports partial archive damage.
-
-See [GUIDE.md](GUIDE.md) for pipelines and operational details, and
-[trail.1](trail.1) for the manual page. Session contents are sensitive and
-output is not redacted; [SECURITY.md](SECURITY.md) describes the boundary.
-
-## Scope
-
-The design is deliberately direct: list files, read each once, select records,
-print JSONL. There is no daemon, watcher, database, cache, vector search, model
-call, writer, repair command, replay clone, title generator, or query language.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+See [GUIDE.md](GUIDE.md), [trail.1](trail.1), and [SECURITY.md](SECURITY.md).
+Contributors should read [AGENTS.md](AGENTS.md), run `go test ./...`,
+`go test -race ./...`, and `go vet ./...`, then build and smoke-test the binary.
+[MIT license](LICENSE).
