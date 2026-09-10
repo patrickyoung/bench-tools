@@ -1,5 +1,10 @@
 # Migration verification
 
+This is the historical September 9, 2026 migration gate. For the current source,
+see the [public CI runs](https://github.com/patrickyoung/bench-tools/actions/workflows/check.yml)
+and [verification commands](DEVELOPING.md); publication is described in
+[Source and releases](RELEASES.md).
+
 **Passed:** the complete local gate exited 0 with all 104 recorded verification
 steps successful. The [summary](review/gate/summary.json), per-command logs,
 and exact tested-source inventories are preserved in `docs/review/gate/`.

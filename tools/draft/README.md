@@ -17,9 +17,23 @@ and what command decides whether the work is done.
 
 ## Install
 
-The [Bench suite](https://github.com/patrickyoung/bench#install) includes Draft
-and compatible dependencies. For a direct current-`main` source install, use
-**Git, Go 1.26+, a Unix shell, and Perl**:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install draft ask brief ply hone` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+For the monorepo installation, follow the
+[Draft skill setup](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md#draft-and-cage-setup)
+to put the packaged skill on Brief's search path, then run `draft sync`.
+`draft prove` also needs Perl.
+
+The [Bench application suite](https://github.com/patrickyoung/bench#install)
+also includes Draft, with its own pinned companion versions.
+
+**Standalone install.** To work from the independent repositories' current
+`main`, use **Git, Go 1.26+, a Unix shell, and Perl**:
 
 ```sh
 git clone https://github.com/patrickyoung/draft.git
@@ -35,13 +49,13 @@ draft sync
 draft version
 ```
 
-Choose one installation method. If Draft or its skill already exists, inspect
-that installation before replacing links. Keep the checkout in place and the
-PATH setting in your shell startup file.
+For this standalone route, keep the checkout in place and the PATH setting in
+your shell startup file. If Draft or its skill already exists, inspect that
+installation before replacing links.
 
 `draft sync` writes a reference from the installed tools' help and versions.
 Run it again after changing those tools. Configure
-[Ask](https://github.com/patrickyoung/ask#install) before model-backed design
+[Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask#install) before model-backed design
 or build work; Draft owns no provider credentials.
 
 ## Start without a model
@@ -121,8 +135,8 @@ is recovered on the next run.
 
 ## Freeze a reviewed verifier
 
-Install [May](https://github.com/patrickyoung/may) and
-[Cage](https://github.com/patrickyoung/cage), and prove Cage on your host first:
+Install [May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may) and
+[Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage), and prove Cage on your host first:
 
 ```sh
 draft admit release-notes
@@ -147,11 +161,11 @@ than handing a writable `bin/check` the final say.
 | Work | Starting point |
 | --- | --- |
 | Fetch, parse, move files, append, schedule | An ordinary script or program |
-| Summarize, classify, interpret | [Ask](https://github.com/patrickyoung/ask) |
-| Apply a written method | [Brief](https://github.com/patrickyoung/brief) |
-| Iterate until an executable check passes | [Ply](https://github.com/patrickyoung/ply) |
-| Learn from a verified recovery | [Hone](https://github.com/patrickyoung/hone) |
-| Give recurring work a persistent home | [Agent](https://github.com/patrickyoung/agent) |
+| Summarize, classify, interpret | [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) |
+| Apply a written method | [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) |
+| Iterate until an executable check passes | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) |
+| Learn from a verified recovery | [Hone](https://github.com/patrickyoung/bench-tools/tree/main/tools/hone) |
+| Give recurring work a persistent home | [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) |
 | Work through the design/build flow interactively | [Bench](https://github.com/patrickyoung/bench) |
 
 Most systems contain plenty of work that does not need model judgment. Draft's

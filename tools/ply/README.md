@@ -19,8 +19,16 @@ check, exit 0 means the check passed. Without one, it means the model stopped.
 
 ## Install
 
-Requires **Go 1.26+**, **Unix or WSL**, and
-[Ask](https://github.com/patrickyoung/ask). Install both from current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install ply ask` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+**, **Unix or WSL**, and
+[Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask).
+Install both from current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -39,7 +47,7 @@ export ANTHROPIC_API_KEY='YOUR_API_KEY'
 ask 'Reply with hello.'
 ```
 
-See [Ask's setup](https://github.com/patrickyoung/ask#install) for other
+See [Ask's setup](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask#install) for other
 providers and OAuth. Ply makes its model calls through Ask and uses the same
 account. It stores no credentials itself.
 
@@ -144,7 +152,7 @@ ply -t tools -turns 8 'Read names.txt and explain what is duplicated.'
 
 **The toolbox is scope, not a sandbox.** Shell builtins, redirection, and
 absolute paths still exist. Adding or removing a PATH entry does not confine
-the process. [Cage](https://github.com/patrickyoung/cage) or an external OS
+the process. [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage) or an external OS
 boundary supplies confinement.
 
 Commands use `/bin/sh -c`, have no interactive stdin, and run in their own
@@ -154,10 +162,12 @@ executables accepting `-c`, not command strings. Ply never inherits `$SHELL`.
 
 ## Add a procedure and keep the evidence
 
-Install [Brief](https://github.com/patrickyoung/brief) to supply skills:
+Install [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief)
+to supply skills. From the monorepo root, run `python3 scripts/install brief`;
+for an independent installation, use Brief's standalone instructions. Then,
+in the project you want to work on:
 
 ```sh
-GOBIN="$HOME/.local/bin" go install github.com/patrickyoung/brief@main
 ply -sh -s go-review -check 'go test ./...' 'Fix the failing tests.'
 ```
 
@@ -181,8 +191,8 @@ Ply, and receipt consumers together when upgrading. Loaded skills are recorded t
 checks the retained history's integrity, not the wisdom of the verifier or the
 truth of the answer. A run without `-check` has no verifier verdict.
 
-[Hone](https://github.com/patrickyoung/hone) can turn a verified recovery into
-a reviewed lesson for the next run. [Cite](https://github.com/patrickyoung/cite)
+[Hone](https://github.com/patrickyoung/bench-tools/tree/main/tools/hone) can turn a verified recovery into
+a reviewed lesson for the next run. [Cite](https://github.com/patrickyoung/bench-tools/tree/main/tools/cite)
 can be the answer verifier when you need exact citation identities.
 
 ## Continue longer work
@@ -217,7 +227,7 @@ the checkpoint advances. Inspect usage with
 after generation, after approval, and after a candidate check. New guidance
 defers an unused response or finalization; it does not interrupt a running command or change
 the tool grant or verifier. For durable scheduling,
-wrap the invocation with [Tend](https://github.com/patrickyoung/tend).
+wrap the invocation with [Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend).
 
 [contrib/job](contrib/job) provides separate start/status/wait/cancel commands
 for work that should continue while the loop does something else. It returns
@@ -230,7 +240,7 @@ lifecycle fixtures are reported separately from live model task quality.
 
 ## Review actions and constrain writes
 
-`-may-job JOB` asks [May](https://github.com/patrickyoung/may) to authorize
+`-may-job JOB` asks [May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may) to authorize
 each exact model-authored shell action. Status 75 means it is parked without
 execution; inspect `may pending`, run `may decide DIGEST` at a terminal, and
 continue the same task. Only a byte-identical proposal can spend that grant.
@@ -260,9 +270,9 @@ operator's responsibility; see the [manual](ply.1).
 
 ## More tools, same interface
 
-- [MCP](https://github.com/patrickyoung/mcp) can expose reviewed remote
+- [MCP](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp) can expose reviewed remote
   capabilities as ordinary executable files for a toolbox.
-- [Agent](https://github.com/patrickyoung/agent) adds a standing goal, skills,
+- [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) adds a standing goal, skills,
   separate work/state directories, checks, and history in one home folder.
 - [Bench](https://github.com/patrickyoung/bench) adds a terminal interface for
   negotiating an outcome and following the work.

@@ -15,7 +15,14 @@ No model, account, configuration file, or background service is needed.
 
 ## Install
 
-Requires **Go 1.26+**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install rules` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+**. Install current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -52,7 +59,7 @@ applicable instructions produces empty stdout and exits successfully.
 
 ## Give the same context to an agent
 
-With [Ask](https://github.com/patrickyoung/ask) installed and configured:
+With [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) installed and configured:
 
 ```sh
 system=$(ask system) &&
@@ -61,7 +68,7 @@ ASK_SYSTEM="$system
 $workspace" ask 'Summarize the conventions I should follow here.'
 ```
 
-For executable work, install [Ply](https://github.com/patrickyoung/ply) and run
+For executable work, install [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) and run
 this from the repository you want it to change:
 
 ```sh
@@ -97,9 +104,9 @@ unsafe symlinks, and special files are refused without a partial prompt.
 | Tool | Supplies |
 | --- | --- |
 | Rules | Repository conventions that apply at a directory |
-| [Brief](https://github.com/patrickyoung/brief) | A reusable procedure selected for a task |
-| [Context](https://github.com/patrickyoung/context) | Retrieved evidence, supplied as message data |
-| [Ask](https://github.com/patrickyoung/ask) / [Ply](https://github.com/patrickyoung/ply) | Reasoning, or actions judged by an explicit check |
+| [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) | A reusable procedure selected for a task |
+| [Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) | Retrieved evidence, supplied as message data |
+| [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) / [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | Reasoning, or actions judged by an explicit check |
 
 Rules connects to nothing automatically. You choose when its output is used,
 and it never grants file access, network access, or approval.

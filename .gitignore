@@ -1,3 +1,4 @@
 /.checks/
 /.build/
+/bench-demo/
 __pycache__/

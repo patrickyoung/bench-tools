@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Build independent tools into a relocatable local directory (default: .build).
+
+No arguments builds all components. Names select components, so `mcp` builds
+its four public commands. Building never installs into your PATH or calls a model.
+"""
+import argparse
+from contextlib import ExitStack
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+CHECK = runpy.run_path(str(ROOT / "scripts/check"))
+MARKER = {"schema": 1, "producer": "bench-tools/scripts/build"}
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_inventory(directory):
+    records = []
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink():
+            raise ValueError("package payload must contain regular files: " + str(path))
+        if path.is_file():
+            records.append({"path": path.relative_to(directory).as_posix(),
+                            "sha256": digest(path.read_bytes()),
+                            "mode": stat.S_IMODE(path.stat().st_mode)})
+    return records
+
+
+def copy_payload(source, package, component):
+    """Preserve private assets beside each tool, never beside another tool."""
+    name = component["name"]
+    if not component["module"]:
+        entries = [command["entry"] for command in component["commands"]]
+        if name == "agent":
+            entries.append("bin/agent-action-shell")
+        for entry in entries:
+            target = package / entry
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source / entry, target)
+        if name == "draft":
+            shutil.copytree(source / "skills/draft", package / "skills/draft")
+    for path in sorted(source.iterdir()):
+        if path.is_file() and (path.name == "LICENSE" or path.suffix in (".md", ".1")):
+            shutil.copy2(path, package / path.name)
+
+
+def build_package(component, source, package, env, compiler, provenance):
+    package.mkdir()
+    (package / "bin").mkdir()
+    if component["module"]:
+        for command in component["commands"]:
+            print("Building " + command["name"], flush=True)
+            subprocess.run([compiler, "build", "-mod=readonly", "-trimpath", "-buildvcs=false",
+                            "-o", str(package / "bin" / command["name"]), command["package"]],
+                           cwd=source, env=env, check=True)
+    else:
+        print("Packaging " + component["name"], flush=True)
+    copy_payload(source, package, component)
+    receipt = {"schema": 1, "name": component["name"],
+               "commands": [c["name"] for c in component["commands"]],
+               "source": provenance, "files": file_inventory(package)}
+    if component["name"] == "draft":
+        receipt["mutable_paths"] = ["skills/draft/references/tools.md"]
+    (package / "package.json").write_text(json.dumps(receipt, indent=2) + "\n")
+
+
+def validate_output(root, output):
+    # Keep build products out of source directories and historical evidence.
+    if output == root or output in root.parents or (root in output.parents and output != root / ".build"):
+        raise ValueError("inside this checkout, use .build; choose an external directory for other output")
+    if output.is_symlink():
+        raise ValueError("build output must not be a symlink")
+    if output.exists():
+        if not output.is_dir():
+            raise ValueError("build output is not a directory: " + str(output))
+        marker = output / "build.json"
+        if marker.is_symlink() or (marker.exists() and json.loads(marker.read_text()) != MARKER):
+            raise ValueError("output belongs to another builder: " + str(output))
+        if not marker.exists() and any(output.iterdir()):
+            raise ValueError("refusing a nonempty unmanaged output directory: " + str(output))
+
+
+def publish(output, staged, components):
+    """Replace only owned destinations, and restore them on publication failure."""
+    replacements = []
+    for component in components:
+        name = component["name"]
+        destination = output / "tools" / name
+        receipt_path = destination / "package.json"
+        if destination.is_symlink() or (destination.exists() and
+                (receipt_path.is_symlink() or not receipt_path.is_file())):
+            raise ValueError("unmanaged package destination: " + str(destination))
+        if destination.exists():
+            receipt = json.loads(receipt_path.read_text())
+            if (not isinstance(receipt, dict) or receipt.get("schema") != 1 or receipt.get("name") != name or
+                    receipt.get("commands") != [c["name"] for c in component["commands"]] or
+                    not isinstance(receipt.get("files"), list) or not receipt["files"]):
+                raise ValueError("unmanaged package receipt: " + str(receipt_path))
+        replacements.append((staged / "tools" / name, destination))
+        for command in component["commands"]:
+            target = "../tools/" + name + "/bin/" + command["name"]
+            link = output / "bin" / command["name"]
+            if link.is_symlink():
+                if os.readlink(link) != target:
+                    raise ValueError("unmanaged command destination: " + str(link))
+            elif link.exists():
+                raise ValueError("refusing to replace an unmanaged command: " + str(link))
+            new_link = staged / "bin" / command["name"]
+            new_link.symlink_to(target)
+            replacements.append((new_link, link))
+    backup = staged / "previous"
+    backup.mkdir()
+    changed = []
+    try:
+        for index, (source, destination) in enumerate(replacements):
+            previous = backup / str(index)
+            exists = destination.exists() or destination.is_symlink()
+            if exists:
+                destination.rename(previous)
+            changed.append((destination, previous if exists else None))
+            source.rename(destination)
+    except BaseException:
+        for destination, previous in reversed(changed):
+            if destination.is_symlink() or destination.is_file():
+                destination.unlink()
+            elif destination.exists():
+                shutil.rmtree(destination)
+            if previous is not None:
+                previous.rename(destination)
+        raise
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("tools", nargs="*", help="component names (default: all)")
+    parser.add_argument("--output", type=Path, default=ROOT / ".build", help="build directory (default: .build)")
+    parser.add_argument("--list", action="store_true", help="list components and their commands")
+    args = parser.parse_args(argv)
+    components = json.loads((ROOT / "components.json").read_text())["components"]
+    if args.list:
+        for component in components:
+            print(component["name"] + ": " + " ".join(c["name"] for c in component["commands"]))
+        return 0
+    unknown = set(args.tools) - {c["name"] for c in components}
+    if unknown:
+        parser.error("unknown components: " + ", ".join(sorted(unknown)))
+    selected = [c for c in components if not args.tools or c["name"] in args.tools]
+    try:
+        if sys.version_info < (3, 9):
+            raise ValueError("Python 3.9 or newer is required")
+        missing = [name for name in ("go", "git", "sh") if shutil.which(name) is None]
+        if missing:
+            raise ValueError("missing build prerequisites: " + ", ".join(missing) + "; see README.md")
+        compiler = str(Path(shutil.which("go")).resolve())
+        base_env = dict(os.environ, GOWORK="off", GOENV="off", GOTOOLCHAIN="local", GOFLAGS="")
+        version = subprocess.check_output([compiler, "version"], env=base_env, text=True).strip()
+        match = re.search(r"go(\d+)\.(\d+)", version)
+        if not match or tuple(map(int, match.groups())) < (1, 26):
+            raise ValueError("Go 1.26 or newer is required; found " + version)
+        output = args.output.expanduser().absolute()
+        validate_output(ROOT, output)
+        output = output.resolve()
+        validate_output(ROOT, output)
+        output.mkdir(parents=True, exist_ok=True)
+        lock = output / ".lock"
+        if lock.is_symlink():
+            raise ValueError("build lock must not be a symlink")
+        with lock.open("a") as lockfile, ExitStack() as stack:
+            try:
+                fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise ValueError("another build is using " + str(output))
+            (output / "build.json").write_text(json.dumps(MARKER, indent=2) + "\n")
+            for name in ("tools", "bin"):
+                directory = output / name
+                if directory.is_symlink():
+                    raise ValueError("build subdirectory must not be a symlink: " + str(directory))
+                directory.mkdir(exist_ok=True)
+            scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="bench-build-"))).resolve()
+            system_bin = scratch / "system-bin"
+            system_bin.mkdir()
+            for name in ("go", "git", "sh", "cc"):
+                path = shutil.which(name)
+                if path:
+                    (system_bin / name).symlink_to(Path(path).resolve())
+            cache = json.loads(subprocess.check_output([compiler, "env", "-json", "GOCACHE", "GOMODCACHE"], env=base_env))
+            home, temporary = scratch / "home", scratch / "tmp"
+            home.mkdir(); temporary.mkdir()
+            env = CHECK["isolated_environment"](home, temporary, system_bin, cache)
+            print("Checking source boundaries", flush=True)
+            subprocess.run([sys.executable, str(ROOT / "scripts/check-boundaries.py")], cwd=ROOT, env=env, check=True)
+            revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+            staged = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix=".staging-", dir=output)))
+            (staged / "tools").mkdir(); (staged / "bin").mkdir()
+            for component in selected:
+                # Each source export is a separate temporary root, with no sibling modules.
+                source = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="bench-build-" + component["name"] + "-"))).resolve()
+                records = CHECK["export_source"](ROOT, component, source)
+                provenance = {"repository_revision": revision, "path": component["path"],
+                              "original_import": component["source"], "compiler": version,
+                              "build_flags": ["-mod=readonly", "-trimpath", "-buildvcs=false"],
+                              "files_sha256": digest(json.dumps(records, sort_keys=True).encode()), "files": records}
+                build_package(component, source, staged / "tools" / component["name"], env, compiler, provenance)
+            publish(output, staged, selected)
+        print("Built " + str(sum(len(c["commands"]) for c in selected)) + " commands in " + str(output / "bin"))
+        install = ["./scripts/install"] + (args.tools if args.tools else []) + ["--from-build", str(output)]
+        print("Run them directly, or install with " + shlex.join(install))
+        return 0
+    except (OSError, ValueError, subprocess.SubprocessError, KeyboardInterrupt) as error:
+        print("Build failed: " + (str(error) or "interrupted"), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

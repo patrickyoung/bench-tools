@@ -1,8 +1,14 @@
-# Verification
+# Build, install, and verification
 
 From the repository root:
 
 ```sh
+scripts/build                              # all 20 commands under .build/bin
+scripts/build ask ply                      # only selected components
+scripts/install                           # build and install into ~/.local
+scripts/install --from-build .build --prefix /tmp/bench-preview
+scripts/uninstall --prefix /tmp/bench-preview
+scripts/check --quick                      # everyday checks, no integration/race/supplemental suites
 scripts/check                              # all standalone checks, then public-process integration
 scripts/check --component ask              # one independent source export
 scripts/check --component agent --component weave
@@ -10,13 +16,64 @@ scripts/check --standalone                 # all leaves, no composition stage
 scripts/check --integration-only           # independent builds, then composition fixtures
 scripts/check --component cage --native-cage
 python3 -m unittest discover -s scripts/tests -v
+python3 scripts/check-docs.py              # local guide links and anchors
+python3 scripts/check-examples.py --bin-dir .build/bin  # copied starters, local fixtures
 ```
 
-Go 1.26, Python 3.9+, Git, a C compiler, Make, sh, Bash, and jq must be available.
-The runner reports missing prerequisites before running component checks. Go
+Builds require Go 1.26+, Python 3.9+, Git, and sh. The test runner selects its
+prerequisites for the requested plan: Perl for Draft shell tests, a C compiler
+for race checks, and Make plus `install` for Weave release checks. jq is not required. Standard Unix
+utilities must be available. `scripts/check --requirements` lists prerequisites;
+combine it with component selection or `--quick` to inspect that plan. The
+runner reports missing commands before running component checks. Go
 may fetch pinned module dependencies; set `GOPROXY=off GOSUMDB=off` when the
 local module cache is complete and network fetching should be prohibited.
 Fixtures use local processes and loopback services, with no paid model calls.
+
+`--quick` retains isolated source exports, before/after boundary guards,
+ordinary uncached Go tests (including Go's built-in vet checks), built command
+versions, and the complete Agent/Draft shell checks. It skips race, the separate
+`go vet` pass, May self-check, Cage cross-build/native proof, Ply supplemental
+suites, Weave Python/smoke tests, and public-process integration. It cannot be
+combined with `--native-cage` or `--integration-only`. If a C compiler is absent,
+ordinary checks explicitly use `CGO_ENABLED=0` and record that choice. No current
+component requires CGo. `--verbose` includes full command lines; default progress
+prints one result per check. Detailed command output always goes to `.checks/`.
+
+Build output uses `.build/tools/NAME` for each tool's own payload and receipt,
+with relative command links under `.build/bin`. The source and file checksums in
+`package.json` identify the actual working-tree bytes and resulting artifacts;
+they are local integrity records, not release signatures or a suite version.
+Builds compile with `-mod=readonly -trimpath -buildvcs=false` and do not rewrite
+module files. A failed build leaves previous published packages available.
+Rebuilding replaces generated output. Use `--output DIR` for an external build
+directory; inside the checkout, only `.build` is accepted.
+
+The installer verifies each package before copying it into
+`PREFIX/lib/bench-tools/NAME`, exposing only public commands through relative
+links in `PREFIX/bin`. It refuses unrelated existing paths and changed owned
+files, uses a lock and staged replacement with rollback on ordinary errors,
+and retains an ownership receipt for repeat installation and removal. Do not
+run installs while those programs are active. `--from-build DIR` needs only
+Python and completed packages; normal installation first runs the builder.
+Default installation is user-owned under `~/.local`; no privileged setup or
+shell startup edits occur automatically. Runtime dependencies remain separate
+programs on PATH, and provider configuration remains each tool's responsibility.
+
+Draft's `skills/draft/references/tools.md` is a declared generated file. Its
+contents may change through `draft sync`; updates preserve it along with any
+more restrictive permissions from your umask, and uninstall accepts those
+changes. Other assets and executable modes remain
+verified. After updating companions, run `draft sync` and put the packaged skill
+on `BRIEF_PATH` as printed by the installer. Agent's action-shell helper stays
+private beside Agent. The existing manuals and top-level documentation remain
+inside each package (for example, `man ~/.local/lib/bench-tools/ask/ask.1`).
+
+`python3 scripts/check-install.py` tests all built commands and their help/version
+interfaces, moves an installation to a path with spaces, exercises Agent
+scaffolding and Draft's reference/template/Brief lookup without a model, repeats
+the installation, and uninstalls while preserving an unrelated file. It uses
+a disposable prefix and never installs into your actual home.
 
 Each component is copied into a separate temporary directory without any
 sibling checkout. The export uses the current contents of tracked files and
@@ -73,6 +130,9 @@ architecture guard runs before and after verification. `scripts/verify-imports`
 separately checks original migration provenance; an ordinary future source
 change need not match the historical import byte for byte.
 
-The GitHub workflow derives its component matrix from `components.json` and
+The GitHub workflow also runs the build/install smoke on Linux and macOS. It derives its component matrix from `components.json` and
 checks every leaf on Linux and macOS. It also runs the architecture mutation
 tests, public-process integration, and native Cage proof in explicit jobs.
+The entry-guide link check runs before the matrix. After building packages,
+the runnable starters are copied into temporary directories and exercised
+against actual commands and local model fixtures, including failure paths.

@@ -68,11 +68,11 @@ false
 
 ## Traps
 
-The things that will bite. Start with these three, which bite everybody:
+Name the failure cases and how the system detects or handles them:
 
-- a scripted `ask` must pass `-n` or `-f`, or it continues whatever
-  conversation you were having and eventually fills the window;
-- work already done must cost nothing, so a re-run is safe and a missed
-  schedule heals itself;
-- secrets are not inherited by a scheduler, and a model-authored command
-  can read any variable in the environment it was started with.
+- plain `ask` starts fresh; `-c` continues `current`; `-f FILE` creates or
+  continues only that named session. Choose a new filename for independent work;
+- a passing task check can avoid repeated work, but file existence alone is
+  insufficient. Inspect an uncertain external effect before considering a retry;
+- explicitly select the environment available to a scheduled job or worker.
+  Keep credentials and trusted evidence outside its writable boundary.

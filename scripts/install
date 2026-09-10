@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Install independent Bench tools without replacing unmanaged commands."""
+from install_support import install_main
+
+if __name__ == "__main__":
+    raise SystemExit(install_main())

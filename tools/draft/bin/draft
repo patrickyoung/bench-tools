@@ -660,14 +660,13 @@ cmd_new() {
 		doctrine=$("$BRIEF" cat draft 2>/dev/null) || doctrine=
 
 	mkdir -p "$dir/.draft" || return 2
-	# The design's provenance lives with the project and replays, because a
-	# design a model drafted is a decision it made on your behalf. -n so it
-	# never continues the conversation you were having.
+	# The explicit project session keeps design provenance out of the current
+	# conversation. Ask creates or continues only this named file.
 	ASK_SYSTEM="$("$ASK" system)
 $doctrine"
 	export ASK_SYSTEM
 	say "drafting $dir/DESIGN.md"
-	if template | "$ASK" -n -q ${DRAFT_MODEL:+-m "$DRAFT_MODEL"} \
+	if template | "$ASK" -q ${DRAFT_MODEL:+-m "$DRAFT_MODEL"} \
 		-f "$dir/.draft/design.jsonl" \
 		"Below is a DESIGN.md template and then a description of a system to
 build. Fill the template in for that system, keeping every heading, in the

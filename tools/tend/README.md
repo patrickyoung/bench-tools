@@ -12,7 +12,15 @@ cron, launchd, systemd, or CI supplies the repetition.
 
 ## Install
 
-Requires **Go 1.26+** and a **Unix environment**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install tend` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and a **Unix environment**.
+Install current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -135,11 +143,11 @@ until the launcher is gone and partial output is sealed.
 
 ## Compose it with Bench tools
 
-- [Agent](https://github.com/patrickyoung/agent): submit one `agent run` with a
+- [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent): submit one `agent run` with a
   named checkpoint. See [agent-checkpoint](examples/agent-checkpoint/README.md).
-- [May](https://github.com/patrickyoung/may): park an approval request and wake
+- [May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may): park an approval request and wake
   it after a human decision. See [may-approval](examples/may-approval/README.md).
-- [Ply](https://github.com/patrickyoung/ply): keep a checked model task's
+- [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply): keep a checked model task's
   command, input, output, and execution outcome durable.
 - [Hire](https://github.com/patrickyoung/bench-hire): use a web interface that
   submits worker tasks through Tend and surfaces results for review.

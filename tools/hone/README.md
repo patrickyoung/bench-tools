@@ -16,8 +16,16 @@ produce exit 1: there is nothing to learn, and nothing is written.
 
 ## Install
 
-Requires **Go 1.26+**, **Unix or WSL**, and
-[Ask](https://github.com/patrickyoung/ask). Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install hone ask brief` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+**, **Unix or WSL**, and
+[Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask).
+Install current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -35,7 +43,7 @@ without it, some inspection and wording operations remain available.
 
 ## Start with a run that has a check
 
-Use [Ply](https://github.com/patrickyoung/ply) on a real task with an executable
+Use [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) on a real task with an executable
 definition of success. For example, from a Go repository with failing tests:
 
 ```sh
@@ -142,12 +150,12 @@ representative work. Hone does not silently consolidate or rewrite it.
 
 | Tool | Responsibility |
 | --- | --- |
-| [Ask](https://github.com/patrickyoung/ask) | Model calls and the session record |
-| [Ply](https://github.com/patrickyoung/ply) | Actions, checks, and sealed verifier receipts |
+| [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) | Model calls and the session record |
+| [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | Actions, checks, and sealed verifier receipts |
 | Hone | Identify qualifying recoveries and word an explicit lesson |
-| [Brief](https://github.com/patrickyoung/brief) | Find, read, and lint the resulting skill |
-| [Agent](https://github.com/patrickyoung/agent) | Scope learning to a particular worker home |
-| [Trail](https://github.com/patrickyoung/trail) | Search the source history |
+| [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) | Find, read, and lint the resulting skill |
+| [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Scope learning to a particular worker home |
+| [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) | Search the source history |
 
 Hone owns no memory database, index, scheduler, or automatic learning hook.
 Lessons remain readable files you can review and version.

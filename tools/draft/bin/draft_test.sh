@@ -3,10 +3,9 @@
 #
 #     sh bin/draft_test.sh
 #
-# No test here calls a model or reaches the network. draft new with a
-# description does, and that path is exercised by using it -- the tests
-# cover the parts that decide whether a design is buildable, which is the
-# part that must never be wrong.
+# No test here calls a model or reaches the network. The described-new path
+# uses the actual Ask executable with an unsupported provider, so it checks
+# CLI compatibility and failure handling before any provider can be called.
 set -u
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -129,6 +128,21 @@ else no "the template is not the skill's copy"; fi
 
 "$DRAFT" new "$TMP/a" >/dev/null 2>&1
 want "new refuses to clobber an existing design" 2 $?
+
+# The real Ask parser must accept Draft's invocation before rejecting this
+# deliberately unsupported provider. A fake accepting every argument missed
+# the retired -n flag, which broke every model-backed design before a request.
+# Provider selection fails before credentials, a session write, or networking.
+DRAFT_MODEL=draft-cli-probe/never ASK_VERBOSITY= \
+	"$DRAFT" new "$TMP/cli-probe" 'Write a design from this description.' \
+	>"$TMP/o" 2>"$TMP/e"
+want "described new propagates provider refusal" 2 $?
+grep -F 'unknown provider "draft-cli-probe"' "$TMP/e" >/dev/null && ok ||
+	no "described new reaches actual Ask provider validation" "$(cat "$TMP/e")"
+[ ! -s "$TMP/o" ] && ok || no "failed described new printed a design path"
+[ ! -e "$TMP/cli-probe/DESIGN.md" ] && ok || no "failed described new published a design"
+[ ! -e "$TMP/cli-probe/DESIGN.md.tmp" ] && ok || no "failed described new left temporary output"
+[ ! -e "$TMP/cli-probe/.draft/design.jsonl" ] && ok || no "provider probe wrote a session"
 
 # --- check: the falsifiability gate ---------------------------------------
 

@@ -1,0 +1,5 @@
+Launch review, September 9.
+Decision: move the pilot to September 21 because export tests are unfinished.
+Maya will finish export tests by September 14.
+Luis will update the pilot customers by September 10.
+Open question: who covers support during the first pilot week?

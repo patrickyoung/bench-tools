@@ -1,80 +1,108 @@
 # Bench tools
 
-Independent Unix programs, maintained together. Each directory under `tools/`
-keeps its own module or script, public commands, documentation, license, tests,
-and release identity. There is no root runtime or shared Go module.
+**Small programs for building tools that use language models.**
 
-The first migration includes **17 tools, 15 independent Go modules, and 20
-commands**, selected after reviewing all 26 Bench project directories.
-[The review and decision](docs/DECISION.md) explain every inclusion and deferral.
+Turn support tickets into a digest. Give a model a failing test and let it work
+until the test passes. Keep the evidence behind a report. Make a useful one-off
+task into a job you can run again.
 
-| Responsibility | Programs |
+Bench tools gives you the pieces: a model connection, reusable instructions,
+an action loop, checks, records, and durable jobs. Use one program on its own
+or connect several through files and ordinary process input/output. You can
+write the connecting code in Python, a shell script, or with your coding agent.
+There is no required server or shared runtime.
+
+## Start with something useful
+
+[**Get your first result →**](docs/GETTING-STARTED.md) Install Ask and turn
+meeting notes into a short update. Then save the method for next time.
+The walkthrough explains every bit of shell syntax it uses.
+
+Start from the public source checkout (Go 1.26+, Python 3.9+, and Git required):
+
+```sh
+git clone https://github.com/patrickyoung/bench-tools.git
+cd bench-tools
+python3 scripts/install ask
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+[Configure a model](docs/GETTING-STARTED.md) before your first Ask request.
+Install selected tools or the whole toolkit with the [installation guide](docs/INSTALL.md).
+
+Already have Ask configured? Give it the actual notes:
+
+```sh
+ask 'Summarize the decisions and next steps. Flag missing owners.' < notes.txt
+```
+
+`< notes.txt` supplies the file's contents. Ask prints an answer; it cannot
+open files or run commands from a prompt. Install Ply from the checkout root
+with `python3 scripts/install ply`, then use it with a check:
+
+```sh
+ply -sh -turns 8 -check 'go test ./...' 'Fix the failing tests.'
+```
+
+Run this second example in a Go project you intend the model to edit. `-sh`
+allows commands with your user permissions; `-turns 8` bounds model turns.
+Ply runs the tests first, works if they fail, and tests a proposed result again.
+A passing check proves only what those tests cover.
+
+## Choose by the job
+
+| I want to… | Start with | Add when needed |
+| --- | --- | --- |
+| Explain, summarize, or transform supplied material | [Ask](tools/ask/README.md) | [Brief](tools/brief/README.md) for a reusable procedure |
+| Let a model edit files or use programs until a check passes | [Ply](tools/ply/README.md) | [Cage](tools/cage/README.md) for write/network limits |
+| Produce a report with traceable sources | [Context](tools/context/README.md) + Ask | [Cite](tools/cite/README.md) to check citation identities |
+| Give a repeatable job a directory of instructions and checks | [Agent](tools/agent/README.md) | [Tend](tools/tend/README.md) for durable queued attempts |
+| Control a proposed external change | [Action](tools/action/README.md) | [May](tools/may/README.md) for a recorded human decision |
+| Build a tool with help from an LLM | [The builder guide](docs/BUILD-WITH-AN-LLM.md) | [Draft](tools/draft/README.md) for a structured design workflow |
+
+[The full tool guide](docs/TOOLS.md) covers all **17 components and 20 public
+commands**, including Rules, Hone, Trail, MCP, OAuth, and Weave. Install only
+the components you need; their runtime companions are selected separately.
+
+## Learn enough to build
+
+| Guide | What you will get from it |
 | --- | --- |
-| Model, procedure, work loop, learning | [Ask](tools/ask/README.md), [Brief](tools/brief/README.md), [Ply](tools/ply/README.md), [Hone](tools/hone/README.md) |
-| Evidence and its identity | [Context](tools/context/README.md), [Cite](tools/cite/README.md), [Trail](tools/trail/README.md) |
-| Effects, human decisions, confinement | [Action](tools/action/README.md), [May](tools/may/README.md), [Cage](tools/cage/README.md) |
-| External protocols and credentials | [MCP](tools/mcp/README.md), [OAuth](tools/oauth/README.md) |
-| Instructions, design, worker composition | [Rules](tools/rules/README.md), [Draft](tools/draft/README.md), [Agent](tools/agent/README.md) |
-| Process durability and graph readiness | [Tend](tools/tend/README.md), [Weave](tools/weave/README.md) |
+| [Getting started](docs/GETTING-STARTED.md) | A first result, provider setup, and basic terminal notation |
+| [Recipes](docs/RECIPES.md) | Small, concrete workflows with inputs and checks |
+| [Runnable starters](examples/README.md) | Copy a complete meeting brief, evidence answer, or durable job and run it |
+| [How it works](docs/HOW-IT-WORKS.md) | What a model, loop, verifier, and durable job each contribute |
+| [Choose your tools](docs/TOOLS.md) | Each tool's role, boundaries, and detailed reference |
+| [Build with an LLM](docs/BUILD-WITH-AN-LLM.md) | A prompt and workflow for making your own useful tool |
+| [Compare with modern agent tooling](docs/COMPARISONS.md) | Where coding agents, SDKs, workflows, MCP, and Bench fit in 2026 |
+| [Installation](docs/INSTALL.md) | Whole toolkit, selected tools, updates, and removal |
+| [Source and releases](docs/RELEASES.md) | Which installation to use and how to pin a reproducible toolset |
 
-Build an individual tool from its directory with Go 1.26 or newer:
+You do not need all the pieces for every task. A fixed transformation may need
+no model; a summary may need only Ask. Add a loop when the next step depends on
+what happened, and a durable queue when the work must survive the caller exiting.
 
-```sh
-cd tools/ply
-GOWORK=off go build -o /tmp/ply .
-GOWORK=off go test ./...
-/tmp/ply help
-```
+## Working on this repository
 
-MCP and OAuth use their documented `cmd/` packages. Agent and Draft remain
-shell programs with adjacent private assets; preserve their complete directory
-layout. Runtime companions are separate executables selected through the
-existing public command flags/environment, exactly as each tool documents.
-
-To extract one clean committed tool without any siblings:
+Build prerequisites are Go 1.26+, Python 3.9+, Git, and a Unix shell; checks
+have [additional prerequisites](docs/DEVELOPING.md#choose-the-right-check).
+From this checkout:
 
 ```sh
-./scripts/export-tool ply /tmp/standalone-ply
-cd /tmp/standalone-ply
-git init
-GOWORK=off go build .
+make build                    # all 20 commands in .build/bin
+make test                     # ordinary checks, no paid model calls
+make check                    # full standalone and process integration checks
 ```
 
-That also gives Rules a separate real repository root when narrow instruction
-scope is needed. No fake nested `.git` markers are used inside this repository.
+Make is optional: `python3 scripts/build` and `python3 scripts/check --quick`
+provide the first two operations. See [development and verification](docs/DEVELOPING.md)
+for prerequisites, isolated checks, individual builds, and source exports.
 
-`components.json` records original commit/tree IDs, module paths, and command
-entry points. `./scripts/verify-imports` proves the initial exact import and
-source ancestry; it is an import audit, so future intentional tool changes
-will rightly differ from that original baseline. The ongoing architecture
-check is `python3 scripts/check-boundaries.py`. Add `--baseline` to compare all
-current component file bytes and modes against the original source trees.
-
-Run the complete local gate with Go, Python 3.9+, Git, a C compiler, Make, Bash,
-and `jq` available:
-
-```sh
-./scripts/check --native-cage
-```
-
-Each tool is copied to its own temporary source directory without siblings,
-then built and checked with `GOWORK=off`. Go tests run uncached, including race
-checks and vet; shell/example checks and explicit executable integrations run
-separately. Model transport uses local fixtures. Logs and exact tested-source
-inventories go to `.checks/`; source files and personal installations stay
-unchanged. Dependencies may download through Go if absent from cache; use
-`GOPROXY=off GOSUMDB=off` when all dependencies are already available offline.
-
-For a narrower development check use `./scripts/check --component ply`;
-`--standalone` runs all independent checks, and `--integration-only` builds
-the commands and exercises their process contracts. Native Cage proof is
-explicit and fails if the host cannot supply confinement. Linux needs its
-Bubblewrap backend. The prospective CI workflow covers Linux and macOS;
-local results and their limits are recorded in [verification](docs/VERIFICATION.md).
-
-This local source migration is not a new Bench suite release. Existing
-installation instructions in the component READMEs continue to refer to their
-original repositories. Bench/Hire retain their exact tested suite pins and
-release paths while monorepo-aware packaging is developed. No remote,
-published release, installed binary, worker state, or credential was changed.
-Each component's original license remains in its own directory.
+Each directory under `tools/` keeps its own commands, module or script, manual,
+tests, license, and release identity. There is no root Go module or umbrella
+`bench-tools` command. The [Bench application](https://github.com/patrickyoung/bench)
+provides an interactive workspace and maintains its own pinned suite releases;
+use this repository to build and compose the standalone tools.
+The [migration decision](docs/DECISION.md) and [original verification](docs/VERIFICATION.md)
+record the source history. Root tooling and documentation are [MIT licensed](LICENSE);
+each component retains its own license.

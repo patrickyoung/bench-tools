@@ -7,9 +7,9 @@ standing goal, a procedure, mutable work, and a clear test of success in an
 ordinary directory. You can inspect it, version its definition, run it again,
 and see the evidence from each attempt.
 
-Agent connects [Brief](https://github.com/patrickyoung/brief),
-[Ply](https://github.com/patrickyoung/ply), [Ask](https://github.com/patrickyoung/ask),
-and [Cage](https://github.com/patrickyoung/cage). The goal lives in Markdown;
+Agent connects [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief),
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply), [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask),
+and [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage). The goal lives in Markdown;
 `bin/check` decides whether the work is done.
 
 [Install](#install) · [First worker](#build-your-first-worker) ·
@@ -18,11 +18,18 @@ and [Cage](https://github.com/patrickyoung/cage). The goal lives in Markdown;
 
 ## Install
 
-For the complete compatible toolset, follow the
-[Bench suite installer](https://github.com/patrickyoung/bench#install).
-It includes Agent and its companion programs.
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install agent ask brief ply cage hone trail may action` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
 
-To work directly from current `main`, you need **Git, a Unix shell, and Go 1.26+**:
+The [Bench application suite](https://github.com/patrickyoung/bench#install)
+also includes Agent, with its own pinned companion versions.
+
+**Standalone install.** To work from the independent repositories' current
+`main`, you need **Git, a Unix shell, and Go 1.26+**:
 
 ```sh
 git clone https://github.com/patrickyoung/agent.git
@@ -38,13 +45,14 @@ agent version
 cage check
 ```
 
-Choose either the suite or this source installation. If an Agent command is
-already installed, use that installation instead of replacing its links
-blindly. Keep the source checkout in place and the PATH setting in your shell
-startup file. Linux Cage requires Bubblewrap and usable kernel namespaces;
-macOS uses the system Seatbelt backend.
+For this standalone route, keep the source checkout in place and the PATH
+setting in your shell startup file. If an Agent command is already installed,
+use that installation instead of replacing its links blindly.
 
-Configure [Ask](https://github.com/patrickyoung/ask#install) with a supported
+**After either source installation**, run `cage check`. Linux Cage requires
+Bubblewrap and usable kernel namespaces; macOS uses the system Seatbelt backend.
+
+Configure [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask#install) with a supported
 model and credential before running model work. For example, replacing both
 placeholders:
 
@@ -162,7 +170,7 @@ For recurring work, fill in `HEARTBEAT.md` and supply `bin/wake`:
 | Anything else | Broken probe; stop |
 
 `agent tick HOME` runs that process once. Scheduling belongs outside Agent.
-[Tend](https://github.com/patrickyoung/tend) can durably submit an exact Agent
+[Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend) can durably submit an exact Agent
 invocation, retain output, and hold uncertain attempts for review.
 [Hire](https://github.com/patrickyoung/bench-hire) adds a web interface for
 assigning tasks, reviewing results, and setting routines.

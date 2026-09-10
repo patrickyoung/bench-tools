@@ -10,8 +10,8 @@ well-known files, composes them through Brief and Ply, and leaves the model,
 loop, skills, verifier receipts, and confinement to the programs that already
 own them.
 
-The complete research and product rationale is in
-`../bench/FILESYSTEM_AGENTS.md`.
+The complete research and product rationale is in Bench's
+[Filesystem Agents](https://github.com/patrickyoung/bench/blob/main/FILESYSTEM_AGENTS.md).
 
 ## Requirements
 

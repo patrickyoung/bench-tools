@@ -16,7 +16,15 @@ below create that profile.
 
 ## Install
 
-Requires **Go 1.26+**, Git, and a Unix environment. Clone current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install oauth` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+**, Git, and a Unix environment.
+Clone current `main`:
 
 ```sh
 git clone https://github.com/patrickyoung/oauth.git
@@ -56,7 +64,7 @@ Follow the browser login instructions. OAuth checks the callback and saves
 the profile. `status` shows non-secret information; it never prints a token.
 The profile name `docs` is your local name for this exact connection.
 
-With [MCP](https://github.com/patrickyoung/mcp) installed:
+With [MCP](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp) installed:
 
 ```sh
 oauth with docs -- \
@@ -123,7 +131,7 @@ resource identity; endpoints remain validated before storage and use.
 
 ## Connect to Ask or your own program
 
-[Ask](https://github.com/patrickyoung/ask) accepts the same header boundary:
+[Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) accepts the same header boundary:
 
 ```sh
 oauth with llm -- ask -header-fd 3 -m openai/YOUR_MODEL_ID 'Hello.'
@@ -142,8 +150,8 @@ For comparison, [Vouch](https://github.com/patrickyoung/vouch) also supports
 imported CLI credentials, static keys, and browser-session references. OAuth
 supplies the explicit OAuth lifecycle and descriptor transfer used by Ask/MCP;
 neither tool supplies permission to perform a particular external action.
-[Action](https://github.com/patrickyoung/action) and
-[May](https://github.com/patrickyoung/may) provide that separate boundary.
+[Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action) and
+[May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may) provide that separate boundary.
 
 ## Manage a connection
 

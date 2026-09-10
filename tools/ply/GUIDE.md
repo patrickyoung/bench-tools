@@ -1,30 +1,29 @@
 # The ply field guide
 
-What it is good at, what it is not, the recipes, and the four things that
+What it is good at, what it is not, the recipes, and the things that
 will bite you. `README.md` is the pitch and `ply.1` is the reference; this
 is what you learn in the first week.
 
 ## What it is good at
 
 **Anything a program can check.** This is the whole sweet spot. If you can
-write the command that decides, `ply` will work until that command is happy,
-and `&&` afterwards means what it says.
+write the command that decides, `ply` can work toward passing it within the
+configured limits. `&&` afterwards runs only when Ply exits successfully.
 
 ```
 ply -sh -check 'go test ./...'          "make the tests pass"
-ply -sh -check 'go vet ./... && gofmt -l . | grep -q ""' "quiet the vet warnings"
+ply -sh -check 'go vet ./...'           "quiet the vet warnings"
 ply -sh -check 'terraform validate'     "fix the module after the provider bump"
-ply -sh -check 'curl -fsS localhost:8080/health' "get the dev server up"
 ply -sh -check 'test -f dist/app'       "get this thing to build"
 ```
 
 **Narrow, repeatable jobs with a small toolbox.** A directory of six
-programs is a better agent than a shell, because the model cannot wander
-into `curl` and it cannot mistake your build for somebody's.
+programs makes the intended operations easier to discover. It does not stop
+the model from using shell builtins or an absolute path such as `/usr/bin/curl`.
 
 **Work you want a transcript of.** stderr is a terminal session; the log is
-an `ask` session that replays exactly. Nothing about a run is unavailable
-afterwards.
+an `ask` session whose retained events can be replay-verified. That checks the
+record's consistency, not factual truth or completeness after a valid truncation.
 
 ## What it is not
 
@@ -49,27 +48,22 @@ much.
 
 ## Six things that will bite you
 
-### 1. `ask` inside a check continues *your* conversation
+### 1. A model judge needs an explicit conversation and exit contract
 
-This is the sharpest edge in the whole system, and it bit the person who
-wrote `ply`. `ask` continues the current conversation by default. A check
-like this:
+Plain `ask` starts fresh. `ask -c` continues the current conversation, while
+`ask -f FILE` creates or continues that specific file. Ask has no `-n` flag.
+Reusing `/tmp/judge.jsonl` would therefore accumulate earlier candidates and
+judgments in one conversation. Use a new file per judgment when each candidate
+should be assessed independently.
 
-```
--check 'ask -q "is this README any good? yes/no" < README.md | grep -qi yes'
-```
+A pipeline such as `ask ... | grep -qi yes` has another problem: the shell
+usually returns only grep's status, concealing an Ask failure. It also accepts
+sentences such as “no, although yes would be possible after revision.”
 
-runs inside whatever you were last asking `ask` about, appends the README to
-it, and does that once per cycle. The judgment is polluted and so is your
-conversation. Always give a model-judge its own thread:
-
-```
--check 'ask -n -q -f /tmp/judge.jsonl "...yes or no..." < README.md | grep -qi "^yes"'
-```
-
-`-n -f` is the same trick `brief find -ask` uses, for the same reason. And
-`grep -qi "^yes"` rather than `grep -qi yes`, or "no, because yes would
-be..." passes.
+Use a small checker that preserves three outcomes: 0 for acceptance, 1 for an
+ordinary rejection, and 2 for a failed call or malformed verdict. The
+[model-judge recipe](#judge-with-a-model-when-no-program-can) below does this,
+including the pre-check when the output file does not yet exist.
 
 ### 2. Without `-check`, exit 0 is an opinion
 
@@ -275,8 +269,9 @@ say the same thing anyway.
 
 ### Put it in a Makefile
 
-The pre-check is what makes this safe: a target that is already satisfied
-costs nothing.
+The pre-check avoids worker model calls when the target is already satisfied.
+Running the linter or tests still takes time; release behavior belongs to the
+release command and its own checks.
 
 ```make
 lint:
@@ -292,32 +287,62 @@ release: lint
 ```sh
 #!/bin/sh
 # .git/hooks/pre-commit
-ply -sh -q -check 'gofmt -l . | grep -q .; test $? -eq 1' "gofmt everything" || exit 1
+ply -sh -q -check 'files=$(gofmt -l .) || exit 2; test -z "$files"' \
+  'Format the Go files.' || exit 1
 ```
 
 ### Judge with a model, when no program can
 
-Through the same hole as everything else, because `ask` is a program. Mind
-bite #1.
+Ask can supply a judgment when an exact test would miss the point. That
+judgment is still fallible; agreement from another model is not proof that
+the prose is correct. This example asks one narrow question about a changelog.
+
+Create a checker in your project:
 
 ```sh
-judge() {
-  printf '%s' "ask -n -q -f $(mktemp -t judge).jsonl '$1 Answer only yes or no.'"
-}
-ply -sh -check "$(judge 'Does this CHANGELOG entry explain the user-visible change?') \
-     < CHANGELOG.md | grep -qi '^yes'" "write the changelog entry for HEAD"
+cat > check-changelog <<'SH'
+#!/bin/sh
+if [ ! -e CHANGELOG.md ]; then
+  printf '%s\n' 'Write CHANGELOG.md first.' >&2
+  exit 1
+fi
+if [ ! -f CHANGELOG.md ] || [ ! -r CHANGELOG.md ]; then
+  printf '%s\n' 'CHANGELOG.md must be a readable regular file.' >&2
+  exit 2
+fi
+judge_dir=$(mktemp -d "${TMPDIR:-/tmp}/ply-judge.XXXXXX") || exit 2
+printf 'Judge record: %s\n' "$judge_dir/run.jsonl" >&2
+reply=$(ask -q -f "$judge_dir/run.jsonl" \
+  'Does this changelog explain the user-visible change? Answer only yes or no.' \
+  < CHANGELOG.md) || exit 2
+case "$reply" in
+  yes) exit 0 ;;
+  no) printf '%s\n' 'Explain the user-visible change more clearly.' >&2; exit 1 ;;
+  *) printf '%s\n' 'Judge returned neither yes nor no.' >&2; exit 2 ;;
+esac
+SH
+chmod +x check-changelog
+ply -sh -check './check-changelog' 'Write the changelog entry for HEAD.'
 ```
+
+Every check gets a fresh named Ask session without moving Ask's `current`
+pointer. The printed temporary directory holds its record; move records you
+want to keep before your OS cleans temporary files. Each actual judgment may
+incur a provider charge. Keep the checker and its dependencies outside the
+worker's write boundary when the worker must not be able to change acceptance.
 
 ### Brief it, then set it to work
 
 ```
 ply -sh -s web-perf -check './budget.sh' "get LCP under 2.5s"
-ply -sh -s -        -check 'wrangler deploy --dry-run' "ship this worker"
+ply -sh -s -        -check 'wrangler deploy --dry-run' "prepare this worker's deployment bundle"
 ```
 
 `-s -` asks `brief` to choose. `brief` refuses to guess, so a goal made of
 common words gets no skill and says so — which is the right answer, because
 a confidently wrong procedure is worse than none.
+
+The Wrangler check validates a dry run; it does not deploy the worker.
 
 ### Sub-agents, without a sub-agent feature
 
@@ -379,15 +404,15 @@ the flags are not in the log. A file cannot drift without a diff.
 ```sh
 ls *.go | xargs -P4 -I{} sh -c 'ply -q -t tools "review {}" > {}.review'
 
-cat *.review | ask -n "Reconcile these reviews into one list of findings,
+cat *.review | ask "Reconcile these reviews into one list of findings,
     most severe first. Drop anything only one reviewer raised."
 ```
 
 Two things worth copying from how `hone` does this. Send **what proved
 something**, not the transcripts — the findings are the evidence, and the
-typescripts would cost the window and invite a summary grounded in the parts
-that proved nothing. And use `-n`, so the merge is its own conversation
-rather than the tail of whatever you asked last.
+typescripts would cost the window and invite a summary grounded in unrelated
+steps. Plain Ask starts the merge in a fresh conversation. Use a new `-f`
+filename if you want to name that conversation; reusing it continues it.
 
 `xargs` returns 123 if any invocation failed, and which one is not in that
 number. If you need to know, have each write its own exit status next to its
@@ -508,15 +533,15 @@ $ ply -sh -f run.jsonl -check 'go test ./...' "make the tests pass"    # carries
 
 Three properties make that correct, and all three are already true:
 
-- **The pre-check makes re-entry idempotent.** The check runs before the
-  first turn. Work that is already done costs nothing, calls no model,
-  writes no session, and exits 0.
-- **`-f` continues the conversation.** The session is an `ask` log, and
-  `ply` does not pass `-n`, so a second run picks up where the first left
-  off rather than starting over.
+- **The pre-check avoids repeating already accepted work.** If it passes,
+  Ply calls no worker model and exits 0. An existing `-f` session receives a
+  verifier receipt; otherwise no session is created. The check itself still
+  runs and may call a model or service if you wrote it to do so.
+- **`-f` continues the conversation.** Ply passes the named session to Ask,
+  so a second run includes the recorded context from the first.
 - **The log survives the process.** It is append-only and locked with
-  `flock(2)`, so a writer that dies releases it on the way out and strands
-  nothing.
+  `flock(2)`; the operating system releases that lock when the writer exits.
+  Replay verification still matters after an interrupted write.
 
 For a supervisor, compaction makes a fixed `-f` path insufficient because the
 current conversation may move. `-checkpoint` owns that one mechanical seam:
@@ -540,12 +565,10 @@ dies during an external effect, whether that effect happened is still
 uncertain. Inspect the work and external system before choosing to run again;
 the checkpoint does not turn arbitrary effects into exactly-once operations.
 
-The consequence is worth stating plainly, because it is what makes all of
-this small: **the conversation is an optimization, not the state.** It saves
-the model from rediscovering what it already knew. Lose it and the run is
-still correct — it is only more expensive. Drop `-f` entirely and a fresh
-run against the same tree still does the right thing, because the check
-reads the tree and not the transcript.
+For work whose complete state and acceptance condition are in the work tree,
+a fresh conversation can rediscover the task from those files. Other tasks
+depend on earlier decisions or external effects. Preserve that evidence;
+losing the conversation is not always just a performance cost.
 
 So a long-lived task is still a scheduler, a checkpoint, and a check:
 
@@ -554,9 +577,10 @@ So a long-lived task is still a scheduler, a checkpoint, and a check:
              "bring the error budget back"
 ```
 
-That sleeps most of its life, wakes on a schedule, does nothing when there
-is nothing to do, and survives a reboot. It is a durable task, and it is a
-crontab line.
+Cron supplies future invocations, while the checkpoint preserves conversation
+context on disk. Configure the scheduler and paths for your host. This does
+not record durable execution attempts or resolve uncertain effects; use an
+execution controller such as Tend when those are required.
 
 ### Bounds are per invocation
 
@@ -809,7 +833,7 @@ ask replay -json "$s" | jq -r 'select(.type=="assistant")
 | the model keeps re-reading a huge file | raise `-cap`, or give it `head`/`grep` and let it narrow |
 | it churns without converging | lower `-cycles`, and make the check's *output* more specific — that text is what it reads |
 | it costs more than it should | `-turns`, and a smaller toolbox: fewer wrong turns are available |
-| you want a cheaper model | `-m anthropic/claude-haiku-4-5-20251001`, or `$ASK_MODEL` |
+| you want to choose the model | `-m PROVIDER/MODEL_ID`, or `$ASK_MODEL`; use an ID your account supports |
 
 ## The check is also a tool
 

@@ -19,7 +19,15 @@ executing the procedure belongs to your agent.
 
 ## Install
 
-Requires **Go 1.26+** and a **Unix system or WSL**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install brief` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and a **Unix system or WSL**.
+Install current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -67,7 +75,7 @@ procedure in an ordinary, versionable file.
 
 ## Put the procedure to work
 
-Install and configure [Ask](https://github.com/patrickyoung/ask) for your
+Install and configure [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) for your
 provider, then combine its default prompt with your chosen skill:
 
 ```sh
@@ -82,7 +90,7 @@ The shell checks both reads before calling Ask. Your file is the input, the
 skill is the method, and Ask supplies the wording.
 
 For work that needs file edits or repeated checks, use
-[Ply](https://github.com/patrickyoung/ply):
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply):
 
 ```sh
 ply -sh -s release-notes -check 'test -s RELEASE.md' \
@@ -148,7 +156,7 @@ an overly long body or an unresolved reference. `-strict` makes warnings fail
 as well. A clean skill is structurally valid; try representative tasks to
 judge whether its procedure is useful.
 
-[Hone](https://github.com/patrickyoung/hone) can add a reviewed lesson after a
+[Hone](https://github.com/patrickyoung/bench-tools/tree/main/tools/hone) can add a reviewed lesson after a
 Ply run failed, recovered, and passed its check. Brief then finds that same
 skill on the next task. [Bench](https://github.com/patrickyoung/bench) adds an
 interactive skill browser over these commands.

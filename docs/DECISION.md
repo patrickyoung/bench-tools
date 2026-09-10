@@ -1,5 +1,9 @@
 # Decision: maintain independent Bench tools together
 
+This records the initial migration on September 9, 2026. Publication and current
+installation guidance are maintained in [Source and releases](RELEASES.md).
+Statements about local-only status below describe that original migration.
+
 2026-09-09. **Proceed with a source monorepo for the independent tools.**
 The review covered 24 Git repositories and two unversioned project directories.
 The important architecture already exists at the program boundary. Maintaining

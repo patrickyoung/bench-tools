@@ -16,7 +16,15 @@ unrestricted**: Cage is a write/network boundary, not a place to hide secrets.
 
 ## Install and check your host
 
-Requires **Go 1.26+** to build. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install cage` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** to build. Install current
+`main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -89,13 +97,13 @@ seconds; that is a setup deadline, not a time limit on the child.
 
 ## Use it in an agent system
 
-[Ply](https://github.com/patrickyoung/ply) can combine `-cage` with
-[May](https://github.com/patrickyoung/may) approval around each model-authored
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) can combine `-cage` with
+[May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may) approval around each model-authored
 action. Ask and the verifier remain outside the Cage action child, allowing
 the model connection to work while action networking is denied.
 
-[Agent](https://github.com/patrickyoung/agent) uses Cage by default for its
-worker actions, granting its work and state directories. [Draft](https://github.com/patrickyoung/draft)
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) uses Cage by default for its
+worker actions, granting its work and state directories. [Draft](https://github.com/patrickyoung/bench-tools/tree/main/tools/draft)
 can freeze an admitted check outside the builder's write roots.
 
 Keep controller records, approval state, and trusted check definitions outside

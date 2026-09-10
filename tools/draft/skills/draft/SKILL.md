@@ -30,7 +30,7 @@ Sort every stage into one of four buckets, and be hard about it:
 | --- | --- | --- |
 | no judgment | a script — `curl`, `jq`, a file | fetching, appending, scheduling, moving bytes |
 | judgment, one shot | `ask` | classify, extract, summarize, rank, decide — anything answerable in one question |
-| judgment, until a program agrees | `ply` | the answer must satisfy a check the model cannot fake |
+| judgment with commands or correction turns | `ply` | an explicit check accepts the candidate or returns feedback |
 | a procedure worth keeping | `brief` | the criteria are stable, versioned, and reused |
 
 The default is the first row. Earn each move down it.
@@ -80,17 +80,19 @@ in the design rather than being papered over.
 
     ply -sh -check 'go test ./...' "make the tests pass" && make release
 
-The `&&` means something there, because exit 0 is `go test`'s opinion and
-not the model's. When judgment genuinely needs a model, nothing about the
-mechanism changes, because `ask` is a program:
+The `&&` depends on the test command's status. Review whether those tests
+cover the requirements before connecting a release operation.
 
-    ply -check 'ask -n -q -f /tmp/j.jsonl "Does this cover install? yes/no" \
-        < README.md | grep -qi "^yes"' "document the installer"
+A checker can call Ask when judgment needs a model, but it must distinguish
+a rejected answer from a broken model call. Return 1 for task feedback and
+another nonzero status for infrastructure failure. A bare `ask | grep` can
+hide Ask's failure behind grep's ordinary no-match status. A model-based
+checker also needs evaluation; calling it a program does not make it infallible.
 
-The check runs **before** the first turn too, so work already done costs
-nothing. That is what makes a system safe in a hook, a `Makefile`, or a
-schedule — and it is why a missed run heals itself instead of needing
-catch-up logic.
+The check runs **before** the first model turn. A passing pre-check avoids
+that model call. The check itself may still take time or call a service.
+Scheduled use needs a check that detects whether current inputs require work;
+repeated invocation alone does not establish safe retries or catch-up behavior.
 
 ### The check is only as good as its coverage
 
@@ -99,19 +101,15 @@ program**. `ply` will drive until the check exits 0 and stop the instant it
 does, so a check that tests the wrong thing produces a confident, verified,
 wrong system — and everything downstream inherits that confidence.
 
-This is not hypothetical. A design here specified an append-only feed and a
-fixture-based check. The check was genuinely good: syntax, compile, unit
-tests, lint, plist validation. It passed. The first real run then walked the
-entire history of the upstream API, 190 MB, because the fetcher's lower
-bound was `None` on an empty store and the cursor loop read `None` as zero —
-the one path the fixtures never exercised, since a fixture store is never
-empty.
+For example, a feed importer may pass tests with a populated store but fetch
+the entire remote history on first use: the empty store supplies no cursor,
+and the importer treats that as "start from the beginning." A separate
+empty-store case can expose the missing initial-fetch limit.
 
 So when writing the Check section, ask three questions the compiler cannot:
 
 - **What state does this check never see?** Empty stores, first runs, cold
-  caches and missing files are where defaults are decided, and fixtures are
-  never empty. Most escaped defects live in the state you did not fixture.
+  caches, and missing files expose defaults; include them explicitly.
 - **Would this fail if the feature were deleted?** If not, it is testing the
   scaffolding rather than the behaviour.
 - **What does it cost to be wrong here?** Bound the expensive paths first —
@@ -170,9 +168,10 @@ that directory alone, so the model reaches what you put there and cannot
 name what you did not. Adding a tool is `ln -s`. It **aims** the model; it
 does not sandbox it. The boundary is the process — its user, its container.
 
-**`ASK_DIR` points into the project.** Then `ask replay -check` proves,
-months later, exactly why a thing was classified the way it was. For
-analytics that is the difference between a number and a citation.
+**Choose explicit session locations.** `ASK_DIR` can keep sessions with the
+project; `-f FILE` names one directly. `ask replay -check` verifies retained
+conversation consistency. It does not prove why a model made a decision or
+that the decision was correct. Keep trusted records outside worker write roots.
 
 **A procedure is a `brief` skill.** Classification criteria, house rules,
 report formats — versioned, lintable, and `brief cat` feeds them straight
@@ -183,32 +182,41 @@ one prompt and one call.
 
 These bite everybody. Design around them from the start.
 
-**A scripted `ask` must pass `-n` or `-f`.** By default `ask` continues the
-current conversation. In a scheduled job that means every run appends to one
-ever-growing session until it hits exit 2 — and silently inherits whatever
-you last asked at your terminal. Every call in `bin/` gets `-n`, or its own
-`-f` thread. This is the sharpest edge in the family.
+**Choose fresh or continued context deliberately.** Plain `ask` starts fresh.
+`-c` continues `current`; `-f FILE` creates or continues only that named file
+and leaves `current` unchanged. Use a fresh filename per independent job, or
+reuse one deliberately for a conversation. There is no `ask -n` flag.
 
-**Batch, do not iterate.** One call classifying 1,000 items against three
-criteria beats 3,000 calls, and usually beats 3. Ask for a shape:
+**Batch related inputs when they fit.** Batching can reduce repeated request
+overhead, but check the model's input limits and measure quality. With `day.jsonl`
+and installed `topic-a` and `topic-b` skills, for example:
 
-    ask -n -q -S "$(ask system; brief cat topic-a topic-b)" \
-        'Return ONLY minified JSON: {"a":[ids],"b":[ids]}' < day.jsonl
+    system=$(ask system) &&
+    criteria=$(brief cat topic-a topic-b) &&
+    ASK_SYSTEM="$system
+    $criteria" ask -q 'Return JSON with a and b arrays of matching IDs.' < day.jsonl
 
-**Match the model to the job.** A cheap model for classification, a strong
-one for synthesis. `-m` per call; it is not a global setting.
+That prompt requests a shape; it does not validate one. Use Ask's `-schema`
+with a supported provider/model and a concrete schema when downstream code
+requires validated JSON. The generated tool reference documents the interface.
 
-**Idempotency is a feature.** Skip work already on disk. Then a re-run is
-free, a missed schedule self-heals, and a crash costs one tick.
+**Match the model to the job.** Evaluate suitable models on representative
+inputs. `-m` selects one per call; `ASK_MODEL` sets the environment default.
 
-**Exit 2 means *not done*, never *broken*.** A supervisor must tell a
-failing check from a provider outage, or it retries the wrong one. `ask`
-returns 2 for a full context window, which is permanent — retrying it until
-the bill arrives is the failure this row prevents.
+**Check before repeating work.** File existence alone does not prove complete,
+current output. Verify the result against its inputs before skipping work.
+Use the external service's idempotency mechanism when available; a checkpoint
+or file cannot resolve an effect whose outcome is unknown.
 
-**Secrets are inherited, and schedulers inherit nothing.** A model-authored
-command sees every variable in the environment `ply` started with. `launchd`
-and `cron` see almost none. Both facts break systems, in opposite directions.
+**Interpret statuses per command.** Ask's 2 means a full context window; Ply's
+2 means unfinished work or a limit. Other tools use 2 for operational errors.
+Start fresh or compact full context deliberately. Inspect uncertain external
+effects before considering a retry; do not treat every nonzero status alike.
+
+**Choose the process environment explicitly.** An ordinary Ply shell action
+can inherit secrets from its caller; a scheduled job may lack variables your
+terminal supplies. Keep credentials in the appropriate controller process and
+configure the scheduler's required environment deliberately.
 
 **Never truncate silently.** Output a model cannot see it lost is the one
 failure nothing downstream can detect.

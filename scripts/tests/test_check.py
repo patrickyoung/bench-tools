@@ -1,5 +1,8 @@
 """Protect the independent-export and credential-isolation verification seams."""
 import os
+import contextlib
+import io
+import json
 from pathlib import Path
 import runpy
 import subprocess
@@ -131,6 +134,157 @@ class EnvironmentTests(unittest.TestCase):
                 self.assertNotIn(native_root, trusted_verifier.parents)
             finally:
                 actual.rmdir()
+
+
+class CheckPlanTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="bench-check-plan-test-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.sequence = 0
+        self.components = {name: {"name": name, "module": None if name in ("agent", "draft") else name,
+                                  "path": "tools/" + name, "commands": [{"name": name, "package": "."}]}
+                           for name in ("agent", "draft", "cite", "may", "cage", "ply", "weave")}
+        (self.root / "components.json").write_text(json.dumps({"components": list(self.components.values())}))
+
+    def new_run(self, selected, **options):
+        self.sequence += 1
+        run_root = self.root / str(self.sequence)
+        run_root.mkdir()
+        (run_root / "components.json").write_bytes((self.root / "components.json").read_bytes())
+        run = CHECK["CheckRun"](run_root, selected, False, **options)
+        self.addCleanup(run.stack.close)
+        return run
+
+    def capture_component_commands(self, name, quick):
+        run = self.new_run([name], quick=quick)
+        commands = []
+        with patch.object(run, "build"), patch.object(run, "export", return_value=(self.root, {"PATH": "/usr/bin:/bin"})), \
+             patch.object(run, "command", side_effect=lambda label, argv, cwd, env: commands.append((label, argv))):
+            run.check_component(name)
+        return commands
+
+    def test_quick_go_checks_keep_tests_and_built_commands_but_exclude_supplemental_proofs(self):
+        for name in ("cite", "may", "cage", "ply", "weave"):
+            with self.subTest(component=name):
+                commands = self.capture_component_commands(name, quick=True)
+                self.assertEqual(commands, [(name + "-test", ["go", "test", "-count=1", "./..."]),
+                                            (name + "-version-" + name, [commands[1][1][0], "version"])])
+
+    def test_full_checks_retain_race_vet_and_component_specific_proofs(self):
+        required = {"may": {"may-self-check"}, "cage": {"cage-cross-linux", "cage-cross-windows"},
+                    "ply": {"ply-eval-fixtures", "ply-job-tests", "ply-edit-tests"},
+                    "weave": {"weave-python-business", "weave-python-protocol", "weave-python-receipts",
+                              "weave-python-research_domain", "weave-python-release", "weave-built-smoke"}}
+        for name, extras in required.items():
+            with self.subTest(component=name):
+                labels = {label for label, argv in self.capture_component_commands(name, quick=False)}
+                self.assertTrue({name + "-test", name + "-race", name + "-vet", *extras} <= labels)
+
+    def test_quick_shell_checks_retain_the_complete_existing_suite(self):
+        for name in ("agent", "draft"):
+            with self.subTest(component=name):
+                full = [label for label, argv in self.capture_component_commands(name, quick=False)]
+                quick = [label for label, argv in self.capture_component_commands(name, quick=True)]
+                self.assertEqual(full, quick)
+                self.assertIn(name + "-test", quick)
+                if name == "draft":
+                    self.assertIn("draft-scratch-sync", quick)
+                    self.assertIn("draft-lint", quick)
+
+    def test_prerequisites_follow_the_checks_that_will_run(self):
+        dependencies = CHECK["verification_dependencies"]
+        self.assertEqual(set(dependencies(self.components, ["cite"], quick=True)), {"go", "python3", "git", "sh"})
+        self.assertNotIn("cc", dependencies(self.components, ["agent"]))
+        self.assertIn("perl", dependencies(self.components, ["draft"], quick=True))
+        self.assertIn("perl", dependencies(self.components, ["draft"]))
+        self.assertNotIn("perl", dependencies(self.components, ["cite"], quick=True))
+        self.assertIn("cc", dependencies(self.components, ["cite"]))
+        self.assertNotIn("make", dependencies(self.components, ["cite"]))
+        self.assertNotIn("make", dependencies(self.components, ["weave"], quick=True))
+        self.assertTrue({"make", "install", "cc"} <= set(dependencies(self.components, ["weave"])))
+        integration = dependencies(self.components, list(self.components), integration=True, integration_only=True)
+        self.assertTrue({"make", "install"} <= set(integration))
+        self.assertNotIn("cc", integration)
+        self.assertNotIn("perl", integration)
+        self.assertNotIn("jq", integration)
+
+    def test_quick_prepare_works_without_c_compiler_jq_or_make(self):
+        run = self.new_run(["cite"], quick=True)
+        actual_which = CHECK["shutil"].which
+        def limited_path(name):
+            return None if name in ("cc", "jq", "make", "bash") else actual_which(name)
+        with patch.object(CHECK["shutil"], "which", side_effect=limited_path), \
+             patch.object(CHECK["subprocess"], "check_output", return_value=b'{"GOCACHE":"/cache/go","GOMODCACHE":"/cache/mod"}'), \
+             patch.object(run, "command"):
+            run.prepare()
+        self.assertEqual(run.env["CGO_ENABLED"], "0")
+        self.assertFalse((run.runtime / "cc").exists())
+        self.assertEqual(run.env["GOWORK"], "off")
+
+    def test_missing_full_race_compiler_explains_requirement_before_commands_start(self):
+        run = self.new_run(["cite"])
+        actual_which = CHECK["shutil"].which
+        with patch.object(CHECK["shutil"], "which", side_effect=lambda name: None if name == "cc" else actual_which(name)), \
+             patch.object(run, "command") as command:
+            with self.assertRaisesRegex(RuntimeError, "cc .*Go race detector"):
+                run.prepare()
+        command.assert_not_called()
+
+    def test_missing_draft_perl_is_reported_before_dependency_builds(self):
+        run = self.new_run(["draft"], quick=True)
+        actual_which = CHECK["shutil"].which
+        with patch.object(CHECK["shutil"], "which", side_effect=lambda name: None if name == "perl" else actual_which(name)), \
+             patch.object(run, "command") as command:
+            with self.assertRaisesRegex(RuntimeError, "perl .*Draft prove fixtures"):
+                run.prepare()
+        command.assert_not_called()
+
+    def test_quick_cli_never_runs_integration_and_marks_its_summary(self):
+        calls = []
+        run_type = CHECK["CheckRun"]
+        with patch.dict(CHECK["main"].__globals__, {"ROOT": self.root}), \
+             patch.object(run_type, "prepare", lambda run: setattr(run, "env", {})), \
+             patch.object(run_type, "check_component", lambda run, name: calls.append(name)), \
+             patch.object(run_type, "command"), patch.object(run_type, "integration") as integration, \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(CHECK["main"](["--quick"]), 0)
+        self.assertEqual(calls, list(self.components))
+        integration.assert_not_called()
+        summary = json.loads(next((self.root / ".checks").glob("*/summary.json")).read_text())
+        self.assertEqual(summary["status"], "complete")
+        self.assertEqual(summary["mode"], "quick")
+        self.assertFalse(summary["integration_requested"])
+
+    def test_default_cli_retains_standalone_and_integration_checks(self):
+        calls = []
+        run_type = CHECK["CheckRun"]
+        with patch.dict(CHECK["main"].__globals__, {"ROOT": self.root}), \
+             patch.object(run_type, "prepare", lambda run: setattr(run, "env", {})), \
+             patch.object(run_type, "check_component", lambda run, name: calls.append(name)), \
+             patch.object(run_type, "command"), patch.object(run_type, "integration") as integration, \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(CHECK["main"]([]), 0)
+        self.assertEqual(calls, list(self.components))
+        integration.assert_called_once()
+
+    def test_conflicting_quick_proofs_and_unknown_components_fail_before_a_run(self):
+        for arguments in (["--quick", "--integration-only"], ["--quick", "--native-cage"], ["--quick", "missing"]):
+            with self.subTest(arguments=arguments), patch.dict(CHECK["main"].__globals__, {"ROOT": self.root}), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    CHECK["main"](arguments)
+                self.assertEqual(caught.exception.code, 2)
+        self.assertFalse((self.root / ".checks").exists())
+
+    def test_requirements_cli_is_read_only_and_scoped(self):
+        output = io.StringIO()
+        with patch.dict(CHECK["main"].__globals__, {"ROOT": self.root}), contextlib.redirect_stdout(output):
+            self.assertEqual(CHECK["main"](["--quick", "cite", "--requirements"]), 0)
+        self.assertIn("go: Go 1.26+", output.getvalue())
+        for unused in ("cc:", "make:", "jq:"):
+            self.assertNotIn(unused, output.getvalue())
+        self.assertFalse((self.root / ".checks").exists())
 
 
 if __name__ == "__main__":

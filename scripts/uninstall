@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Remove only verified files belonging to the Bench tools installer."""
+from install_support import uninstall_main
+
+if __name__ == "__main__":
+    raise SystemExit(uninstall_main())

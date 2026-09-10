@@ -14,8 +14,16 @@ recipes are experimental; their APIs and study formats may change.
 
 ## Install and try it
 
-The filter is one binary with no runtime dependencies. Build from this source
-checkout with Go 1.26 or later:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install weave` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** The filter is one binary with no runtime dependencies.
+Build with Go 1.26 or later from Weave's own source directory (`tools/weave`
+in the monorepo):
 
 ```sh
 go install .
@@ -35,7 +43,8 @@ are produced for macOS and Linux on arm64 and amd64. See [release instructions](
 for checksums, source bundles and publication status. A remote `go install ...@v0.1.0`
 requires the repository and tag to be published first.
 
-Try the bundled [filter-only example](examples/quickstart/README.md):
+From Weave's source directory (`cd tools/weave` from the monorepo root), try
+the bundled [filter-only example](examples/quickstart/README.md):
 
 ```sh
 weave examples/quickstart/tasks.jsonl < /dev/null

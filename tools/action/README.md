@@ -14,8 +14,15 @@ may happen.
 
 ## Install
 
-Requires **Go 1.26+** and **Unix or WSL**. Install current `main` and the
-standalone May approval tool:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install action may` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and **Unix or WSL**. Install
+current `main` and the standalone May approval tool:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -26,7 +33,7 @@ action version
 ```
 
 Keep the PATH setting in your shell startup file.
-[Ask](https://github.com/patrickyoung/ask) is additionally required for
+[Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) is additionally required for
 `-record`; the session must already exist. Action itself makes no model call.
 
 ## Start with a harmless connector
@@ -128,7 +135,7 @@ Action fingerprints its executable and descriptor, then checks them again
 after authorization before releasing input. Provider-specific behavior stays
 inside the connector.
 
-[MCPbox](https://github.com/patrickyoung/mcp) can generate this same interface:
+[MCPbox](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp) can generate this same interface:
 
 ```sh
 mcpbox admit service.mcp actions create_ticket
@@ -181,7 +188,7 @@ correctness of the effect.
 
 ## Use it with a worker
 
-[Agent](https://github.com/patrickyoung/agent) lets a worker write proposals
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) lets a worker write proposals
 under `work/actions/`. The operator reviews and executes them separately:
 
 ```sh
@@ -194,7 +201,7 @@ AGENT_ACTION_PATH=/operator/owned/actions \
 Replace the home, proposal, session, and connector path with real values.
 Agent calls Action outside the worker's Cage boundary. Action, May, policy,
 credentials, and controller evidence must stay outside worker-writable roots.
-[Context](https://github.com/patrickyoung/context) supplies the complementary
+[Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) supplies the complementary
 read side: retrieve evidence first, propose an effect afterwards.
 
 ## Outcomes and reference

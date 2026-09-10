@@ -12,7 +12,15 @@ question: did a person approve these exact bytes?
 
 ## Install
 
-Requires **Go 1.26+** and **Unix or WSL**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install may` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and **Unix or WSL**. Install
+current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -80,11 +88,11 @@ flowchart LR
 
 | Tool | How May fits |
 | --- | --- |
-| [Action](https://github.com/patrickyoung/action) | Reviews one exact connector request before release |
-| [Ply](https://github.com/patrickyoung/ply) | `-may-job JOB` gates each model-authored shell action |
-| [Agent](https://github.com/patrickyoung/agent) | Reviews definition amendments and external-effect proposals |
-| [Tend](https://github.com/patrickyoung/tend) | Keeps a process durably waiting while a person decides |
-| [Cage](https://github.com/patrickyoung/cage) | Supplies a separate write/network execution boundary |
+| [Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action) | Reviews one exact connector request before release |
+| [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | `-may-job JOB` gates each model-authored shell action |
+| [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Reviews definition amendments and external-effect proposals |
+| [Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend) | Keeps a process durably waiting while a person decides |
+| [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage) | Supplies a separate write/network execution boundary |
 
 For controllers that need a machine-readable result:
 

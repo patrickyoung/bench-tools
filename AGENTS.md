@@ -2,7 +2,7 @@
 
 This repository houses independent Unix tools. Read the applicable tool's
 AGENTS.md and design documents before changing it. The root owns source
-coordination and verification only.
+coordination, independent packaging, and verification only.
 
 - Keep every tool independently buildable, testable, usable, and versioned.
 - Compose public executables with literal argv, stdin, stdout, stderr, exit

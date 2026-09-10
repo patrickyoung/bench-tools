@@ -16,8 +16,15 @@ ask -a chart.png 'Explain the trend in three sentences.'
 
 ## Install
 
-You need **Go 1.26+** and **Linux, macOS, BSD, or WSL**. This installs the
-current `main` source:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install ask` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** You need **Go 1.26+** and **Linux, macOS, BSD, or
+WSL**. This installs the current `main` source:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -147,11 +154,11 @@ bytes are retained in the session, so treat archives as sensitive material.
 
 | You want to… | Add… | How it fits |
 | --- | --- | --- |
-| Reuse a written procedure | [Brief](https://github.com/patrickyoung/brief) | Print a chosen skill into the system prompt |
-| Retrieve external evidence | [Context](https://github.com/patrickyoung/context) | Pipe normalized records into Ask as data |
-| Check citation identities | [Cite](https://github.com/patrickyoung/cite) | Validate an answer against the same evidence file |
-| Execute commands until a check passes | [Ply](https://github.com/patrickyoung/ply) | Run Ask inside an explicit action/check loop |
-| Search past conversations | [Trail](https://github.com/patrickyoung/trail) | Browse Ask's existing JSONL archives |
+| Reuse a written procedure | [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) | Print a chosen skill into the system prompt |
+| Retrieve external evidence | [Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) | Pipe normalized records into Ask as data |
+| Check citation identities | [Cite](https://github.com/patrickyoung/bench-tools/tree/main/tools/cite) | Validate an answer against the same evidence file |
+| Execute commands until a check passes | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | Run Ask inside an explicit action/check loop |
+| Search past conversations | [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) | Browse Ask's existing JSONL archives |
 | Use a terminal workspace | [Bench](https://github.com/patrickyoung/bench) | Review tasks and run the same public tools interactively |
 
 For example, with Brief installed and a `release-notes` skill available:
@@ -177,7 +184,7 @@ recorded by replay; it does not change the system prompt or cap output.
 ### Use OAuth and gateways
 
 Ask does not have a login command, token store, or refresh loop. Configure a
-profile with [OAuth](https://github.com/patrickyoung/oauth), then pass its
+profile with [OAuth](https://github.com/patrickyoung/bench-tools/tree/main/tools/oauth), then pass its
 header on an inherited descriptor:
 
 ```sh

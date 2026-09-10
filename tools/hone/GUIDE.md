@@ -4,34 +4,30 @@ What it is good at, what it is not, and the things that will bite you.
 
 ## What you actually get
 
-Not much, and that is the product. Over a working week of `ply` runs, expect
-most of them to teach nothing:
+Hone keeps lessons from checked recoveries. Runs without that evidence are
+refused before a model words a lesson. For example, an archive may contain:
 
 ```
-$ for s in ~/.ask/sessions/*.jsonl; do hone -q -into house "$s"; done 2>&1 | tail
+$ hone -into house "${PLY_DIR:-$HOME/.ply/sessions}"
 hone: 20260801-1712: no check ran, so nothing judged it but the model
 hone: 20260801-1715: the check passed and nothing ever failed
 hone: 20260801-2147: nothing worth keeping
 ~/.claude/skills/house/SKILL.md: 1 lesson(s) added (12 total)
 ```
 
-That trailing count is the one number worth watching, and it is why it is
-printed. A skill with fifteen lessons in it after a month is a good outcome.
-A skill with three hundred is a broken tool, and the numbers behind that are
-in the README.
-
-It reads two ways, and the second is the useful one. Lessons accumulating
-slowly is a procedure being refined. Lessons accumulating *faster than the
-skill is used* is a procedure missing a step — the run keeps stumbling in
-the same place, and each stumble is being written down instead of fixed.
-The fix is to rewrite the procedure, which is a goal with a check, which is
-`ply`:
+This is illustrative output, not a prediction of how many lessons your work
+will produce. Watch for repeated or contradictory lessons. Repeated advice
+may belong in the procedure itself; the count alone does not measure quality.
+To revise an existing, already valid skill in your project:
 
 ```
-ply -check 'brief lint -strict house' "merge the duplicate lessons in house/SKILL.md"
+ply -sh -B -check 'brief lint -strict .claude/skills/house' \
+  'Merge duplicate lessons in .claude/skills/house/SKILL.md; preserve provenance marks.'
 ```
 
-There is no verb here for that, and there should not be one.
+`-sh` grants shell execution. `-B` requests work even if the initial lint check
+would pass. Lint checks the format; review the resulting diff to judge whether
+the meaning and useful details were preserved.
 
 ## The three refusals, and what to do about each
 
@@ -48,24 +44,32 @@ created. Run with a check next time.
 hone: the check never passed
 ```
 
-The run gave up. There genuinely is no lesson here: you know what did not
-work, but not what does, and "X did not work" written down as guidance is
-how an agent learns to avoid the right answer. If you fixed it yourself
-afterwards, the run that *proves* the fix is the one worth honing — and
-`ply -B -check '...' "confirm"` is a cheap way to make one.
+The retained evidence has no final passing check, so Hone has no verified
+resolution to learn from. If you fixed the work yourself, rerun the original
+check against the same recorded task. For example, if `run.jsonl` already
+contains the failed attempt:
+
+```sh
+ply -sh -f run.jsonl -check 'go test ./...' 'Confirm the repair.'
+hone -why run.jsonl
+```
+
+A passing pre-check records its verdict in that existing session without a
+worker model call. Hone still requires qualifying failure evidence; a fresh
+session containing only a pass is not a recovery.
 
 ```
 hone: the check passed and nothing ever failed
 ```
 
-The model knew what to do. Nothing to learn, and that is the healthy case.
+No failure/recovery pair is recorded, so Hone has no lesson to extract.
 
 ## Read before you believe
 
 `-why` prints the evidence and calls no model, so it costs nothing:
 
 ```
-$ hone -why | less
+$ hone -why run.jsonl
 ```
 
 Do this the first few times. What you are checking is whether the stumbles
@@ -74,7 +78,10 @@ file that did not exist yet. Noise is fine; the model is asked to discard
 it, and mostly does. But if every stumble in a session is noise, a lesson
 drawn from it will be noise dressed as guidance.
 
-`-N` goes one step further: it words the lesson and writes nothing.
+`-N` goes one step further: it calls a model to preview the lesson without
+changing a skill. That wording call still creates an Ask session under
+`$HONE_DIR` (default `~/.hone/lessons`). To review exact bytes for later
+admission, use [prepare, show, and admit](README.md#review-the-exact-lesson-before-saving).
 
 ## The three things that will bite you
 
@@ -86,15 +93,22 @@ hone: -into came after a session, where it is a filename, not a flag: put
 flags first
 ```
 
-Go's flag package stops at the first non-flag argument, the same as every
-other program in this family. It says so rather than failing to open a file
-called `-into`, but it is still the mistake you will make twice.
+This is an intentionally incorrect command. Hone stops parsing flags at the
+first session path and reports misplaced flags. The correct order is:
+
+```sh
+hone -into house run.jsonl
+```
 
 **2. `hone` with no arguments reads your *current* conversation.**
 
-That is `ask`'s convention and it is usually what you want right after a
-`ply` run. It is not what you want if you have since asked `ask` a question,
-because that moved `current`. Name the session, or `-d` its directory:
+Hone uses Ask's `current` pointer in `$ASK_DIR`, defaulting to
+`~/.ask/sessions`, or the newest session there if no usable pointer exists.
+Ply normally writes separate sessions under `$PLY_DIR`, defaulting to
+`~/.ply/sessions`, and does not move Ask's pointer. Plain Ask starts a new
+conversation and moves that pointer. Ask's `-f` creates or continues its named
+file without moving the pointer.
+Name the Ply session explicitly:
 
 ```
 $ ply -sh -check 'make test' -f ./run.jsonl "fix it" && hone -into house ./run.jsonl
@@ -104,13 +118,15 @@ Keeping the session in a file of your own is the habit worth forming.
 
 **3. A run teaches once, and the mark is why.**
 
-Re-running `hone` over the same archive is free and does nothing. If you
-*want* it to learn again — you changed the prompt, or you switched models —
-forget first:
+When `-into` has already recorded a source run in that destination skill,
+Hone skips it before another wording call. Runs that produced no saved lesson,
+previews with `-N`, and a different destination do not have that mark and may
+call the model again. To remove the saved lessons from one source before
+reconsidering it:
 
 ```
 $ hone forget 20260801-230441-4c8100cf68ff97f5 house
-$ hone -into house ~/.ask/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
+$ hone -into house ~/.ply/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
 ```
 
 ## Recipes
@@ -118,42 +134,62 @@ $ hone -into house ~/.ask/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
 **The loop, as a shell function.** Work a goal, then learn from it:
 
 ```sh
-work() {
-  local task=$1 check=$2 skill=${3:-house}
-  ply -sh -s "$skill" -check "$check" -f ./run.jsonl "$task"
-  local r=$?
-  hone -q -into "$skill" ./run.jsonl
-  return $r
-}
+work() (
+  task=$1 check=$2 skill=${3:-house}
+  run_dir=$(mktemp -d ./work-run.XXXXXX) || exit 2
+  printf 'Run directory: %s\n' "$run_dir" >&2
+  if ply -sh -s "$skill" -check "$check" -f "$run_dir/run.jsonl" "$task"; then
+    work_status=0
+  else
+    work_status=$?
+  fi
+  if [ -f "$run_dir/run.jsonl" ]; then
+    if hone -into "$skill" "$run_dir/run.jsonl"; then
+      :
+    else
+      lesson_status=$?
+      if [ "$lesson_status" -ne 1 ]; then
+        printf 'Hone failed with status %s; inspect the run.\n' "$lesson_status" >&2
+      fi
+    fi
+  fi
+  exit "$work_status"
+)
 
 work "make the flaky test deterministic" 'go test -count=5 ./...'
 ```
 
-`hone`'s exit status is deliberately ignored: it is 1 most of the time, and
-that must not fail the function.
+The function returns Ply's outcome. Hone's ordinary “nothing to learn” status
+does not fail the task; a learning error is reported separately. Each call
+uses a fresh record directory in the project so unrelated tasks do not share
+a conversation or an already-learned source ID. The named skill must exist.
 
-**Learn from a whole archive, once.** Safe to re-run; marks make the second
-pass free:
+**Learn from a whole archive.** Already marked runs are skipped; other
+qualifying runs may still need a model call:
 
 ```sh
-hone -q -into house ~/.ask/sessions
+hone -into house "${PLY_DIR:-$HOME/.ply/sessions}"
 ```
 
 **Only from today.** A directory is every session in it, so narrow with the
 shell rather than a flag:
 
 ```sh
-hone -into house ~/.ask/sessions/$(date +%Y%m%d)-*.jsonl
+hone -into house "${PLY_DIR:-$HOME/.ply/sessions}/$(date +%Y%m%d)"-*.jsonl
 ```
 
-**A cheaper model for the wording.** Distilling a stumble is a small job:
+This filename pattern matches Ply's default local-date naming. If no files
+match, choose a real session path instead of passing the unmatched pattern.
+
+**Choose a model for the wording.** Replace the placeholder with a model your
+provider account supports, then evaluate its lessons before changing defaults:
 
 ```sh
-hone -m anthropic/claude-haiku-4-5 -into house
+hone -m anthropic/YOUR_MODEL_ID -into house run.jsonl
 ```
 
-**Keep the corpus honest in CI.** A skill that stops linting is a skill that
-will stop loading:
+**Check the format in CI.** Strict lint reports format errors and warnings;
+it does not establish that a lesson is correct or useful:
 
 ```sh
 brief lint -strict .claude/skills/house || exit 1
@@ -162,13 +198,14 @@ brief lint -strict .claude/skills/house || exit 1
 **Refine one that has grown.** This is a goal with a check, so it is `ply`:
 
 ```sh
-ply -check 'brief lint -strict .claude/skills/house' \
+ply -sh -B -check 'brief lint -strict .claude/skills/house' \
     "merge duplicate lessons in .claude/skills/house/SKILL.md; keep every
      <!-- hone --> comment with the lesson it belongs to"
 ```
 
-Keep the marks. They are the only reason a bad lesson can be deleted rather
-than argued with.
+Keep the marks so `hone forget` can find the lessons from one source run.
+`-B` deliberately bypasses an already passing initial check. Review the diff;
+the final lint check only validates format.
 
 ## Reading a skill you did not write
 
@@ -179,13 +216,14 @@ $ grep -A1 'package main' .claude/skills/house/SKILL.md
 - Files added beside `add_test.go` must declare `package main`; …
 <!-- hone 20260801-230441-4c8100cf68ff97f5 20260802-024133-9f1a2b3c -->
 
-$ ask replay ~/.ask/sessions/20260801-230441-4c8100cf68ff97f5.jsonl | less
+$ ask replay ~/.ply/sessions/20260801-230441-4c8100cf68ff97f5.jsonl | less
 $ ask replay -check ~/.hone/lessons/20260802-024133-9f1a2b3c.jsonl
 ```
 
 The first id shows you the work the lesson came from. The second shows you
 the exact call that worded it, including the evidence it was given. If a
-lesson looks wrong, one of those two will show you why in about a minute.
+lesson looks wrong, inspect both records and the underlying work. Replay
+checks retained-record consistency; it does not prove that the lesson is true.
 
 ## What it is not
 

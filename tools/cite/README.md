@@ -13,7 +13,15 @@ That small, precise check makes it useful as a building block.
 
 ## Install
 
-Requires **Go 1.26+** and **Unix or WSL**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install cite` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and **Unix or WSL**. Install
+current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -60,8 +68,8 @@ candidate.md ───┘           invalid: empty stdout + diagnostics
 
 ## Put it after a model
 
-With [Context](https://github.com/patrickyoung/context) and its Wikipedia
-connector installed, and [Ask](https://github.com/patrickyoung/ask) configured:
+With [Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) and its Wikipedia
+connector installed, and [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) configured:
 
 ```sh
 q='How does a ring buffer work?'
@@ -79,7 +87,7 @@ source claim; this workflow replaces it with retrieved evidence.
 
 ## Let a rejected answer get another turn
 
-[Ply](https://github.com/patrickyoung/ply) can give Cite's feedback to the
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) can give Cite's feedback to the
 model and ask it to correct the candidate:
 
 ```sh

@@ -1,250 +1,161 @@
-# hone
+# Hone design
 
-Read a session that a program judged. Write down what it teaches.
+Hone reads a checked run, selects recorded recoveries, asks a model to word a
+procedural lesson, and writes an explicit change to a Brief skill.
 
-    ask     the model      — no tools, no loop
-    brief   the procedure  — no model, no loop
-    ply     the loop       — no model, no procedure
-    hone    the lesson     — no store, no retrieval, no format
+## Why keep a lesson?
 
-## Does this work? Yes, but only one version of it does
+A repair can expose a missing step in a procedure. For example, a test may
+fail because a fixture contains duplicate names; the worker corrects its
+deduplication and the task's check passes. A useful lesson identifies the
+input case and the necessary step so a later worker can avoid that mistake.
 
-The question was worth asking first, because the obvious version of this
-idea is known to make agents *worse*, and the evidence is not subtle.
+The transcript alone does not establish which result was accepted. Hone
+therefore requires a recorded verifier outcome before it asks for wording.
+It does not automatically summarize every conversation or use the model's
+final report as evidence of success.
 
-**Unbounded memory is negative value.** An agent with an "add-all" strategy
-accumulated 2,400 records and scored 13% on medical reasoning; the same
-agent keeping only high-quality experiences and deleting stale ones held
-248 records and scored 39%. Ten times the memory, a third of the accuracy.
-
-**Wrong memories are worse than no memories, and they get *more*
-persuasive.** Agents that retrieved notebooks from earlier incorrect runs
-reused those results with more confidence than before, "because memory had
-given the wrong answer the appearance of established precedent." Over 90%
-of tested agents were vulnerable to memory poisoning, with a 100% relapse
-rate when teams tried to fix it by correcting the agent in conversation.
-
-**Learning from unlabeled trajectories barely works.** Skills distilled
-from high-quality verified trajectories yielded +0.377 mean reward;
-skills distilled from low-quality ones yielded +0.028. The label is worth
-13x. It is the single largest factor in the literature.
-
-**Rewriting a memory file wholesale destroys it.** ACE names this "context
-collapse": a model asked to rewrite its accumulated context compresses away
-the specifics that made it useful. Updates must be deltas.
-
-So the version that fails is: watch everything, summarize it, embed it,
-retrieve by similarity. That is a machine for manufacturing confident
-falsehoods, and it is most of what ships.
-
-The version that works is narrow:
-
-- learn **only** from trajectories with a verified outcome;
-- keep **procedural** lessons — how to do a thing here — not facts about
-  the world, which go stale and which somebody else already sells;
-- write **deltas**, never rewrites;
-- keep the corpus **small enough to read**;
-- make every lesson **traceable to the run that taught it**, so a bad one
-  can be found and deleted rather than argued with.
-
-That list is the whole design. Everything below is how to keep it a small
-Unix program instead of a memory platform.
-
-## What this family already has that nobody else does
-
-Every memory system in the world is trying to learn from unlabeled
-trajectories, because a chat transcript has no ground truth in it. That is
-why the label is worth 13x and why almost nobody collects it.
-
-`ply -check 'go test ./...'` is a ground-truth label. `make` does not ask
-an oracle whether the build worked, and neither does `ply`. The outcome of
-a run is a program's opinion, recorded, and `ask replay -check` proves the
-run months later.
-
-That is the input the research says you need. This family produces it as a
-side effect of ordinary use.
-
-## The gap that had to be found first
-
-Originally, two real runs, one that passed and one that failed, produced no
-durable machine verdict:
-
-    $ ply -sh -check 'go test ./... 2>&1' -f run.jsonl  "make the test pass"
-    ply: check passed: go test ./... 2>&1        # exit 0
-
-    $ ply -sh -check 'test -f /nonexistent' -cycles 1 -f fail.jsonl ...
-                                                 # exit 2
-
-    $ jq -c '{seq,type}' run.jsonl  | tail -2
-    {"seq":16,"type":"assistant"}
-    {"seq":17,"type":"done"}
-    $ jq -c '{seq,type}' fail.jsonl | tail -2
-    {"seq":4,"type":"assistant"}
-    {"seq":5,"type":"done"}
-
-    $ grep -c 'check passed\|did not pass' run.jsonl fail.jsonl
-    run.jsonl:0
-    fail.jsonl:0
-
-**The two logs are structurally identical.** A session records everything
-that was tried and nothing about whether it worked. The verdict lives on
-stderr and in an exit status, and both are gone the moment the shell moves
-on.
-
-This is not a missing feature. It is `ply` failing a promise it wrote down
-itself, in `AGENTS.md`:
-
-> Anything worth recording — a command, its output, its exit status, **the
-> check's verdict** — goes in the text of the conversation, where it is
-> already proven, rather than into a second file that can drift.
-
-and it contradicts the principle `ask` states in `DoneData`:
-
-> Reason is end|max_tokens|overflow|error: what stopped it, **in the log
-> rather than only in the exit code**, so a session read later says how it
-> finished.
-
-The upstream fix now makes the evidence explicit:
-
-1. **`ask note -k ... -json - -seal`** appends typed JSON and a digest of its
-   exact event prefix without folding either into model context.
-2. **`ply`** writes `ply.verifier/v2` receipts for rejection, acceptance, and
-   broken verifiers, binding candidate, verifier, output, and status.
-3. **`ask replay -check`** verifies request folds, event sequence, and seals.
-
-`hone` reads v2 and legacy v1 receipts and still refuses sessions with no verdict. It
-does not guess. A mislabeled lesson is the 13x failure and the poisoning
-failure at the same time.
-
-## What hone is
-
-A filter. It reads a session that a program judged, and writes down what it
-teaches.
-
-    $ hone run.jsonl
-    - Go test files in this tree declare `package main`, not `package x`;
-      a mismatched package name fails as `found packages x and main`
-      at setup, before any test runs.
-
-    $ hone run.jsonl -into go-conventions
-    go-conventions/SKILL.md: 1 lesson added (4 total)
-
-    $ hone clean.jsonl
-    $ echo $?
-    1
-
-## The one rule: hone learns from recoveries
-
-A lesson is worth keeping only if it would have changed what happened.
-That is checkable, mechanically, from exit codes that are already in the
-log:
-
-- a run that **never failed** teaches nothing — everything worked first
-  try, and there is no counterfactual;
-- a run that **never passed** proves nothing — you do not know the last
-  thing tried was right;
-- a run that **failed and then passed** is the only one that teaches, and
-  the lesson is the difference between the two.
-
-So `hone` finds where a command failed and a later one succeeded, and
-writes down the delta. Nothing else in a session is evidence of anything.
-
-This is the precision gate, and it is why the corpus stays small enough to
-stay true. It also matches what the literature found from the other
-direction: failure-derived constraints gave +14.3% on search tasks and
-success-derived ones +9.0% on execution, and the contrastive pair is what
-the trajectory-distillation work retrieves on.
-
-The gate is arithmetic on exit statuses. A model is used only to *word* the
-lesson, never to decide whether there is one.
-
-## No store, no retrieval, no format
-
-`brief` is already the store. A skill is a directory with a `SKILL.md`,
-`$BRIEF_PATH` is a search path with shadowing, `brief find` ranks a task
-against the catalogue and **refuses to guess**, and `brief lint` holds the
-format to the specification.
-
-So `hone` writes what `brief` reads and stops. It has no index, no
-embedding model, no database, no daemon, and no format of its own. The loop
-closes as a shell pipeline rather than a runtime:
-
-    ply -s "$(brief find "$task")" -check "$check" "$task"   # act
-    hone "$session" -into "$skill"                          # learn
-    brief find "$next"                                       # recall
-
-This is also the answer to retrieval quality. Dense retrieval beats lexical
-on procedural memory, and `brief find -ask` is the model closing that gap
-for a tenth of a cent — already built, already replayable, already
-refusing to answer when nothing fits. The diagnostics on complex memory
-systems land in the same place: "retrieval stability matters more than
-sophistication," with graph and multi-hop schemes degrading while direct
-lookup holds 85%+.
-
-## Provenance is the feature
-
-Every lesson carries the session it was learned from and the call that
-wrote it, and both replay:
-
-    metadata:
-      learned-from: 20260801-230441-4c8100cf68ff97f5
-      honed-by:   20260802-004512-9f1a2b3c4d5e6f70
-
-    $ ask replay -check ~/.ask/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
-    ok: replays exactly (17 events)
-
-This is the answer to memory poisoning that the security literature could
-not give: a bad lesson is not argued with, it is traced to the run that
-introduced it and deleted, along with every sibling from that run. The
-100% relapse rate came from teams trying to correct a poisoned memory *in
-conversation*. Here it is a file with a name on it.
-
-## Bounded by construction
-
-The corpus cannot grow without bound because nothing enters it except a
-recovery from a verified run, and because a skill has a size budget the
-specification already sets and `brief lint` already warns about. Past it,
-`hone` refuses and names the limit rather than truncating — the same rule
-the other three follow. Refining a full skill is a goal with a check, which
-is to say it is `ply`:
-
-    ply -check 'brief lint -strict go-conventions' \
-        "merge duplicate lessons in go-conventions/SKILL.md"
-
-There is no verb for that here, because there is already a program for it.
-
-## The Unix contract
-
-| stream | carries |
+| Program | Responsibility |
 | --- | --- |
-| stdout | the lesson, exact proposal review, or written path |
-| stderr | which session taught it, why a run was refused |
-| exit 0 | yes: something was learned |
-| exit 1 | no: nothing to learn — no failure, no recovery, or no verdict |
-| exit 2 | error: bad usage, unreadable session, `ask` failed |
+| Ask | Provider calls, session files, and replay verification |
+| Ply | Command execution, task checks, and verifier receipts |
+| Hone | Recovery selection and explicit lesson changes |
+| Brief | Skill discovery, reading, and format validation |
 
-`brief`'s contract, not `ask`'s. Most sessions teach nothing, and that is
-an ordinary answer a script branches on rather than a failure:
+These are public executable and file boundaries. Hone imports no provider
+client, agent loop, or sibling implementation.
 
-    for s in ~/.ask/sessions/*.jsonl; do
-        hone "$s" -into "$skill" || continue
-    done
+## What qualifies
 
-## Deliberately absent
+Hone reads the goal, command typescripts, loaded skill names, and verifier
+notes from an Ask session. It normally runs `ask replay -check` before using
+that evidence. Ask owns the replay verdict; Hone does not reproduce its fold.
 
-Exact review does not create an exception to the absence of a store.
-`-prepare FILE` requires one user-named artifact and changes no skill;
-`show` is read-only; `admit` replays both source and wording provenance,
-rejects changed evidence, destination bytes, or path resolution, proves the
-document is only the allowed append/scaffold delta, and writes those exact
-bytes without another model call. There is no default proposal directory,
-listing, retrieval path, overwrite, or implicit admission.
+The last recognized Ply verifier outcome must be accepted. Current
+`ply.verifier/v2` receipts, compatible v1 receipts, and legacy verdict prose
+attributed to `ply` are recognized. Rejected, broken, or missing final
+verdicts do not qualify. An Ask `done` event ends a model call; it is not a
+task acceptance receipt.
 
-No embedding model, no vector store, no index, no database, no daemon, no
-config file, no MCP, no scheduler, no retrieval, no ranking, no memory
-types, no consolidation daemon, no automatic learning. Nothing writes to a
-skill unless somebody typed a command that says to.
+There must also be a recorded stumble: a failed typescript command with
+subsequent command evidence. Hone collects the following commands up to the
+next nonfailed command and groups consecutive failures. The failed pre-check
+that Ply includes with the initial goal can supply this evidence too.
 
-The last one is the load-bearing one. A system that silently learns is a
-system that silently learns the wrong thing, and the failure mode is a
-confident agent citing a precedent nobody wrote.
+This is a mechanical selection rule. It does not prove that a particular
+change caused the recovery, that the check covers the whole task, or that a
+lesson will improve another run. A reviewer must assess those claims.
+
+For a finished Ply session, inspect the evidence without calling a model:
+
+```sh
+hone -why repair.jsonl
+```
+
+No qualifying recovery is exit 1 with an explanation on stderr. A first-try
+success or an unfinished run can be useful to a person while supplying no
+lesson under this rule. `-no-verify` explicitly skips the replay check for
+ordinary inspection/wording; reviewed proposals always require verification.
+
+## Wording is a separate model call
+
+Hone sends Ask the goal, check, failed-command output, and subsequent command
+evidence. Loaded procedures are named; their bodies and the whole original
+transcript are not copied into the wording request. The prompt is supplied
+through `ASK_SYSTEM`, with evidence on stdin rather than in process arguments.
+
+The model can return `none`. A qualifying run is permission to consider a
+lesson, not a requirement to invent one. `-n N` limits retained lessons per
+run, defaulting to three. This is not a global bound on the skill library.
+Creating a new skill may make an additional Ask call for its description.
+
+Wording calls use separate Ask sessions under `HONE_DIR`, defaulting to
+`~/.hone/lessons`. Ask owns model selection, authentication, and provider
+behavior. `ASK` and `BRIEF` select the dependency executables.
+
+## Review exact bytes before changing a procedure
+
+For an existing qualifying `repair.jsonl`, choose a project skill destination:
+
+```sh
+mkdir -p .claude/skills
+export BRIEF_PATH="$PWD/.claude/skills"
+hone -into go-house -prepare lesson.json repair.jsonl
+hone show lesson.json
+```
+
+Preparation creates a new, user-named proposal and changes no skill. The
+proposal binds source-session bytes, wording-session bytes, the resolved
+destination and its previous contents, and the exact resulting skill document.
+`show` prints that document and its hashes without a model call.
+
+After reviewing the lesson, admit it explicitly:
+
+```sh
+hone admit lesson.json
+brief lint -strict go-house
+```
+
+Admission replays both sessions, rechecks hashes and destination resolution,
+and reconstructs the permitted append or scaffold. It refuses stale evidence
+or a document that differs from that change. It writes by atomic replacement
+without another model call. Keep proposals and their source evidence under
+operator control; hashes are integrity bindings, not author signatures.
+
+`-prepare` accepts one session, requires `-into`, and refuses to overwrite an
+existing proposal. Proposal input is bounded at 512 KiB. `-N` previews generated
+wording without saving a skill, but a later call may generate different text.
+Use prepare/show/admit when the exact wording is the thing being reviewed.
+
+## A lesson stays an ordinary skill
+
+Hone appends under `## Lessons`, preserving existing instructions and later
+sections. Each lesson carries an HTML comment naming its source and wording
+session: `<!-- hone SOURCE_ID WORDING_ID -->`. Those identities let a reader
+trace a lesson and let `hone forget SOURCE_ID go-house` remove its contributions.
+Provenance does not establish factual truth or prevent memory poisoning.
+
+An existing skill resolves through `BRIEF_PATH`; a new named skill uses its
+first entry. A path can select a directory directly. `-into -` uses the one
+skill recorded by Ply and refuses zero or multiple choices. Once a source is
+marked in the destination, another attempt to teach it is skipped before
+wording. Similar-text suppression also limits duplicate entries.
+
+`hone -into go-house repair.jsonl` deliberately writes directly. With Brief
+available, ordinary writing reports its lint findings; it is not the exact
+review workflow above. Without Brief, format validation is unavailable. Keep
+lessons small, inspect their procedures, and test them on representative work.
+Hone has no automatic consolidation or contradiction detector.
+
+To load the reviewed procedure on a later Go repair, for example:
+
+```sh
+ply -sh -s go-house -check 'go test ./...' 'Fix the failing tests.'
+```
+
+This grants shell execution. It requires a Go project, configured Ask, Ply,
+and the named skill. The later task's check still decides its outcome.
+
+## Outcomes and verification
+
+Flags precede session paths: `hone -into go-house repair.jsonl`.
+
+| Boundary | Meaning |
+| --- | --- |
+| stdout | Requested lessons, review document, evidence, or operation result |
+| stderr | Progress and reasons for refusal |
+| Exit 0 | Successful requested operation |
+| Exit 1 | No lesson or no applicable result, including rejected evidence |
+| Exit 2 | Invalid input or operational failure |
+
+A batch must distinguish an ordinary no-result status from a broken operation;
+discarding every nonzero status would hide missing tools and unreadable files.
+Hone owns no memory database, retrieval index, scheduler, or automatic hook.
+State consists of explicit skill changes, user-named proposals, and Ask-owned
+wording sessions.
+
+Run `go test ./...` and `go test -race ./...` before reporting changes complete.
+Tests cover recovery selection, receipt versions, lesson insertion, duplicate
+marks, and proposal admission/refusal. They use local fixtures rather than
+paid model calls and do not establish the quality of a generated lesson.
+See [README.md](README.md), [hone.1](hone.1), and [SECURITY.md](SECURITY.md).

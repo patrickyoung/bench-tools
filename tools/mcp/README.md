@@ -18,7 +18,15 @@ reviewed capabilities into executable files that an agent can use through PATH.
 
 ## Install
 
-Requires **Go 1.26+**, Git, and a Unix shell. Clone current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install mcp` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+**, Git, and a Unix shell. Clone
+current `main`:
 
 ```sh
 git clone https://github.com/patrickyoung/mcp.git
@@ -30,11 +38,13 @@ mcp help
 
 The installer runs the tests and installs all four commands under
 `~/.local/bin`. Use `./install.sh -prefix DIR` for `DIR/bin`. Keep the PATH
-setting in your shell startup file. Stay in the checkout for the examples below.
+setting in your shell startup file.
 
 ## Make your first request
 
-The included hello server needs no account, model, or public service:
+The included hello server needs no account, model, or public service. Run these
+examples from MCP's source directory: `cd tools/mcp` from the monorepo root,
+or stay in the standalone `mcp` checkout.
 
 ```sh
 printf '%s\n' '{"name":"hello","arguments":{"name":"Unix"}}' |
@@ -99,15 +109,15 @@ flowchart LR
     P --> C[Shell, Ply, or Agent]
 ```
 
-[Ply](https://github.com/patrickyoung/ply) and
-[Agent](https://github.com/patrickyoung/agent) can use admitted programs as a
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) and
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) can use admitted programs as a
 toolbox. They need no MCP implementation of their own. MCPbox is provisioning;
 generated programs invoke the selected MCP client directly.
 
 ## Keep effectful tools behind Action
 
 For a tool that changes something, admit an
-[Action](https://github.com/patrickyoung/action) connector:
+[Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action) connector:
 
 ```sh
 mcpbox admit service.mcp actions create_ticket
@@ -121,7 +131,7 @@ direct invocation, so choose the appropriate path.
 
 ## Authenticate without putting tokens in argv
 
-With an [OAuth](https://github.com/patrickyoung/oauth) profile:
+With an [OAuth](https://github.com/patrickyoung/bench-tools/tree/main/tools/oauth) profile:
 
 ```sh
 oauth with docs -- mcp discover -header-fd 3 -- https://YOUR_SERVICE/mcp

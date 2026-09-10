@@ -4,6 +4,7 @@
 No arguments runs every component and the process integration suite. Component
 selection runs only those standalone checks. Dependencies are downloaded by Go
 when absent from its cache; no paid provider or ambient credentials are used.
+Use --quick for ordinary tests while iterating; omit it for full verification.
 """
 import argparse
 from contextlib import ExitStack
@@ -153,8 +154,27 @@ def ply_evaluation_environment(base, directory):
     return env
 
 
+def verification_dependencies(components, selected, *, quick=False, integration=False, integration_only=False):
+    """Require commands used by this plan, not every possible optional suite."""
+    required = {
+        "go": "Go 1.26+; builds and the source boundary guard",
+        "python3": "Python 3.9+; verification harness",
+        "git": "current source exports",
+        "sh": "Unix fixtures and shell commands",
+    }
+    if not quick and not integration_only and any(components[name]["module"] for name in selected):
+        required["cc"] = "Go race detector (use --quick for ordinary tests without this requirement)"
+    if not integration_only and "draft" in selected:
+        required["perl"] = "Draft prove fixtures in its shell test suite"
+    if integration or (not quick and not integration_only and "weave" in selected):
+        required["make"] = "Weave installation test"
+        required["install"] = "Weave installation test"
+    return required
+
+
 class CheckRun:
-    def __init__(self, root, selected, native_cage):
+    def __init__(self, root, selected, native_cage, *, quick=False, integration=False,
+                 integration_only=False, verbose=False):
         self.root = root
         self.components = {c["name"]: c for c in json.loads((root / "components.json").read_text())["components"]}
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -172,18 +192,27 @@ class CheckRun:
         self.status = "running"
         self.selected = selected
         self.native_cage = native_cage
+        self.quick = quick
+        self.cgo_disabled = False
+        self.integration_requested = integration
+        self.integration_only = integration_only
+        self.verbose = verbose
+        self.dependencies = verification_dependencies(self.components, selected, quick=quick,
+                                                      integration=integration, integration_only=integration_only)
 
     def prepare(self):
         missing = []
-        # Tests invoke these commands directly or through /usr/bin/env.
-        for name in ("go", "python3", "git", "sh", "bash", "jq", "cc", "make"):
+        # Keep installed compiler/shell paths available without requiring them
+        # for checks that do not use them. jq is not used by any check plan.
+        for name in dict.fromkeys([*self.dependencies, "cc", "bash"]):
             path = shutil.which(name)
             if path is None:
-                missing.append(name)
+                if name in self.dependencies:
+                    missing.append(name + " (" + self.dependencies[name] + ")")
             else:
                 (self.runtime / name).symlink_to(Path(path).resolve())
         if missing:
-            raise RuntimeError("missing verification dependencies: " + ", ".join(missing))
+            raise RuntimeError("missing verification dependencies:\n  " + "\n  ".join(missing))
         cache_env = {"PATH": os.environ.get("PATH", SYSTEM_PATH), "HOME": os.path.expanduser("~"),
                      "GOWORK": "off", "GOENV": "off", "GOTOOLCHAIN": "local"}
         self.cache = json.loads(subprocess.check_output(
@@ -191,6 +220,13 @@ class CheckRun:
         home, temporary = self.control / "home", self.control / "tmp"
         home.mkdir(); temporary.mkdir()
         self.env = isolated_environment(home, temporary, self.runtime, self.cache)
+        # None of the component sources requires cgo. Without a C compiler,
+        # ordinary builds/tests use Go's portable implementations. Full race
+        # checks require cc above and keep their native cgo behavior.
+        self.cgo_disabled = not (self.runtime / "cc").exists()
+        if self.cgo_disabled:
+            self.env["CGO_ENABLED"] = "0"
+            print("No C compiler found; ordinary builds and tests use CGO_ENABLED=0.", flush=True)
         self.command("environment", ["go", "version"], self.control, self.env)
         self.command("boundaries", ["python3", str(self.root / "scripts/check-boundaries.py")], self.root, self.env)
 
@@ -198,7 +234,10 @@ class CheckRun:
         index = len(self.results) + 1
         log = self.directory / (f"{index:03d}-" + label + ".log")
         start = time.monotonic()
-        print(f"[{label}] {shlex.join(map(str, argv))}", flush=True)
+        if self.verbose:
+            print(f"[{label}] {shlex.join(map(str, argv))}", flush=True)
+        else:
+            print(f"[{label}] ", end="", flush=True)
         with log.open("w") as stream:
             stream.write("cwd: " + str(cwd) + "\nargv: " + shlex.join(map(str, argv)) + "\n\n")
             stream.flush()
@@ -210,7 +249,9 @@ class CheckRun:
                   "seconds": round(time.monotonic() - start, 3), "log": log.name}
         self.results.append(record)
         self.write_summary()
-        print(f"[{label}] exit {result.returncode} ({record['seconds']}s); {log.relative_to(self.root)}", flush=True)
+        outcome = "passed" if result.returncode == 0 else f"FAILED (exit {result.returncode})"
+        prefix = f"[{label}] " if self.verbose else ""
+        print(f"{prefix}{outcome} ({record['seconds']}s)", flush=True)
         if result.returncode:
             # Logs contain fixture data only; the child environment has no
             # ambient provider credentials or private home configuration.
@@ -220,6 +261,8 @@ class CheckRun:
 
     def write_summary(self, error=None):
         payload = {"status": self.status, "selected": self.selected, "native_cage_requested": self.native_cage,
+                   "mode": "quick" if self.quick else "full", "integration_requested": self.integration_requested,
+                   "prerequisites": self.dependencies, "cgo_disabled_without_compiler": self.cgo_disabled,
                    "checks": self.results, "error": error}
         (self.directory / "summary.json").write_text(json.dumps(payload, indent=2) + "\n")
 
@@ -244,6 +287,8 @@ class CheckRun:
         files = export_source(self.root, self.components[name], source)
         (self.directory / (name + "-source.json")).write_text(json.dumps(files, indent=2) + "\n")
         env = isolated_environment(home, temporary, self.runtime, self.cache)
+        if self.cgo_disabled:
+            env["CGO_ENABLED"] = "0"
         self.exports[name] = (source, env)
         return source, env
 
@@ -278,11 +323,14 @@ class CheckRun:
         component = self.components[name]
         if component["module"]:
             self.command(name + "-test", ["go", "test", "-count=1", "./..."], source, env)
-            self.command(name + "-race", ["go", "test", "-race", "-count=1", "./..."], source, env)
-            self.command(name + "-vet", ["go", "vet", "./..."], source, env)
+            if not self.quick:
+                self.command(name + "-race", ["go", "test", "-race", "-count=1", "./..."], source, env)
+                self.command(name + "-vet", ["go", "vet", "./..."], source, env)
             for command in component["commands"]:
                 self.command(name + "-version-" + command["name"],
                              [self.bin / command["name"], "version"], source, env)
+            if self.quick:
+                return
             if name == "may":
                 self.command("may-self-check", [self.bin / "may", "check"], source, env)
             if name == "cage":
@@ -341,20 +389,44 @@ class CheckRun:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog="""Quick checks keep source boundary guards, isolated builds, uncached ordinary
+Go tests (including go test's default vet checks), command versions, and the
+complete Agent/Draft shell suites. Draft also builds its six public-command
+dependencies and runs scratch sync/lint. Quick checks omit race tests, separate
+go vet, May self-check, Cage cross-builds/native proof, Ply supplementary suites,
+Weave Python/smoke suites, and all process integration. Full checks are the default.
+
+All checks require Go 1.26+, Python 3.9+, Git, sh, and standard Unix utilities.
+Full Go checks also require cc for the race detector. Weave's full and process
+integration suites require make and install. Draft's shell suite requires Perl
+in both quick and full modes. jq is not required. Native Cage
+proof additionally needs a supported host (Bubblewrap at a trusted system path
+on Linux). Use --requirements with your component/mode selection for the plan.
+
+Examples:
+  scripts/check --quick             # iterate across all tools
+  scripts/check --quick ask ply     # iterate on selected independent tools
+  scripts/check                    # full standalone checks and integration
+  scripts/check --requirements      # show prerequisites; no checks run""")
     parser.add_argument("components", nargs="*", help="standalone components to check (default: all, then integration)")
     parser.add_argument("--component", action="append", default=[], help="select a standalone component; repeatable")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--standalone", action="store_true", help="all independent checks, without process integration")
     mode.add_argument("--integration-only", action="store_true", help="independently build every command, then run process integration")
+    parser.add_argument("--quick", action="store_true", help="ordinary tests and shell suites; see exact scope below")
     parser.add_argument("--native-cage", action="store_true", help="also require native kernel confinement proof (cannot silently skip)")
     parser.add_argument("--list", action="store_true", help="print selectable components as JSON and exit")
+    parser.add_argument("--requirements", action="store_true", help="show prerequisites for the selected check plan and exit")
+    parser.add_argument("--verbose", action="store_true", help="show each command in addition to its result (full logs are always saved)")
     args = parser.parse_args(argv)
     available = [c["name"] for c in json.loads((ROOT / "components.json").read_text())["components"]]
     if args.list:
         print(json.dumps(available))
         return 0
     explicit = args.components + args.component
+    if args.quick and (args.integration_only or args.native_cage):
+        parser.error("--quick cannot be combined with --integration-only or --native-cage; omit --quick for those proofs")
     if args.integration_only and explicit:
         parser.error("integration requires the complete command set; omit component selection")
     unknown = set(explicit) - set(available)
@@ -363,7 +435,21 @@ def main(argv=None):
     selected = list(dict.fromkeys(explicit)) if explicit else available
     if args.native_cage and (args.integration_only or "cage" not in selected):
         parser.error("--native-cage requires selecting cage standalone checks")
-    run = CheckRun(ROOT, selected, args.native_cage)
+    integration = args.integration_only or (not explicit and not args.standalone and not args.quick)
+    if args.requirements:
+        components = {c["name"]: c for c in json.loads((ROOT / "components.json").read_text())["components"]}
+        dependencies = verification_dependencies(components, selected, quick=args.quick,
+                                                 integration=integration, integration_only=args.integration_only)
+        for name, reason in dependencies.items():
+            print(name + ": " + reason)
+        print("Standard Unix utilities must be available on PATH.")
+        if args.native_cage:
+            print("Native Cage proof: supported macOS host, or Linux with Bubblewrap at a trusted system path.")
+        return 0
+    run = CheckRun(ROOT, selected, args.native_cage, quick=args.quick, integration=integration,
+                   integration_only=args.integration_only, verbose=args.verbose)
+    scope = "quick" if args.quick else "full"
+    print(f"Running {scope} checks: {', '.join(selected)}" + (" + process integration" if integration else ""), flush=True)
     print("Verification logs: " + str(run.directory), flush=True)
     try:
         with run.stack:
@@ -371,7 +457,7 @@ def main(argv=None):
             if not args.integration_only:
                 for name in selected:
                     run.check_component(name)
-            if args.integration_only or (not explicit and not args.standalone):
+            if integration:
                 run.integration()
             run.command("boundaries-after", ["python3", ROOT / "scripts/check-boundaries.py"], ROOT, run.env)
             run.status = "complete"

@@ -16,7 +16,15 @@ question or decide which source is authoritative.
 
 ## Install
 
-Requires **Go 1.26+** and **Unix or WSL**. Install current `main`:
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
+run `python3 scripts/install context` at the repository root. See
+[installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
+for prerequisites and PATH setup, or
+[getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
+for a guided first result.
+
+**Standalone install.** Requires **Go 1.26+** and **Unix or WSL**. Install
+current `main`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -49,8 +57,16 @@ an actual library or a live retrieval.
 
 ## Retrieve from a real source
 
-A Python 3 Wikipedia connector is shipped in this repository. Install it
-alongside the binary:
+A Python 3 Wikipedia connector is shipped with Context. From the monorepo
+root, install it alongside the binary:
+
+```sh
+mkdir -p "$HOME/.context/connectors"
+install -m 755 tools/context/.context/connectors/wikipedia \
+  "$HOME/.context/connectors/wikipedia"
+```
+
+For an independent installation, fetch it from the standalone repository:
 
 ```sh
 git clone https://github.com/patrickyoung/context.git context-source
@@ -81,8 +97,8 @@ when reusing source text.
 
 ## Turn evidence into a cited answer
 
-Install and configure [Ask](https://github.com/patrickyoung/ask), and install
-[Cite](https://github.com/patrickyoung/cite). Give the question to both the
+Install and configure [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask), and install
+[Cite](https://github.com/patrickyoung/bench-tools/tree/main/tools/cite). Give the question to both the
 retriever and the writer:
 
 ```sh
@@ -109,7 +125,7 @@ flowchart LR
     V --> O[Accepted answer]
 ```
 
-For correction turns, use [Ply](https://github.com/patrickyoung/ply) with
+For correction turns, use [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) with
 `cite evidence.jsonl` as the candidate check. Ask records the supplied Context
 evidence manifest, including the exact snapshot, query, and connector fingerprint.
 `ask replay -check` verifies it from recorded bytes without refetching anything.
@@ -160,9 +176,9 @@ cat handbook.jsonl policies.jsonl | context merge > combined.jsonl
 duplicates, and rejects conflicting records for one ref. You decide how to
 handle a source with no results or a failure.
 
-[Brief](https://github.com/patrickyoung/brief) can hold source-selection
+[Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) can hold source-selection
 procedure; Ask supplies reasoning; Cite checks citation identities; Ply owns
-iteration; [Trail](https://github.com/patrickyoung/trail) browses the resulting
+iteration; [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) browses the resulting
 Ask history. Retrieved content remains **data**, not instructions to insert
 into a system prompt or skill.
 
