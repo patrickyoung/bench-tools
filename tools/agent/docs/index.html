@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bench is a Unix-native control plane that preserves a digital worker's contract, authority, replayable events, and executable definition of done across executions.">
+  <meta property="og:title" content="Bench — autonomy you can prove">
+  <meta property="og:description" content="The execution can stop. The event history and obligation remain. Resume and verify independently.">
+  <meta property="og:type" content="website">
+  <title>Bench — autonomy you can prove</title>
+  <style>
+    :root {
+      --ink: #17221d;
+      --muted: #627069;
+      --paper: #f4f1e8;
+      --surface: #fcfaf4;
+      --line: rgba(23, 34, 29, .14);
+      --green: #a9ef87;
+      --green-deep: #275d3a;
+      --yellow: #f6d76d;
+      --blue: #a9d8f4;
+      --coral: #f4a88f;
+      --purple: #c9b8f4;
+      --shadow: 0 20px 60px rgba(24, 39, 31, .09);
+      --radius: 24px;
+      --max: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 4%, rgba(169, 239, 135, .24), transparent 25rem),
+        radial-gradient(circle at 91% 16%, rgba(169, 216, 244, .22), transparent 28rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    :focus-visible { outline: 3px solid #327a51; outline-offset: 4px; }
+    code, pre, .mono {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    .shell {
+      width: min(calc(100% - 40px), var(--max));
+      margin-inline: auto;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 20;
+      padding: 9px 13px;
+      border: 1px solid var(--ink);
+      border-radius: 9px;
+      background: var(--green);
+      transform: translateY(-160%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding-block: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--ink);
+      border-radius: 10px;
+      background: var(--green);
+      box-shadow: 3px 3px 0 var(--ink);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 18px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover, .nav-links a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: clamp(36px, 7vw, 88px);
+      align-items: center;
+      min-height: 720px;
+      padding: 62px 0 108px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 22px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--green);
+      border: 1px solid var(--ink);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 760px;
+      margin-bottom: 26px;
+      font-size: clamp(54px, 7.2vw, 96px);
+      line-height: .94;
+      letter-spacing: -.066em;
+      text-wrap: balance;
+    }
+
+    .hero-lede {
+      max-width: 650px;
+      margin-bottom: 32px;
+      color: #3f4e46;
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.45;
+      text-wrap: balance;
+    }
+
+    .hero-lede strong { color: var(--ink); }
+    .principles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    .pill {
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(252, 250, 244, .58);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 47px;
+      padding: 0 18px;
+      border: 1px solid var(--ink);
+      border-radius: 13px;
+      color: var(--surface);
+      background: var(--ink);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 760;
+      box-shadow: 4px 4px 0 var(--green);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--green); }
+    .button.secondary { color: var(--ink); background: transparent; box-shadow: none; }
+
+    .terminal-wrap { position: relative; }
+    .terminal-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -27px 24px 22px -24px;
+      z-index: -1;
+      border-radius: 38px;
+      background: var(--green);
+      transform: rotate(-2.4deg);
+    }
+
+    .terminal {
+      overflow: hidden;
+      border: 1px solid #060b08;
+      border-radius: 20px;
+      color: #eaf1eb;
+      background: #14211a;
+      box-shadow: var(--shadow);
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+      color: rgba(255, 255, 255, .5);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #ff766d; }
+    .dot:nth-child(2) { background: #f4ca62; }
+    .dot:nth-child(3) { background: #8bd17d; margin-right: 8px; }
+    .terminal pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 25px 25px 30px;
+      font-size: clamp(12px, 1.25vw, 14px);
+      line-height: 1.8;
+    }
+
+    .prompt { color: var(--green); }
+    .dim { color: #829289; }
+    .cyan { color: #a9d8f4; }
+    .yellow { color: var(--yellow); }
+    .ok { color: var(--green); font-weight: 700; }
+
+    .survival-wrap { position: relative; }
+    .survival-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -25px 23px 21px -23px;
+      z-index: -1;
+      border-radius: 38px;
+      background: var(--green);
+      transform: rotate(-2.1deg);
+    }
+
+    .survival-frame {
+      overflow: hidden;
+      border: 1px solid var(--ink);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .survival-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .survival-head span:last-child { color: var(--green-deep); }
+    .commitment-strip {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 9px;
+      padding: 17px;
+      background: rgba(246, 215, 109, .2);
+    }
+
+    .commitment {
+      padding: 12px;
+      border: 1px solid var(--ink);
+      border-radius: 11px;
+      background: var(--surface);
+    }
+
+    .commitment code { display: block; margin-bottom: 3px; font-size: 11px; font-weight: 800; }
+    .commitment span { color: var(--muted); font-size: 11px; }
+    .boundary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 17px;
+      color: #d9e4dc;
+      background: var(--ink);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+    }
+
+    .boundary::before, .boundary::after { content: ""; height: 1px; flex: 1; background: rgba(255, 255, 255, .17); }
+    .worker-stage {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 13px;
+      align-items: center;
+      padding: 21px 17px;
+      background:
+        linear-gradient(rgba(23, 34, 29, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 34, 29, .035) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+
+    .worker {
+      min-height: 126px;
+      padding: 15px;
+      border: 1px solid var(--ink);
+      border-radius: 15px;
+      background: var(--surface);
+    }
+
+    .worker.old { opacity: .56; transform: rotate(-1.5deg); }
+    .worker.fresh { box-shadow: 4px 4px 0 var(--blue); }
+    .worker small { display: block; margin-bottom: 23px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    .worker strong { display: block; margin-bottom: 4px; font-size: 15px; }
+    .worker span { color: var(--muted); font-size: 11px; }
+    .handoff { text-align: center; font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; }
+    .handoff b { display: block; color: var(--green-deep); font-size: 22px; line-height: 1.1; }
+    .survival-verdict {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 17px;
+      border-top: 1px solid var(--ink);
+      color: var(--ink);
+      background: var(--green);
+      font-size: 12px;
+    }
+
+    .survival-status {
+      padding: 13px 17px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .survival-status strong { color: var(--ink); }
+
+    .insight-section {
+      border-block: 1px solid var(--line);
+      background: rgba(252, 250, 244, .58);
+    }
+
+    .commitments {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }
+
+    .commitment-card {
+      min-height: 225px;
+      padding: 23px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+    }
+
+    .commitment-card:nth-child(1) { border-top: 5px solid var(--yellow); }
+    .commitment-card:nth-child(2) { border-top: 5px solid var(--coral); }
+    .commitment-card:nth-child(3) { border-top: 5px solid var(--blue); }
+    .commitment-card:nth-child(4) { border-top: 5px solid var(--green); }
+    .commitment-card code { display: block; margin-bottom: 29px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .commitment-card h3 { margin-bottom: 9px; font-size: 21px; letter-spacing: -.025em; }
+    .commitment-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .thesis-band {
+      display: grid;
+      grid-template-columns: .8fr 1.2fr;
+      gap: 32px;
+      align-items: center;
+      margin-top: 26px;
+      padding: 28px;
+      border-radius: 22px;
+      color: var(--surface);
+      background: var(--ink);
+    }
+
+    .thesis-band strong { color: var(--green); font-size: 25px; line-height: 1.15; letter-spacing: -.03em; }
+    .thesis-band span { color: #b9c7be; font-size: 14px; }
+
+    .walkthrough-note {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 17px;
+      align-items: start;
+      margin-top: 28px;
+      padding: 21px 23px;
+      border: 1px solid var(--ink);
+      border-radius: 17px;
+      background: var(--yellow);
+    }
+
+    .walkthrough-note .icon { font-size: 23px; }
+    .walkthrough-note p { margin: 0; font-size: 14px; }
+
+    .map-link {
+      display: inline-flex;
+      margin-top: 24px;
+      color: var(--green-deep);
+      font-weight: 780;
+      text-underline-offset: 4px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    .status-card {
+      min-height: 270px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+    }
+
+    .status-card.current { border-color: var(--ink); box-shadow: 5px 5px 0 var(--green); }
+    .status-card.scaffold { border-top: 5px dotted #b87d23; }
+    .status-card.target { border-style: dashed; }
+    .status-label { display: inline-block; margin-bottom: 31px; padding: 6px 9px; border-radius: 7px; background: rgba(23, 34, 29, .08); font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .status-card.current .status-label { background: var(--green); }
+    .status-card h3 { margin-bottom: 10px; font-size: 21px; }
+    .status-card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    section { padding: 104px 0; }
+    .section-head {
+      display: grid;
+      grid-template-columns: .65fr 1.35fr;
+      gap: 40px;
+      align-items: start;
+      margin-bottom: 52px;
+    }
+
+    .section-kicker {
+      margin: 7px 0 0;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-bottom: 18px;
+      font-size: clamp(38px, 5vw, 68px);
+      line-height: 1;
+      letter-spacing: -.05em;
+      text-wrap: balance;
+    }
+
+    .section-intro {
+      max-width: 720px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 19px;
+    }
+
+    .loop-section {
+      border-block: 1px solid var(--line);
+      background: rgba(252, 250, 244, .52);
+    }
+
+    .loop {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .goal-engine {
+      margin-bottom: 52px;
+      padding: 25px;
+      border: 1px solid var(--ink);
+      border-radius: 26px;
+      background: var(--ink);
+      box-shadow: 7px 7px 0 var(--green);
+    }
+
+    .engine-flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .engine-node {
+      display: flex;
+      flex-direction: column;
+      min-height: 186px;
+      padding: 19px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 17px;
+      color: #edf8ef;
+      background: rgba(255, 255, 255, .055);
+    }
+
+    .engine-node.goal { color: var(--ink); background: var(--yellow); border-color: var(--yellow); }
+    .engine-node.outcome { color: var(--ink); background: var(--green); border-color: var(--green); }
+    .engine-name {
+      margin-bottom: 28px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .engine-node strong { margin-bottom: 8px; font-size: 17px; letter-spacing: -.02em; }
+    .engine-node p { margin: 0; color: #aebdb3; font-size: 12px; line-height: 1.48; }
+    .engine-node.goal p, .engine-node.outcome p { color: rgba(23, 34, 29, .72); }
+    .engine-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 52px;
+      color: #aebdb3;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .engine-arrow b { color: var(--green); font-size: 22px; line-height: 1; }
+    .feedback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, .13);
+      color: #b9c7be;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .feedback strong { color: var(--green); }
+
+    .loop-card {
+      position: relative;
+      min-height: 218px;
+      padding: 20px 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+    }
+
+    .loop-card:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 49%;
+      right: -20px;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: var(--paper);
+      font-weight: 800;
+    }
+
+    .step-no {
+      display: inline-block;
+      margin-bottom: 35px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .loop-card h3 { margin-bottom: 9px; font-size: 17px; letter-spacing: -.02em; }
+    .loop-card p { margin-bottom: 0; color: var(--muted); font-size: 13px; line-height: 1.48; }
+    .loop-card strong { color: var(--ink); }
+    .loop-card:nth-child(1) { border-top: 5px solid var(--yellow); }
+    .loop-card:nth-child(2) { border-top: 5px solid var(--blue); }
+    .loop-card:nth-child(3) { border-top: 5px solid var(--purple); }
+    .loop-card:nth-child(4) { border-top: 5px solid var(--coral); }
+    .loop-card:nth-child(5) { border-top: 5px solid var(--green); }
+    .loop-card:nth-child(6) { border-top: 5px solid #86b8a0; }
+
+    .verdict {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: center;
+      max-width: 740px;
+      margin: 34px auto 0;
+      padding: 19px 22px;
+      border: 1px solid var(--ink);
+      border-radius: 16px;
+      background: var(--green);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    .verdict .icon { font-size: 28px; }
+    .verdict p { margin: 0; font-size: 14px; }
+
+    .components {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .component {
+      display: flex;
+      flex-direction: column;
+      min-height: 268px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(252, 250, 244, .7);
+      transition: transform .18s ease, background .18s ease;
+    }
+
+    .component:hover { transform: translateY(-4px); background: var(--surface); }
+    .component.agent-card { color: #edf8ef; background: var(--ink); }
+    .component.agent-card .component-role,
+    .component.agent-card p { color: #b6c5bb; }
+    .component.agent-card .component-tag { color: var(--ink); background: var(--green); border-color: var(--green); }
+
+    .component-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .component h3 { margin: 0; font-family: "SFMono-Regular", Consolas, monospace; font-size: 19px; }
+    .component-role { margin: 7px 0 28px; color: var(--muted); font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .09em; }
+    .component p { margin-bottom: 20px; color: var(--muted); font-size: 14px; }
+    .component-tag {
+      align-self: flex-start;
+      margin-top: auto;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+    }
+
+    .composition-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-top: 26px;
+      padding: 25px 28px;
+      border-radius: var(--radius);
+      color: var(--surface);
+      background: var(--ink);
+    }
+
+    .composition-note strong { font-size: 22px; letter-spacing: -.025em; }
+    .composition-note span { max-width: 560px; color: #b6c5bb; font-size: 14px; }
+
+    .foundation-section {
+      background:
+        linear-gradient(rgba(23, 34, 29, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 34, 29, .035) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+
+    .foundation-grid {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 20px;
+    }
+
+    .home-card, .capability-card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .home-card { padding: 28px; }
+    .card-label {
+      margin-bottom: 24px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .tree { font-size: 13px; line-height: 1.76; }
+    .tree-line { display: grid; grid-template-columns: minmax(150px, .75fr) 1.25fr; gap: 16px; }
+    .tree-path { white-space: nowrap; }
+    .tree-note { color: var(--muted); }
+    .tree-group { margin: 8px -10px; padding: 8px 10px; border-radius: 10px; }
+    .tree-group.definition { background: rgba(246, 215, 109, .22); }
+    .tree-group.mutable { background: rgba(169, 216, 244, .22); }
+    .tree-group.evidence { background: rgba(169, 239, 135, .2); }
+
+    .capability-card { overflow: hidden; }
+    .capability-card .card-label { padding: 28px 28px 0; }
+    .cap-row {
+      display: grid;
+      grid-template-columns: 1fr 1.22fr;
+      gap: 24px;
+      padding: 15px 28px;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .cap-row strong { letter-spacing: -.01em; }
+    .cap-row span { color: var(--muted); }
+
+    .authority {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 20px;
+    }
+
+    .authority-card {
+      padding: 27px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+    }
+
+    .authority-card.allowed { background: rgba(169, 239, 135, .28); }
+    .authority-card.denied { background: rgba(244, 168, 143, .24); }
+    .authority-card h3 { margin-bottom: 16px; font-size: 20px; }
+    .authority-card ul { margin: 0; padding: 0; list-style: none; }
+    .authority-card li { position: relative; margin-top: 10px; padding-left: 23px; font-size: 14px; }
+    .authority-card li::before { position: absolute; left: 0; font-weight: 900; }
+    .authority-card.allowed li::before { content: "+"; color: var(--green-deep); }
+    .authority-card.denied li::before { content: "−"; color: #9c412c; }
+
+    .start-section { padding-bottom: 126px; }
+    .start-card {
+      display: grid;
+      grid-template-columns: 1fr .9fr;
+      gap: clamp(32px, 6vw, 80px);
+      align-items: center;
+      padding: clamp(32px, 5vw, 62px);
+      border: 1px solid var(--ink);
+      border-radius: 32px;
+      color: var(--surface);
+      background: var(--ink);
+      box-shadow: 9px 9px 0 var(--green);
+    }
+
+    .start-card h2 { margin-bottom: 17px; }
+    .start-card p { max-width: 540px; margin-bottom: 0; color: #bdc9c1; font-size: 17px; }
+    .command-box {
+      position: relative;
+      padding: 21px 60px 21px 21px;
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 15px;
+      color: var(--green);
+      background: #0e1712;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .copy {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 7px 9px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      border-radius: 8px;
+      color: #d8e4db;
+      background: transparent;
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 28px 0 40px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .reveal { opacity: 1; transform: none; }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 42px; }
+      .hero-copy { max-width: 810px; }
+      .terminal-wrap { width: min(100%, 680px); margin-inline: auto; }
+      .survival-wrap { width: min(100%, 680px); margin-inline: auto; }
+      .loop { grid-template-columns: repeat(3, 1fr); }
+      .loop-card:nth-child(3)::after { display: none; }
+      .engine-flow { grid-template-columns: 1fr; }
+      .engine-node { min-height: 0; }
+      .engine-arrow { width: auto; min-height: 48px; }
+      .engine-arrow b { transform: rotate(90deg); }
+      .components { grid-template-columns: repeat(2, 1fr); }
+      .commitments { grid-template-columns: repeat(2, 1fr); }
+      .status-grid { grid-template-columns: 1fr; }
+      .foundation-grid, .start-card { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .shell { width: min(calc(100% - 26px), var(--max)); }
+      .nav { align-items: flex-start; flex-direction: column; }
+      .nav-links { width: 100%; flex-wrap: wrap; gap: 12px 18px; }
+      .nav-links .button { min-height: 40px; padding-inline: 13px; }
+      .hero { padding-bottom: 76px; }
+      h1 { font-size: clamp(48px, 16vw, 68px); }
+      section { padding: 78px 0; }
+      .section-head { grid-template-columns: 1fr; gap: 18px; }
+      .loop { grid-template-columns: 1fr; }
+      .goal-engine { padding: 17px; }
+      .loop-card { min-height: 0; }
+      .loop-card:not(:last-child)::after { content: "↓"; top: auto; right: 24px; bottom: -20px; display: grid; }
+      .step-no { margin-bottom: 20px; }
+      .components, .authority, .commitments { grid-template-columns: 1fr; }
+      .thesis-band { grid-template-columns: 1fr; gap: 13px; }
+      .component { min-height: 230px; }
+      .composition-note { align-items: flex-start; flex-direction: column; }
+      .tree-line { grid-template-columns: 1fr; gap: 0; margin-bottom: 5px; }
+      .cap-row { grid-template-columns: 1fr; gap: 5px; padding-inline: 20px; }
+      .start-card { padding: 30px 24px; }
+      .worker-stage { grid-template-columns: 1fr; }
+      .handoff b { transform: rotate(90deg); }
+      .survival-verdict { flex-direction: column; gap: 2px; }
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="shell nav" aria-label="Primary navigation">
+    <a class="brand" href="#top"><span class="brand-mark">b</span><span>bench <span style="color:var(--muted)">/ agent</span></span></a>
+    <nav class="nav-links" aria-label="Site navigation">
+      <a href="index.html" aria-current="page">Overview</a>
+      <a href="guide.html">Tutorial</a>
+      <a href="components.html">Components</a>
+      <a href="compare.html">Compare</a>
+      <a href="platforms.html">Platforms</a>
+      <a href="https://github.com/patrickyoung/bench/releases/tag/v0.13.0">Release 0.13.0</a>
+      <a class="button" href="https://github.com/patrickyoung/agent">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div id="top"></div>
+    <section class="shell hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Unix-native control plane for verifiable digital workers</p>
+        <h1>The execution can disappear. The obligation does not.</h1>
+        <p class="hero-lede"><strong>Bench externalizes the meaningful agent—definition, memory, skills, specialists, work, state, events, effects, authority, and the definition of done—outside any one run.</strong> Claude Code or Cowork can author and control that system; the shipped <code>agent</code> program and <code>bench home</code> run it. A fresh execution reopens the durable home and continues—it is never replaced by a Claude-native or parallel agent.</p>
+        <div class="principles" aria-label="Core principles">
+          <span class="pill">model output proposes</span>
+          <span class="pill">humans authorize</span>
+          <span class="pill">programs verify</span>
+          <span class="pill">events prove</span>
+        </div>
+        <div class="actions">
+          <a class="button" href="#survives">See what survives an interruption ↓</a>
+          <a class="button secondary" href="guide.html">Open the Claude tutorial →</a>
+          <a class="button secondary" href="platforms.html">Map it to other platforms →</a>
+          <a class="button secondary" href="#start">Run a local worker</a>
+        </div>
+      </div>
+
+      <div class="survival-wrap" aria-label="The commitments that survive a worker replacement">
+        <div class="survival-frame">
+          <div class="survival-head"><span>durable agent home</span><span>three persistent domains</span></div>
+          <div class="commitment-strip">
+            <div class="commitment"><code>definition files</code><span>goal · identity · curated memory</span></div>
+            <div class="commitment"><code>skills/ + agents/</code><span>procedures · specialist homes</span></div>
+            <div class="commitment"><code>work/ + state/</code><span>artifacts · operational memory</span></div>
+            <div class="commitment"><code>.agent/</code><span>events · checkpoints · receipts</span></div>
+            <div class="commitment"><code>authority + effects</code><span>caller limits · explicit uncertainty</span></div>
+            <div class="commitment"><code>bin/check</code><span>definition of done</span></div>
+          </div>
+          <div class="boundary">execution boundary</div>
+          <div class="worker-stage">
+            <div class="worker old"><small>execution 01 · exit 137</small><strong>Process memory gone.</strong><span>The durable agent home remains.</span></div>
+            <div class="handoff"><b>→</b>same agent</div>
+            <div class="worker fresh"><small>execution 02 · resumed</small><strong>Continuity restored.</strong><span>Definition, work, state, history, authority, and check are reopened.</span></div>
+          </div>
+          <div class="survival-verdict"><strong>✓ verifier exits 0</strong><span>the worker does not grade itself</span></div>
+          <div class="survival-status"><strong>Ships now:</strong> the semantic control plane on a Unix host. <strong>Next:</strong> a sealed, replaceable Linux task VM.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="insight-section" id="survives">
+      <div class="shell">
+        <div class="section-head reveal">
+          <p class="section-kicker">01 / The click</p>
+          <div>
+            <h2>The process can stop. The agent home does not.</h2>
+            <p class="section-intro">Bench keeps the governed definition, curated memory, skills, specialist homes, mutable work and state, independently written evidence, effect state, authority limits, and executable check. Ask reconstructs the normalized request history; a named checkpoint resumes that same session. Only the live compute and process-local scratch are replaceable.</p>
+          </div>
+        </div>
+
+        <div class="commitments reveal">
+          <article class="commitment-card"><code>01 · contract</code><h3>What did we ask for?</h3><p><code>GOAL.md</code> and the admitted definition stay fixed while intelligence tries different solutions.</p></article>
+          <article class="commitment-card"><code>02 · authority</code><h3>What may this run do?</h3><p>The caller selects capabilities and network policy. Exact May grants are bound to reviewed bytes and spent once.</p></article>
+          <article class="commitment-card"><code>03 · evidence</code><h3>What actually occurred?</h3><p>Ask events, sealed records, and Tend lifecycle events survive execution and can be folded, queried, and integrity-checked.</p></article>
+          <article class="commitment-card"><code>04 · acceptance</code><h3>What counts as done?</h3><p>An operator-owned <code>bin/check</code> accepts or rejects the artifact. The model cannot certify its own answer.</p></article>
+        </div>
+
+        <div class="thesis-band reveal">
+          <strong>Fresh execution.<br>Same obligation.</strong>
+          <span>Replay verifies the recorded history; it does not re-perform an external effect or prove that a source told the truth. That narrower promise is what makes the guarantee inspectable.</span>
+        </div>
+
+        <div class="authority">
+          <article class="authority-card allowed reveal">
+            <h3>The worker may…</h3>
+            <ul><li>Read its definition and selected procedures</li><li>Use caller-provisioned programs</li><li>Write deliverables beneath <code>work/</code></li><li>Keep mutable facts beneath <code>state/</code></li><li>Propose exact patches and external effects</li></ul>
+          </article>
+          <article class="authority-card denied reveal">
+            <h3>The worker cannot grant itself…</h3>
+            <ul><li>Network access from Markdown</li><li>Persistent writes outside confined roots</li><li>Permission to execute an external effect</li><li>A passing completion verdict</li><li>An automatic skill or definition update</li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="loop-section" id="loop">
+      <div class="shell">
+        <div class="section-head reveal">
+          <p class="section-kicker">02 / One obligation</p>
+          <div>
+            <h2>From “write release notes” to a check-accepted artifact.</h2>
+            <p class="section-intro">Picture a repository worker whose goal is to produce <code>work/release-notes.md</code>. The model is useful inside the loop—but the loop, confinement, events, and acceptance remain separate owners.</p>
+          </div>
+        </div>
+
+        <div class="goal-engine reveal" aria-label="How a release-notes goal becomes a check-accepted artifact">
+          <div class="engine-flow">
+            <article class="engine-node goal"><span class="engine-name">GOAL.md</span><strong>Admitted outcome</strong><p>Required sections, source rules, output path, and constraints remain durable.</p></article>
+            <span class="engine-arrow" aria-hidden="true">frames<b>→</b></span>
+            <article class="engine-node"><span class="engine-name">ply + ask</span><strong>One proposal</strong><p>Intelligence chooses one complete action; its request and observed result become events.</p></article>
+            <span class="engine-arrow" aria-hidden="true">runs via<b>→</b></span>
+            <article class="engine-node"><span class="engine-name">cage</span><strong>Confined command</strong><p>Persistent writes stay in mutable roots and network is denied unless the caller enables it.</p></article>
+            <span class="engine-arrow" aria-hidden="true">judged by<b>→</b></span>
+            <article class="engine-node outcome"><span class="engine-name">bin/check</span><strong>Check-accepted</strong><p>The controller-side program accepts, rejects with evidence, or reports that the verifier is broken.</p></article>
+          </div>
+          <div class="feedback"><strong>If rejected:</strong> the concrete check evidence returns to the same recorded session; the goal and test do not move.</div>
+        </div>
+
+        <ol class="loop reveal">
+          <li class="loop-card"><span class="step-no">01</span><h3>Validate</h3><p>Agent validates the home and runs the check <strong>before any model call</strong>. Already done means zero-model completion.</p></li>
+          <li class="loop-card"><span class="step-no">02</span><h3>Select</h3><p><strong>Brief</strong> chooses a relevant local procedure deterministically first; its optional model fallback is explicit and replayable.</p></li>
+          <li class="loop-card"><span class="step-no">03</span><h3>Propose</h3><p><strong>Ply + Ask</strong> frame one action and record the normalized request, output, usage, observation, and outcome.</p></li>
+          <li class="loop-card"><span class="step-no">04</span><h3>Confine</h3><p><strong>Cage</strong> runs the model-authored command with caller-selected persistent-write roots and network policy.</p></li>
+          <li class="loop-card"><span class="step-no">05</span><h3>Check</h3><p>The trusted <strong><code>bin/check</code></strong> runs outside Cage. Exit 0 accepts; exit 1 returns evidence; anything else is broken.</p></li>
+          <li class="loop-card"><span class="step-no">06</span><h3>Seal + resume</h3><p>The verdict is sealed into <strong>Ask</strong> history. A locked checkpoint points to the named session for a later execution.</p></li>
+        </ol>
+
+        <div class="walkthrough-note reveal">
+          <span class="icon" aria-hidden="true">↯</span>
+          <p><strong>Publishing is a second boundary.</strong> The worker may write a proposal, but <code>agent act</code> executes outside Cage through operator policy, exact May authorization, and a connector. If an effect may have started without a trustworthy receipt, status 125 makes that uncertainty durable and blocks an automatic retry.</p>
+        </div>
+
+        <div class="verdict reveal">
+          <span class="icon" aria-hidden="true">✓</span>
+          <p><strong>Completion is a program’s opinion.</strong> The quality of that opinion depends on the operator’s check—but it never depends on the model saying “looks good.”</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="components">
+      <div class="shell">
+        <div class="section-head reveal">
+          <p class="section-kicker">03 / Explicit owners</p>
+          <div>
+            <h2>Six concerns. Sixteen narrow components.</h2>
+            <p class="section-intro">Bench 0.13.0 is a compatibility set, not a requirement to load every filter into every run. Each phase selects only what it needs, and each consequential job has a visible owner.</p>
+          </div>
+        </div>
+
+        <div class="components">
+          <article class="component reveal"><div class="component-top"><h3>Definition</h3><span>▤</span></div><div class="component-role">bench · agent · brief</div><p>Admit the outcome, compile the folder-shaped home, and disclose the procedure without smuggling in a provider or decision.</p><span class="component-tag">intent · home · procedure</span></article>
+          <article class="component agent-card reveal"><div class="component-top"><h3>Intelligence</h3><span>✦</span></div><div class="component-role">ask · ply</div><p>Make model requests, structure checked attempts, preserve exact request events, and resume by a named session.</p><span class="component-tag">reason · attempt · fold · replay</span></article>
+          <article class="component reveal"><div class="component-top"><h3>Evidence</h3><span>⌁</span></div><div class="component-role">context · cite · trail</div><p>Retrieve attributed records, verify literal citation identity, and query the authoritative archive without a shadow trace store.</p><span class="component-tag">provenance · identity · history</span></article>
+          <article class="component reveal"><div class="component-top"><h3>Authority</h3><span>◎</span></div><div class="component-role">cage · may · action</div><p>Confine model-authored commands, bind a human decision to exact bytes, and execute controller-owned external effects with typed receipts.</p><span class="component-tag">confine · approve · affect</span></article>
+          <article class="component reveal"><div class="component-top"><h3>Promotion</h3><span>◇</span></div><div class="component-role">hone · draft</div><p>Turn verified recovery into reviewed procedure bytes and argued designs into explicit build and falsifiable proof seams.</p><span class="component-tag">learn · review · build · test</span></article>
+          <article class="component reveal"><div class="component-top"><h3>Durability + edges</h3><span>◷</span></div><div class="component-role">tend · mcp · oauth</div><p>Supervise exact commands, replay lifecycle projections, and project reviewed network capabilities into ordinary programs.</p><span class="component-tag">persist · project · authorize</span></article>
+        </div>
+
+        <a class="map-link" href="components.html">Open the exact sixteen-component contract map →</a>
+
+        <div class="composition-note reveal">
+          <strong>The refusals are features.</strong>
+          <span>Ask has no tools. Brief does not decide. Context does not synthesize. Cage does not infer intent. Tend does not claim exactly-once effects. Keeping those jobs separate prevents invisible authority from accumulating in one runtime.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="foundation-section" id="foundation">
+      <div class="shell">
+        <div class="section-head reveal">
+          <p class="section-kicker">04 / Trust in the tree</p>
+          <div>
+            <h2>The folder is an inspectable control plane.</h2>
+            <p class="section-intro">Definition, mutable work, and controller evidence are different write domains. The separation is visible with ordinary filesystem tools—and survives when a foreground execution ends.</p>
+          </div>
+        </div>
+
+        <div class="foundation-grid">
+          <article class="home-card reveal">
+            <div class="card-label">release-notes-worker/</div>
+            <div class="tree mono">
+              <div class="tree-group definition">
+                <div class="tree-line"><span class="tree-path">AGENTS.md</span><span class="tree-note">operator-authored instructions</span></div>
+                <div class="tree-line"><span class="tree-path">GOAL.md</span><span class="tree-note">durable outcome</span></div>
+                <div class="tree-line"><span class="tree-path">skills/ · tools/</span><span class="tree-note">procedures + programs</span></div>
+                <div class="tree-line"><span class="tree-path">bin/check</span><span class="tree-note">trusted acceptance program</span></div>
+              </div>
+              <div class="tree-group mutable">
+                <div class="tree-line"><span class="tree-path">work/</span><span class="tree-note">deliverables + proposals</span></div>
+                <div class="tree-line"><span class="tree-path">state/</span><span class="tree-note">durable mutable facts</span></div>
+              </div>
+              <div class="tree-group evidence">
+                <div class="tree-line"><span class="tree-path">.agent/runs/</span><span class="tree-note">events + sealed verdicts</span></div>
+                <div class="tree-line"><span class="tree-path">.agent/checkpoints/</span><span class="tree-note">locked session pointers</span></div>
+                <div class="tree-line"><span class="tree-path">.agent/learning/</span><span class="tree-note">reviewed lesson evidence</span></div>
+                <div class="tree-line"><span class="tree-path">.agent/amendments/</span><span class="tree-note">approved change receipts</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="capability-card reveal">
+            <div class="card-label">Who owns what?</div>
+            <div class="cap-row"><strong>Operator</strong><span>Goal, instructions, check quality, available programs, and deployment boundary</span></div>
+            <div class="cap-row"><strong>Caller</strong><span>Model policy, writable roots, network choice, procedure path, and execution flags</span></div>
+            <div class="cap-row"><strong>Model</strong><span>Reasoning and proposed actions inside the admitted task and supplied capability set</span></div>
+            <div class="cap-row"><strong>Cage</strong><span>Persistent-write and network confinement for model-authored commands on supported hosts</span></div>
+            <div class="cap-row"><strong>Controller</strong><span>Checks, definition admission, policy, approvals, credentials, connectors, and effect receipts</span></div>
+            <div class="cap-row"><strong>Ask + Tend</strong><span>Append-only model-request evidence and event-sourced local process lifecycle state</span></div>
+          </article>
+        </div>
+
+        <p class="section-intro" style="margin-top:24px;font-size:14px"><strong style="color:var(--ink)">Honest boundary:</strong> Cage is host-level write/network confinement, not a VM. It does not provide complete read, secret, identity, syscall, CPU, memory, or PID isolation. The trusted check runs outside Cage, so operators must not make worker-written verifier code authoritative.</p>
+      </div>
+    </section>
+
+    <section id="status">
+      <div class="shell">
+        <div class="section-head reveal">
+          <p class="section-kicker">05 / Now and next</p>
+          <div>
+            <h2>A strong semantic core. An honest execution boundary.</h2>
+            <p class="section-intro">The architecture is useful now on a Unix host. The production machine boundary is the next layer—not something the current site should pretend has already shipped.</p>
+          </div>
+        </div>
+
+        <div class="status-grid">
+          <article class="status-card current reveal"><span class="status-label">implemented</span><h3>Unix-host control plane</h3><p>Folder homes, checked model loops, write/network confinement, exact request-event replay, named checkpoints, evidence queries, reviewed learning, exact approvals, controlled effects, and optional local Tend durability.</p></article>
+          <article class="status-card scaffold reveal"><span class="status-label">development scaffold</span><h3>Guest-process foothold</h3><p>A Fedora mkosi/QEMU image and exact guest-process seam can produce a provisional receipt. There is no broker, transport, lock verifier, production isolation proof, or controller authority in that guest today.</p></article>
+          <article class="status-card target reveal"><span class="status-label">proposed</span><h3>Sealed per-task Linux VM</h3><p>A replaceable task machine beneath an external controller, with signed capabilities, workload identity, credential and effect proxies, resource limits, egress policy, and authoritative post-exit receipts.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="start-section" id="start">
+      <div class="shell">
+        <div class="start-card reveal">
+          <div>
+            <p class="eyebrow" style="color:var(--green)">Start with a skill</p>
+            <h2>Teach Claude the job you already know.</h2>
+            <p>Install Bench System Builder 0.2.0 in Claude Code or Cowork, then let it guide the business interview, checksummed platform-aware suite setup, checked build, and controlled pilot. It distinguishes <strong>SUITE-INSTALLED</strong> from target-host Cage-proved <strong>SUITE-READY</strong>, then reports <strong>MODEL-READY</strong> and <strong>AGENT-FIRST-RUN</strong> separately, preserving an exact host-check or provider resume gate when either boundary is unavailable. The result is always a Bench Agent home: run it interactively with <code>bench -C /absolute/agents -m provider/model -home NAME</code>, on demand or by explicit continuity checkpoint through <code>bench home</code>, and on a reviewed launchd/systemd schedule through the physical suite <code>bench home … tick -m provider/model</code> entry. <a href="guide.html#operate">See every local mode →</a> <a href="downloads/bench-system-builder-0.2.0.zip" download>Download the plugin ↓</a></p>
+          </div>
+          <div class="command-box" id="commands"><button class="copy" type="button" data-copy aria-label="Copy Claude Code commands" aria-live="polite">copy</button><span>$ claude</span><br><span>/plugin marketplace add patrickyoung/agent</span><br><span>/plugin install bench-system-builder@bench-agent-tools</span><br><span>/bench-system-builder:building-with-bench</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <span>Bench 0.13.0 · Agent 0.2.1 · autonomy you can prove.</span>
+    <span class="mono">admit → execute → record → replay → verify</span>
+  </footer>
+
+  <script>
+    document.querySelector('[data-copy]').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const commands = [
+        'claude',
+        '/plugin marketplace add patrickyoung/agent',
+        '/plugin install bench-system-builder@bench-agent-tools',
+        '/bench-system-builder:building-with-bench'
+      ].join('\n');
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(commands);
+        } else {
+          const fallback = document.createElement('textarea');
+          fallback.value = commands;
+          fallback.style.position = 'fixed';
+          fallback.style.opacity = '0';
+          document.body.appendChild(fallback);
+          fallback.select();
+          document.execCommand('copy');
+          fallback.remove();
+        }
+        button.textContent = 'copied';
+      } catch {
+        button.textContent = 'copy failed';
+      }
+      window.setTimeout(() => { button.textContent = 'copy'; }, 1400);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+#!/bin/sh
+# Model-action interpreter for agent(1). Ply invokes this as SHELL -c SCRIPT.
+# Cage, not this wrapper, owns the confinement claim.
+
+set -eu
+
+die() {
+	printf 'agent-action-shell: %s\n' "$*" >&2
+	exit 125
+}
+
+[ "$#" -eq 2 ] && [ "$1" = "-c" ] || die 'expected -c SCRIPT'
+[ -n "${AGENT_WORK:-}" ] || die 'AGENT_WORK is not set'
+[ -n "${AGENT_STATE:-}" ] || die 'AGENT_STATE is not set'
+[ -n "${AGENT_ACTION_TMP:-}" ] || die 'AGENT_ACTION_TMP is not set'
+[ -n "${AGENT_FIND:-}" ] || die 'AGENT_FIND is not set'
+
+cage=${AGENT_CAGE:-cage}
+case $cage in
+	/*) ;;
+	*) die 'AGENT_CAGE must be an absolute pinned path' ;;
+esac
+case $AGENT_FIND in
+	/*) ;;
+	*) die 'AGENT_FIND must be an absolute pinned path' ;;
+esac
+[ ! -L "$cage" ] && [ -f "$cage" ] && [ -x "$cage" ] || die "invalid pinned Cage executable: $cage"
+[ ! -L "$AGENT_FIND" ] && [ -f "$AGENT_FIND" ] && [ -x "$AGENT_FIND" ] || die "invalid pinned find executable: $AGENT_FIND"
+[ ! -L "$AGENT_ACTION_TMP" ] && [ -d "$AGENT_ACTION_TMP" ] || die 'invalid private action temporary directory'
+
+action_tmp=$(
+	cd -P "$AGENT_ACTION_TMP" 2>/dev/null && pwd -P
+) || die 'cannot resolve private action temporary directory'
+work_dir=$(
+	cd -P "$AGENT_WORK" 2>/dev/null && pwd -P
+) || die 'cannot resolve work directory'
+state_dir=$(
+	cd -P "$AGENT_STATE" 2>/dev/null && pwd -P
+) || die 'cannot resolve state directory'
+case $action_tmp in
+	"$work_dir"|"$work_dir"/*|"$state_dir"|"$state_dir"/*)
+		die 'private action temporary directory must be outside work and state'
+		;;
+esac
+TMPDIR=$action_tmp
+export TMPDIR
+
+# Cage confines path writes. A pre-existing hard link inside a writable root
+# can still alias an inode named outside it, so raw Cage callers must refuse
+# that condition. This conservative check rejects every multiply-linked file,
+# including links whose other names may also be inside the granted roots.
+if unsafe_link=$("$AGENT_FIND" "$AGENT_WORK" "$AGENT_STATE" -type f -links +1 -print -quit 2>/dev/null); then
+	:
+else
+	die 'cannot inspect work and state for hard links'
+fi
+if [ -n "$unsafe_link" ]; then
+	die 'work or state contains a multiply-linked regular file'
+fi
+
+if [ "${AGENT_NET:-0}" = 1 ]; then
+	exec "$cage" -net -w "$AGENT_WORK" -w "$AGENT_STATE" -- /bin/sh -c "$2"
+fi
+
+exec "$cage" -w "$AGENT_WORK" -w "$AGENT_STATE" -- /bin/sh -c "$2"

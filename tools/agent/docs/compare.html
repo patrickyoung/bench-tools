@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Where Bench's Unix-native control plane fits among agent SDKs, hosted runtimes, sandboxes, and durable workflow systems in 2026.">
+  <meta property="og:title" content="Bench — compare the locus of trust">
+  <meta property="og:description" content="Framework, runtime, sandbox, workflow substrate, or verifiable control plane: choose the architecture you actually need.">
+  <meta property="og:type" content="website">
+  <title>Bench — where the control plane fits</title>
+  <style>
+    :root {
+      --ink: #17221d;
+      --muted: #637169;
+      --paper: #f4f1e8;
+      --surface: #fcfaf4;
+      --line: rgba(23, 34, 29, .14);
+      --green: #a9ef87;
+      --yellow: #f6d76d;
+      --blue: #a9d8f4;
+      --coral: #f4a88f;
+      --purple: #c9b8f4;
+      --shadow: 0 20px 58px rgba(24, 39, 31, .09);
+      --radius: 24px;
+      --max: 1200px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 9% 2%, rgba(201, 184, 244, .24), transparent 27rem),
+        radial-gradient(circle at 93% 10%, rgba(169, 239, 135, .22), transparent 29rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+    button { font: inherit; }
+    :focus-visible { outline: 3px solid #327a51; outline-offset: 4px; }
+    code, .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .shell { width: min(calc(100% - 40px), var(--max)); margin-inline: auto; }
+    .skip-link { position: fixed; top: 10px; left: 10px; z-index: 20; padding: 9px 13px; border: 1px solid var(--ink); border-radius: 9px; background: var(--green); transform: translateY(-160%); }
+    .skip-link:focus { transform: translateY(0); }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding-block: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--ink);
+      border-radius: 10px;
+      background: var(--green);
+      box-shadow: 3px 3px 0 var(--ink);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 18px;
+    }
+
+    .nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 23px; font-size: 14px; font-weight: 680; }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover, .nav-links a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+    .nav-button { padding: 10px 13px; border: 1px solid var(--ink); border-radius: 11px; color: var(--surface); background: var(--ink); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: clamp(40px, 7vw, 90px);
+      align-items: center;
+      min-height: 710px;
+      padding: 56px 0 104px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 22px;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before { content: ""; width: 26px; height: 8px; border: 1px solid var(--ink); border-radius: 99px; background: var(--purple); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 760px;
+      margin-bottom: 26px;
+      font-size: clamp(54px, 7.1vw, 94px);
+      line-height: .94;
+      letter-spacing: -.066em;
+      text-wrap: balance;
+    }
+
+    .hero-lede { max-width: 690px; margin-bottom: 29px; color: #3e4d45; font-size: clamp(18px, 2vw, 22px); line-height: 1.46; }
+    .hero-lede strong { color: var(--ink); }
+    .meta { display: flex; flex-wrap: wrap; gap: 9px; }
+    .meta span { padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(252,250,244,.6); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
+
+    .constellation {
+      position: relative;
+      min-height: 470px;
+      border: 1px solid var(--ink);
+      border-radius: 36px;
+      background: var(--ink);
+      box-shadow: 9px 9px 0 var(--green);
+      overflow: hidden;
+    }
+
+    .constellation::before, .constellation::after {
+      content: "";
+      position: absolute;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 50%;
+      inset: 65px;
+    }
+
+    .constellation::after { inset: 125px; }
+    .core {
+      position: absolute;
+      z-index: 2;
+      inset: 50% auto auto 50%;
+      width: 142px;
+      height: 142px;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      background: var(--yellow);
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .core strong { display: block; font-size: 19px; letter-spacing: -.03em; }
+    .core span { display: block; margin-top: 5px; font-size: 11px; }
+    .satellite {
+      position: absolute;
+      z-index: 3;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      color: #e9f2eb;
+      background: #233129;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      box-shadow: 0 8px 18px rgba(0,0,0,.18);
+    }
+
+    .satellite em { color: #94a49a; font-style: normal; }
+    .s1 { top: 12%; left: 38%; } .s2 { top: 26%; right: 8%; } .s3 { top: 50%; right: 4%; }
+    .s4 { bottom: 12%; right: 23%; } .s5 { bottom: 11%; left: 19%; } .s6 { top: 52%; left: 4%; }
+    .s7 { top: 24%; left: 7%; } .s8 { bottom: 35%; left: 30%; }
+    .s9 { top: 8%; right: 9%; }
+    .constellation-caption { position: absolute; right: 22px; bottom: 18px; color: #85978c; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+
+    section { padding: 104px 0; }
+    .section-head { display: grid; grid-template-columns: .62fr 1.38fr; gap: 42px; margin-bottom: 50px; align-items: start; }
+    .section-kicker { margin: 7px 0 0; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { margin-bottom: 17px; font-size: clamp(40px, 5.2vw, 68px); line-height: 1; letter-spacing: -.052em; text-wrap: balance; }
+    .section-intro { max-width: 750px; margin-bottom: 0; color: var(--muted); font-size: 19px; }
+
+    .taxonomy-section { border-block: 1px solid var(--line); background: rgba(252,250,244,.54); }
+    .taxonomy { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .taxon { min-height: 258px; padding: 23px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .taxon-no { display: inline-block; margin-bottom: 38px; color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
+    .taxon h3 { margin-bottom: 9px; font-size: 19px; }
+    .taxon p { margin-bottom: 18px; color: var(--muted); font-size: 14px; }
+    .taxon small { font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; }
+    .taxon:nth-child(1) { border-top: 5px solid var(--green); }
+    .taxon:nth-child(2) { border-top: 5px solid var(--purple); }
+    .taxon:nth-child(3) { border-top: 5px solid var(--blue); }
+    .taxon:nth-child(4) { border-top: 5px solid var(--coral); }
+
+    .thesis {
+      display: grid;
+      grid-template-columns: .72fr 1.28fr;
+      gap: 28px;
+      margin-top: 28px;
+      padding: 29px;
+      border: 1px solid var(--ink);
+      border-radius: var(--radius);
+      color: var(--surface);
+      background: var(--ink);
+      box-shadow: 6px 6px 0 var(--green);
+    }
+
+    .thesis strong { font-size: 23px; letter-spacing: -.025em; }
+    .thesis span { color: #b4c2b8; font-size: 15px; }
+
+    .matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+    table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: 12px; }
+    caption { padding: 13px 16px; color: var(--muted); background: #eeeae0; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; text-align: left; }
+    th, td { padding: 15px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { position: sticky; top: 0; z-index: 1; color: var(--muted); background: #eeeae0; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+    tbody th { min-width: 170px; font-family: inherit; font-size: 12px; font-weight: 780; letter-spacing: normal; text-transform: none; }
+    tr:last-child td, tr:last-child th { border-bottom: 0; }
+    tr.agent-row td, tr.agent-row th { background: rgba(169,239,135,.18); }
+    .value { display: inline-block; padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; white-space: nowrap; font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; }
+    .native { background: rgba(169,239,135,.32); } .addon { background: rgba(246,215,109,.3); } .limited { background: rgba(244,168,143,.24); }
+    .matrix-note { margin: 14px 5px 0; color: var(--muted); font-size: 12px; }
+
+    .landscape-section { background: linear-gradient(rgba(23,34,29,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(23,34,29,.035) 1px, transparent 1px); background-size: 36px 36px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 27px; }
+    .filter { padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .filter[aria-pressed="true"] { color: var(--surface); background: var(--ink); border-color: var(--ink); }
+    .system-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .system-card { display: flex; flex-direction: column; min-height: 355px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: 0 9px 25px rgba(24,39,31,.045); }
+    .system-card[hidden] { display: none; }
+    .system-card.agent-card { color: #edf8ef; background: var(--ink); box-shadow: 6px 6px 0 var(--green); }
+    .system-top { display: flex; justify-content: space-between; gap: 13px; align-items: flex-start; }
+    .system-top h3 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
+    .kind { padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; text-transform: uppercase; }
+    .agent-card .kind { color: var(--green); border-color: rgba(169,239,135,.4); }
+    .system-summary { min-height: 67px; margin: 13px 0 18px; color: var(--muted); font-size: 13px; }
+    .agent-card .system-summary { color: #b7c5bb; }
+    .compare-line { display: grid; grid-template-columns: 68px 1fr; gap: 9px; margin-top: 10px; font-size: 12px; line-height: 1.42; }
+    .compare-line b { color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+    .agent-card .compare-line b { color: #92a298; }
+    .source-link { align-self: flex-start; margin-top: auto; padding-top: 20px; color: var(--muted); font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; text-underline-offset: 3px; }
+    .agent-card .source-link { color: var(--green); }
+
+    .gaps-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .gap-card { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 23px; border: 1px solid var(--line); border-radius: 21px; background: var(--surface); }
+    .priority { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--ink); border-radius: 14px; background: var(--coral); font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; font-weight: 800; }
+    .gap-card:nth-child(n+3) .priority { background: var(--yellow); }
+    .gap-card:nth-child(n+6) .priority { background: var(--blue); }
+    .gap-card h3 { margin-bottom: 6px; font-size: 18px; }
+    .gap-card p { margin-bottom: 9px; color: var(--muted); font-size: 13px; }
+    .gap-card small { font-size: 11px; font-weight: 700; }
+    .gap-principle { margin-top: 23px; padding: 24px 27px; border-radius: var(--radius); color: var(--surface); background: var(--ink); font-size: 16px; }
+    .gap-principle strong { color: var(--green); }
+
+    .decision-section { border-block: 1px solid var(--line); background: rgba(252,250,244,.58); }
+    .decision-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .decision-card { padding: 27px; border: 1px solid var(--line); border-radius: 26px; }
+    .decision-card.yes { background: rgba(169,239,135,.27); }
+    .decision-card.no { background: rgba(244,168,143,.2); }
+    .decision-card h3 { margin-bottom: 19px; font-size: 23px; }
+    .decision-item { padding: 14px 0; border-top: 1px solid rgba(23,34,29,.12); }
+    .decision-item strong { display: block; margin-bottom: 3px; font-size: 14px; }
+    .decision-item span { color: var(--muted); font-size: 12px; }
+
+    .routes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 30px; }
+    .route { padding: 19px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .route span { display: block; margin-bottom: 13px; color: var(--muted); font-size: 11px; }
+    .route strong { display: block; margin-bottom: 6px; font-size: 15px; }
+    .route p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .pairings { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .pairing { min-height: 220px; padding: 22px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+    .plus { display: inline-block; margin-bottom: 28px; color: var(--green); background: var(--ink); border-radius: 7px; padding: 4px 7px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; }
+    .pairing h3 { margin-bottom: 8px; font-size: 17px; }
+    .pairing p { margin: 0; color: var(--muted); font-size: 13px; }
+    .pairing-note { margin-top: 17px; color: var(--muted); font-size: 11px; }
+
+    .sources-section { color: #eaf3ec; background: var(--ink); }
+    .sources-section .section-intro { color: #aebcb3; }
+    .sources { columns: 3; column-gap: 32px; margin: 0; padding: 0; list-style: none; }
+    .sources li { break-inside: avoid; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 12px; }
+    .sources a { color: #cfdbd3; text-decoration-color: #65766b; text-underline-offset: 3px; }
+    .sources small { display: block; margin-top: 3px; color: #809287; font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; }
+    .method { margin-top: 34px; padding: 22px; border: 1px solid rgba(255,255,255,.13); border-radius: 17px; color: #aebcb3; font-size: 12px; }
+
+    footer { display: flex; justify-content: space-between; gap: 22px; padding: 28px 0 40px; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 1000px) {
+      .hero { grid-template-columns: 1fr; min-height: 0; }
+      .constellation { width: min(100%, 700px); margin-inline: auto; }
+      .taxonomy, .pairings { grid-template-columns: repeat(2, 1fr); }
+      .system-grid { grid-template-columns: repeat(2, 1fr); }
+      .sources { columns: 2; }
+    }
+
+    @media (max-width: 700px) {
+      .shell { width: min(calc(100% - 26px), var(--max)); }
+      .nav { align-items: flex-start; flex-direction: column; }
+      .nav-links { width: 100%; gap: 12px 18px; }
+      .hero { padding-top: 36px; padding-bottom: 76px; }
+      h1 { font-size: clamp(48px, 16vw, 68px); }
+      section { padding: 78px 0; }
+      .section-head { grid-template-columns: 1fr; gap: 18px; }
+      .constellation { min-height: 430px; }
+      .constellation::before { inset: 56px 27px; }
+      .constellation::after { inset: 120px 74px; }
+      .core { width: 126px; height: 126px; }
+      .satellite { font-size: 9px; }
+      .s1 { left: 35%; } .s2 { right: 3%; } .s3 { right: 2%; } .s5 { left: 8%; } .s6 { left: 2%; } .s7 { left: 3%; }
+      .taxonomy, .system-grid, .gaps-grid, .decision-columns, .routes, .pairings { grid-template-columns: 1fr; }
+      .thesis { grid-template-columns: 1fr; }
+      .system-card { min-height: 0; }
+      .system-summary { min-height: 0; }
+      .sources { columns: 1; }
+      footer { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="shell nav">
+    <a class="brand" href="index.html"><span class="brand-mark">b</span><span>bench <span style="color:var(--muted)">/ compare</span></span></a>
+    <nav class="nav-links" aria-label="Site navigation">
+      <a href="index.html">Overview</a><a href="guide.html">Tutorial</a><a href="components.html">Components</a><a href="compare.html" aria-current="page">Compare</a><a href="platforms.html">Platforms</a><a href="https://github.com/patrickyoung/bench/releases/tag/v0.13.0">Release 0.13.0</a><a class="nav-button" href="https://github.com/patrickyoung/agent">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="shell hero">
+      <div>
+        <p class="eyebrow">Where Bench fits in 2026</p>
+        <h1>Compare the locus of trust.</h1>
+        <p class="hero-lede"><strong>SDKs usually put the loop and tool authority inside an application runtime. Workflow systems preserve execution. Sandboxes isolate a machine.</strong> Bench centers a different object: the durable obligation around a replaceable execution—contract, caller-owned authority, replayable events, and an independent definition of done.</p>
+        <div class="meta"><span>19 alternatives</span><span>primary sources</span><span>re-evaluated 28 Aug 2026</span><span>no sponsored ranking</span></div>
+      </div>
+      <div class="constellation" aria-label="A durable obligation surrounded by independently owned concerns">
+        <div class="core"><div><strong>obligation</strong><span>durable</span></div></div>
+        <span class="satellite s1">contract <em>admitted</em></span><span class="satellite s2">authority <em>caller</em></span><span class="satellite s3">events <em>replay</em></span><span class="satellite s4">check <em>accepts</em></span><span class="satellite s5">model <em>replaceable</em></span><span class="satellite s6">effects <em>external</em></span><span class="satellite s7">programs <em>compose</em></span><span class="satellite s8">session <em>resumes</em></span><span class="satellite s9">unknown <em>persists</em></span>
+        <span class="constellation-caption">execution may end · evidence remains</span>
+      </div>
+    </section>
+
+    <section class="taxonomy-section">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">01 / Classify first</p><div><h2>Bench has a different center: the obligation.</h2><p class="section-intro">The most misleading comparison is an SDK-shaped checklist. Architecture determines what remains authoritative when execution stops: framework state, a workflow journal, a machine image—or the contract, grants, events, and acceptance test around the work.</p></div></div>
+        <div class="taxonomy">
+          <article class="taxon"><span class="taxon-no">A / CONTROL PLANE</span><h3>Verifiable digital workers</h3><p>Contract, authority, evidence, and acceptance stay outside any one execution; ordinary programs provide the seams.</p><small>Bench’s center of gravity</small></article>
+          <article class="taxon"><span class="taxon-no">B / LIBRARY</span><h3>Orchestration SDKs</h3><p>Your application imports agents, graphs, tools, memory, and tracing behind one programming API.</p><small>OpenAI · LangGraph · ADK · Pydantic</small></article>
+          <article class="taxon"><span class="taxon-no">C / RUNTIME</span><h3>Hosted agent systems</h3><p>A server or cloud owns sessions, persistence, channels, scheduling, scaling, and often sandboxes.</p><small>Claude · Cloudflare · Agno · Letta</small></article>
+          <article class="taxon"><span class="taxon-no">D / SUBSTRATE</span><h3>Workflow platforms</h3><p>Durability, integration, or visual authoring surrounds whatever model loop you choose.</p><small>Temporal · DBOS · Restate · Cloudflare</small></article>
+        </div>
+        <div class="thesis"><strong>Preserve the promise, not the process memory.</strong><span>Ask’s events reconstruct and verify normalized model-request history; named checkpoints resume the same session; the goal and external check remain authoritative. This is event replay, not effect re-performance or a claim that every recorded producer was truthful.</span></div>
+        <div class="thesis"><strong>The operating system supplies the joints.</strong><span><code>PATH</code> is capability discovery; programs are replaceable owners; pipes and files are protocols; exit status is control flow; shell, schedulers, process groups, and signals express workflow. MCP capabilities are compiled into this model instead of becoming a hidden runtime inside Ply.</span></div>
+      </div>
+    </section>
+
+    <section id="matrix">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">02 / Fast matrix</p><div><h2>Compare guarantees, not packaging.</h2><p class="section-intro">A green cell means the architecture natively supplies the capability. For Bench, POSIX composition counts: shell is no less native than a graph builder simply because it predates agent SDKs.</p></div></div>
+        <div class="matrix-wrap" tabindex="0" aria-label="Scrollable comparison matrix">
+          <table>
+            <caption>Architectural capabilities and their native owner; similar labels do not imply identical guarantees.</caption>
+            <thead><tr><th scope="col">System</th><th scope="col">Replay / evidence</th><th scope="col">Completion / evals</th><th scope="col">Workflow / durability</th><th scope="col">Memory</th><th scope="col">Multi-agent</th><th scope="col">Authority</th></tr></thead>
+            <tbody>
+              <tr class="agent-row"><th scope="row">Bench</th><td><span class="value native">verified event folds + projections</span></td><td><span class="value native">checks + sealed verdicts</span></td><td><span class="value native">POSIX + Tend (local)</span></td><td><span class="value native">thread + curated + procedural + retrieved</span></td><td><span class="value native">separate homes + process fan-out</span></td><td><span class="value native">caller + Cage + May + Action</span></td></tr>
+              <tr><th scope="row">OpenAI Agents SDK</th><td><span class="value native">traces + session state</span></td><td><span class="value native">testing + app guardrails</span></td><td><span class="value addon">runner + integrations</span></td><td><span class="value native">sessions</span></td><td><span class="value native">handoffs / agents-as-tools</span></td><td><span class="value addon">approvals / sandbox</span></td></tr>
+              <tr><th scope="row">LangGraph / LangSmith</th><td><span class="value native">checkpoints + time travel + traces</span></td><td><span class="value native">terminal state + eval platform</span></td><td><span class="value native">graph checkpoints</span></td><td><span class="value native">short + long term</span></td><td><span class="value native">subgraphs</span></td><td><span class="value addon">policy / app-owned</span></td></tr>
+              <tr><th scope="row">Google ADK</th><td><span class="value native">events + sessions</span></td><td><span class="value native">evaluation framework</span></td><td><span class="value native">resumable seq / loop / parallel</span></td><td><span class="value native">session + state + memory</span></td><td><span class="value native">collaborative agents</span></td><td><span class="value addon">deployment-owned</span></td></tr>
+              <tr><th scope="row">Microsoft Agent Framework</th><td><span class="value native">events + checkpoints</span></td><td><span class="value native">terminal state + conditions</span></td><td><span class="value native">workflow checkpoints</span></td><td><span class="value native">providers / sessions</span></td><td><span class="value native">workflow patterns</span></td><td><span class="value addon">hooks / policy</span></td></tr>
+              <tr><th scope="row">CrewAI</th><td><span class="value addon">tracing platform</span></td><td><span class="value native">guardrails + task results</span></td><td><span class="value native">flow persistence</span></td><td><span class="value native">unified memory</span></td><td><span class="value native">crews</span></td><td><span class="value addon">HITL / guardrails</span></td></tr>
+              <tr><th scope="row">Pydantic AI</th><td><span class="value addon">app tracing</span></td><td><span class="value native">schemas + tests + evals</span></td><td><span class="value addon">durability integrations</span></td><td><span class="value addon">application-owned</span></td><td><span class="value addon">composition</span></td><td><span class="value addon">application-owned</span></td></tr>
+              <tr><th scope="row">LlamaIndex</th><td><span class="value addon">workflow events</span></td><td><span class="value addon">workflow / app result</span></td><td><span class="value addon">workflow integrations</span></td><td><span class="value native">RAG-first</span></td><td><span class="value native">handoff / orchestrator</span></td><td><span class="value addon">application-owned</span></td></tr>
+              <tr><th scope="row">Letta</th><td><span class="value native">stateful server history</span></td><td><span class="value addon">application decision</span></td><td><span class="value native">stateful runtime</span></td><td><span class="value native">core product</span></td><td><span class="value native">shared state</span></td><td><span class="value addon">runtime / tools</span></td></tr>
+              <tr><th scope="row">Claude Managed Agents</th><td><span class="value native">persistent sessions</span></td><td><span class="value addon">app validation</span></td><td><span class="value native">hosted harness</span></td><td><span class="value native">memory stores</span></td><td><span class="value native">coordinators</span></td><td><span class="value native">sandbox + policies</span></td></tr>
+              <tr><th scope="row">Cloudflare Agents</th><td><span class="value native">SQL state + observability</span></td><td><span class="value addon">harness / workflow result</span></td><td><span class="value native">global state + workflows</span></td><td><span class="value native">state / AI Search</span></td><td><span class="value native">facets / workflows</span></td><td><span class="value native">Sandbox / policy</span></td></tr>
+              <tr><th scope="row">Temporal / DBOS / Restate</th><td><span class="value native">journal + code replay</span></td><td><span class="value addon">application evaluator</span></td><td><span class="value native">distributed durable workflow</span></td><td><span class="value limited">bring your own</span></td><td><span class="value addon">child workflows</span></td><td><span class="value addon">retries / approvals / app policy</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="matrix-note">Native does not mean identical. Ask reconstructs exact normalized model requests and verifies the event history; Tend replays immutable lifecycle events into job projections. Temporal-class systems replay deterministic workflow code across distributed workers. LangGraph time travel resumes from a checkpoint and re-executes later nodes. None of these alone makes arbitrary external effects exactly once.</p>
+      </div>
+    </section>
+
+    <section class="landscape-section" id="landscape">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">03 / Full landscape</p><div><h2>Choose the center of gravity you actually need.</h2><p class="section-intro">Every alternative below wins somewhere. The comparison is against Bench’s specific Unix architecture—not a claim that one system is universally better.</p></div></div>
+        <div class="filters" role="group" aria-label="Filter systems"><button class="filter" data-filter="all" aria-pressed="true">All 20</button><button class="filter" data-filter="sdk" aria-pressed="false">SDKs</button><button class="filter" data-filter="runtime" aria-pressed="false">Runtimes</button><button class="filter" data-filter="specialist" aria-pressed="false">Specialists</button><button class="filter" data-filter="platform" aria-pressed="false">Platforms</button></div>
+        <div class="system-grid">
+          <article class="system-card agent-card" data-group="specialist"><div class="system-top"><h3>Bench / Agent</h3><span class="kind">control plane</span></div><p class="system-summary">A Unix-native accountability architecture: sixteen pinned components keep contract, model access, checked iteration, authority, effects, evidence, learning, and local durability under separate ownership.</p><div class="compare-line"><b>Best at</b><span>Artifact-producing work where a program can judge acceptance and the operator wants model intelligence to remain replaceable.</span></div><div class="compare-line"><b>Unique</b><span>The obligation survives a foreground execution: normalized request events reconstruct and verify, authority stays caller-owned, and the model cannot mark itself done.</span></div><div class="compare-line"><b>Boundary</b><span>The semantic control plane ships on a Unix host; no sealed per-task VM broker, workload-identity proxy, managed fleet, semantic citation judge, or unified span dashboard ships today.</span></div><a class="source-link" href="index.html">architecture explainer →</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>OpenAI Agents SDK</h3><span class="kind">general SDK</span></div><p class="system-summary">A lightweight Python/TypeScript runner for tools, handoffs, guardrails, sessions, tracing, realtime, and sandbox agents.</p><div class="compare-line"><b>Choose it</b><span>For product agents tightly integrated with OpenAI models, voice, handoffs, and hosted tracing.</span></div><div class="compare-line"><b>Vs Bench</b><span>Far richer application SDK; weaker separation between orchestration, model loop, and proof of completion.</span></div><div class="compare-line"><b>Watch</b><span>External validation, durable execution, and authority still need deliberate application design.</span></div><a class="source-link" href="https://openai.github.io/openai-agents-python/agents/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>LangGraph</h3><span class="kind">graph runtime</span></div><p class="system-summary">Low-level orchestration for long-running stateful agents, with per-step checkpoints, pending-write recovery, indefinite interrupts, memory, streaming, and time travel.</p><div class="compare-line"><b>Choose it</b><span>When an in-process state graph, checkpoint branching, and framework-managed node recovery are central.</span></div><div class="compare-line"><b>Vs Bench</b><span>LangGraph persists graph state and re-executes nodes after a chosen checkpoint. Ask verifies and reconstructs exact request history; Tend replays durable process state; POSIX defines the graph.</span></div><div class="compare-line"><b>Watch</b><span>Replayed nodes can repeat LLM or API calls, so effects still need idempotent design; executable outcome proof remains application policy.</span></div><a class="source-link" href="https://docs.langchain.com/oss/python/langgraph/use-time-travel">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>Google ADK</h3><span class="kind">general SDK</span></div><p class="system-summary">A Python, TypeScript, Go, and Java kit spanning agents, predictable workflows, multi-agent collaboration, tools, evaluation, resumption, and cloud deployment.</p><div class="compare-line"><b>Choose it</b><span>For teams wanting SDK-provided workflow agents, collaborative agents, resume semantics, and Google deployment.</span></div><div class="compare-line"><b>Vs Bench</b><span>ADK packages graph shapes, routing, evaluation, and managed scale behind language APIs. Bench provides those core capabilities as executable checks, event histories, process topology, and OS services.</span></div><div class="compare-line"><b>Watch</b><span>The framework is flexible, but its strongest operational path runs through Google’s platform.</span></div><a class="source-link" href="https://adk.dev/runtime/resume/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>Microsoft Agent Framework</h3><span class="kind">agent + workflow</span></div><p class="system-summary">The direct successor to AutoGen and Semantic Kernel, joining agents, typed middleware, checkpoints, human input, and explicit workflow graphs.</p><div class="compare-line"><b>Choose it</b><span>For enterprise .NET/Python/Go systems, Azure integration, A2A, and standard multi-agent patterns.</span></div><div class="compare-line"><b>Vs Bench</b><span>Richer enterprise and distributed workflow surface; much larger conceptual and deployment footprint.</span></div><div class="compare-line"><b>Watch</b><span>Some language capabilities remain uneven; migration and platform maturity matter.</span></div><a class="source-link" href="https://learn.microsoft.com/en-us/agent-framework/concepts/workflows/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>CrewAI</h3><span class="kind">crew + flow</span></div><p class="system-summary">Role-oriented autonomous crews plus event-driven flows, with memory, knowledge, guardrails, persistence, HITL, and enterprise operations.</p><div class="compare-line"><b>Choose it</b><span>When you want role and team declarations packaged inside one Python runtime.</span></div><div class="compare-line"><b>Vs Bench</b><span>CrewAI names team topology through SDK objects; Bench uses separate worker homes and ordinary process fan-out, with distinct checks and evidence for every child.</span></div><div class="compare-line"><b>Watch</b><span>Role abstractions can hide token overhead and weak completion criteria if flows lack hard gates.</span></div><a class="source-link" href="https://docs.crewai.com/index">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>Pydantic AI</h3><span class="kind">typed SDK</span></div><p class="system-summary">A model-agnostic Python framework centered on typed dependencies, structured outputs, validation, testing, evals, and durable integrations.</p><div class="compare-line"><b>Choose it</b><span>For Python applications where schemas, static typing, validated outputs, and testability dominate.</span></div><div class="compare-line"><b>Vs Agent</b><span>Far better typed app integration; Agent has stronger process boundaries and executable goal acceptance.</span></div><div class="compare-line"><b>Watch</b><span>Authority and storage are application concerns; durability comes through Temporal, DBOS, Prefect, or Restate.</span></div><a class="source-link" href="https://pydantic.dev/docs/ai/core-concepts/agent/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>Mastra</h3><span class="kind">TypeScript SDK</span></div><p class="system-summary">A TypeScript stack for agents, durable workflows, memory, workspaces, MCP, evals, observability, and deployment.</p><div class="compare-line"><b>Choose it</b><span>For full-stack TypeScript products that need one integrated agent development lifecycle.</span></div><div class="compare-line"><b>Vs Agent</b><span>Much more product-ready for web services; Agent is language-neutral at process boundaries and easier to inspect.</span></div><div class="compare-line"><b>Watch</b><span>The integrated experience creates more framework surface and runtime coupling.</span></div><a class="source-link" href="https://mastra.ai/">official site ↗</a></article>
+
+          <article class="system-card" data-group="specialist"><div class="system-top"><h3>LlamaIndex</h3><span class="kind">data + agents</span></div><p class="system-summary">A data-centric framework with RAG, tools, event-driven workflows, state, and built-in multi-agent handoff or orchestrator patterns.</p><div class="compare-line"><b>Choose it</b><span>When retrieval, document pipelines, indexes, and knowledge connectors are the core problem.</span></div><div class="compare-line"><b>Vs Agent</b><span>Vastly stronger data plane; Agent offers a clearer verifier and authority story.</span></div><div class="compare-line"><b>Watch</b><span>Data and orchestration capabilities are broad; deployment and hard safety boundaries remain separate decisions.</span></div><a class="source-link" href="https://github.com/run-llama/llama_index/blob/main/docs/src/content/docs/framework/understanding/agent/multi_agent.md">official docs ↗</a></article>
+
+          <article class="system-card" data-group="runtime"><div class="system-top"><h3>Agno</h3><span class="kind">agent platform</span></div><p class="system-summary">Agents, teams, and deterministic workflows backed by AgentOS, with memory, knowledge, tracing, evals, scheduling, RBAC, and audit trails.</p><div class="compare-line"><b>Choose it</b><span>To stand up and operate a fleet of multimodal agents behind production APIs.</span></div><div class="compare-line"><b>Vs Agent</b><span>A complete product platform versus a local suite of composable command-line contracts.</span></div><div class="compare-line"><b>Watch</b><span>AgentOS solves operations by becoming a control plane; that is intentionally outside Agent’s current scope.</span></div><a class="source-link" href="https://docs.agno.com/sdk/introduction">official docs ↗</a></article>
+
+          <article class="system-card" data-group="specialist"><div class="system-top"><h3>Letta</h3><span class="kind">memory-first runtime</span></div><p class="system-summary">A stateful agent harness and server built around persistent memory blocks, automated context management, continual learning, and long-lived identity.</p><div class="compare-line"><b>Choose it</b><span>For personal assistants, AI coworkers, and relationships where remembering is the product.</span></div><div class="compare-line"><b>Vs Agent</b><span>Letta automates memory; Agent makes memory curated and learning an explicit reviewed admission.</span></div><div class="compare-line"><b>Watch</b><span>Automatic self-editing is powerful but carries provenance and drift tradeoffs Agent deliberately refuses.</span></div><a class="source-link" href="https://docs.letta.com/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="runtime"><div class="system-top"><h3>Claude Managed Agents</h3><span class="kind">hosted harness</span></div><p class="system-summary">Versioned agents and persistent sessions on Anthropic infrastructure, with built-in sandbox tools, MCP, skills, memory, multi-agent coordination, and permission policies.</p><div class="compare-line"><b>Choose it</b><span>For a managed Claude-native computer or coding agent without operating the harness.</span></div><div class="compare-line"><b>Vs Agent</b><span>Superior managed environment and built-in tools; Agent keeps the model replaceable through Ask and completion external.</span></div><div class="compare-line"><b>Watch</b><span>Provider coupling is the bargain; tool defaults and permission policy deserve explicit review.</span></div><a class="source-link" href="https://platform.claude.com/docs/en/managed-agents/agent-setup">official docs ↗</a></article>
+
+          <article class="system-card" data-group="runtime"><div class="system-top"><h3>Cloudflare Agents</h3><span class="kind">edge runtime</span></div><p class="system-summary">Durable identity, SQLite state, realtime channels, scheduling, fibers, step workflows, Browser, Sandbox, MCP, and global hosting.</p><div class="compare-line"><b>Choose it</b><span>For realtime, stateful, globally deployed agents reached through chat, voice, email, Slack, or webhooks.</span></div><div class="compare-line"><b>Vs Bench</b><span>Cloudflare adds a global managed network runtime, channels, and autoscaling. Bench supplies local Unix workers with stronger separation of outcome proof, event evidence, and operator-owned authority.</span></div><div class="compare-line"><b>Watch</b><span>Durable Objects and the edge runtime become architectural commitments; external executable acceptance remains application logic.</span></div><a class="source-link" href="https://developers.cloudflare.com/agents/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="sdk"><div class="system-top"><h3>AWS Strands Agents</h3><span class="kind">model-driven SDK</span></div><p class="system-summary">An open model-first framework with tools, MCP, A2A, multi-agent graph/swarm/workflow patterns, and embedded observability.</p><div class="compare-line"><b>Choose it</b><span>For AWS-centered autonomous agents that benefit from Bedrock and AgentCore services.</span></div><div class="compare-line"><b>Vs Agent</b><span>Broader cloud and protocol integration; Agent puts more structure outside model-driven orchestration.</span></div><div class="compare-line"><b>Watch</b><span>Model-first autonomy needs application-owned completion gates and policy discipline.</span></div><a class="source-link" href="https://docs.aws.amazon.com/wellarchitected/latest/agentic-ai-lens/agentic-ai-lens.html">official docs ↗</a></article>
+
+          <article class="system-card" data-group="specialist"><div class="system-top"><h3>smolagents</h3><span class="kind">minimal harness</span></div><p class="system-summary">A compact Hugging Face ReAct framework offering code-generating and JSON tool-calling agents with local, Docker, WASM, and remote executors.</p><div class="compare-line"><b>Choose it</b><span>For research, small experiments, open models, and code-action agents with little ceremony.</span></div><div class="compare-line"><b>Vs Agent</b><span>Smaller as a Python library; Agent supplies the broader lifecycle, evidence, approval, and goal structure.</span></div><div class="compare-line"><b>Watch</b><span>Local generated-code execution is explicitly not a complete security boundary.</span></div><a class="source-link" href="https://huggingface.co/docs/smolagents/main/guided_tour">official docs ↗</a></article>
+
+          <article class="system-card" data-group="specialist"><div class="system-top"><h3>OpenHands SDK</h3><span class="kind">coding harness</span></div><p class="system-summary">A model-agnostic software-agent SDK with planning, context compression, security analysis, coding tools, agent servers, and isolated workspaces.</p><div class="compare-line"><b>Choose it</b><span>When software engineering is the whole job and you need a production coding-agent server.</span></div><div class="compare-line"><b>Vs Agent</b><span>Much deeper coding harness and remote workspace story; Agent is general-purpose and verifier-centered.</span></div><div class="compare-line"><b>Watch</b><span>Its optimized computer interface is valuable overhead only when code work dominates.</span></div><a class="source-link" href="https://docs.openhands.dev/sdk/index">official docs ↗</a></article>
+
+          <article class="system-card" data-group="platform"><div class="system-top"><h3>n8n</h3><span class="kind">visual automation</span></div><p class="system-summary">A fair-code workflow automation platform combining AI agent nodes with a large integration ecosystem, triggers, branching, and self-hosting.</p><div class="compare-line"><b>Choose it</b><span>For business automation where connecting SaaS systems matters more than agent architecture.</span></div><div class="compare-line"><b>Vs Agent</b><span>Dramatically easier integrations and visual operations; much weaker filesystem-native definition and proof.</span></div><div class="compare-line"><b>Watch</b><span>Agent nodes are best embedded inside deterministic workflows, not asked to improvise the whole business process.</span></div><a class="source-link" href="https://docs.n8n.io/">official docs ↗</a></article>
+
+          <article class="system-card" data-group="platform"><div class="system-top"><h3>Dify</h3><span class="kind">visual AI platform</span></div><p class="system-summary">A collaborative canvas for model calls, knowledge retrieval, tools, code, branching, triggers, human review, hosted apps, APIs, and MCP exposure.</p><div class="compare-line"><b>Choose it</b><span>For cross-functional teams shipping RAG apps and governed AI workflows visually.</span></div><div class="compare-line"><b>Vs Agent</b><span>Much lower barrier for app delivery; Agent is stronger for source-controlled, shell-native, inspectable mechanics.</span></div><div class="compare-line"><b>Watch</b><span>Visual convenience can obscure exact runtime behavior unless workflows stay disciplined.</span></div><a class="source-link" href="https://www.dify.ai/workflows">official site ↗</a></article>
+
+          <article class="system-card" data-group="platform"><div class="system-top"><h3>Temporal</h3><span class="kind">durability substrate</span></div><p class="system-summary">A distributed workflow engine whose event history deterministically replays workflow code while Workers, task queues, Activities, Signals, retries, and long-lived state survive failures and waits.</p><div class="compare-line"><b>Choose it</b><span>When multi-host execution, high scale, durable in-code call boundaries, and service operations are requirements.</span></div><div class="compare-line"><b>Vs Bench</b><span>Temporal replays deterministic workflow code across a worker service. Bench reconstructs exact model-request and controller histories, keeps the obligation durable across replaceable foreground executions, and uses POSIX as the workflow language.</span></div><div class="compare-line"><b>Watch</b><span>Workflow determinism, Activity boundaries, deployment, and effect semantics become application architecture.</span></div><a class="source-link" href="https://docs.temporal.io/workflow-execution">official docs ↗</a></article>
+
+          <article class="system-card" data-group="platform"><div class="system-top"><h3>DBOS / Restate</h3><span class="kind">code-first durability</span></div><p class="system-summary">Database- or journal-backed execution that checkpoints application calls, supports long waits and durable streams, and recovers distributed agents from recorded results.</p><div class="compare-line"><b>Choose it</b><span>When application functions need explicit durable call boundaries, sessions, queues, approvals, or rollback.</span></div><div class="compare-line"><b>Vs Bench</b><span>Functions join an SDK/runtime; Tend accepts arbitrary exact argv, persists its lifecycle as immutable events, and stays single-host.</span></div><div class="compare-line"><b>Watch</b><span>Neither substrate supplies Bench’s executable definition of done, verified model-request history, or Cage-style host boundary.</span></div><a class="source-link" href="https://docs.restate.dev/ai/patterns/durable-agents">Restate docs ↗</a></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="gaps">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">04 / Honest boundaries</p><div><h2>Service boundaries, not missing feature families.</h2><p class="section-intro">Bench already has replay, evaluation, memory, teams, and workflows. The honest gaps begin where one Unix host meets a fleet, managed data plane, application-serving surface, or stronger machine boundary.</p></div></div>
+        <div class="gaps-grid">
+          <article class="gap-card"><span class="priority">P0</span><div><h3>Distributed call-level durability</h3><p>Tend durably journals the exact process, waits, signals, attempts, artifacts, and controller projection. It does not automatically journal arbitrary function, model, or tool calls inside that process, and it deliberately exposes an interrupted started effect as <code>unknown</code>.</p><small>Split durable steps into ordinary programs, or add a distributed call-journal substrate when multi-host recovery requires it.</small></div></article>
+          <article class="gap-card"><span class="priority">P0</span><div><h3>Read and secret isolation</h3><p>Cage constrains writes and network, but it does not hide every host-readable file, environment value, credential, or program.</p><small>Add a stronger disposable workspace / secret broker boundary.</small></div></article>
+          <article class="gap-card"><span class="priority">P1</span><div><h3>Unified observability service</h3><p>Ask already records models, requests, usage, latency, retries, reasoning, actions, observations, and sealed outcomes; Trail queries that evidence and Tend exposes events and artifacts. There is no unified span topology, OpenTelemetry exporter, aggregation service, alerting, or dashboard.</p><small>Build a read-only projection over the authoritative event evidence.</small></div></article>
+          <article class="gap-card"><span class="priority">P1</span><div><h3>Evaluation experiment management</h3><p>Executable checks, sealed Ply receipts, Draft mutation testing, the 60-case routing corpus, Agent’s lifecycle corpus, and replayable runs are a real evaluation substrate. Bench does not package dataset versioning, aggregate statistics, annotation queues, online sampling, or an experiment dashboard.</p><small>Add experiment management above the event and check contracts; do not replace them.</small></div></article>
+          <article class="gap-card"><span class="priority">P1</span><div><h3>Finish the MCP edge</h3><p>The maintained <a href="https://github.com/patrickyoung/mcp"><code>mcp</code> edge</a> now provides stateless stdio and Streamable HTTP, exact results, effect-unknown handling, descriptor admission, Tools, Prompts, Resources and templates, continuations, Tasks, subscriptions, and reverse Unix-to-MCP serving. The standalone <a href="https://github.com/patrickyoung/oauth"><code>oauth</code> filter adds discovery, browser/device/machine login, secure refresh, and descriptor-based credential transfer. Remaining work includes binary unpacking, Registry proposals, and explicit advanced authorization contracts such as sender-constrained tokens. MCP Apps pass through losslessly while rendering stays outside this non-UI system.</p><small>The <a href="../MCP.md">Unix-native MCP design</a> maps every surface to an existing Bench owner or explicit edge program.</small></div></article>
+          <article class="gap-card"><span class="priority">P2</span><div><h3>Multi-host worker fleet</h3><p>Bench already supplies separate specialist homes, foreground child executions, bounded recursion, replayable child evidence, and POSIX fan-out/join with shell, process groups, and <code>xargs -P</code>. It does not supply a distributed scheduler, remote worker registry, or fleet control plane.</p><small>Keep fleet placement external; preserve the same process and evidence contracts.</small></div></article>
+          <article class="gap-card"><span class="priority">P2</span><div><h3>Realtime and managed serving</h3><p>There is no built-in API server, WebSocket client, channel gateway, autoscaling runtime, or hosted control plane.</p><small>Offer a thin optional service wrapper with no new agent semantics.</small></div></article>
+          <article class="gap-card"><span class="priority">P2</span><div><h3>Knowledge orchestration beyond retrieval</h3><p>Context already discovers caller-selected executable connectors, normalizes evidence without flattening structured content, and stamps query and connector provenance. When those records are supplied to Ask, its history retains the exact cited snapshot. Cite already gates exact ref-to-URL identity. Bench still has no native index, ingestion pipeline, vector store, automatic source router, reranker, semantic support judge, or grounding policy.</p><small>Compose those higher-level data services behind Context connectors or task-specific checks; do not duplicate the evidence envelope.</small></div></article>
+        </div>
+        <div class="gap-principle"><strong>Roadmap rule:</strong> preserve Unix. Tend owns local process durability; a distributed service may place processes across hosts; indexes belong behind Context, spans are projections of events, and hosting wraps programs. Agent remains the link step, not a framework kernel.</div>
+      </div>
+    </section>
+
+    <section class="decision-section" id="decide">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">05 / Decision guide</p><div><h2>Use Bench when the obligation should outlive the execution.</h2><p class="section-intro">The choice is architectural: an independently verifiable Unix control plane, an application SDK and object graph, a hosted runtime and fleet, or a durable workflow substrate.</p></div></div>
+        <div class="decision-columns">
+          <article class="decision-card yes"><h3>Use Bench when…</h3><div class="decision-item"><strong>The outcome is an artifact a command can verify.</strong><span>Code, reports, transformed files, reviewed patches, or bounded local operations.</span></div><div class="decision-item"><strong>You want model intelligence to be replaceable.</strong><span>Ask owns providers while the goal, check, tools, and evidence stay stable.</span></div><div class="decision-item"><strong>Auditability beats dashboard convenience.</strong><span>Definitions, mutable data, sessions, checkpoints, learning, approvals, and job evidence remain inspectable.</span></div><div class="decision-item"><strong>The worker should not grant itself authority.</strong><span>Network, confinement, learning admission, definition changes, and ambiguous retry decisions remain controller or human decisions.</span></div><div class="decision-item"><strong>You operate through shell, Git, cron, launchd, systemd, or CI.</strong><span>Named conversation continuation and conservative local process supervision are enough.</span></div></article>
+          <article class="decision-card no"><h3>Do not use Bench alone when…</h3><div class="decision-item"><strong>You need millions of live, stateful sessions.</strong><span>Choose Cloudflare Agents, Agno, Google Agent Runtime, or another managed runtime.</span></div><div class="decision-item"><strong>Automatic semantic memory is the product.</strong><span>Choose Letta for self-editing hosted identity; use LlamaIndex when indexing and retrieval over changing corpora dominate. Bench already supplies explicit thread, curated, procedural, and retrieved memory.</span></div><div class="decision-item"><strong>You need transparent multi-host call journaling.</strong><span>Use Temporal, DBOS, or Restate when arbitrary calls inside application code—not ordinary processes—must be the durable unit. Tend makes uncertainty explicit instead of claiming exactly-once effects.</span></div><div class="decision-item"><strong>You need voice, streaming UI, or provider-native tooling.</strong><span>Use OpenAI Agents SDK, Claude Managed Agents, Mastra, or Cloudflare.</span></div><div class="decision-item"><strong>Your users need a visual builder and SaaS connectors.</strong><span>Use n8n or Dify. This comparison intentionally concerns system capability, not UI.</span></div></article>
+        </div>
+        <div class="routes">
+          <article class="route"><span>Need typed Python outputs?</span><strong>Pydantic AI</strong><p>Schema validation, dependencies, evals, and durable integrations are native to the application model.</p></article>
+          <article class="route"><span>Need explicit agent graphs?</span><strong>LangGraph or Microsoft</strong><p>Choose LangGraph for low-level control; Microsoft for enterprise multi-language workflows and standard patterns.</p></article>
+          <article class="route"><span>Need SDK-managed agent teams?</span><strong>CrewAI, ADK, or Agno</strong><p>Bench already supports separate specialist homes and process teams. Choose these when shared framework state, provider handoffs, or managed team operations are the desired abstraction.</p></article>
+          <article class="route"><span>Need a coding-agent platform?</span><strong>OpenHands or Claude</strong><p>OpenHands is model-agnostic and self-hostable; Claude offers a managed provider-native harness.</p></article>
+          <article class="route"><span>Need RAG and documents?</span><strong>LlamaIndex or Dify</strong><p>LlamaIndex gives code-first data infrastructure; Dify gives teams a visual application surface.</p></article>
+          <article class="route"><span>Need the smallest experiment?</span><strong>smolagents or direct APIs</strong><p>Do not adopt a lifecycle system when a short ReAct loop—or one model call—is enough.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">06 / Outer services</p><div><h2>Put services around Bench without moving Unix out of the center.</h2><p class="section-intro">Tend and POSIX workflow are already shipped parts of the system. The other pairings are optional outer services for deployment boundaries Bench does not claim.</p></div></div>
+        <div class="pairings">
+          <article class="pairing"><span class="plus">Bench + distributed substrate</span><h3>Cross-host placement</h3><p>POSIX plus Tend already supplies local workflow, exact-process jobs, durable waits, and conservative unknown resolution. Add Temporal, DBOS, or Restate only when the durable unit must be an in-process call or execution must span hosts.</p></article>
+          <article class="pairing"><span class="plus">Bench + LlamaIndex</span><h3>Knowledge tool</h3><p>Expose retrieval as a bounded program under <code>tools/</code>; keep ingestion and citations out of the core compiler.</p></article>
+          <article class="pairing"><span class="plus">Bench + n8n / Cloudflare</span><h3>Triggers and channels</h3><p>Use a platform for events, schedules, realtime clients, and notifications while a separately controlled Agent run produces the artifact.</p></article>
+          <article class="pairing"><span class="plus">Bench + MCP servers</span><h3>Capability without hidden authority</h3><p>Provision an unadmitted capability folder at the standalone edge, review descriptor digests, and create only the approved programs. The <code>mcp</code> distribution owns protocol transport, compilation, and effect honesty; the Ply toolbox controls which capabilities the model can name.</p></article>
+        </div>
+        <p class="pairing-note">Integration caution: preserve replay evidence, effect identity, authority decisions, and the exact check result across every boundary.</p>
+      </div>
+    </section>
+
+    <section class="sources-section" id="sources">
+      <div class="shell">
+        <div class="section-head"><p class="section-kicker">07 / Sources</p><div><h2>Primary documentation, not leaderboard folklore.</h2><p class="section-intro">Capabilities change quickly. Every external claim was checked against vendor or project documentation available on 28 August 2026.</p></div></div>
+        <ul class="sources">
+          <li><a href="https://openai.github.io/openai-agents-python/agents/">OpenAI Agents SDK — Agents</a><small>tools · handoffs · guardrails · sessions</small></li>
+          <li><a href="https://openai.github.io/openai-agents-python/tracing/">OpenAI Agents SDK — Tracing</a><small>spans · traces · processors · export</small></li>
+          <li><a href="https://openai.github.io/openai-agents-python/testing/">OpenAI Agents SDK — Testing</a><small>deterministic tests · model substitution</small></li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/overview">LangGraph — Overview</a><small>durability · HITL · persistence · memory</small></li>
+          <li><a href="https://docs.langchain.com/oss/python/langgraph/use-time-travel">LangGraph — Time travel</a><small>checkpoints · replay · branching · re-execution</small></li>
+          <li><a href="https://docs.langchain.com/langsmith/evaluation-concepts">LangSmith — Evaluation concepts</a><small>datasets · evaluators · experiments · online evaluation</small></li>
+          <li><a href="https://adk.dev/workflows/">Google ADK — Workflows</a><small>sequential · loop · parallel agents</small></li>
+          <li><a href="https://adk.dev/runtime/resume/">Google ADK — Resume</a><small>events · resumable workflow state</small></li>
+          <li><a href="https://learn.microsoft.com/en-us/agent-framework/concepts/workflows/">Microsoft Agent Framework — Workflows</a><small>graphs · state · events · human input</small></li>
+          <li><a href="https://docs.crewai.com/index">CrewAI — Documentation</a><small>crews · flows · memory · observability</small></li>
+          <li><a href="https://pydantic.dev/docs/ai/core-concepts/agent/">Pydantic AI — Agents</a><small>types · structured output · testing · evals</small></li>
+          <li><a href="https://pydantic.dev/docs/ai/capabilities/durable_execution/overview/">Pydantic AI — Durable execution</a><small>Temporal · DBOS · Prefect · Restate</small></li>
+          <li><a href="https://mastra.ai/">Mastra — Product and docs</a><small>TypeScript · workflows · memory · evals</small></li>
+          <li><a href="https://github.com/run-llama/llama_index/blob/main/docs/src/content/docs/framework/understanding/agent/multi_agent.md">LlamaIndex — Multi-agent patterns</a><small>handoff · orchestrator · custom planner</small></li>
+          <li><a href="https://docs.agno.com/sdk/introduction">Agno — SDK introduction</a><small>agents · teams · workflows · AgentOS</small></li>
+          <li><a href="https://docs.letta.com/">Letta — Documentation</a><small>stateful agents · memory · continual learning</small></li>
+          <li><a href="https://platform.claude.com/docs/en/managed-agents/agent-setup">Claude Managed Agents — Setup</a><small>versioning · tools · skills · multi-agent</small></li>
+          <li><a href="https://developers.cloudflare.com/agents/">Cloudflare Agents — Overview</a><small>durable identity · channels · state · tools</small></li>
+          <li><a href="https://docs.aws.amazon.com/wellarchitected/latest/agentic-ai-lens/agentic-ai-lens.html">AWS — Agentic AI Lens</a><small>Strands · AgentCore · MCP · A2A</small></li>
+          <li><a href="https://huggingface.co/docs/smolagents/main/guided_tour">Hugging Face smolagents — Tour</a><small>CodeAgent · ToolCallingAgent · executors</small></li>
+          <li><a href="https://docs.openhands.dev/sdk/index">OpenHands — Software Agent SDK</a><small>coding · workspaces · agent server · security</small></li>
+          <li><a href="https://docs.n8n.io/">n8n — Documentation</a><small>automation · integrations · AI nodes</small></li>
+          <li><a href="https://www.dify.ai/workflows">Dify — Workflow Studio</a><small>visual workflow · RAG · human review · API</small></li>
+          <li><a href="https://docs.temporal.io/workflow-execution">Temporal — Workflow execution</a><small>event history · deterministic replay · workers</small></li>
+          <li><a href="https://docs.dbos.dev/why-dbos">DBOS — Why DBOS</a><small>durable execution · recorded results · recovery</small></li>
+          <li><a href="https://docs.restate.dev/ai/patterns/durable-agents">Restate — Durable agents</a><small>journaled calls · sessions · recovery</small></li>
+          <li><a href="https://blog.modelcontextprotocol.io/posts/2026-07-28/">MCP 2026-07-28 — Specification release</a><small>stateless core · cacheable catalogues · JSON Schema · extensions</small></li>
+        </ul>
+        <div class="method"><strong>Method.</strong> This is an architectural field guide, not a performance benchmark. “Native” means the architecture directly supplies the capability; for Bench that includes POSIX processes and shell composition, just as a framework’s graph or runtime counts for it. Tradeoffs are editorial inferences from current primary documentation. Bench claims come from the sixteen pinned component contracts, source, release manifest, and offline corpora.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell"><span>Bench 0.13.0 · comparison field guide</span><span class="mono">contract → authority → execution → event → check</span></footer>
+
+  <script>
+    const filters = document.querySelectorAll('[data-filter]');
+    const cards = document.querySelectorAll('[data-group]');
+    filters.forEach((button) => button.addEventListener('click', () => {
+      const selected = button.dataset.filter;
+      filters.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      cards.forEach((card) => { card.hidden = selected !== 'all' && card.dataset.group !== selected; });
+    }));
+  </script>
+</body>
+</html>

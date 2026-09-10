@@ -1,0 +1,5 @@
+case_id,class,input_reference,expected_disposition,evidence_required,allowed_effects,oracle_owner,worker_can_read_answer,status
+CASE-001,teaching,,,,,business-owner,yes,draft
+CASE-002,regression,,,,,business-owner,yes,draft
+CASE-003,withheld,,,,,independent-reviewer,no,draft
+CASE-004,adversarial,,,,none,security-reviewer,no,draft

@@ -1,0 +1,2 @@
+capability_id,business_purpose,level,resource_or_effect,identity,scope,approval_owner,reversible,receipt_or_evidence,unknown_outcome_behavior,forbidden_alternatives,status
+CAP-001,,read,,,,,,,stop-and-escalate,,proposed

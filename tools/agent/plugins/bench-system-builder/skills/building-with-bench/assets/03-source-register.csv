@@ -1,0 +1,2 @@
+source_id,business_resource,record_type,owner,authority_rank,freshness_rule,conflict_behavior,sensitivity,access_scope,unavailable_behavior,revocation_owner,status
+SRC-001,,,,,,,,,,,proposed

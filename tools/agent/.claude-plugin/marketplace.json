@@ -1,0 +1,28 @@
+{
+  "name": "bench-agent-tools",
+  "owner": {
+    "name": "Patrick Young"
+  },
+  "description": "Versioned skills for designing and operating governed Bench agents.",
+  "plugins": [
+    {
+      "name": "bench-system-builder",
+      "source": "./plugins/bench-system-builder",
+      "description": "A source-free Claude Code and Cowork guide for installing the Bench suite and designing, building, proving, running, scheduling, and retiring its Agent homes.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Patrick Young"
+      },
+      "homepage": "https://patrickyoung.github.io/agent/guide.html",
+      "repository": "https://github.com/patrickyoung/agent",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": [
+        "agents",
+        "business-process",
+        "evaluation",
+        "governance"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+connection_id,type,resource,record_or_effect,identity,scopes,descriptor_digest,freshness,sensitivity,egress,credential_owner,rotation,revocation,unknown_behavior,status
+CONN-001,context-read,,,,,,,,,,,,,proposed

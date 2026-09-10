@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How teams can assemble durable digital-worker capabilities across Bench, Databricks, Google Vertex AI, Microsoft Foundry, LangChain, Copilot Studio, Glean, Writer, and Thunk.">
+  <meta property="og:title" content="Bench — platform capability implementation map">
+  <meta property="og:description" content="The agent persists. The execution is replaceable. See where definition, memory, state, evidence, effects, and acceptance live across nine platforms.">
+  <meta property="og:type" content="website">
+  <title>Bench — platform capability implementation map</title>
+  <style>
+    :root {
+      --ink: #17221d;
+      --muted: #627069;
+      --paper: #f4f1e8;
+      --surface: #fcfaf4;
+      --line: rgba(23, 34, 29, .15);
+      --green: #a9ef87;
+      --green-deep: #275d3a;
+      --yellow: #f6d76d;
+      --blue: #a9d8f4;
+      --coral: #f4a88f;
+      --purple: #c9b8f4;
+      --shadow: 0 20px 60px rgba(24, 39, 31, .09);
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --max: 1240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 9% 2%, rgba(169, 239, 135, .24), transparent 25rem),
+        radial-gradient(circle at 94% 10%, rgba(201, 184, 244, .22), transparent 28rem),
+        var(--paper);
+      font-family: var(--sans);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-underline-offset: 4px; }
+    code, .mono { font-family: var(--mono); }
+    :focus-visible { outline: 3px solid #327a51; outline-offset: 4px; }
+    .shell { width: min(calc(100% - 40px), var(--max)); margin-inline: auto; }
+    .skip-link { position: fixed; top: 10px; left: 10px; z-index: 30; padding: 9px 13px; border: 1px solid var(--ink); border-radius: 9px; background: var(--green); transform: translateY(-160%); }
+    .skip-link:focus { transform: translateY(0); }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--ink); border-radius: 10px; background: var(--green); box-shadow: 3px 3px 0 var(--ink); font-family: var(--mono); font-size: 18px; }
+    .nav-links { display: flex; align-items: center; flex-wrap: wrap; gap: 22px; font-size: 13px; font-weight: 700; }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover, .nav-links a[aria-current="page"] { text-decoration: underline; }
+    .nav-cta { padding: 9px 13px; border: 1px solid var(--ink); border-radius: 10px; color: var(--surface); background: var(--ink); }
+    .page-links { display: flex; flex-wrap: wrap; gap: 9px 20px; padding: 2px 0 19px; border-bottom: 1px solid var(--line); color: var(--muted); font-family: var(--mono); font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .page-links a { text-decoration: none; }
+    .page-links a:hover { color: var(--ink); text-decoration: underline; }
+
+    .hero { padding: 80px 0 104px; }
+    .eyebrow, .kicker { margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; }
+    .eyebrow::before { content: ""; width: 26px; height: 8px; border: 1px solid var(--ink); border-radius: 99px; background: var(--green); }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    h1 { max-width: 1040px; margin: 20px 0 25px; font-size: clamp(56px, 8vw, 106px); line-height: .91; letter-spacing: -.068em; text-wrap: balance; }
+    .hero-lede { max-width: 850px; margin-bottom: 34px; color: #435149; font-size: clamp(19px, 2.2vw, 24px); text-wrap: balance; }
+    .hero-lede strong { color: var(--ink); }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+    .hero-meta span { padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(252, 250, 244, .65); font-family: var(--mono); font-size: 11px; }
+
+    section { padding: 92px 0; }
+    .tinted { border-block: 1px solid var(--line); background: rgba(252, 250, 244, .57); }
+    .section-head { display: grid; grid-template-columns: .55fr 1.45fr; gap: 44px; margin-bottom: 42px; }
+    .kicker { margin-top: 8px; }
+    h2 { margin-bottom: 16px; font-size: clamp(40px, 5.3vw, 70px); line-height: .97; letter-spacing: -.055em; text-wrap: balance; }
+    .section-intro { max-width: 820px; margin: 0; color: var(--muted); font-size: 18px; }
+    .section-intro strong { color: var(--ink); }
+
+    .invariant { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+    .plane { padding: 24px; border: 1px solid var(--ink); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+    .plane:nth-child(1) { box-shadow: 6px 6px 0 var(--yellow); }
+    .plane:nth-child(2) { box-shadow: 6px 6px 0 var(--blue); }
+    .plane:nth-child(3) { box-shadow: 6px 6px 0 var(--green); }
+    .plane:nth-child(4) { box-shadow: 6px 6px 0 var(--coral); }
+    .plane-label { display: inline-block; margin-bottom: 22px; padding: 5px 8px; border-radius: 7px; background: rgba(246, 215, 109, .5); font-family: var(--mono); font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .plane:nth-child(2) .plane-label { background: rgba(169, 216, 244, .48); }
+    .plane:nth-child(3) .plane-label { background: rgba(169, 239, 135, .48); }
+    .plane:nth-child(4) .plane-label { background: rgba(244, 168, 143, .48); }
+    .plane h3 { margin-bottom: 12px; font-size: 24px; letter-spacing: -.035em; }
+    .plane > p { color: var(--muted); }
+    .plane ul { display: grid; gap: 9px; margin: 22px 0 0; padding: 0; list-style: none; }
+    .plane li { padding: 11px 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); font-size: 13px; }
+    .invariant-note { margin-top: 30px; padding: 23px 25px; border-radius: 20px; color: var(--surface); background: var(--ink); }
+    .invariant-note strong { color: var(--green); }
+    .continuity-head { display: grid; grid-template-columns: .55fr 1.45fr; gap: 44px; margin: 72px 0 28px; }
+    .continuity-head h3 { margin: 0 0 10px; font-size: clamp(30px, 4vw, 48px); line-height: 1; letter-spacing: -.045em; }
+    .continuity-head p { margin: 0; color: var(--muted); }
+    .memory-wrap { overflow-x: auto; border: 1px solid var(--ink); border-radius: 22px; background: var(--surface); box-shadow: 7px 7px 0 var(--blue); }
+    .memory-map { min-width: 1040px; }
+    .memory-map thead th, .memory-map thead th:first-child { position: static; min-width: 0; }
+    .memory-map thead th:nth-child(1) { width: 16%; }
+    .memory-map thead th:nth-child(2) { width: 18%; }
+    .memory-map thead th:nth-child(3) { width: 21%; }
+    .memory-map thead th:nth-child(4) { width: 23%; }
+    .memory-map thead th:nth-child(5) { width: 22%; }
+    .memory-map tbody th { position: static; width: auto; }
+    .memory-map td { min-width: 0; }
+    .boundary-note { margin: 20px 0 0; padding: 18px 20px; border: 1px dashed rgba(23, 34, 29, .35); border-radius: 15px; color: var(--muted); background: rgba(252, 250, 244, .62); font-size: 12px; }
+    .boundary-note strong { color: var(--ink); }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .status { display: inline-flex; align-items: center; min-height: 22px; margin: 0 5px 7px 0; padding: 3px 7px; border: 1px solid rgba(23, 34, 29, .18); border-radius: 6px; font-family: var(--mono); font-size: 8px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+    .native { background: rgba(169, 239, 135, .58); }
+    .compose { background: rgba(169, 216, 244, .58); }
+    .build { background: rgba(246, 215, 109, .62); }
+    .gap { background: rgba(244, 168, 143, .55); }
+    .legend .status { margin: 0; font-size: 9px; }
+    .legend-text { margin: 0 13px 0 -3px; color: var(--muted); font-size: 12px; }
+    .table-wrap { overflow: auto; max-height: 78vh; border: 1px solid var(--ink); border-radius: 22px; background: var(--surface); box-shadow: 7px 7px 0 var(--green); }
+    table { width: 100%; min-width: 2420px; border-collapse: separate; border-spacing: 0; }
+    caption { padding: 14px 17px; color: #bcc9c1; background: var(--ink); font-family: var(--mono); font-size: 10px; text-align: left; }
+    thead th { position: sticky; top: 0; z-index: 3; min-width: 250px; padding: 14px 15px; border-left: 1px solid rgba(255, 255, 255, .12); color: var(--surface); background: var(--ink); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+    thead th:first-child { left: 0; z-index: 5; min-width: 190px; border-left: 0; }
+    tbody th { position: sticky; left: 0; z-index: 2; width: 190px; padding: 17px 15px; border-top: 1px solid var(--line); background: #f8f5ec; font-family: var(--mono); font-size: 12px; text-align: left; vertical-align: top; }
+    td { min-width: 250px; padding: 16px 15px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); color: #45524a; font-size: 12px; vertical-align: top; }
+    tbody tr:nth-child(even) td, tbody tr:nth-child(even) th { background-color: rgba(23, 34, 29, .027); }
+    tbody tr:nth-child(even) th { background-color: #eeece4; }
+    td strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 12px; }
+    .table-note { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
+
+    .recipes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .recipe { display: flex; flex-direction: column; min-height: 410px; padding: 27px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); }
+    .recipe.bench { border-color: var(--ink); box-shadow: 6px 6px 0 var(--green); }
+    .recipe-number { font-family: var(--mono); font-size: 10px; font-weight: 800; color: var(--muted); }
+    .recipe h3 { margin: 6px 0 4px; font-size: 29px; letter-spacing: -.04em; }
+    .recipe .role { margin-bottom: 20px; color: var(--green-deep); font-size: 13px; font-weight: 750; }
+    .recipe dl { display: grid; grid-template-columns: 105px 1fr; gap: 11px 14px; margin: 0; }
+    .recipe dt { font-family: var(--mono); font-size: 9px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+    .recipe dd { margin: 0; color: var(--muted); font-size: 13px; }
+    .recipe dd strong { color: var(--ink); }
+    .recipe-links { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: auto; padding-top: 24px; border-top: 1px solid var(--line); font-size: 11px; font-weight: 700; }
+
+    .deltas { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .delta { padding: 29px; border: 1px solid var(--ink); border-radius: 24px; }
+    .delta:first-child { background: var(--green); box-shadow: 7px 7px 0 var(--ink); }
+    .delta:last-child { background: var(--purple); }
+    .delta h3 { margin-bottom: 17px; font-size: 28px; letter-spacing: -.035em; }
+    .delta ul { display: grid; gap: 12px; margin: 0; padding-left: 19px; }
+    .delta li { padding-left: 4px; font-size: 14px; }
+    .delta code { font-size: 12px; }
+
+    .method { display: grid; grid-template-columns: .8fr 1.2fr; gap: 28px; padding: 29px; border: 1px solid var(--line); border-radius: 23px; background: var(--surface); }
+    .method h3 { margin: 0; font-size: 28px; letter-spacing: -.035em; }
+    .method p { margin-bottom: 12px; color: var(--muted); font-size: 13px; }
+    .method p:last-child { margin-bottom: 0; }
+    footer { display: flex; justify-content: space-between; gap: 22px; padding: 29px 0 42px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .invariant { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section-head, .continuity-head, .method { grid-template-columns: 1fr; }
+      .recipes, .deltas { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .shell { width: min(calc(100% - 26px), var(--max)); }
+      .nav { align-items: flex-start; flex-direction: column; }
+      .nav-links { width: 100%; gap: 11px 17px; }
+      .hero { padding: 54px 0 78px; }
+      section { padding: 72px 0; }
+      .invariant { grid-template-columns: 1fr; }
+      .recipe dl { grid-template-columns: 1fr; gap: 4px; }
+      .recipe dd { margin-bottom: 10px; }
+      footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="shell nav">
+    <a class="brand" href="index.html"><span class="brand-mark">b</span><span>bench <span style="color:var(--muted)">/ platforms</span></span></a>
+    <nav class="nav-links" aria-label="Site navigation"><a href="index.html">Overview</a><a href="guide.html">Tutorial</a><a href="components.html">Components</a><a href="compare.html">Compare</a><a href="platforms.html" aria-current="page">Platforms</a><a href="https://github.com/patrickyoung/bench/releases/tag/v0.13.0">Release 0.13.0</a><a class="nav-cta" href="https://github.com/patrickyoung/agent">GitHub ↗</a></nav>
+  </header>
+  <nav class="shell page-links" aria-label="Platform map sections"><a href="#continuity">What persists</a><a href="#matrix">Capability map</a><a href="#recipes">Implementation recipes</a><a href="#deltas">What differs</a><a href="#method">Method</a></nav>
+
+  <main id="main">
+    <section class="hero"><div class="shell">
+      <p class="eyebrow">Cross-platform anatomy of a durable digital worker</p>
+      <h1>The agent persists. The execution is replaceable.</h1>
+      <p class="hero-lede"><strong>Bench does not preserve only a contract and a log.</strong> It externalizes the meaningful agent—definition, character, curated memory, skills, specialist homes, work, state, events, receipts, effects, and checks—so a fresh execution can continue it. Only live compute and process-local scratch are disposable. Each platform implements those durable layers differently.</p>
+      <div class="hero-meta"><span>Bench</span><span>Databricks</span><span>Google Vertex AI</span><span>Microsoft Foundry</span><span>Lang*</span><span>Copilot Studio</span><span>Glean</span><span>Writer</span><span>Thunk</span></div>
+    </div></section>
+
+    <section class="tinted" id="continuity"><div class="shell">
+      <div class="section-head"><p class="kicker">The architectural click</p><div><h2>Nothing important should live only inside the process.</h2><p class="section-intro">Bench separates four domains. <strong>Three persist; one is replaceable.</strong> “Controller-owned” describes who may mutate authoritative definition or evidence—not what the worker can see, and not everything that survives.</p></div></div>
+      <div class="invariant">
+        <article class="plane">
+          <span class="plane-label">Persists · governed definition</span>
+          <h3>Who the agent is</h3>
+          <p>Readable by the worker; mutable only through operator or controller paths.</p>
+          <ul><li><code>GOAL.md</code>, <code>AGENTS.md</code>, <code>SOUL.md</code>, plans and heartbeat</li><li>Curated <code>MEMORY.md</code> and reviewed <code>skills/</code></li><li>Provisioned <code>tools/</code> and nested <code>agents/</code></li><li>Trusted <code>bin/check</code> and <code>bin/wake</code></li></ul>
+        </article>
+        <article class="plane">
+          <span class="plane-label">Persists · worker-writable</span>
+          <h3>What the agent is doing</h3>
+          <p>Durable continuity the worker may change, without turning it into authority.</p>
+          <ul><li><code>work/</code> deliverables and working tree</li><li><code>state/</code> progress, plans, and file-shaped KV</li><li>Definition and action proposals that grant no power</li><li>Each specialist home’s own work and state</li></ul>
+        </article>
+        <article class="plane">
+          <span class="plane-label">Persists · controller evidence</span>
+          <h3>What happened</h3>
+          <p>Written outside the confined worker and independently inspectable.</p>
+          <ul><li>Replayable Ask events and Ply verdict receipts</li><li>Checkpoint and selected-skill records</li><li>Approval, action, amendment, and learning receipts</li><li>Explicit unknown effect state when no receipt is trustworthy</li></ul>
+        </article>
+        <article class="plane">
+          <span class="plane-label">Replaceable · execution</span>
+          <h3>What may disappear</h3>
+          <p>The compute substrate is not the agent’s source of truth.</p>
+          <ul><li>Foreground process tree or task VM</li><li>Heap, model-client objects, and open descriptors</li><li>Private temporary scratch and unflushed buffers</li><li>Any in-memory view reconstructible from durable records</li></ul>
+        </article>
+      </div>
+      <p class="invariant-note"><strong>A fresh execution is not a blank agent.</strong> It reloads the governed definition and procedures, reopens the same work and durable state, reconstructs the recorded request history, follows the named checkpoint, and continues under the same external check and authority. We replace compute; we do not discard continuity.</p>
+
+      <div class="continuity-head"><p class="kicker">Memory is plural</p><div><h3>Each kind of continuity needs a different writer.</h3><p>Calling all of this “memory” erases the trust model. Curated facts, learned procedures, operational state, conversation history, and evidence should not share one writable bucket.</p></div></div>
+      <div class="memory-wrap" tabindex="0" aria-label="Scrollable durable agent continuity map">
+        <table class="memory-map">
+          <caption>Bench home anatomy · what persists, who may change it, and where it maps on another platform</caption>
+          <thead><tr><th scope="col">Continuity kind</th><th scope="col">Bench surface</th><th scope="col">Writer</th><th scope="col">Meaning</th><th scope="col">Cross-platform placement</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Identity + behavior</th><td><code>AGENTS.md</code><br><code>SOUL.md</code></td><td>Operator/controller; worker may propose a reviewed patch.</td><td>Governing instructions and character—not authority.</td><td>Versioned agent definition or registry entry pinned to the obligation.</td></tr>
+            <tr><th scope="row">Outcome + strategy</th><td><code>GOAL.md</code><br><code>PLAN.md</code><br><code>HEARTBEAT.md</code></td><td>Operator/controller; worker progress belongs in <code>state/</code>.</td><td>Durable desired end state, standing strategy, and recurring watch intent.</td><td>Admitted contract/job record plus versioned orchestration configuration.</td></tr>
+            <tr><th scope="row">Curated semantic memory</th><td><code>MEMORY.md</code></td><td>Human-reviewed controller path; never automatic.</td><td>Small durable facts the agent should know on every execution.</td><td>Reviewed profile/knowledge record with provenance and promotion policy.</td></tr>
+            <tr><th scope="row">Procedural memory</th><td><code>skills/</code></td><td>Explicit learning/admission path; worker cannot silently promote.</td><td>Reusable procedures disclosed by Brief when relevant.</td><td>Versioned skill/prompt library with review, provenance, and pinned versions.</td></tr>
+            <tr><th scope="row">Operational memory</th><td><code>state/</code><br><code>state/kv/</code></td><td>Worker-writable.</td><td>Durable progress and machine state; inspected on demand, not injected wholesale or trusted as evidence.</td><td>Session/state database under a narrow worker identity and namespace.</td></tr>
+            <tr><th scope="row">Artifact continuity</th><td><code>work/</code></td><td>Worker-writable.</td><td>Deliverables, intermediate artifacts, and inert proposals awaiting external action.</td><td>Persistent working volume, repository, database rows, or object store.</td></tr>
+            <tr><th scope="row">Episodic history</th><td><code>.agent/runs/</code></td><td>Ask/Ply controller components.</td><td>Replayable model requests, observations, outcomes, and verifier receipts.</td><td>Append-only event ledger; traces can be a projection but should not be the only authority.</td></tr>
+            <tr><th scope="row">Conversation continuation</th><td><code>.agent/checkpoints/</code></td><td>Controller/Ply.</td><td>A locked pointer to one same-home session—not a filesystem snapshot or effect proof.</td><td>Managed session/checkpoint service bound to the obligation and agent version.</td></tr>
+            <tr><th scope="row">Organizational memory</th><td><code>agents/</code></td><td>Operator-controlled catalogue; each child writes only its own work/state.</td><td>Recursive specialist homes with separate definitions, checks, authority, state, and evidence.</td><td>Version-pinned subagent registry with separate identities, stores, and delegation contracts.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="boundary-note"><strong>Current implementation boundary:</strong> “controller-owned” is enforced by Cage’s writable-path split under the host identity, not by a separate filesystem principal; <code>-no-cage</code> removes that protection. Agent currently hashes the root Markdown definition separately from <code>bin/check</code>, skills, tools, and child definitions. A stronger deployment should bind all of those exact identities into the admitted obligation manifest.</p>
+    </div></section>
+
+    <section id="matrix"><div class="shell">
+      <div class="section-head"><p class="kicker">Capability map</p><div><h2>Products are not checkboxes. Guarantees have locations.</h2><p class="section-intro">Each cell names the actual surface a team would use. Labels distinguish native product behavior from same-vendor composition and the seams the team still owns.</p></div></div>
+      <div class="legend" aria-label="Capability status legend">
+        <span class="status native">Native</span><span class="legend-text">a documented product primitive</span>
+        <span class="status compose">Compose</span><span class="legend-text">combine documented services</span>
+        <span class="status build">Build</span><span class="legend-text">team-owned semantics or service</span>
+        <span class="status gap">Not established</span><span class="legend-text">the reviewed docs do not establish this exact guarantee</span>
+      </div>
+      <div class="table-wrap" tabindex="0" aria-label="Scrollable capability implementation matrix">
+        <table>
+          <caption>Implementation surfaces as documented on 30 August 2026 · scroll horizontally and vertically</caption>
+          <thead><tr><th scope="col">Capability</th><th scope="col">Bench 0.13.0</th><th scope="col">Databricks</th><th scope="col">Google Vertex AI / Gemini Enterprise Agent Platform</th><th scope="col">Microsoft Foundry</th><th scope="col">LangChain · LangGraph · LangSmith</th><th scope="col">Microsoft Copilot Studio</th><th scope="col">Glean · Glean Agents</th><th scope="col">Writer</th><th scope="col">Thunk.ai</th></tr></thead>
+          <tbody>
+            <tr>
+              <th scope="row">Outcome contract</th>
+              <td><span class="status native">Native</span><strong>Admitted exact goal bytes</strong>Bench admits the outcome; Agent binds definition, tools, writable roots, evidence paths, and <code>bin/check</code>.</td>
+              <td><span class="status compose">Compose / beta registry</span><span class="status build">Build</span><strong>Prompt Registry + Delta or Lakebase</strong>Persist canonical JSON/Pydantic bytes and digest behind a write-denied service principal; admission and contract→authority binding are application code.</td>
+              <td><span class="status native">Native schema</span><span class="status build">Build</span><strong>ADK typed I/O + durable contract service</strong>Bind canonical bytes to Session and Workflows IDs under a separately administered principal; ADK schemas alone are node contracts.</td>
+              <td><span class="status compose">Compose</span><span class="status build">Build</span><strong>Pinned agent version + external contract service</strong>Bind the immutable agent-version ID, pin the stable endpoint to it, and keep admission, authority, and the done predicate outside the run; endpoints otherwise route to the latest version.</td>
+              <td><span class="status native">Native schema</span><span class="status build">Build</span><strong>Typed graph state + admission node</strong>Use structured output and a team-owned immutable contract record.</td>
+              <td><span class="status compose">Compose</span><span class="status build">Build</span><strong>Instructions + Dataverse request record</strong>Solutions version the agent; contract admission and external verifier remain custom.</td>
+              <td><span class="status native">Native form</span><span class="status build">Build</span><strong>Goal, inputs, outputs, data, and actions</strong>Agent Builder captures intent; an immutable admitted contract and executable check are external.</td>
+              <td><span class="status native">Native schema</span><span class="status build">Build</span><strong>Blueprint inputs/outputs + external admission</strong>Agent architecture is explicit; canonical promise binding remains team-owned.</td>
+              <td><span class="status native">Native</span><span class="status build">Build</span><strong>Workflow Plan + structured schema</strong>Versioned definition is native; exact contract/effect/check binding needs an overlay.</td>
+            </tr>
+            <tr>
+              <th scope="row">Agent loop</th>
+              <td><span class="status native">Native</span><strong>Ply + Ask</strong>One checked action at a time; failed evaluation becomes the next attempt’s evidence.</td>
+              <td><span class="status compose">Compose</span><strong>Databricks Apps + AgentServer</strong>Use <code>ResponsesAgent</code> with OpenAI Agents SDK, LangGraph, LangChain, or Python.</td>
+              <td><span class="status native">Native</span><strong>ADK Runner + Agent Runtime</strong>Runner commits event/state/artifact deltas between model and tool turns.</td>
+              <td><span class="status native">Native</span><strong>Agent Service + Agent Framework Harness</strong>Prompt agents or code-defined harnesses provide the reasoning loop.</td>
+              <td><span class="status native">Native</span><strong><code>create_agent</code> or StateGraph</strong>Middleware and graph nodes make loop semantics explicit.</td>
+              <td><span class="status native">Native</span><strong>Standard or GitHub Copilot harness</strong>Choose topics/triggers/flows or longer file-and-tool reasoning; harnesses are not transferable.</td>
+              <td><span class="status native">Native workflow</span><span class="status compose">Auto / beta</span><strong>Workflow or Auto mode</strong>Author-specified steps and branches, or a beta adaptive plan, execute inside Glean.</td>
+              <td><span class="status native">Native</span><strong>Agent Builder blueprint</strong>Visual blocks and custom Python define control flow.</td>
+              <td><span class="status native">Native</span><strong>AI Guardian execution loop</strong>The model proposes through constrained tools while the Guardian validates each boundary.</td>
+            </tr>
+            <tr>
+              <th scope="row">Tools and MCP</th>
+              <td><span class="status native">Native</span><strong>PATH tools + MCP projection</strong>Reviewed MCP capabilities compile to narrow programs and files; capability is not authority.</td>
+              <td><span class="status native">Native</span><span class="status compose">AI Search MCP / preview</span><strong>UC MCP Services + AI Gateway</strong>Managed Genie, AI Search, SQL, UC functions, OAuth proxying, external or custom MCP.</td>
+              <td><span class="status native">Native</span><strong>FunctionTool, OpenAPI, MCP, Gateway</strong>Auth Manager and Agent Registry govern discovery and credentials.</td>
+              <td><span class="status native">Native</span><strong>Foundry Toolbox</strong>Governed, versioned MCP over built-ins, OpenAPI, functions, skills, and custom tools.</td>
+              <td><span class="status native">Native</span><span class="status build">Build policy</span><strong>Tools + MCP adapters</strong>Toolkits are broad; authentication, pinning, admission, and policy remain application concerns.</td>
+              <td><span class="status native">Native</span><strong>Connectors, flows, REST, MCP, computer use</strong>Power Platform supplies a deep business-action catalogue.</td>
+              <td><span class="status native">Native</span><span class="status compose">Remote MCP / beta</span><strong>Glean Actions + MCP</strong>Native, datasource, and custom actions; remote MCP is beta and limited to Plan &amp; Execute/Auto agents.</td>
+              <td><span class="status native">Native</span><strong>Function tools + MCP gateway</strong>Prebuilt OAuth connectors and custom tools attach to blueprints.</td>
+              <td><span class="status native">Native</span><strong>Tool libraries + MCP</strong>Guardian constrains calls to the workflow’s allowed tools.</td>
+            </tr>
+            <tr>
+              <th scope="row">Retrieval and citations</th>
+              <td><span class="status native">Native seam</span><strong>Context + Cite</strong>Connector-neutral evidence records and exact ref→URL identity; semantic support remains outside Cite’s claim.</td>
+              <td><span class="status native">Native retrieval</span><span class="status build">Build app citations</span><strong>Databricks AI Search</strong>Delta-synced vector/hybrid retrieval under Unity Catalog; Playground auto-cites, while custom Apps must carry and render source metadata.</td>
+              <td><span class="status native">Native</span><strong>Grounding + Agent Search / RAG Engine</strong>Search, Maps, source chunks, scores, and inline grounding metadata; mixed Google Search and non-search tool workflows require separate model calls or orchestration.</td>
+              <td><span class="status native">Native</span><strong>Foundry IQ + Azure AI Search</strong>Cited multi-source retrieval with caller-permission enforcement for supported and explicitly configured sources; File Search covers smaller corpora.</td>
+              <td><span class="status native">Native primitives</span><span class="status build">Build policy</span><strong>Loaders, retrievers, vector stores</strong>Citation format, coverage, source identity, and literal-support checks are application choices.</td>
+              <td><span class="status native">Native</span><strong>SharePoint, Dataverse, files, web, connectors</strong>Custom knowledge topics extend retrieval; citations can be lost across some customizations or agent hops.</td>
+              <td><span class="status native">Native</span><strong>ACL-aware Search + Knowledge Graph</strong>Indexing across 100+ connectors; Assistant cites when retrieval runs, but citations are not universal and Agent output surfaces need validation.</td>
+              <td><span class="status native">Native</span><strong>Knowledge Graph</strong>Graph RAG, connectors, multi-graph queries, configurable retrieval, and inline citations.</td>
+              <td><span class="status native">Native</span><strong>Content folders, indexes, and search</strong>Structured workflow data and managed content retrieval sit inside the application model.</td>
+            </tr>
+            <tr>
+              <th scope="row">State and memory</th>
+              <td><span class="status native">Native</span><strong>Definition + work/state + events + Hone</strong><code>SOUL.md</code>, curated <code>MEMORY.md</code>, skills, specialist homes, mutable continuity, and replayable history persist under different writers.</td>
+              <td><span class="status native">Lakebase</span><span class="status compose">Managed memory / beta</span><strong>Managed Agent Memory or Lakebase</strong>Cross-session UC-governed managed memory, or Postgres checkpoints and team-managed schemas.</td>
+              <td><span class="status native">Native</span><strong>Sessions + Memory Bank</strong>Chronological events and generated, identity-scoped, TTL/versioned long-term memories.</td>
+              <td><span class="status compose">Native / preview</span><strong>Foundry Memory + workflow state</strong>Preview long-term CRUD/TTL without an SLA, plus checkpoints; promotion/provenance policy remains custom.</td>
+              <td><span class="status native">Native</span><strong>Checkpointer + Store</strong>Thread state and cross-thread memory are explicit; governed promotion and provenance are application logic.</td>
+              <td><span class="status compose">GitHub memory / preview</span><span class="status build">Build Standard memory</span><strong>Harness memory or explicit records</strong>GitHub-harness memory is per agent/user and expires after 28 inactive days; Dataverse can hold transcripts/team-defined records but does not automatically become agent memory.</td>
+              <td><span class="status native">Native run state</span><span class="status native">Personalized memory</span><span class="status gap">Procedural gap</span><strong>Step + saved/extracted memory</strong>Agents can use user-level saved or 30-day extracted Assistant memories; governed agent-written procedural promotion/provenance is not established.</td>
+              <td><span class="status native">Native</span><strong>Session state + persistent KV + Vault</strong>KV is for non-sensitive durable values; Vault holds secrets.</td>
+              <td><span class="status native">Native</span><strong>Structured workflow instance state</strong>Long-running instances and content remain part of the managed thunk.</td>
+            </tr>
+            <tr>
+              <th scope="row">Multi-agent</th>
+              <td><span class="status native">Native local</span><strong>Separate specialist homes</strong>Delegation preserves distinct state and evidence; this is not a distributed worker fleet.</td>
+              <td><span class="status native">Native</span><strong>Supervisor Agent or Apps orchestrator</strong>Apps, Genie, and serving endpoints become subagent tools with app-to-app OAuth.</td>
+              <td><span class="status native">Native</span><strong>ADK teams, graph workflows, A2A</strong>Coordinator, sequential, loop, parallel, and remote patterns; only single-turn tasks parallelize, task agents must be leaves, and Python 2.0 graph workflows currently disable task mode.</td>
+              <td><span class="status native">Native</span><strong>Agent Framework orchestrations + A2A</strong>Sequential, concurrent, handoff, group-chat, and custom workflow patterns.</td>
+              <td><span class="status native">Native</span><strong>Subagents, handoffs, router, custom graph</strong>Documented patterns cover centralized and decentralized coordination.</td>
+              <td><span class="status native">Native / preview</span><strong>Connected agents</strong>Broad delegation surfaces; many advanced combinations remain preview-dependent.</td>
+              <td><span class="status native">Native</span><strong>Flow subagents</strong>Agents can call other agents; per-subagent compute isolation and fine-grained authority remain external.</td>
+              <td><span class="status native">Native</span><strong>Agent blocks call Writer agents</strong>Blueprints can compose specialists visually.</td>
+              <td><span class="status native">Native workflow</span><strong>Model-assisted business workflow</strong>Roles and steps compose inside one governed application; general A2A is not the core abstraction.</td>
+            </tr>
+            <tr>
+              <th scope="row">Durable workflow</th>
+              <td><span class="status native">Native local</span><strong>Tend + checkpoints</strong>Persist argv/stdin, attempts, leases, signals, timers, and event projections; no exactly-once effect claim.</td>
+              <td><span class="status compose">Compose</span><strong>Lakeflow Jobs + long-running AgentServer</strong>DAGs, loops, triggers, reruns, Lakebase checkpoints, polling, and stream resumption.</td>
+              <td><span class="status compose">Compose</span><strong>Sessions + Cloud Workflows</strong>Durable multi-service steps, retries, callbacks, and human waits; checkpoint agent state explicitly.</td>
+              <td><span class="status compose">Compose</span><strong>Agent Framework Workflows + Durable Extension</strong>Cosmos checkpoints and Azure Functions/Durable Task support restartable orchestration; Foundry’s separate visual Workflow builder retires 1 December 2026.</td>
+              <td><span class="status native">Native</span><strong>LangGraph checkpoints + tasks + Agent Server</strong>Resume after failure; put nondeterminism/effects in tasks and make them idempotent because an uncommitted task may run again.</td>
+              <td><span class="status compose">Compose</span><strong>Agent flows + Power Automate / Logic Apps</strong>A tool flow must respond within 100 seconds; post-response work can continue up to 30 days. Logic Apps delivery and retries require idempotent handlers.</td>
+              <td><span class="status native">Native bounded</span><strong>Schedules + wait for input</strong>Web waits reach 30 days with history (2 hours without), exclude scheduled/Slack/MCP/API runs, and edits force restart—not general checkpoint/recovery.</td>
+              <td><span class="status native">Native async</span><strong>Async jobs and batching</strong>Managed cloud supports background execution; general checkpoint/recovery semantics are not established.</td>
+              <td><span class="status native">Native</span><strong>Long-running workflow instances</strong>Forms, email, webhook, REST, and chat triggers drive managed stateful execution.</td>
+            </tr>
+            <tr>
+              <th scope="row">Evaluation and acceptance</th>
+              <td><span class="status native">Native</span><strong><code>bin/check</code> outside the worker boundary</strong>Ply accepts only exit 0 and seals accepted/rejected/broken verdicts into history.</td>
+              <td><span class="status native">Native quality</span><span class="status build">Build gate</span><strong>MLflow GenAI Evaluation</strong>Datasets, judges, scorers, Review Apps, monitoring; use a deterministic CI/Job scorer as the hard gate.</td>
+              <td><span class="status native">Native quality</span><span class="status build">Build gate</span><strong>ADK + Agent Platform Evaluation</strong>Test responses and trajectories; keep deterministic business acceptance separate.</td>
+              <td><span class="status native">Native quality</span><span class="status build">Build gate</span><strong>Foundry Evaluations</strong>Built-in/custom evaluators, CI, monitoring, and red teaming; an external business check remains authoritative.</td>
+              <td><span class="status native">Native quality</span><span class="status build">Build gate</span><strong>LangSmith Evaluation</strong>Datasets, experiments, offline/online evaluators; add an in-loop deterministic verifier node.</td>
+              <td><span class="status native">Native quality</span><span class="status build">Build gate</span><strong>Evaluation test sets + REST CI</strong>Useful quality evidence, not automatically the authority that closes the obligation.</td>
+              <td><span class="status native">Native diagnostics</span><span class="status gap">Gate gap</span><strong>Preview Debug + Agent Insights</strong>No reviewed documentation establishes a full evaluation service or independent executable acceptance gate.</td>
+              <td><span class="status native">Native tests</span><span class="status build">Build gate</span><strong>Local pytest + observability</strong>Use custom blocks or CI for deterministic acceptance; a managed experiment/evaluator service is not established.</td>
+              <td><span class="status native">Native</span><strong>Test sets + runtime validation + Workflow Review</strong>Expected results, good/bad feedback, schema checks, and LLM certification support promotion.</td>
+            </tr>
+            <tr>
+              <th scope="row">Events, evidence, replay</th>
+              <td><span class="status native">Native</span><strong>Append-only Ask events</strong>Exact normalized request history is digest-verified and replayable; replay proves the record, not external truth or re-performed effects.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>MLflow Tracing + LangGraph/Lakebase time travel</strong>Model Serving can fork Lakebase-backed LangGraph checkpoints; deterministic request reconstruction and effects replay are not established.</td>
+              <td><span class="status native">Native events</span><span class="status build">Build ledger</span><strong>Sessions + OTel + CLI replay / rewind</strong>Python CLI replay is test tooling; rewind restores session state/artifacts but not external dependencies or app/user state, and is non-atomic.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>OTel / App Insights + checkpoints</strong>Resume workflow state; telemetry is not itself an authoritative, replay-verified event fold.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>LangSmith traces + time travel</strong>Time travel re-executes later nodes; it is not exact execution replay.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>Activity trace + App Insights + transcripts</strong>Strong operational history; Standard-harness event triggers run with maker credentials, and deterministic reconstruction is not established.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>Debug spans + audit + OpenTelemetry</strong>Designed for inspection and SIEM, not documented deterministic replay or tamper evidence.</td>
+              <td><span class="status native">Native traces</span><span class="status build">Build ledger</span><strong>Traces, session logs, metrics</strong>Useful observability; exact replay and effect reconstruction are not established.</td>
+              <td><span class="status native">Native audit</span><span class="status build">Build ledger</span><strong>Tool audit + full definition version history</strong>Definition rollback is strong; exact request-event replay is not established.</td>
+            </tr>
+            <tr>
+              <th scope="row">Approvals and effects</th>
+              <td><span class="status native">Native</span><strong>May + Action</strong>One-shot approval binds exact proposal bytes and current state; uncertain post-send outcomes become explicit status 125.</td>
+              <td><span class="status compose">Native policy / beta</span><span class="status build">Build ledger</span><strong>AI Gateway service policies + OAuth</strong>Beta allow, deny, or approval rules; retain a production effect broker for canonical binding, receipts, idempotency, and unknown resolution.</td>
+              <td><span class="status native">Native approval</span><span class="status build">Build ledger</span><strong>Confirmation or external callback</strong>ADK confirmation requires a supported session service; Agent Platform Sessions need an external Workflows callback/approval service and effect ledger.</td>
+              <td><span class="status native">Native approval</span><span class="status build">Build ledger</span><strong>Toolbox approval + HITL</strong>Canonical bytes, effect receipts, and an explicit unknown state remain team-owned.</td>
+              <td><span class="status native">Native approval</span><span class="status build">Build ledger</span><strong>HITL middleware</strong>Approve, edit, or reject tool calls; exact-byte one-shot authorization and reconciliation are custom.</td>
+              <td><span class="status native">Native approval</span><span class="status build">Build ledger</span><strong>Tool confirmation + flow approvals</strong>End-user confirmation is off by default and multistage AI approvals are preview; add request digests and idempotent connector handlers.</td>
+              <td><span class="status native">Native approval</span><span class="status build">Build ledger</span><strong>Interactive confirmation + background policy</strong>Scheduled writes have no per-run confirmation; admin tool gates and moderator publishing replace it. Backends own receipts and reconciliation.</td>
+              <td><span class="status build">Build</span><span class="status gap">Exact grant gap</span><strong>UI branch or external approval workflow</strong>No reviewed documentation establishes exact-byte one-shot approval or an unknown-effect state.</td>
+              <td><span class="status native">Native HITL</span><span class="status build">Build ledger</span><strong>Human roles + Guardian controls</strong>Granular allowed tools are native; exact-byte approval and uncertain-effect semantics need an overlay.</td>
+            </tr>
+            <tr>
+              <th scope="row">Isolation and identity</th>
+              <td><span class="status native">Native boundary</span><span class="status gap">VM proposed</span><strong>Cage + OAuth today</strong>Write/network confinement and descriptor-scoped credentials; a fresh sealed per-task VM is a proposed next boundary.</td>
+              <td><span class="status native">Native managed</span><strong>Apps principal/OBO + UC permissions</strong>Nonprivileged serverless compute, ephemeral encrypted disk, and ingress/egress policy; not a fresh sealed VM per obligation.</td>
+              <td><span class="status native">Native code sandbox</span><span class="status compose">Browser/BYOC preview</span><strong>Agent Identity + isolated execution</strong>SPIFFE/X.509/mTLS identity; code execution is networkless and region/library constrained, while browser/container sandboxes are preview. Freshness per obligation is not guaranteed.</td>
+              <td><span class="status native">Native managed</span><strong>Hosted Agents</strong>Dedicated VM-isolated sessions, persistent filesystem, managed identity, sizing, and scale-to-zero/resume; sessions last at most 30 days.</td>
+              <td><span class="status build">Build</span><strong>Deployment identity + sandbox backend</strong>Frameworks define the loop; the application/platform must supply secrets, egress, process isolation, and workload identity.</td>
+              <td><span class="status native">Native managed</span><strong>Harness sandbox + separate Computer Use targets</strong>GitHub harness has a Microsoft-described secure task sandbox; hosted browser, Cloud PC pool, and BYO machines have distinct identity and management properties.</td>
+              <td><span class="status native">Native sandbox / eligible</span><span class="status build">Build action runtime</span><strong>Agent Sandbox + PTC</strong>Eligible tenants get isolated ephemeral non-root shell/Python with restricted egress and mediated read-only tools; custom action backends still own their isolation.</td>
+              <td><span class="status native">Native managed</span><strong>Writer cloud + Vault + team deployment</strong>Local/Docker modes exist; per-task sealed execution is not established.</td>
+              <td><span class="status native">Native managed</span><strong>Private tenant + owner identity</strong>RBAC and tool restrictions are native; per-task VM semantics are not established.</td>
+            </tr>
+            <tr>
+              <th scope="row">Governance and lifecycle</th>
+              <td><span class="status native">Native local</span><strong>Versioned programs + Trail + Draft + Hone</strong>Small inspectable contracts and reviewed procedural promotion; no enterprise IAM or managed policy plane.</td>
+              <td><span class="status native">Native managed</span><strong>Unity Catalog + AI Gateway + MLflow</strong>UC governs data/models/tools/traces; MLflow links prompts/apps/traces; Gateway handles provider routing, policy, usage, cost, and inference logs.</td>
+              <td><span class="status native">Native managed</span><strong>IAM + Gateway + Registry + Model Armor</strong>Identity, gateway, audit, and semantic policy; Gateway lacks VPC Service Controls, so perimetered projects need approved-gateway org constraints and endpoint allowlists.</td>
+              <td><span class="status native">Native managed</span><strong>Entra + RBAC + Policy + VNet + Agent 365</strong>Enterprise identity, network, compliance, and catalog surfaces extend beyond Bench.</td>
+              <td><span class="status compose">Compose</span><strong>LangSmith RBAC + enterprise deployment</strong>SSO, SCIM, hybrid/self-host, datasets, traces, and deployments; application authority remains separate.</td>
+              <td><span class="status native">Native managed</span><strong>Solutions + environments + DLP + Purview</strong>Power Platform application lifecycle, connectors, policy, and compliance are a major strength.</td>
+              <td><span class="status native">Native managed</span><strong>IdP, ACLs, Protect, DLP, audit</strong>Governance follows enterprise content permissions and central agent administration.</td>
+              <td><span class="status native">Native managed</span><strong>Teams + Agent Library + models/guardrails</strong>Central publishing, Vault, analytics, and connector governance support organization-wide use.</td>
+              <td><span class="status native">Native managed</span><strong>Prototype/test/production + Workflow Review</strong>Complete workflow versioning, review artifacts, RBAC, certification, and private tenant options.</td>
+            </tr>
+            <tr>
+              <th scope="row">UI, deployment, fleet</th>
+              <td><span class="status native">Native local</span><span class="status gap">Managed fleet gap</span><strong>CLI + folder-shaped worker</strong>Transparent Unix deployment and replaceable components; teams supply hosted UI and fleet operations.</td>
+              <td><span class="status native">Native managed</span><strong>Apps + Model Serving + Lakeflow + MLflow</strong>Managed UIs, autoscaled compute, data workloads, serving, review, and monitoring.</td>
+              <td><span class="status native">Native managed</span><strong>Agent Runtime</strong>Serverless scaling, revisions, traffic, concurrency, minimum instances, logging, metrics, and tracing.</td>
+              <td><span class="status native">Native managed</span><strong>Agent Service + Hosted Agents</strong>Managed deployment and per-session scaling, not configurable replica pools; no warm pool, and each session has a 30-day maximum.</td>
+              <td><span class="status native">Native deployment</span><span class="status build">Build end-user UI/sandbox</span><strong>Agent Server + LangSmith Deployment</strong>API, workers, queues, cron, autoscaling, and Kubernetes; product UI and hard sandbox depend on the host stack.</td>
+              <td><span class="status native">Native SaaS</span><span class="status compose">Separate RPA fleet</span><strong>Copilot runtime + Power Platform</strong>Quota-managed agent SaaS; Computer Use hosted browser is preview/throttled and lacks hosted groups, while Power Automate Desktop hosted groups separately autoscale RPA.</td>
+              <td><span class="status native">Native managed</span><strong>Enterprise Search/Assistant UI</strong>Managed SaaS deployment, content connectors, agent catalogue, schedules, and insights.</td>
+              <td><span class="status native">Native managed</span><strong>Blueprint UI + managed cloud</strong>Optional generated UI, team deployment, connectors, analytics, local and Docker development.</td>
+              <td><span class="status native">Native managed</span><strong>No-code application runtime</strong>Forms, triggers, roles, workflow UI, review, environment promotion, and managed execution.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note"><strong>Important:</strong> “Not established” does not mean “impossible.” It means the reviewed official documentation does not establish that exact guarantee as a native surface. A team can often implement it with the obligation-plane overlay shown above.</p>
+    </div></section>
+
+    <section class="tinted" id="recipes"><div class="shell">
+      <div class="section-head"><p class="kicker">Nine implementation recipes</p><div><h2>What a team would actually assemble.</h2><p class="section-intro">These are reference architectures, not procurement rankings. The best fit depends on where the work, data, identity, and operating team already live.</p></div></div>
+      <div class="recipes">
+        <article class="recipe bench">
+          <span class="recipe-number">01 · semantic control plane</span><h3>Bench</h3><p class="role">Best when the promise must outlive and remain independent of the execution.</p>
+          <dl><dt>Assemble</dt><dd>Bench + Agent + Ask/Ply + Context/Cite + Cage/May/Action + Tend, with MCP and OAuth at protocol edges.</dd><dt>Flow</dt><dd>Admit the obligation → load governed definition, memory, skills, and specialists → reopen work/state → reconstruct events/checkpoint → continue → check externally → seal the verdict.</dd><dt>Team owns</dt><dd>Provider selection, the actual <code>bin/check</code>, connector policy, deployment host, and—today—stronger isolation if Cage is insufficient.</dd><dt>Beyond it</dt><dd>Other stacks offer managed enterprise retrieval, IAM, dashboards, no-code UI, distributed workflows, and autoscaled fleets that Bench does not attempt to replace.</dd></dl>
+          <div class="recipe-links"><a href="https://github.com/patrickyoung/bench">Bench source</a><a href="https://github.com/patrickyoung/agent">Agent source</a><a href="components.html">Component contracts</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">02 · governed data-agent platform</span><h3>Databricks</h3><p class="role">Best when the worker’s center of gravity is governed lakehouse data and ML operations.</p>
+          <dl><dt>Assemble</dt><dd>Databricks Apps + AgentServer/<code>ResponsesAgent</code> + Unity AI Gateway and UC MCP + AI Search + Managed Agent Memory (Beta) or Lakebase + Lakeflow Jobs + MLflow.</dd><dt>Obligation layer</dt><dd>Put canonical contract/digest records behind a separately administered service principal, expose append-only ledger APIs, and run a deterministic scorer Job the worker cannot modify.</dd><dt>Team owns</dt><dd>Contract admission, semantic tool postconditions, idempotency, uncertain-effect resolution, and the hard completion predicate.</dd><dt>Beyond Bench</dt><dd>UC governance for data/models/tools/traces; MLflow prompt/app/trace linkage and evaluation; Gateway provider routing, policy, usage, cost telemetry, and serving.</dd></dl>
+          <div class="recipe-links"><a href="https://docs.databricks.com/aws/en/agents/tutorials/agent-quickstart">Agent quickstart</a><a href="https://docs.databricks.com/aws/en/agents/mcp-tools">MCP tools</a><a href="https://docs.databricks.com/aws/en/mlflow3/genai/eval-monitor">MLflow evaluation</a><a href="https://docs.databricks.com/aws/en/ai-gateway/ai-governance">AI governance</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">03 · hyperscale agent runtime</span><h3>Google Vertex AI / Gemini Enterprise Agent Platform</h3><p class="role">Best when managed runtime, identity, gateway, grounding, and isolated execution matter most.</p>
+          <dl><dt>Assemble</dt><dd>ADK + Agent Runtime + Sessions/Memory Bank + Agent Gateway/Registry/Identity + RAG or Search grounding + Cloud Workflows + code and preview browser/container sandboxes.</dd><dt>Obligation layer</dt><dd>Put canonical records and verifier code behind a separately administered identity, bind them to Session/Workflow IDs, and expose append-only evidence/effect APIs to ADK.</dd><dt>Team owns</dt><dd>Admission, contract-to-authority binding, exact approval receipts, idempotency, and reconciliation after ambiguous effects.</dd><dt>Beyond Bench</dt><dd>SPIFFE workload identity, A2A, global runtime, first-party grounding, and managed code/browser/container execution; Gateway requires extra constraints inside VPC-SC perimeters.</dd></dl>
+          <div class="recipe-links"><a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale">Agent Platform</a><a href="https://adk.dev/runtime/event-loop/">ADK event loop</a><a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/memory-bank">Memory Bank</a><a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/scale/runtime/agent-identity">Agent Identity</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">04 · Azure-native agent estate</span><h3>Microsoft Foundry</h3><p class="role">Best for code-first enterprise agents that need Azure identity, durable orchestration, and managed isolation.</p>
+          <dl><dt>Assemble</dt><dd>Foundry Agent Service + Agent Framework Harness/Workflows + Toolbox + Foundry IQ/Azure AI Search + preview Memory + Evaluations/App Insights + Agent Framework Durable Extension.</dd><dt>Obligation layer</dt><dd>Pin the immutable agent-version ID and endpoint, then add an admitted contract service, canonical event/effect ledger, and business verifier beside the runtime.</dd><dt>Team owns</dt><dd>Hard acceptance, exact-byte approval, effect idempotency and unknown-state resolution, and procedural-memory promotion. Do not base new durability on Foundry’s retiring visual Workflow builder.</dd><dt>Beyond Bench</dt><dd>Hosted Agent VM-isolated sessions, managed identity and per-session scaling, Entra/RBAC/Policy/VNet, broad evaluation, and Agent 365 governance.</dd></dl>
+          <div class="recipe-links"><a href="https://learn.microsoft.com/en-us/azure/foundry/agents/overview">Agent Service</a><a href="https://learn.microsoft.com/en-us/agent-framework/concepts/harness">Agent Framework Harness</a><a href="https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/toolbox-overview">Toolbox</a><a href="https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents">Hosted Agents</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">05 · composable open framework</span><h3>Lang*</h3><p class="role">Best when the team wants explicit orchestration and portability more than a single vendor control plane.</p>
+          <dl><dt>Assemble</dt><dd>LangChain <code>create_agent</code> + LangGraph StateGraph/checkpointer/Store + LangSmith Observability/Evaluation/Deployment, plus an application database and real sandbox.</dd><dt>Obligation layer</dt><dd>Make contract admission and the verifier graph nodes backed by an append-only ledger; isolate side effects in idempotent tasks.</dd><dt>Team owns</dt><dd>Identity, secrets, capability policy, hard sandbox, exact approval semantics, effects reconciliation, and governed memory promotion.</dd><dt>Beyond Bench</dt><dd>Large integration ecosystem, rich graph composition, hosted/self-hosted Agent Server, distributed deployment, experiments, and trace analytics.</dd></dl>
+          <div class="recipe-links"><a href="https://docs.langchain.com/oss/python/langchain/agents">LangChain agents</a><a href="https://docs.langchain.com/oss/python/langgraph/persistence">LangGraph persistence</a><a href="https://docs.langchain.com/langsmith/evaluation">LangSmith evaluation</a><a href="https://docs.langchain.com/langsmith/agent-server">Agent Server</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">06 · business-user automation</span><h3>Microsoft Copilot Studio</h3><p class="role">Best when business channels, Power Platform connectors, approvals, and RPA drive the use case.</p>
+          <dl><dt>Standard route</dt><dd>Topics, triggers, agent flows, Power Platform connectors, Power Automate/Logic Apps, Dataverse, channels, and DLP for event-driven business automation.</dd><dt>GitHub route</dt><dd>Longer file/tool reasoning, preview per-user memory, skills, and a Microsoft-described secure task sandbox. Harness-specific features do not transfer.</dd><dt>Mixed needs</dt><dd>Use separate agents/workflows connected only through supported boundaries; represent obligations in Dataverse, make effect flows idempotent, and invoke an external verifier.</dd><dt>Team owns</dt><dd>Immutable admission, deterministic completion, canonical action digests, effect uncertainty, and citation preservation. Computer Use and Power Automate Desktop have separate execution/fleet semantics.</dd></dl>
+          <div class="recipe-links"><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/harnesses-overview">Harnesses</a><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/tools-available">Tools</a><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/flows-overview">Agent flows</a><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/security-and-governance">Security and governance</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">07 · knowledge-work agent platform</span><h3>Glean + Glean Agents</h3><p class="role">Best when permission-aware enterprise knowledge and employee workflows are the differentiator.</p>
+          <dl><dt>Assemble</dt><dd>Agent Builder Workflow or beta Auto mode + Search/Knowledge Graph + Actions/beta remote MCP + Protect + Insights/audit + Agent Sandbox/PTC where eligible.</dd><dt>Obligation layer</dt><dd>Keep canonical obligations and checks in an external service; make custom action backends maintain idempotency and effect receipts.</dd><dt>Team owns</dt><dd>Independent acceptance, durable general recovery, exact approval binding, procedural-memory promotion, and isolation for custom external writes/business logic.</dd><dt>Beyond Bench</dt><dd>ACL-aware knowledge, 100+ connectors, personalized memory, employee UX, DLP, schedules, administration, insights, and eligible per-session shell/Python isolation.</dd></dl>
+          <div class="recipe-links"><a href="https://docs.glean.com/agents/concepts/agent-builder">Agent Builder</a><a href="https://docs.glean.com/security/knowledge-graph">Knowledge Graph</a><a href="https://docs.glean.com/agents/actions/introduction-to-actions">Actions</a><a href="https://docs.glean.com/security/agent-sandbox-ptc">Agent Sandbox</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">08 · visual enterprise app builder</span><h3>Writer</h3><p class="role">Best for quickly turning enterprise knowledge and tools into a governed agent application with a UI.</p>
+          <dl><dt>Assemble</dt><dd>Agent Builder blueprint + Knowledge Graph + function/MCP tools and OAuth connectors + session/KV state + Vault + Writer cloud observability.</dd><dt>Obligation layer</dt><dd>Add a canonical obligation record, external approval/effect service, append-only evidence ledger, and CI or service-owned deterministic verifier.</dd><dt>Team owns</dt><dd>Admission, hard acceptance, durable checkpoint semantics, exact-byte approval, effect uncertainty, and per-task isolation if required.</dd><dt>Beyond Bench</dt><dd>Visual authoring, generated application UI, managed knowledge ingestion and citations, connector catalogue, team deployment, Agent Library, and analytics.</dd></dl>
+          <div class="recipe-links"><a href="https://dev.writer.com/agent-builder/overview">Agent Builder</a><a href="https://dev.writer.com/agent-builder/agent-architecture">Agent architecture</a><a href="https://dev.writer.com/home/knowledge-graph-concepts">Knowledge Graph</a><a href="https://dev.writer.com/home/agent-observability">Observability</a></div>
+        </article>
+        <article class="recipe">
+          <span class="recipe-number">09 · governed no-code workflow app</span><h3>Thunk.ai</h3><p class="role">Best when a team wants a structured, role-aware AI workflow application without building the runtime.</p>
+          <dl><dt>Assemble</dt><dd>Workflow Plan + structured schema/state + content/search + tool libraries/MCP + human roles + AI Guardian + test sets + environments and version review.</dd><dt>Obligation layer</dt><dd>Add canonical request/effect digests and a separate deterministic verifier when schema validation or model judging is not enough.</dd><dt>Team owns</dt><dd>Exact event replay, external executable acceptance, one-shot byte-bound approval, and explicit unknown-effect reconciliation where required.</dd><dt>Beyond Bench</dt><dd>No-code application model, managed triggers and long-running state, AI Guardian constraints, workflow UI, RBAC/HITL, test lifecycle, certification, and private tenants.</dd></dl>
+          <div class="recipe-links"><a href="https://www.thunk.ai/platform/application-model">Application model</a><a href="https://info.thunk.ai/en/articles/11691042-ai-agent-execution-within-an-ai-guardian">AI Guardian</a><a href="https://info.thunk.ai/en/articles/13364019-ai-reliability-mechanisms">Reliability</a><a href="https://info.thunk.ai/en/articles/15557633-workflow-review">Workflow Review</a></div>
+        </article>
+      </div>
+    </div></section>
+
+    <section id="deltas"><div class="shell">
+      <div class="section-head"><p class="kicker">Honest deltas</p><div><h2>Bench is not “all of that, but smaller.” It chooses a different center.</h2><p class="section-intro">The external platforms mostly center a managed agent, knowledge system, graph runtime, or business workflow. Bench centers the durable obligation and treats any particular execution as replaceable.</p></div></div>
+      <div class="deltas">
+        <article class="delta"><h3>Bench establishes unusually explicit semantic seams</h3><ul><li>An admitted, content-addressed outcome contract separate from the worker.</li><li>An independently executable <code>bin/check</code> that runs outside the model-authored command boundary.</li><li>A digest-verifiable, replayable normalized request-event history.</li><li>One-shot human authorization bound to exact proposal bytes and current state.</li><li>An explicit status 125 for an external effect whose outcome is unknown—never an automatic retry.</li><li>Reviewed procedural learning derived from replay-verified fail→pass recovery.</li><li>Unix replaceability: models, tools, retrieval, policy, memory, and protocols stay ordinary narrow programs.</li></ul></article>
+        <article class="delta"><h3>The larger platforms establish capabilities beyond Bench</h3><ul><li>Managed global or enterprise fleets, scaling, revisions, traffic, queues, and distributed durability.</li><li>Workload identity, IAM, SSO/SCIM, network policy, DLP, audit, compliance, and organization governance.</li><li>Managed enterprise retrieval, content connectors, knowledge graphs, grounding, and ingestion pipelines.</li><li>Visual/no-code authoring, generated UIs, business channels, RPA, and human workflow.</li><li>Dataset evaluation, experiments, red teaming, dashboards, production monitoring, and review apps.</li><li>Dev/test/prod application lifecycle, catalogues, cost controls, and managed deployment.</li><li>Google code/browser/container sandboxes, Foundry VM-isolated sessions, and eligible Glean per-session shell/Python isolation—stronger managed execution surfaces than Cage today.</li></ul></article>
+      </div>
+    </div></section>
+
+    <section class="tinted" id="method"><div class="shell">
+      <div class="section-head"><p class="kicker">Method and caveats</p><div><h2>A design map, not a feature score.</h2><p class="section-intro">The comparison is deliberately about ownership of guarantees. A checkmark would hide the most consequential distinction: a platform can expose an approval button or trace viewer without binding the decision or evidence to the exact obligation being judged.</p></div></div>
+      <div class="method"><h3>How to use this page</h3><div><p><strong>Start with the recipe nearest your operating center.</strong> Data-heavy teams may begin with Databricks; Google or Foundry can anchor a managed code-first fleet; Copilot, Glean, Writer, or Thunk can drastically shorten business application delivery; Lang* maximizes framework composability; Bench makes the semantic control plane explicit.</p><p><strong>Then add only the obligation-plane seams your risk requires.</strong> A drafting assistant may not need an effect ledger. A financial action agent probably needs canonical approval, idempotency, reconciliation, and an independent verifier.</p><p><strong>Scope:</strong> reviewed against official vendor and project documentation available on 30 August 2026. Preview/beta surfaces are called out where they materially affect the architecture. Product names and availability can change; Google currently documents the former Vertex AI Agent Engine stack under Gemini Enterprise Agent Platform.</p><p><strong>Interpretation:</strong> “Not established” means the reviewed documentation does not establish the exact guarantee. It is not a claim that the platform cannot host a custom implementation. “Replay” is reserved for reconstruction or re-execution with stated limits; a trace alone is not replay, and replay does not prove external truth or safely repeat effects.</p></div></div>
+    </div></section>
+  </main>
+
+  <footer class="shell"><span>Bench 0.13.0 · platform capability map · reviewed 30 August 2026</span><span class="mono">compare guarantee ownership, not logo checkboxes</span></footer>
+</body>
+</html>

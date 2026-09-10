@@ -1,0 +1,2 @@
+{"seq":1,"time":"2026-08-27T00:00:00Z","type":"session","data":{"id":"fixture-history","ask":"0.1.0","go":"go1.26.0","sdks":{},"model":"fixture/no-model","system":"Offline fixture."}}
+{"seq":2,"time":"2026-08-27T00:00:01Z","type":"note","data":{"source":"eval","text":"representative replay evidence"}}

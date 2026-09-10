@@ -1,0 +1,2 @@
+#!/bin/sh
+[ "$(cat result.txt 2>/dev/null)" = ready ]
