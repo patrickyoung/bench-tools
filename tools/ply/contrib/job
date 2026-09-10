@@ -1,0 +1,437 @@
+#!/usr/bin/env python3
+# start long commands, then inspect, wait for, or cancel their handles
+"""A per-command supervisor, composed through PATH. See jobs.md."""
+
+import argparse
+import ctypes
+import fcntl
+import hashlib
+import hmac
+import json
+import math
+import os
+from pathlib import Path
+import secrets
+import signal
+import socket
+import stat
+import subprocess
+import sys
+import time
+
+
+GRACE = 3.0  # let nested Ply finish its own process-group cancellation first
+TERMINAL = {"succeeded", "failed", "cancelled", "timed_out"}
+
+
+class JobError(Exception):
+    pass
+
+
+def encoded(value):
+    return json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def signed(key, value):
+    return hmac.new(key, encoded(value), hashlib.sha256).hexdigest()
+
+
+def private_dir(path, create=False):
+    if create:
+        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+    st = path.lstat()
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise JobError(f"{path}: expected an owner-only directory")
+    return path
+
+
+def atomic_json(path, value):
+    temp = path.with_name(path.name + "." + secrets.token_hex(8))
+    try:
+        with temp.open("xb") as stream:
+            stream.write(encoded(value) + b"\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, path)
+        fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def job_dir(root, handle):
+    if len(handle) != 32 or any(c not in "0123456789abcdef" for c in handle):
+        raise JobError("invalid job handle")
+    private_dir(root)
+    return private_dir(root / handle)
+
+
+def key_for(directory):
+    path = directory / "key"
+    st = path.lstat()
+    if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise JobError("job key must be an owner-only regular file")
+    key = path.read_bytes()
+    if len(key) != 32:
+        raise JobError("invalid job key")
+    return key
+
+
+def endpoint(handle):
+    # macOS limits Unix socket paths to 104 bytes; durable JOB_DIR may be long.
+    runtime = private_dir(Path("/tmp") / f"ply-job-{os.getuid()}", create=True)
+    return runtime / (handle + ".sock")
+
+
+def file_evidence(path):
+    digest, size = hashlib.sha256(), 0
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+            size += len(block)
+    return {"sha256": digest.hexdigest(), "bytes": size}
+
+
+def terminal(directory, key):
+    path = directory / "result.json"
+    try:
+        record = json.loads(path.read_bytes())
+    except FileNotFoundError:
+        return None
+    if not isinstance(record, dict):
+        raise JobError("invalid terminal record")
+    body, mac = record.get("body"), record.get("mac", "")
+    if not isinstance(body, dict) or not isinstance(mac, str) or not hmac.compare_digest(signed(key, body), mac):
+        raise JobError("terminal record authentication failed")
+    if (body.get("version") != 1 or body.get("handle") != directory.name
+            or body.get("state") not in TERMINAL
+            or type(body.get("returncode")) is not int
+            or type(body.get("exit_code")) is not int
+            or type(body.get("wait_exit_code")) is not int):
+        raise JobError("invalid terminal record")
+    for name in ("stdout", "stderr"):
+        path = directory / name
+        st = path.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
+            raise JobError(f"{name}: expected an owner-only regular file")
+        if file_evidence(path) != body.get(name):
+            raise JobError(f"{name}: output digest or byte count does not match the terminal record")
+    return body
+
+
+def receive(connection):
+    data = bytearray()
+    while b"\n" not in data:
+        block = connection.recv(4096)
+        if not block:
+            raise JobError("incomplete supervisor response")
+        data.extend(block)
+        if len(data) > 65536:
+            raise JobError("oversized supervisor message")
+    return json.loads(data.split(b"\n", 1)[0])
+
+
+def query(directory, key, operation):
+    path = endpoint(directory.name)
+    st = path.lstat()
+    if not stat.S_ISSOCK(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise JobError("expected an owner-only supervisor socket")
+    request = {"handle": directory.name, "nonce": secrets.token_hex(16), "op": operation}
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(0.5)
+        connection.connect(str(path))
+        connection.sendall(encoded({"body": request, "mac": signed(key, request)}) + b"\n")
+        reply = receive(connection)
+    if not isinstance(reply, dict) or not isinstance(reply.get("mac"), str):
+        raise JobError("invalid supervisor response")
+    body = reply.get("body", {})
+    if (not isinstance(body, dict) or body.get("nonce") != request["nonce"]
+            or body.get("handle") != directory.name
+            or not hmac.compare_digest(signed(key, body), reply.get("mac", ""))):
+        raise JobError("supervisor response authentication failed")
+    return body["status"]
+
+
+def status(directory, key, operation="status"):
+    result = terminal(directory, key)
+    if result is not None:
+        return result
+    try:
+        return query(directory, key, operation)
+    except (OSError, JobError, ValueError, KeyError, TypeError):
+        # The supervisor may have sealed its result between reading the file
+        # and connecting. A missing endpoint never proves a command stopped.
+        result = terminal(directory, key)
+        if result is not None:
+            return result
+        return {"version": 1, "handle": directory.name, "state": "unknown",
+                "detail": "supervisor unavailable; effects may exist; inspect the work before retrying"}
+
+
+def start(root, args):
+    private_dir(root, create=True)
+    handle = secrets.token_hex(16)
+    directory = root / handle
+    directory.mkdir(mode=0o700)
+    key = secrets.token_bytes(32)
+    with (directory / "key").open("xb") as stream:
+        stream.write(key)
+        stream.flush()
+        os.fsync(stream.fileno())
+    atomic_json(directory / "request.json", {
+        "version": 1, "handle": handle, "argv": args.command,
+        "cwd": os.getcwd(), "created_at": time.time(), "timeout": args.timeout})
+    with (directory / "supervisor.log").open("xb") as log:
+        process = subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "_supervise", str(root), handle],
+            stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
+            close_fds=True)
+    # Even an uncertain launch returns its handle, so a caller can inspect it
+    # instead of accidentally launching a second copy of an external effect.
+    print(handle, flush=True)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        current = status(directory, key)
+        if current["state"] != "unknown":
+            print(f"job: {handle} {current['state']}", file=sys.stderr)
+            return 0
+        if process.poll() is not None:
+            break
+        time.sleep(0.02)
+    raise JobError(f"{handle}: launch uncertain; inspect status and the work before retrying")
+
+
+def child_exited(pid):
+    # Keep the child unreaped until the last group signal. Its PID cannot
+    # be reused in that interval, even if the executable exits immediately.
+    options = os.WEXITED | os.WNOHANG | os.WNOWAIT
+    if hasattr(os, "waitid"):
+        return os.waitid(os.P_PID, pid, options) is not None
+    # macOS exposes POSIX waitid in libc, but not in Python's os module.
+    # We need only whether an event was returned, not its platform layout.
+    # A zero-initialized siginfo buffer stays zero when WNOHANG has no event.
+    info = ctypes.create_string_buffer(256)
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.waitid(os.P_PID, pid, info, options) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+    return any(info.raw)
+
+
+def group_signal(pgid, sig):
+    try:
+        os.killpg(pgid, sig)
+    except ProcessLookupError:
+        pass
+    except PermissionError:
+        # Darwin returns EPERM for a group containing only zombies. Prove
+        # that case before treating it as empty; a live unsignalable member
+        # is an uncertain cleanup, not successful completion.
+        if not child_exited(pgid):
+            raise
+        groups = subprocess.run(["/bin/ps", "-A", "-o", "pgid=,stat="],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                check=True, timeout=2).stdout.decode().splitlines()
+        for line in groups:
+            group, state = line.split()
+            if int(group) == pgid and not state.startswith("Z"):
+                raise
+
+
+def supervise(root, handle):
+    directory = job_dir(root, handle)
+    key = key_for(directory)
+    request = json.loads((directory / "request.json").read_bytes())
+    if request.get("handle") != handle or request.get("version") != 1:
+        raise JobError("invalid job request")
+    lock = (directory / "lock").open("ab")
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    if (directory / "result.json").exists():
+        raise JobError("job already has a terminal result")
+    # Publish a one-way launch claim before executing. An absent endpoint
+    # after a crash is an uncertain outcome, never permission to run again.
+    with (directory / "launched").open("xb") as claim:
+        claim.write((handle + "\n").encode())
+        claim.flush()
+        os.fsync(claim.fileno())
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    path = endpoint(handle)
+    # Refuse stale endpoints: an invocation is never silently restarted.
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(path))
+    os.chmod(path, 0o600)
+    listener.listen(8)
+    listener.settimeout(0.05)
+    stopping = [None]
+
+    def interrupt(_signal, _frame):
+        stopping[0] = stopping[0] or "cancelled"
+
+    signal.signal(signal.SIGINT, interrupt)
+    signal.signal(signal.SIGTERM, interrupt)
+    started = time.monotonic()
+    base = {"version": 1, "handle": handle, "argv": request["argv"],
+            "cwd": request["cwd"], "started_at": time.time()}
+    outputs = [(directory / name).open("xb") for name in ("stdout", "stderr")]
+    process, cleanup_deadline, reaped = None, None, False
+    try:
+        try:
+            process = subprocess.Popen(request["argv"], cwd=request["cwd"],
+                                       stdin=subprocess.DEVNULL, stdout=outputs[0],
+                                       stderr=outputs[1], start_new_session=True,
+                                       close_fds=True)
+        except OSError as error:
+            outputs[1].write((str(error) + "\n").encode())
+            returncode = 127
+        else:
+            while True:
+                now = time.monotonic()
+                exited = child_exited(process.pid)
+                if stopping[0] is None and now - started >= request["timeout"]:
+                    stopping[0] = "timed_out"
+                if stopping[0] is None and exited:
+                    # A job owns its group until the command exits. A shell
+                    # script must wait for work it wants included in the job.
+                    group_signal(process.pid, signal.SIGKILL)
+                    returncode = process.wait(timeout=2)
+                    reaped = True
+                    break
+                if cleanup_deadline is None and stopping[0] is not None:
+                    group_signal(process.pid, signal.SIGINT)
+                    cleanup_deadline = now + GRACE
+                if cleanup_deadline is not None and now >= cleanup_deadline:
+                    group_signal(process.pid, signal.SIGKILL)
+                    try:
+                        returncode = process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        raise JobError("command did not exit after SIGKILL; effects may exist")
+                    reaped = True
+                    break
+                live = dict({k: v for k, v in base.items() if k != "argv"},
+                            argv_sha256=hashlib.sha256(encoded(request["argv"])).hexdigest(),
+                            state="cancelling" if stopping[0] else "running",
+                            supervisor_pid=os.getpid(), command_pid=process.pid,
+                            elapsed_seconds=now - started)
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                with connection:
+                    connection.settimeout(0.1)
+                    try:
+                        envelope = receive(connection)
+                        if not isinstance(envelope, dict) or not isinstance(envelope.get("mac"), str):
+                            continue
+                        body = envelope.get("body", {})
+                        if (not isinstance(body, dict) or body.get("handle") != handle
+                                or body.get("op") not in ("status", "cancel")
+                                or not hmac.compare_digest(signed(key, body), envelope.get("mac", ""))):
+                            continue
+                        if body["op"] == "cancel":
+                            stopping[0] = stopping[0] or "cancelled"
+                            live["state"] = "cancelling"
+                        response = {"handle": handle, "nonce": body["nonce"], "status": live}
+                        connection.sendall(encoded({"body": response, "mac": signed(key, response)}) + b"\n")
+                    except (OSError, ValueError, KeyError, TypeError, JobError):
+                        pass
+        for stream in outputs:
+            stream.flush()
+            os.fsync(stream.fileno())
+            stream.close()
+        exit_code = returncode if returncode >= 0 else 128 - returncode
+        state = stopping[0] or ("succeeded" if exit_code == 0 else "failed")
+        wait_code = {"cancelled": 130, "timed_out": 124}.get(state, exit_code)
+        result = dict(base, state=state, returncode=returncode, exit_code=exit_code,
+                      wait_exit_code=wait_code, finished_at=time.time(),
+                      elapsed_seconds=time.monotonic() - started,
+                      stdout=file_evidence(directory / "stdout"),
+                      stderr=file_evidence(directory / "stderr"))
+        atomic_json(directory / "result.json", {"body": result, "mac": signed(key, result)})
+        return 0
+    finally:
+        if process is not None and not reaped:
+            group_signal(process.pid, signal.SIGKILL)
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+        for stream in outputs:
+            stream.close()
+        listener.close()
+        path.unlink(missing_ok=True)
+        lock.close()
+
+
+def show_result(directory, current):
+    print("job: " + json.dumps(current, sort_keys=True), file=sys.stderr)
+    if current["state"] not in TERMINAL:
+        return 1 if current["state"] == "unknown" else 2
+    for name, stream in (("stdout", sys.stdout.buffer), ("stderr", sys.stderr.buffer)):
+        with (directory / name).open("rb") as source:
+            for block in iter(lambda: source.read(1 << 20), b""):
+                stream.write(block)
+        stream.flush()
+    return current["wait_exit_code"]
+
+
+def duration(text):
+    value = float(text)
+    if not math.isfinite(value) or value <= 0:
+        raise argparse.ArgumentTypeError("duration must be a positive finite number of seconds")
+    return value
+
+
+def main(argv):
+    os.umask(0o077)
+    if argv and argv[0] == "_supervise":
+        if len(argv) != 3:
+            raise JobError("invalid supervisor invocation")
+        return supervise(Path(argv[1]), argv[2])
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="operation", required=True)
+    launch = sub.add_parser("start", help="start one command and print its handle")
+    launch.add_argument("--timeout", type=duration, default=3600, help="command seconds, default 3600")
+    launch.add_argument("command", nargs=argparse.REMAINDER)
+    for name, default in (("status", None), ("wait", 1), ("cancel", 5)):
+        operation = sub.add_parser(name)
+        operation.add_argument("handle")
+        if default is not None:
+            operation.add_argument("--timeout", type=duration, default=default,
+                                   help=f"wait seconds, default {default}, at most 60")
+    args = parser.parse_args(argv)
+    root = Path(os.environ.get("JOB_DIR", str(Path.home() / ".local/state/ply-jobs"))).absolute()
+    if args.operation == "start":
+        if args.command and args.command[0] == "--":
+            args.command = args.command[1:]
+        if not args.command:
+            parser.error("start requires a command after --")
+        return start(root, args)
+    directory = job_dir(root, args.handle)
+    key = key_for(directory)
+    if args.operation == "status":
+        current = status(directory, key)
+        print(json.dumps(current, sort_keys=True))
+        return 1 if current["state"] == "unknown" else 0
+    if args.timeout > 60:
+        parser.error("wait and cancel are bounded to at most 60 seconds per invocation")
+    current = status(directory, key, "cancel" if args.operation == "cancel" else "status")
+    deadline = time.monotonic() + args.timeout
+    while current["state"] not in TERMINAL and current["state"] != "unknown" and time.monotonic() < deadline:
+        time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+        current = status(directory, key)
+    return show_result(directory, current)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except (JobError, OSError, ValueError, TypeError) as error:
+        print(f"job: {error}", file=sys.stderr)
+        sys.exit(1)

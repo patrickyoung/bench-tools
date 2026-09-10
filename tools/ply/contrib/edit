@@ -1,0 +1,565 @@
+#!/usr/bin/env python3
+# replace exact text in a file, atomically, or refuse and say why
+#
+# Line 2 is the synopsis, without the name on it, because ply reads it as
+# the catalogue entry and the name is already the filename. That is the
+# same place a capability compiler writes one, and the same place a shell
+# script has kept its one-line description since long before either.
+#
+# `ply` ships no tools, and a tool is a program. This is that program for
+# the one job a shell is genuinely bad at: changing a few lines in the
+# middle of a file. `sed` needs an expression whose metacharacters have to
+# be escaped out of the very code being edited, and a model writing one
+# gets it wrong often and silently. So this takes the text itself, and the
+# only thing it knows how to do is match it exactly.
+#
+#     edit ring.go 'r.head + 1 // BUG' '(r.head + 1) % len(r.buf)'
+#
+#     edit ring.go <<'EOF'
+#     <<<<<<< SEARCH
+#     	r.head = r.head + 1 // BUG: never wraps
+#     =======
+#     	r.head = (r.head + 1) % len(r.buf)
+#     >>>>>>> REPLACE
+#     EOF
+#
+# It reads `*** Begin Patch` hunks as well, and that is not indulgence. A
+# model writes the edit format it was trained on, a system prompt does not
+# talk it out of one, and the observed cost of saying `no` is a wasted turn
+# followed by a hand-rolled `sed` pipeline -- which is the exact thing this
+# program was written to stop. Both dialects say the same thing anyway: a
+# span of old text and what to put there. Both collapse to that pair, and
+# both are then held to the same exactness.
+#
+# Exactness is the whole design, and the rest follows from it. The search
+# text must occur in the file once, byte for byte: not "closest match", not
+# "first occurrence", not a regular expression. Every edit in a call is
+# located in the original file before any file is written, so a call that
+# cannot be satisfied changes nothing at all -- including across files,
+# which is what makes it safe to put a rename in one call.
+#
+# Refusing is easy; refusing usefully is the part worth writing. A fuzzy
+# matcher guesses and is sometimes wrong in a way nobody notices. This does
+# the same analysis and reports it instead of acting on it: which line very
+# nearly matched, and what the difference was -- tabs against spaces, CRLF,
+# an ambiguous match that needs more context, or a replacement already in
+# place because the edit already ran. That last one is the difference
+# between a wasted turn and a loop.
+#
+# Creating a file is `>` and removing one is `rm`. A shell already has
+# those, and this program only changes a file that is already there.
+#
+# One deployment note, learned the hard way. `-t` makes PATH the toolbox
+# and nothing else, and `#!/usr/bin/env python3` is a PATH lookup like any
+# other -- so a toolbox holding this and not python3 fails with `env:
+# python3: No such file or directory`, which reads like a bug in the tool
+# and is not. Link the interpreter in beside it:
+#
+#     ln -s "$(command -v python3)" tools/
+#
+# Generated wrappers avoid this by baking absolute paths into their output.
+# The same fix works here if you prefer it: change line 1 to the output of
+# `command -v python3`.
+
+import argparse
+import difflib
+import os
+import sys
+import tempfile
+
+ME = "edit"
+
+# The markers are aider's SEARCH/REPLACE, unchanged, because a model has
+# read millions of them and writes them without being taught. The length of
+# the opening run sets the length of the other two, exactly as a markdown
+# fence does and exactly as ply's own blocks do -- so a search text that
+# itself contains a line of seven equals signs is not a dead end, it is a
+# reason to open with eight.
+MIN_RUN = 7
+
+EXIT_OK, EXIT_REFUSED, EXIT_ERROR = 0, 1, 2
+
+
+class Refused(Exception):
+    """An edit that could not be placed. The message is for the model."""
+
+
+class Bad(Exception):
+    """A malformed call or an unreadable file: ply's problem, or yours."""
+
+
+# ---------------------------------------------------------------- parsing
+
+
+def run_of(line, ch, loose=False):
+    """Length of the leading run of ch, or 0. A trailing word is allowed:
+    `>>>>>>> REPLACE` and a bare `>>>>>>>` are the same marker.
+
+    loose accepts anything after the run, and is for the opening marker
+    only. Outside a block there is nothing else a line of `<` could be, so
+    `<<<<<<< SEARCH ring.go` is recognised rather than rejected on a
+    technicality. The closing markers stay strict, because out there the
+    same leniency would start eating the file's own text."""
+    n = 0
+    while n < len(line) and line[n] == ch:
+        n += 1
+    if n == 0:
+        return 0
+    rest = line[n:].strip()
+    return n if loose or not rest or rest.isalpha() else 0
+
+
+def parse(text, default_path):
+    """Read whichever of the two dialects is on stdin.
+
+    There are two because models do not agree, and the disagreement is
+    trained in rather than arbitrary: a model that writes patches as
+    `*** Begin Patch` will keep writing them that way no matter what a
+    system prompt says, and being told `no` costs a turn and usually ends
+    with it reaching for `sed`, which is the thing this program exists to
+    stop. So both are read, both collapse to the same (old, new) pairs, and
+    both are then held to the same exactness."""
+    for line in text.split("\n"):
+        if line.strip():
+            return (parse_patch if line.startswith("*** ") else parse_blocks)(
+                text, default_path
+            )
+    raise Bad("no edits on stdin")
+
+
+def parse_patch(text, default_path):
+    """Read the `*** Begin Patch` dialect: hunks of context, `-` and `+`.
+
+    A hunk is turned into the pair it already describes -- context plus
+    removed lines is the old text, context plus added lines is the new one
+    -- and located by that text alone. The `@@` hint is read and dropped:
+    this program finds a span by matching it exactly once, so a hint that
+    would have helped a fuzzy matcher can only disagree with the answer."""
+    edits, path, hunk = [], default_path, None
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()  # the newline that ended the input, not a context line
+
+    def flush(at):
+        nonlocal hunk
+        if hunk is None:
+            return
+        old = "\n".join(t for k, t in hunk if k != "+")
+        new = "\n".join(t for k, t in hunk if k != "-")
+        if not old.strip():
+            raise Bad(
+                f"line {at}: this hunk has nothing to find — a hunk of only"
+                " `+` lines names no place in the file. Include the lines it"
+                " goes after as context."
+            )
+        if path is None:
+            raise Bad(f"line {at}: no file for this hunk; `*** Update File: path`")
+        edits.append((path, old, new))
+        hunk = None
+
+    for i, line in enumerate(lines, 1):
+        if line.startswith("*** "):
+            flush(i)
+            rest = line[4:].strip()
+            if rest.startswith("Update File:"):
+                path = rest[len("Update File:") :].strip()
+            elif rest.startswith(("Add File:", "Delete File:")):
+                verb = "Add" if rest.startswith("Add") else "Delete"
+                raise Bad(
+                    f"line {i}: `*** {verb} File` is not something this does."
+                    " Creating a file is `>` and removing one is `rm`; a shell"
+                    " already has both."
+                )
+            elif rest not in ("Begin Patch", "End Patch"):
+                raise Bad(f"line {i}: unknown directive: {line.strip()[:60]!r}")
+            continue
+        if line.startswith("@@"):
+            flush(i)
+            hunk = []
+            continue
+        if hunk is None:
+            hunk = []  # a patch that went straight into its body
+        if line == "":
+            hunk.append((" ", ""))
+        elif line[0] in " -+":
+            hunk.append((line[0], line[1:]))
+        else:
+            raise Bad(
+                f"line {i}: inside a hunk every line begins with a space, a `-`"
+                f" or a `+`; got {line[:60]!r}"
+            )
+    flush(len(lines))
+    if not edits:
+        raise Bad("no edits on stdin")
+    return edits
+
+
+def parse_blocks(text, default_path):
+    """Read the SEARCH/REPLACE dialect into (path, old, new) triples.
+
+    Outside a block the only meaningful line is `--- path`, which aims the
+    blocks that follow. Anything else out there is a mistake worth catching
+    at parse time, while it is still one clear message and not a search for
+    text that was never in the file."""
+    edits, path = [], default_path
+    lines = text.split("\n")
+    i, n = 0, len(lines)
+    while i < n:
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
+        if line.startswith("--- "):
+            path = line[4:].strip()
+            if not path:
+                raise Bad(f"line {i + 1}: `---` names no file")
+            i += 1
+            continue
+        run = run_of(line.rstrip(), "<", loose=True)
+        if run == 0:
+            raise Bad(
+                f"line {i + 1}: got {line.strip()[:60]!r}. Between blocks the"
+                " only line with a meaning is `--- path`. A block is\n"
+                "  <<<<<<< SEARCH / the old text / ======= / the new text /"
+                " >>>>>>> REPLACE,\n  each marker alone on its line;"
+                " `*** Begin Patch` hunks are read too."
+            )
+        if run < MIN_RUN:
+            raise Bad(f"line {i + 1}: a SEARCH marker is at least {MIN_RUN} `<`")
+        if path is None:
+            raise Bad(
+                f"line {i + 1}: no file for this block; name one on the command"
+                " line, or put `--- path` above it"
+            )
+        old, i = collect(lines, i + 1, "=", run, "=======", i + 1)
+        new, i = collect(lines, i, ">", run, ">>>>>>> REPLACE", i)
+        edits.append((path, old, new))
+    if not edits:
+        raise Bad("no edits on stdin")
+    return edits
+
+
+def collect(lines, start, ch, run, want, opened):
+    """Lines up to a closing marker of ch, at least as long as the opener."""
+    for i in range(start, len(lines)):
+        if run_of(lines[i].rstrip(), ch) >= run:
+            return "\n".join(lines[start:i]), i + 1
+    msg = f"line {opened}: this block has no `{want}` line."
+    if run == MIN_RUN:
+        msg += (
+            f" If the text being edited contains one, open the block with"
+            f" {MIN_RUN + 1} markers and close it with {MIN_RUN + 1} too."
+        )
+    raise Bad(msg)
+
+
+# --------------------------------------------------------------- matching
+
+
+def line_of(src, offset):
+    return src.count("\n", 0, offset) + 1
+
+
+def occurrences(src, old):
+    out, i = [], src.find(old)
+    while i >= 0:
+        out.append(i)
+        i = src.find(old, i + 1)
+    return out
+
+
+def squash(s):
+    """A line with its whitespace made irrelevant. Two lines that squash to
+    the same thing differ only in tabs, runs of spaces, indentation or a
+    stray carriage return -- which is the overwhelming majority of the ways
+    a model's copy of a line fails to be the line."""
+    return " ".join(s.split())
+
+
+def near_misses(src, old):
+    """1-based line numbers where old would have matched but for whitespace."""
+    want = [squash(x) for x in old.split("\n")]
+    have = [squash(x) for x in src.split("\n")]
+    if not want or (len(want) == 1 and not want[0]):
+        return []
+    return [
+        i + 1
+        for i in range(len(have) - len(want) + 1)
+        if have[i : i + len(want)] == want
+    ]
+
+
+def diagnose(path, label, src, old, new):
+    """Say why an exact match failed, as precisely as the evidence allows.
+
+    Every branch here is a thing a fuzzy matcher would have silently papered
+    over. Reporting it instead is slower by one turn and right every time."""
+    if new and new in src and old not in src:
+        at = line_of(src, src.find(new))
+        return (
+            f"{path}: {label} was not found, but the replacement is already there"
+            f" at line {at}. This edit looks like it has already been applied;"
+            " read the file before writing it again."
+        )
+    near = near_misses(src, old)
+    if near:
+        where = ", ".join(str(x) for x in near[:5])
+        hit = src.split("\n")[near[0] - 1]
+        why = "indentation or spacing"
+        if "\r\n" in src and "\r" not in old:
+            why = "line endings: the file is CRLF and the search text is not"
+        elif "\t" in hit and "\t" not in old:
+            why = "tabs: the file indents with tabs and the search text uses spaces"
+        return (
+            f"{path}: {label} was not found. It matches at line {where} once"
+            f" whitespace is ignored, so the difference is {why}."
+            " Copy the bytes out of the file rather than retyping them —"
+            " nothing here is fuzzy-matched on purpose."
+        )
+    first = old.split("\n", 1)[0].strip()
+    if first and sum(first in ln for ln in src.split("\n")) == 0:
+        return (
+            f"{path}: {label} was not found, and its first line does not appear"
+            " anywhere in the file. Read the file: this may be the wrong path,"
+            " or the text may have changed under you."
+        )
+    return (
+        f"{path}: {label} was not found. Its first line is in the file but the"
+        " rest of the block is not, so the span has drifted — read it back"
+        " and match what is there now."
+    )
+
+
+def plan(path, edits):
+    """Locate every edit in one file and return the new contents.
+
+    Nothing is written from here. The whole point of separating this from
+    the write is that a call touching four files either places all of its
+    edits or leaves all four alone."""
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as f:
+            src = f.read()
+    except FileNotFoundError:
+        raise Bad(f"{path}: no such file (this program changes files; `>` makes them)")
+    except IsADirectoryError:
+        raise Bad(f"{path}: is a directory")
+    except UnicodeDecodeError:
+        raise Bad(f"{path}: not UTF-8 text")
+    except OSError as e:
+        raise Bad(f"{path}: {e.strerror}")
+
+    spans = []
+    for i, (old, new) in enumerate(edits):
+        label = f"edits[{i}]" if len(edits) > 1 else "the search text"
+        if not old:
+            raise Bad(f"{path}: {label} is empty; there is no such place in a file")
+        if old == new:
+            raise Refused(f"{path}: {label} and its replacement are identical")
+        hits = occurrences(src, old)
+        if len(hits) == 0:
+            raise Refused(diagnose(path, label, src, old, new))
+        if len(hits) > 1:
+            where = ", ".join(str(line_of(src, h)) for h in hits[:6])
+            raise Refused(
+                f"{path}: {label} matches {len(hits)} places, at lines {where}."
+                " Include the lines above and below it until it names one."
+            )
+        spans.append((hits[0], hits[0] + len(old), new, i))
+
+    spans.sort()
+    for a, b in zip(spans, spans[1:]):
+        if b[0] < a[1]:
+            raise Refused(
+                f"{path}: edits[{b[3]}] overlaps edits[{a[3]}]; they cannot both"
+                " be applied to the same text"
+            )
+
+    out, pos = [], 0
+    for start, end, new, _ in spans:
+        out.append(src[pos:start])
+        out.append(new)
+        pos = end
+    out.append(src[pos:])
+    return src, "".join(out)
+
+
+# ---------------------------------------------------------------- writing
+
+
+def write_atomic(path, text):
+    """Rename over the original, so a reader never sees a half-written file
+    and a crash leaves the old one intact."""
+    d = os.path.dirname(os.path.abspath(path))
+    mode = os.stat(path).st_mode & 0o7777
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".edit.")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def diff(path, before, after):
+    return "".join(
+        difflib.unified_diff(
+            before.splitlines(keepends=True),
+            after.splitlines(keepends=True),
+            fromfile=path,
+            tofile=path,
+            n=2,
+        )
+    )
+
+
+# ------------------------------------------------------------------- main
+
+HELP = """usage: edit [-n] file old new
+       edit [-n] [file] < edits
+
+Replace exact text in a file. The search text must occur exactly once; a
+call that cannot place every edit changes nothing, in any of its files.
+
+  -n    print the diff and write nothing
+
+Setting PLY_PROPOSE in the environment does the same to every call, and
+exits 1 rather than 0 because the file was not written. It is a convention
+for review, not a boundary: nothing here can stop a redirect.
+
+Three arguments is one edit, and needs no format at all:
+
+    edit ring.go 'r.head + 1 // BUG' '(r.head + 1) % len(r.buf)'
+
+Otherwise the edits come from stdin, in either dialect. SEARCH/REPLACE:
+
+    edit ring.go <<'EOF'
+    <<<<<<< SEARCH
+    old text, exactly as it appears
+    =======
+    new text
+    >>>>>>> REPLACE
+    EOF
+
+or a patch, whose context and -/+ lines say the same thing:
+
+    edit <<'EOF'
+    *** Begin Patch
+    *** Update File: ring.go
+    @@
+     func (r *Ring) Push(v int) {
+    -	r.head = r.head + 1
+    +	r.head = (r.head + 1) % len(r.buf)
+     }
+    *** End Patch
+    EOF
+
+Either way a span is found by matching its text exactly once, never by
+line number and never approximately, so `@@` needs no numbers and a hunk
+needs enough context to be unique rather than correct offsets.
+
+A `--- path` line before a SEARCH block, or `*** Update File:` before a
+hunk, aims what follows at another file. If the text being edited holds a
+line of seven markers, open with eight and close with eight, the way a
+markdown fence works.
+
+A real unified diff, with counted hunk headers, is `git apply`'s job.
+Creating a file is `>`, and removing one is `rm`.
+
+Exit 0 applied, 1 refused (no match, ambiguous, overlapping), 2 broken.
+"""
+
+
+def main(argv):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("-n", "--dry-run", action="store_true")
+    p.add_argument("-h", "--help", action="store_true")
+    p.add_argument("args", nargs="*")
+    try:
+        opt = p.parse_args(argv)
+    except SystemExit:
+        return EXIT_ERROR
+    if opt.help:
+        sys.stdout.write(HELP)
+        return EXIT_OK
+
+    if len(opt.args) == 3:
+        path, old, new = opt.args
+        edits = [(path, old, new)]
+    elif len(opt.args) <= 1:
+        if sys.stdin.isatty():
+            sys.stderr.write(HELP)
+            return EXIT_ERROR
+        edits = parse(sys.stdin.read(), opt.args[0] if opt.args else None)
+    else:
+        raise Bad("give one file with edits on stdin, or a file, old and new")
+
+    # Group by file, keeping order, so one file is read once and planned
+    # whole -- edits[1] has to see where edits[0] landed.
+    byfile = {}
+    for path, old, new in edits:
+        byfile.setdefault(path, []).append((old, new))
+
+    planned = [(path, *plan(path, es), len(es)) for path, es in byfile.items()]
+
+    # PLY_PROPOSE turns every call into a proposal. The variable is set by
+    # whoever started the run, and commands inherit the environment, so it
+    # reaches here without ply knowing anything about it -- which is the
+    # point: this is a convention a tool may honour, not a boundary anyone
+    # enforces. `sh` has builtins and a redirect writes a file with no
+    # program involved, so a model that wants to write past this can, and
+    # nothing here should ever be described as stopping it.
+    #
+    # What it is good for is the case that actually bites: an edit nobody
+    # looked at. The plan is already complete by this line -- every span
+    # located in every file -- so the diff below is exactly what would have
+    # been written, not a guess at it.
+    #
+    # It exits refused rather than 0, and that difference is the whole
+    # mechanism. -n is a person asking what would happen, and the answer is
+    # a successful answer. PLY_PROPOSE is the file *not being written* when
+    # the caller asked for it to be, and a tool that reports success for
+    # work it did not do teaches the model the edit landed. The message goes
+    # to stderr, which is where the model reads it, and says what to do
+    # next -- an error message is the only documentation a model reliably
+    # reads.
+    if os.environ.get("PLY_PROPOSE") and not opt.dry_run:
+        for path, before, after, _ in planned:
+            sys.stdout.write(diff(path, before, after))
+        names = ", ".join(path for path, _, _, _ in planned)
+        print(
+            f"{ME}: PLY_PROPOSE is set, so nothing was written. The diff above is"
+            f" exactly what would have been applied to {names}. Show it to whoever"
+            " is running this and have them re-run without PLY_PROPOSE, or make a"
+            " change that does not need approval.",
+            file=sys.stderr,
+        )
+        return EXIT_REFUSED
+
+    for path, before, after, count in planned:
+        if opt.dry_run:
+            sys.stdout.write(diff(path, before, after))
+            continue
+        write_atomic(path, after)
+        s = "" if count == 1 else "s"
+        print(f"{path}: {count} replacement{s}")
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refused as e:
+        print(f"{ME}: {e}", file=sys.stderr)
+        sys.exit(EXIT_REFUSED)
+    except Bad as e:
+        print(f"{ME}: {e}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+    except BrokenPipeError:
+        os._exit(EXIT_OK)
+    except KeyboardInterrupt:
+        sys.exit(130)

@@ -1,0 +1,808 @@
+.TH PLY 1 "2026-08-30" "ply 0.1.2" "General Commands Manual"
+.SH NAME
+ply \- work a goal with a toolbox until a check says it is done
+.SH SYNOPSIS
+.B ply
+.RI [ flags ]
+.I goal
+.br
+.B ply tools
+.RI [ flags ]
+.br
+.B ply system
+.RI [ flags ]
+.RI [ goal ]
+.br
+.B ply version
+.br
+.B ply help
+.SH DESCRIPTION
+.B ply
+is an agent loop built as a filter. It sends a goal to a language model,
+runs the shell commands the model writes, hands back what they printed, and
+repeats until the model stops \(em then runs a check, and hands its failure
+back if it failed. The answer is standard output, the typescript is
+standard error, and the exit status says what happened.
+.PP
+It holds no provider code, no credentials, no session format and no
+catalogue. When it needs a model it runs
+.BR ask (1);
+when it needs a procedure it runs
+.BR brief (1);
+and a tool is a program, so the toolbox is
+.BR PATH .
+.SS The protocol
+One model turn is either one action or one report. An action is optional
+leading prose followed by exactly one nonempty fenced shell block as the
+turn's final content:
+.PP
+.RS
+.nf
+\(ga\(ga\(gaply
+go test ./... 2>&1 | tail \-20
+\(ga\(ga\(ga
+.fi
+.RE
+.PP
+By default the block and the check run under the resolved
+.B \-shell
+interpreter with
+.BR \-c .
+The default is
+.BR /bin/sh .
+The default prompt names the exact interpreter. Fence labels are protocol
+markers and do not select another one. Use syntax that interpreter accepts;
+POSIX shell syntax is the portable baseline. Its output comes back as the
+next message, laid out the way a
+terminal would have shown it: the command echoed with
+.B $
+and
+.BR > ,
+standard output and standard error interleaved, and the exit status when it
+is not zero. A block fenced with
+.BR ply ,
+.BR sh ,
+.BR bash ,
+.B shell
+or
+.B zsh
+is a command; an indented one is not, which is how the model quotes shell
+without running it. A reply with no block at all ends the run, and that
+reply is the answer.
+.PP
+Ply executes the action and returns its terminal result before asking the
+model for another turn. If a response contains more, Ply consumes only its
+first complete command block. Later blocks and text are explicitly deferred
+and do not run. An empty or unfinished first block runs nothing and receives a
+correction. Independent commands may be lines in one shell script; a command
+that depends on earlier output belongs in the next turn.
+.PP
+.B \-require-action
+refuses a report until at least one command has run. An actionless report is
+returned for correction twice; a third stops at exit 2. It is a liveness
+policy for callers that promise tool-mediated work, not evidence that any
+particular outcome is complete.
+.PP
+Because the protocol is text, it needs no tool\-use API and works with any
+model
+.BR ask (1)
+can reach.
+.SS The toolbox
+A tool is a program, and the toolbox is a directory of them.
+.B \-t
+makes
+.B PATH
+that directory alone, so the model reaches the programs put there and cannot
+name one that was not. Build one the old way, and add to it with
+.BR ln (1):
+.PP
+.RS
+.nf
+mkdir tools && ln \-s $(which ls grep sed git go) tools/
+.fi
+.RE
+.PP
+A program says what it is in the first comment after its shebang, and that
+line is the catalogue the model is given.
+.B ply tools
+prints it. A program may also document a read-only help form, but Unix defines
+no universal
+.B \-h
+or
+.B \-\-help
+option; either spelling may be an operand. Running the program is the final
+level of progressive disclosure.
+.PP
+.B \-sh
+hands over every program on the machine instead. With both, the toolbox
+comes first on
+.BR PATH .
+.PP
+The toolbox aims the model; it does not sandbox it.
+.BR sh (1)
+has builtins, and a redirect opens a file with no program involved. The
+security boundary is the process \(em its user, its container, its
+.BR chroot (2)
+\(em as it always was.
+.SS Done
+.B \-check
+takes a shell command. It runs after the model stops, and the run ends only
+when it exits zero. The candidate final report is its standard input,
+terminated by a newline. Exit 1 rejects that candidate and its output goes
+back to the model, which keeps working. Any other nonzero exit, signal, or
+timeout means the verifier itself is broken and stops the run as an error.
+File and code checks may ignore standard input.
+It also runs before the first turn, so a goal already met costs nothing and
+leaves no session behind; that pre-check receives empty standard input. Without
+.BR \-check ,
+exit 0 means only that the model stopped.
+.PP
+When the initial check rejects, its terminal transcript rides with the goal in
+the first model turn and is recorded once in the Ask session. It does not
+count against
+.BR \-cycles ,
+which counts only checks made after the model has had a chance to work.
+.PP
+The check is the caller's program, not the model's, so it runs with the
+caller's
+.B PATH
+and the toolbox merely first on it. Scoping it to the toolbox would mean
+.B go test ./...
+needed a toolbox holding
+.BR go ,
+.B git
+and a linker.
+.PP
+When the judgment needs a model rather than a program, the mechanism does
+not change, because
+.BR ask (1)
+is a program:
+.PP
+.RS
+.nf
+ply \-sh \-check 'ask \-n \-q \-f /tmp/judge.jsonl \\
+      "Does README cover install? Answer only yes or no." \\
+      < README.md | grep \-qi "^yes"' "document the installer"
+.fi
+.RE
+.PP
+.B \-n \-f
+is not optional there.
+.BR ask (1)
+continues the caller's own conversation by default, so a judge without a
+thread of its own would be asked inside whatever was last discussed, once
+per cycle, and would leave the answer there.
+.SS The log
+The conversation is an
+.BR ask (1)
+session: the commands are in the assistant turns and their output is in the
+user turns, so the file is the whole record and
+.B ask replay \-check
+proves it.
+.B ply
+keeps no log of its own.
+.PP
+Every
+.B \-check
+execution after a model report is recorded as a typed
+.B ply.verifier/v2
+note followed by an Ask prefix seal. The receipt binds the exact normalized
+candidate, verifier command and interpreter, outcome, exit status, captured
+output, timeout, and optional intent contract digest. Rejections, acceptance,
+and broken or interrupted verifiers are all records. Forced pipe closure sets
+.B output_incomplete
+and makes verification broken even when the command exited zero.
+Output uses base64;
+its digest binds the decoded original bytes. Updated consumers also read v1.
+A rejection is also folded into the
+conversation as feedback for the next turn. Ask replay verifies sequence and
+seal integrity, so changes, sequence gaps, reordering, or an unsealed record
+inside a retained prefix fail. A prefix seal is not an external proof that the
+file was not truncated after an earlier valid prefix.
+.PP
+Ordinary action observations are attributed, sealed user messages written by
+.B ask append
+before another model call or a stop decision. They remain in resumed context.
+Non-UTF-8 terminal output uses an explicit reversible quoted byte string.
+SIGINT and SIGTERM cancel owned commands and bound process-group cleanup;
+abrupt process death can still leave an uncertain external effect.
+A run with no
+.B \-check
+records no verifier receipt, because done is a program's opinion and there was
+no program to have one.
+.PP
+With
+.BR \-may-job ,
+each May transition is recorded as a sealed
+.B ply.approval/v1
+note before an approved action executes or a parked/declined action becomes
+terminal. The receipt binds the fresh May executable and argv, exact stdin and
+stdout digests, May exit status, job, action envelope, verdict and contract ID.
+Saved May JSON is never an authority input; Ply always spawns May itself.
+With
+.BR \-cage ,
+the corresponding
+.B ply.approval/v2
+record also binds the Cage executable digest, exact argv, physical workspace,
+private temporary root, and denied-network policy.
+If the Cage boundary then fails, Ply appends and seals
+.B ply.confinement/v1
+before returning 125. It binds the approval, Cage identity and roots, exact
+captured output bytes, and whether effects may exist. No later model turn or
+verifier runs.
+.PP
+What
+.B \-s
+loaded is recorded the same way, once the log exists:
+.BR brief (1)
+prints a skill's body without its frontmatter, so a procedure reaches the
+prompt with a stable display identity and a command for reading bundled
+resources. The composition note retains Brief's selector replay pointer
+without putting that random path in the system prompt. A run that loaded none
+records that selection. This is what
+.B hone \-into \-
+reads to put a lesson back on the procedure the run was following.
+.SH COMMANDS
+.TP
+.B ply \fR[\fIflags\fR] \fIgoal\fR
+Work the goal. Piped standard input rides with it, or is the goal when
+there is no other. Input past 64 KB is written once into a content-addressed
+object beside the session under
+.BR .stdin.d ,
+with mode 0400 at creation, and the model is told its path, byte count, and
+SHA-256 digest. Reusing a session cannot overwrite earlier input. Mode 0400 is
+not an immutability claim against another unconfined process with the same OS
+identity. A large log is therefore something
+to grep rather than a cost on every request. Past 16 MB is an error naming
+the limit, never a truncation.
+.TP
+.B ply tools \fR[\fIflags\fR]
+Print the catalogue the model would be given, and the
+.B PATH
+its commands would run with. Takes
+.B \-t
+and
+.BR \-sh .
+.TP
+.B ply system \fR[\fIflags\fR] [\fIgoal\fR]
+Print the system prompt that would be sent, skills included. It is a value,
+not a secret, so extending it is ordinary shell rather than a config format:
+.B \-S "$(ply system; cat house.md)"
+\&. Takes the flags that shape it:
+.BR \-t ,
+.BR \-sh ,
+.BR \-C ,
+.BR \-check ,
+.BR \-timeout ,
+.B \-cap
+and
+.BR \-s .
+A goal may follow, because
+.B \-s \-
+asks brief to choose a skill for one.
+.TP
+.B ply capabilities
+Print one JSON object describing the versioned public boundary features that
+an outer controller may require before it starts a model call. The schema is
+.BR ply.capabilities/v1 .
+.TP
+.B ply version
+Print the version.
+.B \-V
+and
+.B \-\-version
+do the same.
+.TP
+.B ply help
+Print the flag summary on standard output.
+.B \-h
+and
+.B \-\-help
+do the same. A usage error prints it on standard error instead.
+.PP
+Anything that is not a command is the goal.
+.B \-\-
+sends a word that is one.
+.SH OPTIONS
+.TP
+.BI \-t " dir"
+Toolbox:
+.B PATH
+becomes this directory alone. Defaults to
+.BR $PLY_TOOLS .
+Either this or
+.B \-sh
+is required; a model with no way to act is a spent call.
+.TP
+.B \-sh
+Hand the model every program on
+.BR PATH .
+With
+.BR \-t ,
+the toolbox comes first.
+.TP
+.BI \-shell " executable"
+Command interpreter for checks and, by default, model blocks. It must accept
+.BR \-c .
+Ply resolves it before calling the model and reports a missing or
+non\-executable choice as an error. Defaults to
+.BR $PLY_SHELL ,
+or
+.B /bin/sh
+when that is unset. The unrelated login\-shell variable
+.B $SHELL
+is never consulted. This flag names one executable, not an executable plus
+arguments; use a wrapper program when fixed interpreter options are required.
+.TP
+.BI \-action-shell " executable"
+Interpreter for model-authored blocks only. It must accept
+.BR \-c .
+The configured verifier keeps
+.BR \-shell .
+Defaults to
+.BR $PLY_ACTION_SHELL ,
+or to the resolved
+.B \-shell
+when that is unset. This is an ordinary executable seam for an
+operator-owned container or remote runner, not a sandbox provided by Ply.
+Ply does not infer the adapter's target platform, programs, or final working
+directory.
+.TP
+.BI \-action-boundary-exit " status"
+Reserve one nonzero model-action status for an external action adapter's
+boundary failure. Ply stops immediately and exits 125 instead of feeding the
+failure back as an ordinary tool result. Zero disables this convention; the
+default is zero. Ply hashes the adapter before the first model call,
+revalidates it immediately before and after launch, and seals
+.B ply.action-boundary/v1
+with the adapter and script digests, captured result, and a conservative
+effects-may-exist flag. The adapter still owns the meaning, internal policy,
+and target evidence behind the reserved status. Its path must be
+controller-owned and outside worker-writable authority. The digest is a
+before/after path observation, not protection from an adversarial process with
+the same OS identity swapping bytes between check and exec.
+.TP
+.BI \-goal-file " file"
+Read the task from a bounded regular file instead of process arguments. It
+cannot be combined with a positional goal. Symlinks, non-regular files, empty
+tasks, and files larger than the stdin limit are refused. Stdin remains the
+separate evidence stream.
+.TP
+.B \-no-delegate
+Omit the generic nested Ply delegation recipe from the system prompt. Use this
+when an outer worker owns a different specialist or VM boundary.
+.TP
+.BI \-check " cmd"
+Verifier command: candidate report on stdin; 0 accepts, 1 rejects, and any
+other status is a broken verifier. Interpreter startup failure and output
+beyond
+.B \-cap
+are broken as well; verifier evidence is never silently truncated.
+.TP
+.B \-B
+Work the goal even if the check already passes, as
+.BR make (1)
+takes it.
+.TP
+.B \-require-action
+Refuse a final report until at least one command has run. Persistent
+actionless replies stop at exit 2.
+.TP
+.BI \-cycles " n"
+Rejected candidates before giving up. Default 5; 0 is unbounded.
+.TP
+.B \-compact
+When the context window fills, carry on. A full window is permanent, so the
+run would otherwise end at exit 2; with this,
+.B ask compact
+writes a handoff note into a fresh session and the loop moves into it,
+re-sending the message the full session could not take. The note is a model
+summarising the work, so it is a lossy step taken deliberately and reported
+on standard error, never quietly.
+.TP
+.BI \-compactions " n"
+Compactions before giving up. Default 3; 0 is unbounded. A goal that needs
+more than a few has outgrown one run.
+.TP
+.BI \-compact-at " n"
+Before each model turn, ask Ask to compact when its estimated context reaches
+this many tokens. Implies
+.BR \-compact .
+Default 0 waits for overflow. Choose a threshold below the model window to
+reserve output and tool-result headroom. Ask owns token accounting; this is
+an estimate, not a provider guarantee. The compaction limit still applies.
+.TP
+.B \-stream
+Stream model progress to standard error while it is generated. Model text
+is display only until the full reply has been received and parsed.
+.B \-q
+disables streaming. Standard output remains the final report alone.
+.TP
+.BI \-turns " n"
+Model turns before giving up. Default 50. Zero is explicitly unbounded.
+This is the invocation-wide liveness bound: it also stops a model that keeps
+writing commands and never stops for the check.
+.TP
+.BI \-steer " file"
+Read operator steering from a regular append-only UTF-8 line file immediately
+before each model turn, after generation before using its action or report,
+after an approval call, and after a candidate check before finalization.
+Guidance arriving during generation defers that response without execution
+or acceptance; guidance arriving during a check defers finalization.
+An approved action deferred by guidance retains its spent grant as unused
+historical evidence; a later proposal requires a new approval request.
+Running commands are not interrupted by steering.
+Only complete newline-terminated lines are consumed.
+Each line is limited to 8 KiB and each pending batch to 64 KiB. Steering is
+ordinary implementation guidance recorded in Ask user history; it does
+not change tools, the verifier, or an admitted outcome contract.
+.TP
+.BI \-may-job " job"
+Before each model-authored shell block, run
+.B may request
+with this job and an exact JSON envelope on standard input. Only May status 0
+and a strict matching
+.B spent
+result permits the unchanged block to execute. Status 75 parks the exact
+action, status 3 declines it, and malformed or operational results fail closed.
+Ask, Brief, baseline and candidate checks are not gated. The May result is
+sealed in the Ask session before execution. Nested Ply processes inherit the
+same job, but a child's status 75 is ordinary command evidence to its parent,
+not a root terminal status. Approval-mode prompts do not advertise delegation.
+Defaults to
+.BR $PLY_MAY_JOB .
+The envelope binds the contract ID, physical working directory, interpreter,
+PATH, nanosecond timeout, and literal script. The May v1 digest is lowercase
+hexadecimal SHA-256 over
+.BR may-v1 ,
+NUL, job, NUL, and that exact action.
+The May request itself has a separate 10-second controller timeout; the
+approved command timeout starts only when Runner starts the shell.
+.TP
+.B \-cage
+Confine each approved model action with Cage. This requires
+.B \-may-job
+and
+.BR \-contract-id .
+The physical workspace and a private temporary directory are writable, host
+network access is denied, and host files remain readable. Ask, Brief, May, and
+the configured verifier remain outside Cage. Controller state and executables
+must be outside the writable workspace. Status 125 is conservatively reserved
+for confinement failure and stops before another model turn or check. The
+Cage executable is selected by
+.BR $CAGE .
+.TP
+.BI \-timeout " d"
+Per\-command timeout, as a Go duration such as
+.BR 30s .
+Default 2m. A command that outlasts it receives an interrupt by process group
+so nested ply processes can stop their own command groups, then an
+uncooperative group is killed after a short grace period. It reports 124,
+which is
+.BR timeout (1)'s
+number.
+.TP
+.BI \-cap " n"
+Bytes of a command's output kept and shown to the model, head and tail, with
+the middle elided and the elision announced in the text the model reads.
+Default 16384.
+.TP
+.BI \-C " dir"
+Run commands in this directory. Default is the current one.
+.TP
+.BI \-m " spec"
+Provider and model, passed to
+.BR ask (1).
+Default is ask's own
+.BR $ASK_MODEL .
+.TP
+.BI \-effort " level"
+Reasoning effort, passed literally to
+.BR ask (1).
+The default is unset; ask and its provider decide. Set
+.B PLY_EFFORT
+to give nested Ply workers the same value.
+.TP
+.BI \-verbosity " level"
+Response verbosity, passed literally to
+.BR ask (1)
+for model turns and compaction summaries. Defaults to low, or
+.BR PLY_VERBOSITY .
+An empty value omits the option and lets Ask choose. Supported OpenAI Responses
+models honor this preference; other providers may ignore it. This controls
+generated text rather than hiding the typescript as
+.B \-q
+does. The default prompt requests concise reports while preserving the user's
+requested detail and complete artifacts.
+.TP
+.BI \-S " text"
+System prompt, replacing the default. The protocol lives in the default, so
+.B ply system
+prints what would be dropped.
+.B \-S ""
+sends none.
+.TP
+.BI \-s " name"
+Append a
+.BR brief (1)
+skill to the system prompt. Repeats.
+.B \-s \-
+asks brief to choose one for the goal; brief refuses to guess, so nothing
+matching is reported on standard error and the run goes on without one.
+.TP
+.BI \-f " file"
+Session log to write. Default is a new one under
+.BR $PLY_DIR .
+.TP
+.BI \-session-out " file"
+Atomically write the absolute path of the current Ask session to this file,
+followed by a newline. It is written before the first model turn and replaced
+after every successful compaction, so a supervising process can follow the
+run without parsing the human typescript. A requested control file that
+cannot be maintained is an error. It is a pointer, not a second log.
+.TP
+.BI \-checkpoint " file"
+Resume through one durable current-session pointer. Ply takes a nonblocking
+whole-run lock beside the pointer, resumes the absolute Ask session it names,
+or mints and publishes a new session before the first model turn. Compaction
+atomically and durably advances the pointer. This option replaces
+.B \-f
+and
+.BR \-session-out ;
+using either with it is an error. The work tree and verifier remain the state
+of the job; the checkpoint preserves conversation context and does not make an
+interrupted external effect safe to repeat.
+.TP
+.BI \-contract-id " digest"
+Bind verifier and action-approval receipts to an admitted intent contract
+digest. This is
+normally supplied by an orchestrator such as Bench; Ply records it literally
+and does not interpret or amend the contract. Defaults to
+.BR $PLY_CONTRACT_ID .
+.TP
+.B \-q
+No typescript on standard error.
+.SH ENVIRONMENT
+.TP
+.B PLY_TOOLS
+Default toolbox directory, as
+.BR \-t .
+.TP
+.B PLY_SHELL
+Default command interpreter, as
+.BR \-shell .
+Ply exports the resolved absolute path to every command, so another Ply
+started as a program inherits the same interpreter.
+.TP
+.B PLY_ACTION_SHELL
+Default model-action interpreter, as
+.BR \-action-shell .
+Ply exports its resolved absolute path separately so nested Ply workers retain
+the same action boundary while their checks retain
+.BR PLY_SHELL .
+.TP
+.B PLY_EFFORT
+Default reasoning effort, as
+.BR \-effort .
+Ply passes the value literally to Ask and exports it to commands so nested
+Ply workers inherit the same policy.
+.TP
+.B PLY_VERBOSITY
+Default response verbosity, as
+.BR \-verbosity .
+Ply defaults to low when this variable is absent. Commands inherit its exact
+value, including an explicit empty value, so nested Ply workers keep the policy.
+.TP
+.B PLY_DIR
+Where sessions live. Default
+.BR ~/.ply/sessions ,
+created mode 0700.
+.TP
+.B PLY_DEPTH
+How deep this ply is inside another. It is set for every command ply runs,
+incremented each time, and a ply that finds it at 8 refuses to start: a tool
+that runs ply is the sub\-agent mechanism, and without a floor it is also a
+fork bomb with a credit card.
+.TP
+.B PLY
+The path to the running binary, set for every command ply runs, so a tool
+can start another ply on a host with nothing else installed.
+.TP
+.B ASK
+The
+.BR ask (1)
+binary to run. Default
+.BR ask ,
+found on
+.BR PATH .
+.TP
+.B BRIEF
+The
+.BR brief (1)
+binary to run, for
+.BR \-s .
+Default
+.BR brief .
+.TP
+.B MAY
+The
+.BR may (1)
+binary used by
+.BR \-may-job .
+Default
+.BR may .
+.TP
+.B CAGE
+The
+.BR cage (1)
+binary used by
+.BR \-cage .
+Default
+.BR cage .
+.TP
+.B PLY_MAY_JOB
+Default exact-action approval job. Ply exports the resolved May path and this
+job to model-authored commands so a nested Ply cannot silently discard the
+gate.
+.TP
+.B PLY_CONTRACT_ID
+Default admitted intent-contract digest, propagated to nested Ply processes.
+.TP
+.B NO_COLOR
+Set to any value to strip color from the typescript. Color is also stripped
+when standard error is not a terminal.
+.PP
+Models, keys and gateways belong to
+.BR ask (1).
+.B ply
+passes it
+.BR \-m ,
+.BR \-effort ,
+.BR \-verbosity ,
+.BR \-f ,
+.B \-q
+and the system prompt in
+.BR ASK_SYSTEM ,
+and nothing else.
+.SH FILES
+.TP
+.B ~/.ply/sessions
+Session logs, in
+.BR ask (1)
+format, mode 0600.
+.TP
+.B ~/.ply/sessions/*.stdin.d/*
+Content-addressed piped input too large to carry in the conversation. The
+conversation binds each object's path, byte count, and SHA-256 digest.
+.SH EXIT STATUS
+.TP
+.B 0
+Done. The check passed, or, with no check, the model stopped.
+.TP
+.B 1
+Error: bad usage, no
+.B ask
+on
+.BR PATH ,
+a provider failure, or a broken verifier.
+.TP
+.B 2
+Not done: the check is still failing, a bound was reached, the command
+protocol stalled, or the context window is full. It is its own status because
+a supervisor has to tell "did not work" from "broke", or it retries the
+wrong one.
+.TP
+.B 3
+The exact proposed action was declined by May and was not executed.
+.TP
+.B 75
+The exact proposed action is parked in May for an operator decision and was
+not executed.
+.TP
+.B 125
+Cage could not establish or preserve confinement, its child returned the
+reserved status 125, or the Cage executable changed after possible effects.
+The action may have run; inspect the sealed confinement receipt and workspace.
+.TP
+.B 130
+Interrupted.
+.SH EXAMPLES
+Work a goal against a test suite, and only then release:
+.PP
+.RS
+.nf
+ply \-sh \-check 'go test ./...' "make the tests pass" && make release
+.fi
+.RE
+.PP
+Give the model three programs and nothing else:
+.PP
+.RS
+.nf
+mkdir tools && ln \-s $(which git rg sed) tools/
+ply \-t tools \-check 'git diff \-\-quiet' "stage the obvious typo fixes"
+.fi
+.RE
+.PP
+Brief it first, then set it to work:
+.PP
+.RS
+.nf
+ply \-sh \-s web\-perf \-check './budget.sh' "get LCP under 2.5s"
+ply \-sh \-s \- "make my page load faster"
+.fi
+.RE
+.PP
+As a filter, in a pipe:
+.PP
+.RS
+.nf
+kubectl logs deploy/api | ply \-t tools "find the cause of the 500s"
+.fi
+.RE
+.PP
+Prove the run afterwards:
+.PP
+.RS
+.nf
+ask replay \-check ~/.ply/sessions/20260801\-142233\-a3f9c1e0.jsonl
+.fi
+.RE
+.SH SEE ALSO
+.BR ask (1),
+.BR brief (1),
+.BR hone (1),
+.BR make (1),
+.BR sh (1),
+.BR timeout (1)
+.SH HISTORY
+.B ply
+is the third of four filters carved from one agent.
+.BR ask (1)
+took the model,
+.BR brief (1)
+took the procedure,
+.B ply
+took the loop, and
+.BR hone (1)
+took the lesson. Each refuses to grow the others, which is why all of them
+stay small.
+.PP
+The four close into a circle:
+.B ply
+works a goal and its check decides,
+.BR hone (1)
+reads that verdict out of the log and writes what the run taught as a
+.BR brief (1)
+skill, and the next
+.B ply
+loads it with
+.BR \-s .
+.SH CAVEATS
+The toolbox is not a sandbox. It scopes what the model reaches for; it does
+not contain what the model does. Run
+.B ply
+as a user, in a container, or in a
+.BR chroot (2)
+you would be willing to hand a shell to, because that is what you are doing.
+.PP
+Without
+.BR \-check ,
+exit 0 is the model's opinion. That is a real answer for a goal no program
+can judge, and it is a weaker one than it looks.
+.PP
+Changing
+.B \-shell
+changes parsing, builtins, startup files and sometimes the meaning of valid
+syntax. Ply verifies that the named executable exists; it does not guess its
+dialect or inspect a version string. The operator is responsible for choosing
+an interpreter that accepts
+.B \-c
+and for writing a compatible check.
+.PP
+.B \-action-shell
+changes that interpreter only for model-authored blocks. Ply passes it the
+literal script and inherited action environment; the named program owns any
+container, remote-execution, mount, credential, signal, and resource policy.
+The verifier remains outside that adapter under
+.BR \-shell .
