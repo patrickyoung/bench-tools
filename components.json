@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "name": "action",
+      "path": "tools/action",
+      "module": "github.com/patrickyoung/action",
+      "source": {
+        "repository": "https://github.com/patrickyoung/action.git",
+        "commit": "511cd7e7380e03b047a81634127954d8a05322bb",
+        "tree": "1b0053e297e495f61a9e74a1d01f2a1a826a9156"
+      },
+      "commands": [
+        {
+          "name": "action",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "agent",
+      "path": "tools/agent",
+      "module": null,
+      "source": {
+        "repository": "https://github.com/patrickyoung/agent.git",
+        "commit": "f8e566e20f15f718d5104bc776f5ed2b34d5ff7f",
+        "tree": "4dac241cf82dc991d3f9548f5dad102499680519"
+      },
+      "commands": [
+        {
+          "name": "agent",
+          "entry": "bin/agent"
+        }
+      ]
+    },
+    {
+      "name": "ask",
+      "path": "tools/ask",
+      "module": "github.com/patrickyoung/ask",
+      "source": {
+        "repository": "https://github.com/patrickyoung/ask.git",
+        "commit": "57e1d609fbeed1f31906f238ea4004d3f053779f",
+        "tree": "93a30451c7ef84b0e9dad8e06d35d3f8845eed3f"
+      },
+      "commands": [
+        {
+          "name": "ask",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "brief",
+      "path": "tools/brief",
+      "module": "github.com/patrickyoung/brief",
+      "source": {
+        "repository": "https://github.com/patrickyoung/brief.git",
+        "commit": "7116c0695331a835509ba65d05032bb8200f2045",
+        "tree": "22d6d31f82c8adfd463888ec934285feb07b7c3e"
+      },
+      "commands": [
+        {
+          "name": "brief",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "cage",
+      "path": "tools/cage",
+      "module": "github.com/patrickyoung/cage",
+      "source": {
+        "repository": "https://github.com/patrickyoung/cage.git",
+        "commit": "771973ea1cf5ee0a73a4e4f09f7e495ff2e37cc7",
+        "tree": "18e485cde137b6c8ee3226ed5ec52940b2bf785b"
+      },
+      "commands": [
+        {
+          "name": "cage",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "cite",
+      "path": "tools/cite",
+      "module": "github.com/patrickyoung/cite",
+      "source": {
+        "repository": "https://github.com/patrickyoung/cite.git",
+        "commit": "7322285d66199166423a650ae24a2c3c812d62be",
+        "tree": "0cfc90529fe762f155b55bd7327e3d1ea58c28b6"
+      },
+      "commands": [
+        {
+          "name": "cite",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "context",
+      "path": "tools/context",
+      "module": "github.com/patrickyoung/context",
+      "source": {
+        "repository": "https://github.com/patrickyoung/context.git",
+        "commit": "8133264852426395dc26aae34231502e9501a983",
+        "tree": "b456d03832f0fdcc2a0fa26e5dd9b9fae8fe9d2c"
+      },
+      "commands": [
+        {
+          "name": "context",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "draft",
+      "path": "tools/draft",
+      "module": null,
+      "source": {
+        "repository": "https://github.com/patrickyoung/draft.git",
+        "commit": "2fc900908cd1f90bd75537bec3063cfc7e695db5",
+        "tree": "0ba920c676186910ba877c9b4f99c5e571cde5ad"
+      },
+      "commands": [
+        {
+          "name": "draft",
+          "entry": "bin/draft"
+        }
+      ]
+    },
+    {
+      "name": "hone",
+      "path": "tools/hone",
+      "module": "github.com/patrickyoung/hone",
+      "source": {
+        "repository": "https://github.com/patrickyoung/hone.git",
+        "commit": "dc51765d0367c1f25a3b18f5731733b4618d4e00",
+        "tree": "baa86743dc788822218ada923ca6cf4c64f36311"
+      },
+      "commands": [
+        {
+          "name": "hone",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "may",
+      "path": "tools/may",
+      "module": "github.com/patrickyoung/may",
+      "source": {
+        "repository": "https://github.com/patrickyoung/may.git",
+        "commit": "6d04f14e8220b0d32abfc5df2d46564747500f66",
+        "tree": "2b9e3e92f47df96ea3de7a38df57434e7634c45d"
+      },
+      "commands": [
+        {
+          "name": "may",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "mcp",
+      "path": "tools/mcp",
+      "module": "github.com/patrickyoung/mcp",
+      "source": {
+        "repository": "https://github.com/patrickyoung/mcp.git",
+        "commit": "df8aac0e95756eb08cdb9b12750030f7db5f6dbd",
+        "tree": "8f57633bc81f6339a5710320044c60c6d1300653"
+      },
+      "commands": [
+        {
+          "name": "mcp",
+          "package": "./cmd/mcp"
+        },
+        {
+          "name": "mcpbox",
+          "package": "./cmd/mcpbox"
+        },
+        {
+          "name": "mcpserve",
+          "package": "./cmd/mcpserve"
+        }
+      ]
+    },
+    {
+      "name": "oauth",
+      "path": "tools/oauth",
+      "module": "github.com/patrickyoung/oauth",
+      "source": {
+        "repository": "https://github.com/patrickyoung/oauth.git",
+        "commit": "134526d885f123c97917b3846ae779303ad04270",
+        "tree": "fc6ede37f15e6932fcf38aa48cfb6b111c49bdf8"
+      },
+      "commands": [
+        {
+          "name": "oauth",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "ply",
+      "path": "tools/ply",
+      "module": "github.com/patrickyoung/ply",
+      "source": {
+        "repository": "https://github.com/patrickyoung/ply.git",
+        "commit": "1ea0593f7373c9df238cf3ce068f3b58db9bf341",
+        "tree": "8c1e19c704989929d75d9826604eef77169903c1"
+      },
+      "commands": [
+        {
+          "name": "ply",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "rules",
+      "path": "tools/rules",
+      "module": "github.com/patrickyoung/rules",
+      "source": {
+        "repository": "https://github.com/patrickyoung/rules.git",
+        "commit": "da945ba984e7a552cbefa9043bd24e793d959e89",
+        "tree": "c508e6e7db0f0ae0c1fa6940e4f7e057237749e7"
+      },
+      "commands": [
+        {
+          "name": "rules",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "tend",
+      "path": "tools/tend",
+      "module": "github.com/patrickyoung/tend",
+      "source": {
+        "repository": "https://github.com/patrickyoung/tend.git",
+        "commit": "77e678aec18ccf529fc67892e70dd03fc6a16205",
+        "tree": "ce9a6ee4eb496e62abce220f7b2f1acc27744e76"
+      },
+      "commands": [
+        {
+          "name": "tend",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "trail",
+      "path": "tools/trail",
+      "module": "github.com/patrickyoung/trail",
+      "source": {
+        "repository": "https://github.com/patrickyoung/trail.git",
+        "commit": "2ca0dad51b54bfc42843338d805ab69f395c1d81",
+        "tree": "04cc01f7b71052a43fb7f8729f71b769df45dc10"
+      },
+      "commands": [
+        {
+          "name": "trail",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "weave",
+      "path": "tools/weave",
+      "module": "github.com/patrickyoung/weave",
+      "source": {
+        "repository": null,
+        "commit": "57b2f7e28576f98e6e5646c8e508821ef92cb646",
+        "tree": "979709ae043d5ec4e3dbcdaf47e8451e366f55c1"
+      },
+      "commands": [
+        {
+          "name": "weave",
+          "package": "."
+        }
+      ]
+    }
+  ]
+}
