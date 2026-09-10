@@ -16,6 +16,7 @@ check:
 	$(GO) vet ./...
 	$(PYTHON) -m unittest discover -s tests -p test_business.py
 	$(PYTHON) -m unittest discover -s tests -p test_protocol.py
+	$(PYTHON) -m unittest discover -s tests -p test_receipts.py
 	$(PYTHON) -m unittest discover -s tests -p test_research_domain.py
 	$(PYTHON) -m unittest discover -s tests -p test_release.py
 

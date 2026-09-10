@@ -154,7 +154,7 @@ class IntegrationTests(unittest.TestCase):
             final = next(row for row in rows if row["id"] == "synthesis")
             self.assertIn("ply-verifier", [ref["kind"] for ref in final["evidence"]])
             snapshot = json_rows(read(Path(final["result"]).parent / "verified.jsonl"))
-            verdicts = [e["data"]["body"]["outcome"] for e in snapshot if e["type"] == "note" and e["data"].get("kind") == "ply.verifier/v1"]
+            verdicts = [e["data"]["body"]["outcome"] for e in snapshot if e["type"] == "note" and e["data"].get("kind") in ("ply.verifier/v1", "ply.verifier/v2")]
             self.assertIn("rejected", verdicts)
             self.assertIn("accepted", verdicts)
 

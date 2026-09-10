@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Finite business recipe: Weave selects work; Tend executes; Ask owns logs."""
 import argparse
+import base64
+import binascii
 import fcntl
 import json
 import os
@@ -140,9 +142,10 @@ def model_evidence(root, tools, envelope, payload, taskdir):
             data = event.get("data", {})
             body = data.get("body", {})
             if (event.get("type") == "note" and data.get("source") == "ply"
-                    and data.get("kind") == "ply.verifier/v1" and body.get("outcome") == "accepted"
-                    and body.get("exit_code") == 0 and all(body.get(k) == v for k, v in expected.items())):
-                if i + 1 >= len(events) or events[i+1].get("type") != "seal":
+                    and accepted_ply_receipt(data.get("kind"), body)
+                    and all(body.get(k) == v for k, v in expected.items())):
+                if (i + 1 >= len(events) or events[i+1].get("type") != "seal"
+                        or events[i+1].get("data", {}).get("through") != event.get("seq")):
                     raise ValueError("Ply verifier receipt has no adjacent seal")
                 matching.append({"kind": "ply-verifier", "ref": str(session) + "#" + str(event["seq"]),
                                  "seal_sha256": events[i+1]["data"]["sha256"], **expected})
@@ -152,6 +155,23 @@ def model_evidence(root, tools, envelope, payload, taskdir):
     # Preserve the snapshot only as a disposable view of the verified log.
     replace(taskdir / "verified.jsonl", snapshot)
     return matches[-2:] if "ply_verifier" in envelope else [matches[-1]]
+
+
+def accepted_ply_receipt(kind, body):
+    if kind not in ("ply.verifier/v1", "ply.verifier/v2"):
+        return False
+    output = body.get("output", "")
+    if not isinstance(output, str):
+        return False
+    try:
+        captured = (base64.b64decode(output, validate=True) if kind == "ply.verifier/v2"
+                    else output.encode("utf-8"))
+    except (ValueError, binascii.Error, UnicodeError):
+        return False
+    return (body.get("outcome") == "accepted" and body.get("exit_code") == 0
+            and not body.get("killed") and not body.get("interrupted") and not body.get("output_incomplete") and not body.get("start_error")
+            and body.get("elided_bytes", 0) == 0 and body.get("output_bytes") == len(captured)
+            and body.get("output_sha256") == digest(captured))
 
 
 def observe(root, tasks, tools, env, domain=business):
