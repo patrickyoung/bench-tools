@@ -14,6 +14,12 @@ ask \- put a question through a language model
 .RI [ flags ]
 .RI [ session ]
 .br
+.B ask append
+[\fIflags\fR] [\fItext ...\fR]
+.br
+.B ask context
+[\fIflags\fR] [\fIsession\fR]
+.br
 .B ask note
 .B \-s
 .I source
@@ -103,6 +109,19 @@ The source snapshot must pass replay verification before a model call or any
 new file is created. An incomplete or failed summary leaves its own session
 for inspection, creates no handoff session, and does not move current.
 .IP
+With
+.BI \-at " n" ,
+compact only at or above the estimated token budget described by
+.BR "ask context" .
+Below the threshold, return the source's absolute path without a provider
+call or a new session. Zero (the default) is unconditional compaction;
+negative values are errors. The policy is explicit and provider-neutral.
+.IP
+The handoff prompt preserves the full goal, constraints, recent observations,
+acceptance checks, unresolved effects, and pending job handles, including
+when continuing an earlier handoff. Summary quality still depends on the
+chosen model and requires task-level evaluation.
+.IP
 The new session lands beside the source.
 .B current
 moves only if the source was the current session: compacting the
@@ -124,6 +143,36 @@ self\-contained file and
 names one, so
 .BR cp (1)
 is fork.
+.TP
+.B ask append \fR\-s \fIsource\fR [\fIflags\fR] [\fItext ...\fR]
+Append an attributed user message without calling a model. Text comes from
+arguments or standard input and must be UTF-8 (16 MB maximum). The existing
+session is selected by
+.B \-f
+or exactly current. No session or current pointer is created.
+The writer locks and verifies the session, appends the message and its
+required prefix seal, then fsyncs before success. Standard output is empty.
+The message is folded into the next request exactly once; notes remain
+non-conversational records. Context evidence manifests index exact message
+bytes. Binary observations must be explicitly encoded before appending.
+.TP
+.B ask context \fR[\fIflags\fR] [\fIsession\fR]
+Read and verify a session, then report estimated context use without a model
+call. With no session, inspect current or the most recently written session.
+.B \-json
+emits usage, its baseline sequence, pending bytes and messages, the estimate,
+and whether pending media or opaque content has unmeasured token cost.
+.BI \-limit " n"
+adds estimated headroom against a caller-selected token budget.
+The baseline is normalized provider input plus generated tokens, including
+cached input and reasoning. Older usage fields use a conservative sum labeled
+legacy_usage_allowance. New messages use one token per serialized byte plus
+32 tokens of framing each. These are cautious allowances, not a tokenizer
+or a promise that the next request fits. The latest logged request supplies
+the effective system prompt; a changed prompt after the measured turn adds
+its full byte allowance. Unlogged system, schema, or input changes cannot be
+predicted. Media and provider-specific replay can change the cost. Leave room
+for upcoming input and output.
 .TP
 .B ask note \fR\-s \fIsource\fR [\fIflags\fR] [\fItext ...\fR]
 Record attributed text in a session. The text comes from the arguments, or
@@ -269,6 +318,22 @@ or ignore none. Cerebras reasoning is requested in parsed form, separate
 from answer text. Both adapters log reasoning and replay it in its native
 field. DeepSeek ignores historical reasoning when no tools are supplied.
 .TP
+.BI \-verbosity " level"
+Answer detail:
+.IR low ,
+.IR medium ,
+or
+.IR high .
+Defaults to
+.BR $ASK_VERBOSITY ;
+an empty value leaves the choice to the provider.
+OpenAI and openai-codex send this as Responses
+.BR text.verbosity .
+Other adapters ignore it. This is request metadata, separate from reasoning
+effort and recorded by replay. It does not change the prompt or cap output.
+The flag overrides the environment for this invocation, including an
+explicit empty value; a continued session does not inherit it.
+.TP
 .BI \-max\-tokens " n"
 Maximum output tokens for the answer. Default 16384 on adapters that support
 it. The value must be positive; zero does not mean the provider default.
@@ -339,6 +404,7 @@ routing fields and provider wire transformations are not part of this view.
 takes
 .BR \-m ,
 .BR \-d ,
+.BR \-verbosity ,
 .B \-header\-fd
 and
 .B \-q
@@ -348,8 +414,10 @@ names the model that writes the handoff note and defaults to the one the
 source session recorded, not to
 .BR $ASK_MODEL .
 .PP
+.B append
+and
 .B note
-takes
+take
 .BR \-s ,
 .BR \-f ,
 .BR \-d ,
@@ -510,6 +578,12 @@ Default for
 .B ASK_SYSTEM
 Default system prompt, overriding the built\-in one and overridden by
 .BR \-S .
+.TP
+.B ASK_VERBOSITY
+Default for
+.B \-verbosity
+on both ordinary calls and
+.BR "ask compact" .
 .TP
 .B ASK_DIR
 Default for

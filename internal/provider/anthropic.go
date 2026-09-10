@@ -104,6 +104,7 @@ func (p *Anthropic) Stream(ctx context.Context, req Request) iter.Seq2[Chunk, er
 			CacheRead:  int(msg.Usage.CacheReadInputTokens),
 			CacheWrite: int(msg.Usage.CacheCreationInputTokens),
 		}
+		u.ContextTokens = u.In + u.CacheRead + u.CacheWrite + u.Out
 		if !yield(Chunk{Kind: KindUsage, Usage: &u}, nil) {
 			return
 		}

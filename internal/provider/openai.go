@@ -128,6 +128,7 @@ func (p *OpenAI) Stream(ctx context.Context, req Request) iter.Seq2[Chunk, error
 			Reasoning: int(final.Usage.OutputTokensDetails.ReasoningTokens),
 			CacheRead: int(final.Usage.InputTokensDetails.CachedTokens),
 		}
+		u.ContextTokens = u.In + u.Out
 		if !yield(Chunk{Kind: KindUsage, Usage: &u}, nil) {
 			return
 		}
@@ -188,6 +189,7 @@ func (p *OpenAI) params(req Request) responses.ResponseNewParams {
 		format.OfJSONSchema.Strict = openai.Bool(true)
 		params.Text.Format = format
 	}
+	params.Text.Verbosity = responses.ResponseTextConfigVerbosity(req.Verbosity)
 	var items responses.ResponseInputParam
 	for _, m := range req.Messages {
 		if m.Role == Assistant {

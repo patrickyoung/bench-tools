@@ -167,6 +167,13 @@ $procedure" ask 'Draft a release note.' < changes.txt
 `-S` overrides it for one invocation. A previous `-S` value does not persist
 into the next call.
 
+`-verbosity low|medium|high` controls answer detail on OpenAI Responses,
+including `openai-codex`; other adapters ignore it. The default leaves this
+choice to the provider. Set `ASK_VERBOSITY=low` to keep the setting across
+calls and `ask compact`, or use `-verbosity ""` for the provider default on
+one call. This is request metadata, separate from reasoning effort and
+recorded by replay; it does not change the system prompt or cap output.
+
 ### Use OAuth and gateways
 
 Ask does not have a login command, token store, or refresh loop. Configure a
@@ -230,6 +237,8 @@ capacity exit 2. Always check the exit status when saving or processing output.
 ask [flags] [message ...]
 ask replay [flags] [session]
 ask compact [flags] [session]
+ask context [flags] [session]
+ask append -s SOURCE [flags] [text]
 ask note -s SOURCE [flags] [text]
 ask system
 ask version
@@ -240,3 +249,39 @@ ask help
 Contributors should read [AGENTS.md](AGENTS.md) and run `go test ./...`; add
 `go test -race ./...` for log or stream changes. Report security issues using
 [SECURITY.md](SECURITY.md). [MIT license](LICENSE).
+
+
+Programs that observe an action before stopping can record the result as a
+message without requesting another model turn:
+
+```sh
+printf '%s\n' 'Observed: tests passed; publication is still pending.' |
+  ask append -q -s ply -f review.jsonl
+ask -f review.jsonl 'Continue from the recorded observation.'
+```
+
+`ask append` requires an existing session and explicit attribution. It seals
+and fsyncs a user message, so replay detects incomplete or altered records and
+the next request includes it exactly once. It preserves UTF-8 text from argv
+or stdin (16 MB maximum), keeps Context evidence manifests, and rejects binary
+text rather than silently replacing bytes. Notes remain separate records
+that do not enter the conversation. A checkpoint and an observation do not
+prove an uncertain external effect is safe to repeat.
+
+For proactive context budgets, use `ask context -json -limit 100000 review.jsonl`
+and `ask compact -q -at 100000 review.jsonl`. The latter prints the same absolute
+session path below the threshold, without calling a provider; at or above the
+threshold it prints a new compacted session path. The caller chooses a token
+budget that leaves room for the next input and answer. No model window sizes
+are guessed. Provider-normalized input and output usage supplies the baseline;
+unmeasured new messages use a cautious serialized-byte allowance plus framing.
+Old usage fields use a conservative sum, labeled `legacy_usage_allowance`.
+The latest logged request supplies the effective system prompt; a replacement
+after the measured turn adds its full byte allowance. Estimates cannot predict
+unlogged changes to the system, schema, or next input. They are not exact
+tokenization, and media or provider-specific replay can change the next request
+size. Overflow remains a separate recoverable outcome.
+Compaction retains an inspectable, attributed handoff with the active goal,
+constraints, recent observations, unresolved effects, and pending job handles.
+Repeated compaction still requires evaluating the chosen summarizer's quality;
+Ask does not silently enable a provider-native replacement.

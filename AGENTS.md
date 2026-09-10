@@ -55,8 +55,14 @@ When changing `ask`:
   `replay -check -json` emits the same in-memory event snapshot it verified;
   do not split that producer contract back into a check followed by a reread.
   A failing verifier result is both a record and a `user` message because the
-  model has to act on it; a passing one is only a record, because the run is
-  over and it is addressed to a later reader;
+  model has to act on it; a passing one is a record addressed to later readers.
+  Later operator guidance may continue the conversation after either outcome;
+- **an appended observation is a message.** `ask append` accepts explicit
+  UTF-8 input from argv or stdin, attributes it with the required source, and
+  appends a user event with an immediate durable prefix seal. It makes no model
+  call. Replay rejects a missing or changed seal, and the ordinary fold makes
+  the observation available to the next provider request. Keep notes excluded
+  from the fold and keep the two command contracts distinct;
 - **model-written text in a conversation is stamped, or it does not go in.**
   `ask compact` is the one thing that puts words in a conversation that
   nobody said, and it is admissible only because every part of it is

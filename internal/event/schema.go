@@ -113,11 +113,16 @@ type UserData struct {
 
 	// Source names who wrote this message when it was not the person at
 	// the terminal. Empty means argv or stdin, which is every message ask
-	// has ever recorded except the note that opens a compacted session.
+	// records except compaction summaries and explicitly appended messages.
 	// It does not reach the provider and it is not folded: it exists so
 	// that model-written text in a conversation can always be told apart
 	// from what was actually asked, by a reader and by a program.
 	Source string `json:"source,omitempty"`
+
+	// Sealed messages were explicitly appended without a model call. Their
+	// immediate prefix seal makes a crash before durable acknowledgment
+	// distinguishable from a complete observation. Old user events omit it.
+	Sealed bool `json:"sealed,omitempty"`
 }
 
 // Content is the message as the provider sees it. Exactly one of the two

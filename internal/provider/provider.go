@@ -50,8 +50,9 @@ type Request struct {
 	Digest string `json:"digest,omitempty"`
 
 	MaxTokens int             `json:"max_tokens,omitempty"`
-	Effort    string          `json:"effort,omitempty"` // reasoning effort: "", "off", "low", "medium", "high"
-	Schema    json.RawMessage `json:"schema,omitempty"` // native structured output; never a prompt instruction
+	Effort    string          `json:"effort,omitempty"`    // reasoning effort: "", "off", "low", "medium", "high"
+	Verbosity string          `json:"verbosity,omitempty"` // answer detail: "", "low", "medium", "high"; unsupported adapters ignore it
+	Schema    json.RawMessage `json:"schema,omitempty"`    // native structured output; never a prompt instruction
 
 	// Session names the conversation this call belongs to, for providers
 	// that route by it. It is not model input — nothing about the answer
@@ -172,6 +173,13 @@ type Usage struct {
 	CacheRead  int `json:"cache_read,omitempty"`
 	CacheWrite int `json:"cache_write,omitempty"`
 
+	// ContextTokens is the provider-normalized input plus generated token
+	// footprint of this turn, including cached input and reasoning. It is
+	// a proactive-compaction baseline, not a guarantee of the next request's
+	// size: replay and newly appended messages can change that. Zero means
+	// unavailable in older logs or responses without usage.
+	ContextTokens int `json:"context_tokens,omitempty"`
+
 	// USD for this turn, as the provider billed it — not an estimate from a
 	// rate table. Only some report it; zero means "not said", never "free".
 	Cost float64 `json:"cost,omitempty"`
@@ -183,6 +191,7 @@ func (u *Usage) Add(v Usage) {
 	u.Reasoning += v.Reasoning
 	u.CacheRead += v.CacheRead
 	u.CacheWrite += v.CacheWrite
+	u.ContextTokens += v.ContextTokens
 	u.Cost += v.Cost
 }
 

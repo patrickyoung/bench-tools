@@ -112,6 +112,7 @@ func streamCompletion(ctx context.Context, c *openai.Client, name, reasoningFiel
 					Reasoning: int(u.CompletionTokensDetails.ReasoningTokens),
 					CacheRead: int(u.PromptTokensDetails.CachedTokens),
 				}
+				usage.ContextTokens = usage.In + usage.Out
 				if name == "deepseek" {
 					usage.CacheRead = extraInt(u.JSON.ExtraFields, "prompt_cache_hit_tokens")
 				}

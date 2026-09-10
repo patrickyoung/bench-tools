@@ -37,6 +37,8 @@ const usageText = `ask — put a question through a language model, get the answ
   ask replay [flags] [session]    re-render a session (-check verifies replay)
   ask compact [flags] [session]   continue a full conversation in a fresh one
   ask note -s src [flags] [text]  record text or sealed structured JSON
+  ask append -s src [flags] [text] append a durable sourced user message
+  ask context [flags] [session]  inspect estimated context use and headroom
   ask system                      print the built-in system prompt
   ask version                     print the version (-V, --version)
   ask help                        print this summary (-h, --help)
@@ -75,6 +77,8 @@ flags:
                 mapping varies (default: the provider's own)
                 DeepSeek: medium/xhigh -> high; off disables thinking
                 Cerebras: xhigh -> high; off -> none (model dependent)
+  -verbosity v  answer detail: low, medium, high ($ASK_VERBOSITY)
+                OpenAI and openai-codex only; empty: provider default
   -max-tokens n positive max output tokens (default 16384). Gemini accepts
                 at most 2147483647; openai-codex refuses this flag
   -header-fd n  descriptor containing one HTTP Authorization header;
@@ -84,7 +88,11 @@ flags:
   -json         emit this invocation's raw events instead of the answer
   -q            no progress on stderr; errors still print
 compact only:
+  -at n         compact at estimated token count n (0: unconditional)
+                Below n, print the existing absolute path; no model call.
+                Uses provider usage plus pending message byte allowance.
   -m spec       summarizer provider/model (default: the session's own)
+  -verbosity v  summarizer answer detail ($ASK_VERBOSITY); as above
   -d dir        conversation directory ($ASK_DIR)
   -header-fd n  descriptor containing one HTTP Authorization header
   -q            no progress on stderr; errors still print
@@ -106,11 +114,25 @@ note only:
   -k kind       structured record kind; requires -json and -seal
   -json body    note JSON ("-" reads stdin); requires -k and -seal
   -seal         durably seal the structured note; requires -k and -json
+append only:
+  -s source     program writing the message (required, one word)
+  -f file       existing session (default: current; must be available)
+  -d dir        conversation directory ($ASK_DIR)
+  -q            no progress on stderr; errors still print
+                Text comes from argv or stdin (UTF-8, 16MB maximum).
+                Appends a sealed user message without a model call.
+context only:
+  -d dir        conversation directory ($ASK_DIR)
+  -json         context usage and estimate as JSON
+  -limit n      optional token budget for estimated headroom
+                No model call. Estimates are not exact tokenization;
+                leave room for the next request and output.
 providers: anthropic · openai · openai-codex · gemini · openrouter ·
   deepseek · cerebras
 keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
   DEEPSEEK_API_KEY, CEREBRAS_API_KEY
 env: ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
+  ASK_VERBOSITY (-verbosity)
 gateway: ANTHROPIC_BASE_URL · OPENAI_BASE_URL · OPENAI_CODEX_BASE_URL ·
   GEMINI_BASE_URL · OPENROUTER_BASE_URL · DEEPSEEK_BASE_URL · CEREBRAS_BASE_URL
   replace provider endpoints. Supply
@@ -136,6 +158,10 @@ func run(args []string) int {
 			return cmdCompact(args[1:])
 		case "note":
 			return cmdNote(args[1:])
+		case "append":
+			return cmdAppend(args[1:])
+		case "context":
+			return cmdContext(args[1:])
 		case "version", "-V", "--version":
 			if len(args) != 1 {
 				return fail(errors.New("version takes no arguments"))
@@ -162,7 +188,7 @@ func run(args []string) int {
 }
 
 // verbs is ask's command set, named once for the typo guard.
-var verbs = []string{"replay", "compact", "note", "system", "version", "help"}
+var verbs = []string{"replay", "compact", "note", "append", "context", "system", "version", "help"}
 var retiredVerbs = []string{"login", "logout", "auth"}
 
 // nearVerb returns the command a bare first word was probably meant to be,
@@ -220,6 +246,15 @@ func within1(a, b string) bool {
 	return false
 }
 
+func checkVerbosity(value string) error {
+	switch value {
+	case "", "low", "medium", "high":
+		return nil
+	default:
+		return fmt.Errorf("-verbosity must be low, medium, high, or empty, got %q", value)
+	}
+}
+
 func cmdAsk(args []string) (code int) {
 	fs := flag.NewFlagSet("ask", flag.ContinueOnError)
 	var (
@@ -229,6 +264,7 @@ func cmdAsk(args []string) (code int) {
 		file       = fs.String("f", "", "session log file")
 		dir        = fs.String("d", askDir(), "conversation directory")
 		effort     = fs.String("effort", "", "reasoning effort: off, low, medium, high, xhigh")
+		verbosity  = fs.String("verbosity", os.Getenv("ASK_VERBOSITY"), "answer detail: low, medium, high; empty: provider default")
 		maxTokens  = fs.Int("max-tokens", 16384, "positive max output tokens")
 		headerFD   = fs.Int("header-fd", -1, "descriptor containing an HTTP Authorization header")
 		schemaFile = fs.String("schema", "", "JSON Schema for the answer ('-' reads stdin)")
@@ -260,6 +296,9 @@ func cmdAsk(args []string) (code int) {
 	case "", "off", "low", "medium", "high", "xhigh":
 	default:
 		return fail(fmt.Errorf("-effort must be off, low, medium, high, or xhigh, got %q", *effort))
+	}
+	if err := checkVerbosity(*verbosity); err != nil {
+		return fail(err)
 	}
 	var outputSchema *structuredOutput
 	if *schemaFile != "" {
@@ -346,7 +385,7 @@ func cmdAsk(args []string) (code int) {
 	}
 	c := &chat.Chat{
 		Provider: prov, Model: model, System: system(*sys, sysSet),
-		MaxTokens: *maxTokens, Effort: *effort, Schema: outputSchema.requestSchema(),
+		MaxTokens: *maxTokens, Effort: *effort, Verbosity: *verbosity, Schema: outputSchema.requestSchema(),
 		Evidence: evidence, Log: log,
 	}
 	c.Load(events)

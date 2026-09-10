@@ -71,6 +71,14 @@ func Check(events []Event) error {
 			if err := u.CheckEvidence(); err != nil {
 				return fmt.Errorf("user evidence seq %d: %w", e.Seq, err)
 			}
+			if u.Sealed {
+				if u.Source == "" {
+					return fmt.Errorf("sealed user seq %d has no source", e.Seq)
+				}
+				if i+1 >= len(events) || events[i+1].Type != Seal {
+					return fmt.Errorf("user seq %d is not immediately sealed", e.Seq)
+				}
+			}
 		}
 		if e.Type == Note {
 			n, err := As[NoteData](e)

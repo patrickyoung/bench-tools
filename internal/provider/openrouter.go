@@ -134,6 +134,7 @@ func (p *OpenRouter) Stream(ctx context.Context, req Request) iter.Seq2[Chunk, e
 			CacheWrite: extra.CacheWrite,
 			Cost:       extra.Cost,
 		}
+		u.ContextTokens = u.In + u.Out
 		if !yield(Chunk{Kind: KindUsage, Usage: &u}, nil) {
 			return
 		}

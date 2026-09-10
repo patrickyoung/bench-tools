@@ -34,6 +34,7 @@ type Chat struct {
 	System    string
 	MaxTokens int
 	Effort    string
+	Verbosity string
 	Schema    json.RawMessage
 	Evidence  *event.EvidenceData
 
@@ -80,6 +81,7 @@ func (c *Chat) Say(ctx context.Context, content []provider.Block) (string, error
 		Messages:  msgs,
 		MaxTokens: c.MaxTokens,
 		Effort:    c.Effort,
+		Verbosity: c.Verbosity,
 		Schema:    c.Schema,
 		// The log's own id is the conversation's name, which is how
 		// providers that pin a cache by session find the warm one.

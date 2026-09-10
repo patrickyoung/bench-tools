@@ -128,6 +128,7 @@ func fake(t *testing.T, status int, body string) (dir string, calls *atomic.Int3
 	t.Setenv("ASK_DIR", dir)
 	t.Setenv("ASK_MODEL", "anthropic/test-model")
 	t.Setenv("ASK_SYSTEM", "be terse")
+	t.Setenv("ASK_VERBOSITY", "")
 	t.Setenv("ANTHROPIC_API_KEY", "k")
 	t.Setenv("ANTHROPIC_BASE_URL", srv.URL)
 	t.Setenv("ANTHROPIC_VERTEX_PROJECT_ID", "")
@@ -381,6 +382,8 @@ func TestInvalidInvocationDoesNotOpenSession(t *testing.T) {
 	for _, args := range [][]string{
 		{"-max-tokens", "-1", "-f", path, "hello"},
 		{"-max-tokens", "0", "-f", path, "hello"},
+		{"-verbosity", "off", "-f", path, "hello"},
+		{"compact", "-verbosity", "off", path},
 		{"-m", "gemini/test-model", "-max-tokens", "2147483648", "hello"},
 		{"compact", path, "extra"}, {"replay", path, "extra"},
 		{"system", "extra"}, {"version", "extra"}, {"help", "extra"},
@@ -1522,7 +1525,9 @@ func TestDocsCoverEveryFlag(t *testing.T) {
 		{"", "flags:\n", "compact only:\n"},
 		{"compact", "compact only:\n", "replay only:\n"},
 		{"replay", "replay only:\n", "note only:\n"},
-		{"note", "note only:\n", "keys:"},
+		{"note", "note only:\n", "append only:\n"},
+		{"append", "append only:\n", "context only:\n"},
+		{"context", "context only:\n", "keys:"},
 	} {
 		args := []string{"-q", "-h"} // bypass run's top-level help
 		if c.command != "" {
@@ -1619,7 +1624,7 @@ func TestEnvVarsAreDocumented(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, v := range []string{
-		"ASK_MODEL", "ASK_SYSTEM", "ASK_DIR",
+		"ASK_MODEL", "ASK_SYSTEM", "ASK_DIR", "ASK_VERBOSITY",
 		"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY",
 		"DEEPSEEK_API_KEY", "CEREBRAS_API_KEY",
 		"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL", "OPENAI_CODEX_BASE_URL", "GEMINI_BASE_URL", "OPENROUTER_BASE_URL",

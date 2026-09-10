@@ -85,6 +85,7 @@ func TestMutatingCommandsRequireCurrent(t *testing.T) {
 			before, _ := os.ReadFile(path)
 			for _, args := range [][]string{
 				{"note", "-s", "deploy", "released"},
+				{"append", "-s", "ply", "observation"},
 				{"note", "-s", "verify", "-k", "result/v1", "-json", `{}`, "-seal"},
 				{"compact"},
 			} {

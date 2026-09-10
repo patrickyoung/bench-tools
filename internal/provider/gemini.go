@@ -115,6 +115,7 @@ func (p *Gemini) Stream(ctx context.Context, req Request) iter.Seq2[Chunk, error
 				CacheRead: int(usage.CachedContentTokenCount),
 			}
 		}
+		u.ContextTokens = u.In + u.Out + u.Reasoning
 		if !yield(Chunk{Kind: KindUsage, Usage: &u}, nil) {
 			return
 		}

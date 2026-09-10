@@ -346,7 +346,7 @@ data: [DONE]
 			got = *c.Usage
 		}
 	}
-	want := Usage{In: 5631, Out: 4, CacheRead: 5615, CacheWrite: 13, Cost: 0.00180225}
+	want := Usage{In: 5631, Out: 4, ContextTokens: 5635, CacheRead: 5615, CacheWrite: 13, Cost: 0.00180225}
 	if got != want {
 		t.Errorf("usage = %+v, want %+v", got, want)
 	}
@@ -371,7 +371,7 @@ data: [DONE]
 			got = *c.Usage
 		}
 	}
-	if want := (Usage{In: 10, Out: 2}); got != want {
+	if want := (Usage{In: 10, Out: 2, ContextTokens: 12}); got != want {
 		t.Errorf("usage = %+v, want %+v", got, want)
 	}
 }
@@ -474,7 +474,7 @@ func TestLoggedReplacesMessagesWithDigest(t *testing.T) {
 		{Role: User, Blocks: []Block{{Type: Text, Text: "hi"}}},
 		{Role: Assistant, Blocks: []Block{{Type: Text, Text: "hello"}}},
 	}
-	req := Request{Model: "m", System: "sys", Messages: msgs, MaxTokens: 32, Effort: "low", Session: "sess-1"}
+	req := Request{Model: "m", System: "sys", Messages: msgs, MaxTokens: 32, Effort: "low", Verbosity: "high", Session: "sess-1"}
 	got := req.Logged()
 
 	if got.Messages != nil {
@@ -483,7 +483,7 @@ func TestLoggedReplacesMessagesWithDigest(t *testing.T) {
 	if got.Digest == "" {
 		t.Fatal("Logged set no digest")
 	}
-	if got.Model != "m" || got.System != "sys" || got.MaxTokens != 32 || got.Effort != "low" {
+	if got.Model != "m" || got.System != "sys" || got.MaxTokens != 32 || got.Effort != "low" || got.Verbosity != "high" {
 		t.Errorf("Logged dropped a field that is not derived: %+v", got)
 	}
 	// Session is routing metadata, not part of the call's meaning, and it
