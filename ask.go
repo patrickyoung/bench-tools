@@ -11,8 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -34,11 +37,13 @@ var ErrCheck = errors.New("the check is broken")
 // commands are in the assistant messages, their output is in the user
 // messages, and `ask replay -check` proves the run.
 type Model struct {
-	Bin     string // the ask binary
-	Session string // -f: a thread of ply's own, never the caller's current one
-	Spec    string // -m, empty to let ask decide
-	Effort  string // -effort, empty to let ask and the provider decide
-	System  string // -S, sent every turn so the log says what shaped it
+	Bin       string    // the ask binary
+	Session   string    // -f: a thread of ply's own, never the caller's current one
+	Spec      string    // -m, empty to let ask decide
+	Effort    string    // -effort, empty to let ask and the provider decide
+	Verbosity string    // -verbosity, empty to let ask and the provider decide
+	System    string    // -S, sent every turn so the log says what shaped it
+	Progress  io.Writer // optional live Ask progress; never the answer stream
 }
 
 // Turn sends text and returns the model's reply. The text goes on stdin
@@ -46,11 +51,17 @@ type Model struct {
 // respect ARG_MAX.
 func (m Model) Turn(ctx context.Context, text string) (string, error) {
 	args := []string{"-q", "-f", m.Session}
+	if m.Progress != nil {
+		args = args[1:]
+	}
 	if m.Spec != "" {
 		args = append(args, "-m", m.Spec)
 	}
 	if m.Effort != "" {
 		args = append(args, "-effort", m.Effort)
+	}
+	if m.Verbosity != "" {
+		args = append(args, "-verbosity", m.Verbosity)
 	}
 	cmd := exec.CommandContext(ctx, m.Bin, args...)
 	cmd.Stdin = strings.NewReader(text)
@@ -60,7 +71,10 @@ func (m Model) Turn(ctx context.Context, text string) (string, error) {
 	cmd.Env = append(os.Environ(), "ASK_SYSTEM="+m.System)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	err := cmd.Run()
+	if m.Progress != nil {
+		cmd.Stderr = io.MultiWriter(&errb, m.Progress)
+	}
+	err := runCommand(ctx, cmd)
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
@@ -86,21 +100,75 @@ func (m Model) Turn(ctx context.Context, text string) (string, error) {
 // transcript. ask owns the mechanism, as it owns the log — ply only knows
 // when to reach for it.
 func (m Model) Compact(ctx context.Context) (string, error) {
-	args := []string{"-q", "compact", m.Session}
+	return m.CompactAt(ctx, 0)
+}
+
+// CompactAt asks Ask to measure context and compact only at the explicit
+// token threshold. Zero means unconditional recovery after an overflow.
+func (m Model) CompactAt(ctx context.Context, at int) (string, error) {
+	args := []string{"compact", "-q"}
 	if m.Spec != "" {
 		args = append(args, "-m", m.Spec)
 	}
+	if m.Verbosity != "" {
+		args = append(args, "-verbosity", m.Verbosity)
+	}
+	if at > 0 {
+		args = append(args, "-at", strconv.Itoa(at))
+	}
+	args = append(args, m.Session)
 	cmd := exec.CommandContext(ctx, m.Bin, args...)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	if err := cmd.Run(); err != nil {
+	if err := runCommand(ctx, cmd); err != nil {
 		return "", fmt.Errorf("%s compact: %s", m.Bin, firstLine(errb.String()))
 	}
 	path := strings.TrimSpace(out.String())
-	if path == "" {
-		return "", fmt.Errorf("%s compact: no session on stdout", m.Bin)
+	if !filepath.IsAbs(path) || filepath.Clean(path) != path || strings.ContainsAny(path, "\r\n\x00") {
+		return "", fmt.Errorf("%s compact: expected one clean absolute session path", m.Bin)
+	}
+	info, err := os.Lstat(path)
+	if at > 0 && sameSession(path, m.Session) {
+		// Ask may return the unchanged source below its threshold. Preserve
+		// an explicitly selected source symlink; fresh handoffs stay regular.
+		info, err = os.Stat(path)
+	}
+	if err != nil || !info.Mode().IsRegular() {
+		return "", fmt.Errorf("%s compact: returned session is not a regular file: %s", m.Bin, path)
+	}
+	if at == 0 && sameSession(path, m.Session) {
+		return "", fmt.Errorf("%s compact: returned the full source session", m.Bin)
+	}
+	verify := exec.CommandContext(ctx, m.Bin, "replay", "-check", path)
+	verify.Stderr = &errb
+	if err := runCommand(ctx, verify); err != nil {
+		return "", fmt.Errorf("%s compact: returned session did not replay: %s", m.Bin, firstLine(errb.String()))
 	}
 	return path, nil
+}
+
+func sameSession(a, b string) bool {
+	aa, ae := filepath.Abs(a)
+	bb, be := filepath.Abs(b)
+	if ae == nil && be == nil && aa == bb {
+		return true
+	}
+	left, le := os.Stat(a)
+	right, re := os.Stat(b)
+	return le == nil && re == nil && os.SameFile(left, right)
+}
+
+// Append durably records an observed result in the provider-visible history
+// without making another model call. Ask owns locking, attribution and seals.
+func (m Model) Append(ctx context.Context, text string) error {
+	cmd := exec.CommandContext(ctx, m.Bin, "append", "-q", "-s", verdictSource, "-f", m.Session)
+	cmd.Stdin = strings.NewReader(text)
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	if err := runCommand(ctx, cmd); err != nil {
+		return fmt.Errorf("%s append observation: %s", m.Bin, firstLine(errb.String()))
+	}
+	return nil
 }
 
 // Note records human-readable composition metadata such as loaded skill
@@ -110,7 +178,7 @@ func (m Model) Note(ctx context.Context, source, text string) error {
 	cmd.Stdin = strings.NewReader(text)
 	var errb bytes.Buffer
 	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
+	if err := runCommand(ctx, cmd); err != nil {
 		return fmt.Errorf("%s note: %s", m.Bin, firstLine(errb.String()))
 	}
 	return nil
@@ -129,7 +197,7 @@ func (m Model) Record(ctx context.Context, source, kind string, body any) error 
 	cmd.Stdin = bytes.NewReader(raw)
 	var errb bytes.Buffer
 	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
+	if err := runCommand(ctx, cmd); err != nil {
 		return fmt.Errorf("%s sealed note: %s", m.Bin, firstLine(errb.String()))
 	}
 	return nil
@@ -142,7 +210,7 @@ func briefCat(ctx context.Context, bin, name string) (string, error) {
 	var out, errb bytes.Buffer
 	cmd := exec.CommandContext(ctx, bin, "cat", name)
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	if err := cmd.Run(); err != nil {
+	if err := runCommand(ctx, cmd); err != nil {
 		return "", fmt.Errorf("%s cat %s: %s", bin, name, firstLine(errb.String()))
 	}
 	return out.String(), nil
@@ -178,7 +246,7 @@ func runBriefFind(ctx context.Context, bin string, args []string, task string) (
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdin = strings.NewReader(task)
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	err := cmd.Run()
+	err := runCommand(ctx, cmd)
 	return strings.TrimSpace(out.String()), strings.TrimSpace(errb.String()), err
 }
 

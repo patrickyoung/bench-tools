@@ -185,15 +185,27 @@ keeps no log of its own.
 Every
 .B \-check
 execution after a model report is recorded as a typed
-.B ply.verifier/v1
+.B ply.verifier/v2
 note followed by an Ask prefix seal. The receipt binds the exact normalized
 candidate, verifier command and interpreter, outcome, exit status, captured
 output, timeout, and optional intent contract digest. Rejections, acceptance,
-and broken verifiers are all records; a rejection is also folded into the
+and broken or interrupted verifiers are all records. Forced pipe closure sets
+.B output_incomplete
+and makes verification broken even when the command exited zero.
+Output uses base64;
+its digest binds the decoded original bytes. Updated consumers also read v1.
+A rejection is also folded into the
 conversation as feedback for the next turn. Ask replay verifies sequence and
 seal integrity, so changes, sequence gaps, reordering, or an unsealed record
 inside a retained prefix fail. A prefix seal is not an external proof that the
 file was not truncated after an earlier valid prefix.
+.PP
+Ordinary action observations are attributed, sealed user messages written by
+.B ask append
+before another model call or a stop decision. They remain in resumed context.
+Non-UTF-8 terminal output uses an explicit reversible quoted byte string.
+SIGINT and SIGTERM cancel owned commands and bound process-group cleanup;
+abrupt process death can still leave an uncertain external effect.
 A run with no
 .B \-check
 records no verifier receipt, because done is a program's opinion and there was
@@ -392,6 +404,20 @@ on standard error, never quietly.
 Compactions before giving up. Default 3; 0 is unbounded. A goal that needs
 more than a few has outgrown one run.
 .TP
+.BI \-compact-at " n"
+Before each model turn, ask Ask to compact when its estimated context reaches
+this many tokens. Implies
+.BR \-compact .
+Default 0 waits for overflow. Choose a threshold below the model window to
+reserve output and tool-result headroom. Ask owns token accounting; this is
+an estimate, not a provider guarantee. The compaction limit still applies.
+.TP
+.B \-stream
+Stream model progress to standard error while it is generated. Model text
+is display only until the full reply has been received and parsed.
+.B \-q
+disables streaming. Standard output remains the final report alone.
+.TP
 .BI \-turns " n"
 Model turns before giving up. Default 50. Zero is explicitly unbounded.
 This is the invocation-wide liveness bound: it also stops a model that keeps
@@ -399,9 +425,16 @@ writing commands and never stops for the check.
 .TP
 .BI \-steer " file"
 Read operator steering from a regular append-only UTF-8 line file immediately
-before each model turn. Only complete newline-terminated lines are consumed.
+before each model turn, after generation before using its action or report,
+after an approval call, and after a candidate check before finalization.
+Guidance arriving during generation defers that response without execution
+or acceptance; guidance arriving during a check defers finalization.
+An approved action deferred by guidance retains its spent grant as unused
+historical evidence; a later proposal requires a new approval request.
+Running commands are not interrupted by steering.
+Only complete newline-terminated lines are consumed.
 Each line is limited to 8 KiB and each pending batch to 64 KiB. Steering is
-ordinary implementation guidance recorded in the next Ask user turn; it does
+ordinary implementation guidance recorded in Ask user history; it does
 not change tools, the verifier, or an admitted outcome contract.
 .TP
 .BI \-may-job " job"
@@ -469,6 +502,18 @@ Reasoning effort, passed literally to
 The default is unset; ask and its provider decide. Set
 .B PLY_EFFORT
 to give nested Ply workers the same value.
+.TP
+.BI \-verbosity " level"
+Response verbosity, passed literally to
+.BR ask (1)
+for model turns and compaction summaries. Defaults to low, or
+.BR PLY_VERBOSITY .
+An empty value omits the option and lets Ask choose. Supported OpenAI Responses
+models honor this preference; other providers may ignore it. This controls
+generated text rather than hiding the typescript as
+.B \-q
+does. The default prompt requests concise reports while preserving the user's
+requested detail and complete artifacts.
 .TP
 .BI \-S " text"
 System prompt, replacing the default. The protocol lives in the default, so
@@ -542,6 +587,12 @@ Default reasoning effort, as
 Ply passes the value literally to Ask and exports it to commands so nested
 Ply workers inherit the same policy.
 .TP
+.B PLY_VERBOSITY
+Default response verbosity, as
+.BR \-verbosity .
+Ply defaults to low when this variable is absent. Commands inherit its exact
+value, including an explicit empty value, so nested Ply workers keep the policy.
+.TP
 .B PLY_DIR
 Where sessions live. Default
 .BR ~/.ply/sessions ,
@@ -607,6 +658,7 @@ Models, keys and gateways belong to
 passes it
 .BR \-m ,
 .BR \-effort ,
+.BR \-verbosity ,
 .BR \-f ,
 .B \-q
 and the system prompt in

@@ -1,9 +1,31 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 )
+
+func TestVerifierReceiptPreservesBinaryOutput(t *testing.T) {
+	output := []byte{0xff, 0x00, 'x', '\n'}
+	r := Result{Cmd: "binary-check", Output: string(output), Code: 0, Total: int64(len(output))}
+	receipt := receiptFor("", "candidate", "answer", Runner{Shell: "/bin/sh"}, r)
+	raw, err := json.Marshal(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded verifierReceipt
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if verifierReceiptKind != "ply.verifier/v2" || !bytes.Contains(raw, []byte(`"output":"/wB4Cg=="`)) {
+		t.Fatalf("receipt version or encoding = %s %s", verifierReceiptKind, raw)
+	}
+	if !bytes.Equal(decoded.Output, output) || decoded.OutputSHA256 != digestText(string(decoded.Output)) || decoded.OutputBytes != int64(len(decoded.Output)) {
+		t.Fatalf("binary output did not round-trip: %+v", decoded)
+	}
+}
 
 func TestVerifierReceiptBindsExactExecution(t *testing.T) {
 	checker := Runner{Shell: "/bin/zsh", Dir: "/work"}
@@ -29,6 +51,11 @@ func TestVerifierInfrastructureCannotBecomeAcceptanceOrRejection(t *testing.T) {
 		"truncated evidence": {Code: 0, Total: 1000, Elided: 488},
 		"unexpected status":  {Code: 7},
 		"timeout":            {Code: exitTimeout, Killed: true},
+		"cancelled zero":     {Code: 0, Killed: true},
+		"cancelled reject":   {Code: 1, Killed: true},
+		"interrupted zero":   {Code: 0, Interrupted: true},
+		"interrupted reject": {Code: 1, Interrupted: true},
+		"incomplete output":  {Code: 0, OutputIncomplete: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if got := verifierOutcome(result); got != "broken" {

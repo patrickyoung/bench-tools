@@ -47,6 +47,9 @@ func (l *Loop) recordExternalActionBoundary(ctx context.Context, script string, 
 	if l.Model.Session == "" || l.ActionBoundary == nil {
 		return fmt.Errorf("record external action boundary: missing session or adapter policy")
 	}
+	if result.Interrupted {
+		detail += "; interrupted; action effects may exist"
+	}
 	receipt := externalActionBoundaryReceipt{
 		Version: 1, ContractID: l.ContractID,
 		AdapterPath: l.ActionBoundary.Path, AdapterSHA256: l.ActionBoundary.SHA256,

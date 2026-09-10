@@ -39,8 +39,10 @@ type Result struct {
 	Output                string
 	Code                  int
 	Elided                int64 // bytes dropped from the middle of Output
-	Total                 int64 // bytes the command actually produced
+	Total                 int64 // command output bytes, or the startup diagnostic size
 	Killed                bool
+	Interrupted           bool // caller canceled; even an exit 0 cannot establish completion
+	OutputIncomplete      bool // inherited output pipes outlived the bounded drain
 	StartError            bool // interpreter could not start; never an ordinary verifier rejection
 	ConfinementFailed     bool // Cage could not establish or preserve the action boundary
 	ConfinementMayHaveRun bool
@@ -175,30 +177,10 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	cmd.Stdin = stdin
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
 	cmd.Env = append(append(os.Environ(), "PATH="+r.Path), r.Env...)
-	// Its own process group, so a timeout reaches what the script started and
-	// not just the shell that started it. Interrupt first: a nested Ply then
-	// gets a chance to cancel the separate process groups it owns. Escalate
-	// after a short grace period so an uncooperative descendant cannot keep a
-	// pipe open forever.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	done := make(chan struct{})
-	cmd.Cancel = func() error {
-		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
-		go func(pid int) {
-			select {
-			case <-done:
-			case <-time.After(750 * time.Millisecond):
-				_ = syscall.Kill(-pid, syscall.SIGKILL)
-			}
-		}(cmd.Process.Pid)
-		return err
-	}
-	cmd.WaitDelay = 2 * time.Second
-
 	res := Result{Cmd: script, Timeout: r.Timeout}
-	err := cmd.Run()
-	close(done)
+	err := runCommand(ctx, cmd)
 	res.Output, res.Elided, res.Total = out.String()
+	res.Interrupted = errors.Is(ctx.Err(), context.Canceled)
 	if r.Cage != nil {
 		if digestErr := r.Cage.checkDigest(); digestErr != nil {
 			res.Code, res.StartError, res.ConfinementFailed = cageBoundaryExit, true, true
@@ -212,6 +194,14 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 	case ctx.Err() == context.DeadlineExceeded:
 		res.Killed, res.Code = true, exitTimeout
 	case err == nil:
+	case errors.Is(err, exec.ErrWaitDelay):
+		// The interpreter ran, but a descendant kept an output pipe open
+		// past the drain bound. Keep the observed bytes and actual exit;
+		// incomplete evidence cannot establish successful verification.
+		res.OutputIncomplete = true
+		if cmd.ProcessState != nil {
+			res.Code = cmd.ProcessState.ExitCode()
+		}
 	case errors.As(err, &ee):
 		res.Code = ee.ExitCode()
 		if r.Cage != nil && res.Code == cageBoundaryExit {
@@ -226,10 +216,18 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 				res.Code = 128
 			}
 		}
+	case res.Interrupted:
+		// CommandContext reports context.Canceled even when the program
+		// catches the interrupt and exits 0. Keep that exit status while
+		// retaining Interrupted as the separate completion boundary.
+		if cmd.ProcessState == nil || !cmd.ProcessState.Success() {
+			res.Code = 128 + int(syscall.SIGINT)
+		}
 	default:
 		// The selected shell itself failed to start. That is ply's problem,
 		// not the model's, but the model still has to see something.
 		res.Output, res.Code, res.StartError = err.Error(), 1, true
+		res.Total, res.Elided = int64(len(res.Output)), 0
 		if r.Cage != nil {
 			res.Code, res.ConfinementFailed = cageBoundaryExit, true
 			res.ConfinementDetail = "Cage could not start; action did not run"
@@ -291,6 +289,10 @@ func (r Result) Typescript() string {
 		s.WriteString("[ply: command interpreter could not start] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Killed:
 		s.WriteString("[ply: killed after " + r.Timeout.String() + "] exit " + strconv.Itoa(r.Code) + "\n")
+	case r.Interrupted:
+		s.WriteString("[ply: interrupted; command effects may exist] exit " + strconv.Itoa(r.Code) + "\n")
+	case r.OutputIncomplete:
+		s.WriteString("[ply: output pipes did not close; observed output is incomplete] exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Code != 0:
 		s.WriteString("exit " + strconv.Itoa(r.Code) + "\n")
 	case r.Output == "":

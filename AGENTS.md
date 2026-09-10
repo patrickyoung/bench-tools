@@ -44,10 +44,11 @@ When changing `ply`:
   test ./...` needed a toolbox holding `go`, `git` and a linker;
 
 - **a verifier run earns a durable receipt before it earns an outcome.** Every
-  candidate check writes one typed `ply.verifier/v1` record through Ask,
+  candidate check writes one typed `ply.verifier/v2` record through Ask,
   followed by Ask's prefix seal. It binds the normalized candidate, exact
   verifier and interpreter, status, output, and optional admitted-contract
-  digest. Rejection, acceptance, and verifier breakage all count. Receipt
+  digest. Output is base64 and its digest binds decoded bytes. Rejection,
+  acceptance, interruption, and verifier breakage all count. Receipt
   failure is infrastructure failure; never print successful completion first
   and promise to record it later;
 
@@ -115,13 +116,16 @@ When changing `ply`:
 
 - **keep the log somebody else's.** The conversation is an `ask` session and
   `ply` writes no log of its own, so `ask replay -check` proves an entire
-  run. Anything worth recording — a command, its output, its exit status,
+  run. Ordinary action observations and rejected verifier results are sealed with `ask append` before a
+  cap, interruption, or another model call, so they also reach resumed context.
+  Terminal boundary failures retain observations in their existing receipts;
+  keep those terminal and adjacent to the exact approval where required.
+  Anything worth recording — a command, its output, its exit status,
   the check's verdict — goes in the text of the conversation, where it is
   already proven, rather than into a second file that can drift. The verdict
-  is an `ask note`, written at exactly the two points the check reaches a
-  terminal answer and nowhere else: a failing check the loop carries on from
-  is already in the conversation as the rejection the model was handed, and
-  recording it twice would say it happened twice. A run with **no** check
+  is an `ask note`, sealed once for each candidate check. A rejection also
+  reaches the model as feedback; it is not a second verifier execution.
+  A run with **no** check
   writes none — done is a program's opinion, and with no program there is no
   opinion to record. Do not weaken that into a guess: the absence is what
   stops `hone` mistaking the model's word for a check. `ply` records what
@@ -175,9 +179,9 @@ runtime. Each has an answer, and the answer is in `GUIDE.md`:
   still wrong. Bounds are per invocation because the process is the unit;
   recovering them would poison a session that spent its budget, with no way
   to say "try again", which contradicts `-B` and contradicts `make`;
-- **`ply ps`.** A session that finished wrote a `done` event. Asking which
-  did not is a pipeline over a directory, and it goes in the guide as one.
-  A verb here is the first step to `ply` supervising itself;
+- **`ply ps`.** Ask's `done` ends one model call, not a Ply invocation.
+  The supervisor owns live process handles and exit statuses; verifier
+  receipts describe checks. A verb here would make Ply supervise itself;
 - **a `-sandbox` flag.** Shipping one means claiming one, and the claim is
   what `SECURITY.md` exists to prevent. The container recipe is a recipe;
 - **a permission prompt, now with a diff.** `PLY_PROPOSE` is honoured by

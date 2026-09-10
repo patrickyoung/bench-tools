@@ -114,6 +114,8 @@ d=`+dir+`
 echo "$@" >> "$d/argv.log"
 [ -z "${ASK_SYSTEM-}" ] || printf '%s' "$ASK_SYSTEM" > "$d/system"
 cat >> "$d/stdin.log"
+if [ "${1-}" = append ]; then exit ${FAKE_ASK_APPEND_EXIT:-0}; fi
+if [ "${1-}" = replay ]; then exit 0; fi
 if [ "${1-}" = note ]; then
   case " $* " in
     *" ply.approval/v1 "*|*" ply.approval/v2 "*)
@@ -1195,6 +1197,7 @@ func TestExplicitDelegationRunsConcurrentIsolatedChildrenAndReturnsFailures(t *t
 	script := `#!/bin/sh
 set -eu
 d=` + shellQuote(askdir) + `
+if [ "${1-}" = append ]; then cat > "$d/root-merge-input"; exit 0; fi
 session=
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -1270,8 +1273,7 @@ done
 REPLY
   exit 0
 fi
-if grep -q '\[001 rc=0\]' "$input"; then
-  cp "$input" "$d/root-merge-input"
+if [ -f "$d/root-merge-input" ] && grep -q '\[001 rc=0\]' "$d/root-merge-input"; then
   printf 'Root synthesis: alpha evidence accepted; beta failed with exit 2.\n'
   exit 0
 fi
@@ -1849,11 +1851,11 @@ func TestCompactCarriesOnThroughAFullWindow(t *testing.T) {
 	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
 	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
 d=`+askdir+`
-for a in "$@"; do
-  if [ "$a" = compact ]; then echo compacted >> "$d/compacted"; echo `+fresh+`; exit 0; fi
-done
+if [ "$1" = compact ]; then echo compacted >> "$d/compacted"; touch `+fresh+`; echo `+fresh+`; exit 0; fi
+[ "$1" != replay ] || exit 0
 echo "$@" >> "$d/argv.log"
 cat >> "$d/stdin.log"
+[ "$1" != append ] || exit 0
 [ -f "$d/compacted" ] || { echo "ask: context window is full" >&2; exit 2; }
 echo done
 `, 0o755)
@@ -1871,9 +1873,10 @@ echo done
 	if !strings.Contains(stderr, "compacted into") {
 		t.Errorf("stderr does not report the compaction:\n%s", stderr)
 	}
-	// The turn that overflowed is sent again, into the new session.
-	if sent := read(t, filepath.Join(askdir, "stdin.log")); strings.Count(sent, "the goal") != 2 {
-		t.Errorf("the message was not re-sent after compacting:\n%s", sent)
+	// The failed turn is retried and the original goal is independently
+	// retained in the new session before publishing its pointer.
+	if sent := read(t, filepath.Join(askdir, "stdin.log")); strings.Count(sent, "the goal") != 3 || !strings.Contains(sent, "PLY ACTIVE GOAL") {
+		t.Errorf("the goal or failed turn was lost after compacting:\n%s", sent)
 	}
 	if argv := read(t, filepath.Join(askdir, "argv.log")); !strings.Contains(argv, fresh) {
 		t.Errorf("the loop did not move into the compacted session:\n%s", argv)
@@ -1886,9 +1889,9 @@ echo done
 func TestCompactionIsBounded(t *testing.T) {
 	work, _, askdir := sandbox(t, "unused")
 	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
-for a in "$@"; do
-  if [ "$a" = compact ]; then echo `+filepath.Join(t.TempDir(), "n.jsonl")+`; exit 0; fi
-done
+if [ "$1" = compact ]; then path=$(mktemp `+askdir+`/compact.XXXXXX); echo "$path"; exit 0; fi
+[ "$1" != replay ] || exit 0
+[ "$1" != append ] || { cat >/dev/null; exit 0; }
 echo "ask: context window is full" >&2; exit 2
 `, 0o755)
 	code, _, stderr := runPly(t, "-sh", "-C", work, "-compact", "-compactions", "2", "goal")
@@ -1905,9 +1908,8 @@ func TestSessionOutTracksTheCurrentSession(t *testing.T) {
 	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
 	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
 d=`+askdir+`
-for a in "$@"; do
-  if [ "$a" = compact ]; then touch "$d/compacted"; echo `+fresh+`; exit 0; fi
-done
+if [ "$1" = compact ]; then touch "$d/compacted" `+fresh+`; echo `+fresh+`; exit 0; fi
+[ "$1" != replay ] || exit 0
 cat >/dev/null
 [ -f "$d/compacted" ] || exit 2
 echo done
@@ -2006,9 +2008,8 @@ func TestCheckpointTracksCompaction(t *testing.T) {
 	fresh := filepath.Join(t.TempDir(), "fresh.jsonl")
 	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
 d=`+askdir+`
-for a in "$@"; do
-  if [ "$a" = compact ]; then touch "$d/compacted"; echo `+fresh+`; exit 0; fi
-done
+if [ "$1" = compact ]; then touch "$d/compacted" `+fresh+`; echo `+fresh+`; exit 0; fi
+[ "$1" != replay ] || exit 0
 cat >/dev/null
 [ -f "$d/compacted" ] || exit 2
 echo done
@@ -2186,6 +2187,7 @@ func TestDefaultTurnLimitStopsContinuousCommands(t *testing.T) {
 	write(t, filepath.Join(askdir, "ask"), `#!/bin/sh
 d=`+askdir+`
 cat >/dev/null
+[ "$1" != append ] || exit 0
 n=$(cat "$d/n" 2>/dev/null || echo 0)
 n=$((n+1))
 echo "$n" > "$d/n"
@@ -2305,7 +2307,7 @@ func TestEveryFlagAndVerbIsDocumented(t *testing.T) {
 			}
 		}
 	}
-	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_ACTION_SHELL", "PLY_EFFORT", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
+	for _, env := range []string{"PLY_TOOLS", "PLY_SHELL", "PLY_ACTION_SHELL", "PLY_EFFORT", "PLY_VERBOSITY", "PLY_DIR", "PLY_DEPTH", "ASK", "BRIEF", "NO_COLOR"} {
 		if !strings.Contains(help, env) {
 			t.Errorf("%s is not in ply help", env)
 		}

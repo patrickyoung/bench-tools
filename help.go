@@ -64,9 +64,12 @@ flags:
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
+  -compact-at n  compact at Ask's estimated token count; implies -compact
+                (default 0, wait for overflow; reserve output headroom)
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
   -turns n      model turns before giving up (default 50, 0 = unbounded)
-  -steer file   read appended UTF-8 lines between model turns
+  -steer file   read appended lines before turns and before action/report use
+  -stream       stream model progress to stderr; -q disables it
   -may-job job  require exact May approval before every model action
   -cage         confine approved actions; needs -may-job and -contract-id
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
@@ -74,6 +77,7 @@ flags:
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
+  -verbosity v  response verbosity, passed to ask (default low; empty omits)
   -goal-file file  read the task from a bounded regular file, never argv
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
@@ -85,14 +89,13 @@ flags:
   -q            no typescript on stderr
 
 env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_ACTION_SHELL (-action-shell)
-     · PLY_EFFORT (-effort) · PLY_DIR
+     · PLY_EFFORT (-effort) · PLY_VERBOSITY (-verbosity) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
      (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
      · PLY_MAY_JOB · NO_COLOR
-     Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
-     -q and nothing else. Commands run with $PLY naming this binary and
-     $PLY_DEPTH
-     counting the nesting, so a tool can start another ply: a sub-agent is
+     Models and keys belong to ask. Ask also appends observed results,
+     compacts context, and verifies sessions. Commands inherit $PLY (this
+     binary) and $PLY_DEPTH (the nesting count). A sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
       bound, protocol, or context · 3 approval declined · 75 approval required

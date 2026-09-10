@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -47,7 +48,7 @@ func run(args []string) int {
 		case "system":
 			return systemCmd(args[1:])
 		case "capabilities":
-			fmt.Printf("{\"schema\":\"ply.capabilities/v1\",\"version\":%q,\"features\":{\"action_boundary_receipt\":\"ply.action-boundary/v1\",\"content_addressed_stdin\":true,\"goal_file\":true,\"no_delegate\":true}}\n", version)
+			fmt.Printf("{\"schema\":\"ply.capabilities/v1\",\"version\":%q,\"features\":{\"action_boundary_receipt\":\"ply.action-boundary/v1\",\"content_addressed_stdin\":true,\"goal_file\":true,\"no_delegate\":true,\"durable_observations\":true,\"verifier_receipt\":%q,\"proactive_compaction\":true,\"streaming_progress\":true}}\n", version, verifierReceiptKind)
 			return 0
 		case "version", "-V", "--version":
 			fmt.Println("ply " + version)
@@ -79,6 +80,7 @@ type opts struct {
 	dir             *string
 	spec            *string
 	effort          *string
+	verbosity       *string
 	goalFile        *string
 	sys             *string
 	skills          list
@@ -87,6 +89,8 @@ type opts struct {
 	checkpoint      *string
 	quiet           *bool
 	compact         *bool
+	compactAt       *int
+	stream          *bool
 	compacts        *int
 	contractID      *string
 	steer           *string
@@ -115,6 +119,7 @@ func newOpts(name string) *opts {
 		dir:             fs.String("C", "", "run commands here"),
 		spec:            fs.String("m", "", "provider/model, passed to ask"),
 		effort:          fs.String("effort", os.Getenv("PLY_EFFORT"), "reasoning effort, passed to ask"),
+		verbosity:       fs.String("verbosity", verbosityDefault(), "response verbosity, passed to ask (default low)"),
 		goalFile:        fs.String("goal-file", "", "read the task from a bounded regular file instead of argv"),
 		sys:             fs.String("S", "", "system prompt, replacing the default"),
 		file:            fs.String("f", "", "session log to write"),
@@ -122,14 +127,23 @@ func newOpts(name string) *opts {
 		checkpoint:      fs.String("checkpoint", "", "resume through one locked session pointer"),
 		quiet:           fs.Bool("q", false, "no typescript on stderr"),
 		compact:         fs.Bool("compact", false, "carry on through a full context window"),
+		compactAt:       fs.Int("compact-at", 0, "compact before a turn at this Ask-estimated token count"),
+		stream:          fs.Bool("stream", false, "stream model progress to stderr; -q disables"),
 		compacts:        fs.Int("compactions", 3, "compactions before giving up (0 = unbounded)"),
 		contractID:      fs.String("contract-id", os.Getenv("PLY_CONTRACT_ID"), "intent contract digest recorded in receipts"),
-		steer:           fs.String("steer", "", "append-only operator steering file read between model turns"),
+		steer:           fs.String("steer", "", "operator steering file read before turns and action/report use"),
 		mayJob:          fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
 		cage:            fs.Bool("cage", false, "confine every approved model action with Cage"),
 	}
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
+}
+
+func verbosityDefault() string {
+	if value, ok := os.LookupEnv("PLY_VERBOSITY"); ok {
+		return value
+	}
+	return "low"
 }
 
 // box and runner are shared by work, tools and system so that what those
@@ -162,6 +176,8 @@ func (o *opts) runner(b *Box, self string, depth int, actionShell, checkShell st
 	if effort := strings.TrimSpace(*o.effort); effort != "" {
 		r.Env = append(r.Env, "PLY_EFFORT="+effort)
 	}
+	// An explicit empty value keeps nested invocations from restoring low.
+	r.Env = append(r.Env, "PLY_VERBOSITY="+*o.verbosity)
 	if contractID := strings.TrimSpace(*o.contractID); contractID != "" {
 		r.Env = append(r.Env, "PLY_CONTRACT_ID="+contractID)
 	}
@@ -311,7 +327,7 @@ func work(args []string) int {
 		defer steering.Close()
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// -S replaces the default, and -S "" sends none, as it does for ask.
@@ -416,6 +432,7 @@ func work(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	goalContext := first
 	if initialCheck != nil {
 		first = withInitialCheck(first, *initialCheck)
 	}
@@ -430,14 +447,16 @@ func work(args []string) int {
 			"     outside the tree keeps the record out of the work")
 	}
 	loop := &Loop{
-		Model:          Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, System: system},
+		Goal:           goalContext,
+		Model:          Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, Verbosity: *o.verbosity, System: system},
 		Runner:         runner,
 		Checker:        checker,
 		Check:          *o.check,
 		RequireAction:  *o.requireAct,
 		Loaded:         skillNote(skills),
 		Cycles:         *o.cycles,
-		Compact:        *o.compact,
+		Compact:        *o.compact || *o.compactAt > 0,
+		CompactAt:      *o.compactAt,
 		Compacts:       *o.compacts,
 		Turns:          *o.turns,
 		View:           v,
@@ -445,6 +464,9 @@ func work(args []string) int {
 		Steering:       steering,
 		Approval:       approval,
 		ActionBoundary: actionBoundary,
+	}
+	if *o.stream && !*o.quiet {
+		loop.Model.Progress = os.Stderr
 	}
 	if *o.sessionOut != "" {
 		loop.SessionChanged = func(path string) error {
@@ -490,8 +512,10 @@ func (o *opts) validate() error {
 		return errors.New("-cage requires -may-job")
 	case *o.cage && strings.TrimSpace(*o.contractID) == "":
 		return errors.New("-cage requires -contract-id")
-	case *o.cage && *o.compact:
+	case *o.cage && (*o.compact || *o.compactAt > 0):
 		return errors.New("-cage does not support -compact; start a new explicit invocation instead")
+	case *o.compactAt < 0:
+		return errors.New("-compact-at must be zero or greater")
 	case *o.cycles < 0:
 		return fmt.Errorf("-cycles %d: must be zero or greater", *o.cycles)
 	case *o.turns < 0:

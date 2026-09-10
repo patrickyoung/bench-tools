@@ -18,7 +18,7 @@ func TestPromptTurnsRequestedOutcomesIntoRealWork(t *testing.T) {
 		"preserve unrelated work",
 		"prefer reversible operations",
 		"exactly one nonempty fenced shell block, as its final content",
-		"A turn with no shell block is your final report",
+		"A turn with no shell block is your concluding report",
 		"runs only the first complete command block",
 		"defers every later block",
 		"send the first command now and wait",
@@ -139,6 +139,44 @@ func TestRootPromptMakesExplicitDelegationAVisibleUnixComposition(t *testing.T) 
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("prompt missing %q", want)
+		}
+	}
+}
+
+func TestResponseBoundaryKeepsDelegationNamesInsideBlock(t *testing.T) {
+	for _, delegate := range []bool{false, true} {
+		base := promptWithDelegation(&Box{Shell: true}, defaultShell, defaultShell,
+			"/work", "", time.Minute, 1024, 0, false, delegate)
+		for _, procedure := range []string{"", "\nInspect the assigned files.\n"} {
+			text := composeSystem(base, procedure, true)
+			names := strings.Index(text, "Name the delegated jobs in a short comment at the start of the command block.")
+			if (names >= 0) != delegate {
+				t.Fatalf("delegation recipe present=%v, want %v", names >= 0, delegate)
+			}
+			boundary := strings.LastIndex(text, "RESPONSE BOUNDARY")
+			if boundary < 0 || (delegate && boundary < names) {
+				t.Fatal("final response boundary must follow the advertised delegation recipe")
+			}
+			// Delegation stays visible without requiring prose outside the
+			// action block, including after a procedure is composed.
+			last := strings.Join(strings.Fields(text[boundary:]), " ")
+			for _, want := range []string{
+				"one fenced ply block or a concluding report in your final answer to the current request",
+				"no separate commentary",
+				"End your answer at the closing fence",
+				"starts a new request containing its actual result",
+				"Never simulate results, the caller's messages, or later turns",
+			} {
+				if !strings.Contains(last, want) {
+					t.Errorf("final response boundary missing %q", want)
+				}
+			}
+			if strings.Contains(text, "prose before the command block") || strings.Contains(last, "If the delegation recipe") {
+				t.Fatal("delegation reintroduced an exception for prose outside the block")
+			}
+			if strings.Contains(text, "final report") {
+				t.Fatal("task completion was conflated with the current request's final answer")
+			}
 		}
 	}
 }

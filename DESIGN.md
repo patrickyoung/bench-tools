@@ -183,9 +183,24 @@ check itself with a different model. Anything that makes the sentence "ask,
 run, check, repeat" longer.
 
 `-steer FILE` is the interactive seam: a controller appends ordinary UTF-8
-lines, and Ply reads them only before an Ask turn. The file is transport, not
-a second log or an execution protocol; Ask records the applied guidance in the
+lines, and Ply reads them before an Ask turn, after generation before using
+its response, after approval, and after a candidate check before finalization.
+The file is transport, not a second log or an execution protocol; Ask records the applied guidance in the
 same conversation as the tool results.
+
+Tool results use `ask append`: an attributed, sealed user message with no
+model call. That is the durable observation boundary, so exhausting a turn
+budget cannot discard the result that just happened. Rejected verifier
+results use the same seam before turn and cycle limits. Ask still owns every
+event, lock, fold and seal. Boundary failures keep their existing terminal
+receipts and approval adjacency. A partial response never becomes a command,
+even with live progress enabled by `-stream`.
+
+`-compact-at` asks Ask to measure context and conditionally compact it. Ply
+holds no tokenizer or model window catalogue. After verifying the handoff,
+it retains the original goal in the new session before advancing a checkpoint.
+The normal provider-neutral handoff remains the default; native mechanisms
+and alternate tool protocols require task-level evaluation before changing it.
 
 `-may-job JOB` is the optional execution-authority seam. Immediately before a
 model-authored block, Ply runs the public `may request JOB` filter with one

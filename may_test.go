@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -174,4 +175,68 @@ func TestMayResultCarriesAHeavilyEscapedValidAction(t *testing.T) {
 	if receipt.MayStdoutBytes <= int64(len(body)) || receipt.MayStdoutBytes > maxApprovalResult {
 		t.Fatalf("unexpected expanded result size: input=%d output=%d", len(body)+1, receipt.MayStdoutBytes)
 	}
+}
+
+func TestMayCancellationStopsDescendantsRetainingOutputPipes(t *testing.T) {
+	t.Setenv("PLY_DEPTH", "0")
+	dir := t.TempDir()
+	script, pidfile := stubbornDescendant(t, dir, false)
+	bin := filepath.Join(dir, "may")
+	write(t, bin, "#!/bin/sh\ncat >/dev/null\n"+script+"\n", 0o755)
+	gate, err := openMayGate(bin, "test-cancellation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := gate.Request(ctx, "", "true", newRunner(t, dir, os.Getenv("PATH")))
+		done <- err
+	}()
+	pid := waitForPID(t, pidfile)
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error=%v, want context cancellation", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("May cancellation waited indefinitely for its descendant's pipe")
+	}
+	requireProcessStopped(t, pid)
+}
+
+func TestMayCancellationAfterNonzeroLeaderExitStopsPipeHolder(t *testing.T) {
+	t.Setenv("PLY_DEPTH", "0")
+	dir := t.TempDir()
+	script, pidfile := stubbornDescendant(t, dir, false)
+	script = strings.TrimSuffix(script, "\nwait") + "\nexit 75"
+	bin := filepath.Join(dir, "may")
+	write(t, bin, "#!/bin/sh\ncat >/dev/null\n"+script+"\n", 0o755)
+	gate, err := openMayGate(bin, "test-cancellation-after-exit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := gate.Request(ctx, "", "true", newRunner(t, dir, os.Getenv("PATH")))
+		done <- err
+	}()
+	pid := waitForPID(t, pidfile)
+	// The direct May process is already gone. os/exec has stopped watching
+	// its context, but the child still owns the stdout and stderr writers.
+	requireProcessStopped(t, waitForPID(t, filepath.Join(dir, "group.pid")))
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("error=%v, want context cancellation", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("May cancellation after its leader exited was not bounded")
+	}
+	requireProcessStopped(t, pid)
 }

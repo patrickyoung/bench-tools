@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"time"
+	"unicode/utf8"
 )
 
 // verdictSource attributes verifier receipts and composition notes to the
@@ -22,6 +25,7 @@ const maxStalls = 2
 
 type Loop struct {
 	Model          Model
+	Goal           string // original goal/input, retained verbatim across compaction
 	Runner         Runner // the model's reach: the toolbox
 	Checker        Runner // the caller's reach: the caller's own PATH
 	Check          string // shell command; empty means the model's word is the verdict
@@ -29,6 +33,7 @@ type Loop struct {
 	Loaded         string // what ply put in the system prompt, recorded once the log exists
 	Cycles         int    // rejected candidates before giving up; 0 unbounded
 	Compact        bool   // carry on through a full window by compacting
+	CompactAt      int    // Ask-owned context threshold; 0 waits for overflow
 	Compacts       int    // compactions before giving up; 0 unbounded
 	Turns          int    // model turns before giving up; 0 unbounded
 	View           *view
@@ -44,11 +49,26 @@ type Loop struct {
 // something to say, and throwing it away would make the failure harder to
 // act on than it needs to be.
 func (l *Loop) Run(ctx context.Context, first string) (string, error) {
+	if l.Goal == "" {
+		l.Goal = first
+	}
 	msg, last := first, ""
 	stalls, actions, turns, cycle, compacts := 0, 0, 0, 0, 0
+turnLoop:
 	for {
 		if l.Turns > 0 && turns >= l.Turns {
 			return last, fmt.Errorf("%w: %d", ErrTurns, l.Turns)
+		}
+		if l.CompactAt > 0 && (l.Compacts == 0 || compacts < l.Compacts) {
+			if _, err := os.Stat(l.Model.Session); err == nil {
+				changed, err := l.compact(ctx, l.CompactAt)
+				if err != nil {
+					return last, err
+				}
+				if changed {
+					compacts++
+				}
+			}
 		}
 		if l.Steering != nil {
 			guidance, err := l.Steering.Read()
@@ -66,28 +86,22 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 			// less of the conversation. ask writes the handoff note and
 			// opens the new session; ply just moves into it and re-sends
 			// the message the full one could not take.
-			path, cerr := l.Model.Compact(ctx)
-			if cerr != nil {
-				return last, cerr
-			}
-			l.View.Note("context was full; compacted into %s", path)
-			l.Model.Session = path
-			if l.SessionChanged != nil {
-				if err := l.SessionChanged(path); err != nil {
-					return last, fmt.Errorf("recording current session: %w", err)
-				}
-			}
-			compacts++
 			if l.Compacts > 0 && compacts >= l.Compacts {
 				return last, fmt.Errorf("%w after %d compactions", ErrOverflow, compacts)
 			}
+			_, cerr := l.compact(ctx, 0)
+			if cerr != nil {
+				return last, cerr
+			}
+			compacts++
 			continue
 		}
 		if err != nil {
 			return last, err
 		}
 		turns++
-		last = reply
+		// A command proposal or malformed reply is never a final report.
+		last = ""
 
 		// The first turn is what creates the session file -- ask mints it,
 		// because ask owns the log -- so this is the earliest moment there
@@ -105,16 +119,34 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		// because each is about to appear under a real prompt with what it
 		// printed. A reply that ends the run is shown whole.
 		cmds, prose, note := commands(reply)
-		if len(cmds) > 0 {
-			l.View.Reply(prose)
-		} else {
-			l.View.Reply(reply)
+		if l.Model.Progress == nil || len(cmds) == 0 {
+			if len(cmds) > 0 {
+				l.View.Reply(prose)
+			} else {
+				l.View.Reply(reply)
+			}
+		}
+		// Guidance arriving during generation gets a chance to change the
+		// proposal before execution or final acceptance. Nothing is run from
+		// this response; the next model turn must account for the new input.
+		if l.Steering != nil {
+			guidance, err := l.Steering.Read()
+			if err != nil {
+				return last, err
+			}
+			if guidance != "" {
+				deferred := withSteering("ply: the preceding response was deferred before execution or acceptance because new guidance arrived.", guidance)
+				if err := l.observe(ctx, deferred); err != nil {
+					return last, err
+				}
+				l.View.Note("new steering deferred the response before execution or acceptance")
+				msg = "Continue from the operator guidance just recorded."
+				continue
+			}
 		}
 
 		if len(cmds) > 0 {
 			stalls = 0
-			actions++
-			var b strings.Builder
 			for _, c := range cmds {
 				var admitted *approvalReceipt
 				if l.Approval != nil {
@@ -140,6 +172,24 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 					default:
 						return last, fmt.Errorf("%w: unknown verdict %q", ErrApprovalBoundary, receipt.Verdict)
 					}
+					// Approval may take long enough for the operator to steer.
+					// A spent grant remains historical evidence if its action is
+					// deferred; any later proposal needs its own approval request.
+					if l.Steering != nil {
+						guidance, err := l.Steering.Read()
+						if err != nil {
+							return last, err
+						}
+						if guidance != "" {
+							text := "ply: the approved action was deferred before execution because new guidance arrived. The preceding spent grant was not used to run this action; a later proposal requires a new approval request."
+							if err := l.observe(ctx, withSteering(text, guidance)); err != nil {
+								return last, err
+							}
+							msg = "Continue from the operator guidance just recorded."
+							l.View.Note("new steering deferred the approved action before execution")
+							continue turnLoop
+						}
+					}
 				}
 				if l.ActionBoundary != nil {
 					if digestErr := l.ActionBoundary.checkDigest(); digestErr != nil {
@@ -153,10 +203,8 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 						return last, fmt.Errorf("%w: %s", ErrConfinement, detail)
 					}
 				}
+				actions++
 				r := l.Runner.Run(ctx, c)
-				if ctx.Err() != nil {
-					return last, ctx.Err()
-				}
 				if l.ActionBoundary != nil {
 					if digestErr := l.ActionBoundary.checkDigest(); digestErr != nil {
 						detail := digestErr.Error() + "; action effects may exist"
@@ -191,14 +239,24 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 					}
 					return last, fmt.Errorf("%w: %s", ErrConfinement, r.ConfinementDetail)
 				}
-				b.WriteString(r.Typescript())
-				b.WriteString("\n")
+				// Terminal boundary receipts above already retain the result and
+				// must remain adjacent to their approval and terminal in the log.
+				// Ordinary results enter model-visible history before any stop.
+				observation := r.Typescript()
+				if note != "" {
+					observation += "\nply: " + note + "\n"
+				}
+				if err := l.observe(ctx, observation); err != nil {
+					return last, err
+				}
+				if ctx.Err() != nil {
+					return last, ctx.Err()
+				}
 			}
 			if note != "" {
 				l.View.Note("%s", note)
-				b.WriteString("ply: " + note + "\n")
 			}
-			msg = b.String()
+			msg = "Continue from the observed action result just recorded."
 			continue
 		}
 		if note != "" {
@@ -223,6 +281,7 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 
 		// No commands: the model is done. Whether that is true is now a
 		// program's opinion, if a program was given one.
+		last = reply
 		if l.Check == "" {
 			return reply, nil
 		}
@@ -230,25 +289,83 @@ func (l *Loop) Run(ctx context.Context, first string) (string, error) {
 		// checks can ignore stdin; a question check can judge the exact report
 		// that would otherwise be printed to stdout.
 		r := l.Checker.RunInput(ctx, l.Check, reply)
-		if ctx.Err() != nil {
-			return last, ctx.Err()
-		}
 		l.View.Check(r)
 		if err := l.recordVerifier(ctx, "candidate", reply, r); err != nil {
 			return reply, err
 		}
-		if verifierOutcome(r) == "accepted" {
-			return reply, nil
+		if ctx.Err() != nil {
+			return last, ctx.Err()
 		}
 		if verifierOutcome(r) == "broken" {
 			return reply, checkError(r)
 		}
-		cycle++
-		if l.Cycles > 0 && cycle >= l.Cycles {
-			return reply, fmt.Errorf("%w after %d cycles", ErrCycles, cycle)
+		if verifierOutcome(r) == "rejected" {
+			// A rejected result must survive a cycle/turn cap in the next
+			// provider context too; its typed note is deliberately not folded.
+			if err := l.observe(ctx, rejection(r)); err != nil {
+				return reply, err
+			}
+			cycle++
+			if l.Cycles > 0 && cycle >= l.Cycles {
+				return reply, fmt.Errorf("%w after %d cycles", ErrCycles, cycle)
+			}
 		}
-		msg = rejection(r)
+		if l.Steering != nil {
+			guidance, err := l.Steering.Read()
+			if err != nil {
+				return "", err
+			}
+			if guidance != "" {
+				if err := l.observe(ctx, withSteering("ply: the candidate was checked, but finalization was deferred because new guidance arrived.", guidance)); err != nil {
+					return "", err
+				}
+				last = ""
+				msg = "Continue from the operator guidance just recorded; inspect the current state before reporting again."
+				l.View.Note("new steering deferred finalization")
+				continue
+			}
+		}
+		if verifierOutcome(r) == "accepted" {
+			return reply, nil
+		}
+		msg = "Continue from the rejected verifier result just recorded."
 	}
+}
+
+func (l *Loop) observe(ctx context.Context, text string) error {
+	// Provider text must be UTF-8. Preserve invalid terminal bytes explicitly
+	// in a reversible quoted representation instead of JSON replacement.
+	if !utf8.ValidString(text) {
+		text = fmt.Sprintf("ply: terminal observation contained non-UTF-8 bytes; the complete retained typescript follows as a Go-quoted byte string:\n%q", text)
+	}
+	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	return l.Model.Append(recordCtx, text)
+}
+
+func (l *Loop) compact(ctx context.Context, at int) (bool, error) {
+	path, err := l.Model.CompactAt(ctx, at)
+	if err != nil {
+		return false, err
+	}
+	if sameSession(path, l.Model.Session) {
+		return false, nil
+	}
+	if l.Goal != "" {
+		next := l.Model
+		next.Session = path
+		if err := next.Append(ctx, "PLY ACTIVE GOAL AND SUPPLIED INPUT (retained across compaction; recheck current state rather than repeating uncertain effects):\n"+l.Goal); err != nil {
+			return false, fmt.Errorf("retain goal after compaction: %w", err)
+		}
+	}
+	if l.SessionChanged != nil {
+		if err := l.SessionChanged(path); err != nil {
+			return false, fmt.Errorf("recording current session: %w", err)
+		}
+	}
+	l.Model.Session = path
+	l.View.Note("context compacted into %s", path)
+	return true, nil
 }
 
 func withSteering(message, guidance string) string {
@@ -259,6 +376,9 @@ func withSteering(message, guidance string) string {
 func checkError(r Result) error {
 	if r.StartError {
 		return fmt.Errorf("%w: command interpreter could not start: %s", ErrCheck, firstLine(r.Output))
+	}
+	if r.OutputIncomplete {
+		return fmt.Errorf("%w: output incomplete because inherited pipes did not close (exit %d)", ErrCheck, r.Code)
 	}
 	if r.Elided > 0 {
 		return fmt.Errorf("%w: output exceeded the evidence cap (%d bytes, %d elided)", ErrCheck, r.Total, r.Elided)

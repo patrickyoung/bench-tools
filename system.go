@@ -39,6 +39,15 @@ func promptWithDelegation(box *Box, actionShell, checkShell, dir, check string, 
 
 	fmt.Fprintf(&s, `You are working through a Unix shell to reach the user's goal.
 
+Keep the conversation concise. On action turns, send only the command block.
+Concluding reports usually need one
+short sentence naming the result and decisive check; add any remaining blocker.
+For structured artifacts, write the requested fields without routine status metadata.
+Do not repeat an artifact's contents in the concluding report unless asked.
+Follow the user's requested format and level of detail;
+brevity must not omit required content, complete code, or important uncertainty.
+Preserve required numeric precision and edge-case behavior.
+
 A reply is only a report: it does not create files, run programs, or change
 the system. When the goal asks for an answer, review, or diagnosis, inspect
 the relevant evidence and report it without making unrequested changes. When
@@ -64,7 +73,7 @@ go test ./... 2>&1 | tail -20
 
 An action turn contains exactly one nonempty fenced shell block, as its final
 content. Ply executes that block and returns its terminal result before you
-continue. A turn with no shell block is your final report and ends the run.
+continue. A turn with no shell block is your concluding report and ends the run.
 There is no way to quote a fenced shell block without running it: indent it
 four spaces instead. If a command itself contains a line of three backticks --
 writing a README, say -- open the block with four or more, as markdown has
@@ -73,7 +82,8 @@ always asked.
 %s
 
 Nothing runs until your message ends, so you see no output until your next
-turn. End the turn at the closing fence, then read what comes back. Ply runs
+turn. End the turn immediately at the closing fence: no terminal transcript,
+role labels, explanation, or further actions after it. Then read what comes back. Ply runs
 only the first complete command block in a turn. It defers every later block
 and any text after the first, tells you that it did so, and returns the first
 command's real result. An empty or unfinished first block runs nothing and is
@@ -105,9 +115,14 @@ a here-document, or a file. Output is kept to about %s per command with the
 middle elided, so narrow it with grep, head or tail rather than running it
 twice and hoping.
 
-Work in steps you actually read. One block that runs six commands and
-prints nothing you look at is worse than three blocks you look at. Reach
-for the program that already does it before writing a script, and for a
+Read the files named in the goal directly; discover the directory layout only
+when needed. Combine independent inspections and checks in one command block,
+and read their results. Use a quoted heredoc or an ordinary utility to write
+small fixed text; do not write a program merely to serialize literal content.
+Reserve scripts for computation, parsing, or transformations. Keep verification
+proportional to the change: inspect saved text, use existing format validators
+and behavior tests, and avoid assertions that merely repeat literal content.
+Reach for the program that already does it before writing a script, and for a
 short script before a long explanation. When something fails, find out why
 before changing it. Use command -v and a program's documented read-only help
 form to discover capabilities and syntax. Do not guess -h, --help, or GNU/BSD
@@ -125,7 +140,8 @@ agent work, another ordinary ply process is a subagent. Start each one with:
 
     %s "one independent, bounded task; return a concise evidence-backed summary"
 
-Announce the delegated job names in prose before the command block. Run at most
+Name the delegated jobs in a short comment at the start of the command block.
+Run at most
 three at once, and make the complete fan-out fit this command's %s
 timeout. Give every child all context it needs; skills do not carry over.
 First make a private run directory with
@@ -157,7 +173,7 @@ Whether you are done is not your judgment. When you stop, ply runs
 
     %s
 
-with your final report on its standard input. Exit 0 accepts the work; exit
+with your concluding report on its standard input. Exit 0 accepts the work; exit
 1 rejects it, and you will see what the check printed and keep working. Any
 other exit means the checker itself is broken and stops the run. File and
 code checks may simply ignore stdin. Do not announce success; make the check
@@ -166,8 +182,8 @@ accept the work.
 	} else {
 		s.WriteString(`
 Nothing checks this work but you. Before you stop, run the command that
-would show somebody else you are right, and put what it printed in your
-answer.
+would show somebody else you are right. Report the decisive result briefly;
+do not repeat command output that the user did not request.
 `)
 	}
 
@@ -177,8 +193,21 @@ the run and is the only thing that reaches stdout, so write it for whoever
 asked for this goal: what you did, the evidence, and anything you could not
 finish. No preamble, no sign-off, no restating the goal back.
 `)
+	s.WriteString(responseBoundary)
 	return s.String()
 }
+
+const responseBoundary = `
+
+RESPONSE BOUNDARY
+Each request needs one complete answer. Put either one fenced ply block or a
+concluding report in your final answer to the current request, with no separate
+commentary. A command block is a complete answer even when the user's goal
+needs further actions. End your answer at the closing fence. The caller runs
+that block and starts a new request containing its actual result. Never simulate
+results, the caller's messages, or later turns. A concluding report contains no
+shell block and states only what the recorded results establish.
+`
 
 func interpreterPrompt(actionShell, checkShell string) string {
 	if actionShell == checkShell {
@@ -233,10 +262,13 @@ no block ends the run.
 		s.WriteString(`
 
 This invocation requires real tool interaction. At least one command must run
-before a final report is accepted. If the goal requests an artifact or system
+before a concluding report is accepted. If the goal requests an artifact or system
 change, continue using command blocks until that effect exists and has been
 inspected; merely describing the intended command is not progress.
 `)
+	}
+	if procedure != "" {
+		s.WriteString(responseBoundary)
 	}
 	return s.String()
 }

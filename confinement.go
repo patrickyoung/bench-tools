@@ -34,6 +34,9 @@ func (l *Loop) recordConfinement(ctx context.Context, approval *approvalReceipt,
 	if approval == nil || l.Runner.Cage == nil {
 		return errors.New("record confinement receipt: missing approval or Cage policy")
 	}
+	if result.Interrupted {
+		result.ConfinementDetail += "; interrupted; action effects may exist"
+	}
 	receipt := confinementReceipt{
 		Version: 1, ContractID: l.ContractID,
 		ApprovalDigest: approval.Digest, ApprovalActionSHA256: approval.ActionSHA256,

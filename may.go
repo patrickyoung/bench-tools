@@ -176,7 +176,7 @@ func (g mayGate) Request(ctx context.Context, contractID, script string, runner 
 	cmd := exec.CommandContext(requestCtx, argv[0], argv[1:]...)
 	cmd.Stdin = bytes.NewReader(body)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
-	err = cmd.Run()
+	err = runCommand(requestCtx, cmd)
 	if requestCtx.Err() != nil {
 		return approvalReceipt{}, requestCtx.Err()
 	}

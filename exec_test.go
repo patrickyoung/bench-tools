@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -200,6 +204,46 @@ func TestRunReportsExitStatus(t *testing.T) {
 	}
 }
 
+func TestInterpreterStartDiagnosticHasConsistentReceiptBytes(t *testing.T) {
+	r := newRunner(t, t.TempDir(), os.Getenv("PATH"))
+	r.Shell = filepath.Join(t.TempDir(), "missing-shell")
+	res := r.RunInput(context.Background(), "verify", "candidate")
+	if !res.StartError || res.Code != 1 || res.Output == "" {
+		t.Fatalf("result=%#v, want interpreter start failure and diagnostic", res)
+	}
+	if res.Total != int64(len(res.Output)) || res.Elided != 0 {
+		t.Fatalf("diagnostic accounting disagrees with retained bytes: %#v", res)
+	}
+	receipt := receiptFor("", "candidate", "candidate", r, res)
+	if receipt.Outcome != "broken" || receipt.OutputBytes != int64(len(receipt.Output)) ||
+		receipt.OutputSHA256 != digestText(string(receipt.Output)) || receipt.ElidedBytes != 0 {
+		t.Fatalf("start failure receipt is inconsistent: %#v", receipt)
+	}
+}
+
+func TestRunPreservesObservedOutputWhenInheritedPipesDoNotClose(t *testing.T) {
+	t.Setenv("PLY_DEPTH", "0")
+	dir := t.TempDir()
+	script, pidfile := stubbornDescendant(t, dir, false)
+	script = strings.TrimSuffix(script, "\nwait") + "\nprintf 'observed before exit\\n'; exit 0"
+	r := newRunner(t, dir, os.Getenv("PATH"))
+	res := r.Run(context.Background(), script)
+	if !res.OutputIncomplete || res.StartError || res.Interrupted || res.Killed || res.Code != 0 {
+		t.Fatalf("result=%#v, want incomplete output from a started, successful interpreter", res)
+	}
+	if res.Output != "observed before exit\n" || res.Total != int64(len(res.Output)) || res.Elided != 0 {
+		t.Fatalf("observed bytes or accounting lost: %#v", res)
+	}
+	if !strings.Contains(res.Typescript(), "observed output is incomplete") ||
+		strings.Contains(res.Typescript(), "could not start") {
+		t.Fatalf("typescript misrepresents the executed command: %s", res.Typescript())
+	}
+	if got := receiptFor("", "candidate", "answer", r, res); got.Outcome != "broken" {
+		t.Fatalf("incomplete verifier output became completion evidence: %#v", got)
+	}
+	requireProcessStopped(t, waitForPID(t, pidfile))
+}
+
 func TestRunInterleavesStdoutAndStderr(t *testing.T) {
 	r := newRunner(t, t.TempDir(), os.Getenv("PATH"))
 	res := r.Run(context.Background(), "echo out; echo err >&2")
@@ -244,6 +288,153 @@ func TestTimeoutKillsTheProcessGroup(t *testing.T) {
 	if !strings.Contains(res.Typescript(), "killed after") {
 		t.Errorf("typescript does not say it was killed:\n%s", res.Typescript())
 	}
+}
+
+func TestTimeoutKillsIgnoringDescendantAfterLeaderAndPipesExit(t *testing.T) {
+	t.Setenv("PLY_DEPTH", "0")
+	dir := t.TempDir()
+	script, pidfile := stubbornDescendant(t, dir, true)
+	r := newRunner(t, dir, os.Getenv("PATH"))
+	r.Timeout = 300 * time.Millisecond
+	start := time.Now()
+	res := r.Run(context.Background(), script)
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Fatalf("teardown took %s", elapsed)
+	}
+	if !res.Killed || res.Code != exitTimeout {
+		t.Fatalf("result=%#v, want timeout", res)
+	}
+	requireProcessStopped(t, waitForPID(t, pidfile))
+}
+
+func TestSuccessfulRunPreservesDeliberatelyDetachedWork(t *testing.T) {
+	dir := t.TempDir()
+	script, pidfile := stubbornDescendant(t, dir, true)
+	script = strings.TrimSuffix(script, "\nwait") + "\nexit 0"
+	r := newRunner(t, dir, os.Getenv("PATH"))
+	res := r.Run(context.Background(), script)
+	if res.Code != 0 || res.Interrupted || res.Killed {
+		t.Fatalf("successful launch=%#v", res)
+	}
+	if pid := waitForPID(t, pidfile); syscall.Kill(pid, 0) != nil {
+		t.Fatal("normal successful execution canceled redirected background work")
+	}
+}
+
+func TestCanceledRunLetsNestedPlyKillIgnoringDescendant(t *testing.T) {
+	t.Setenv("PLY_DEPTH", "0")
+	work := t.TempDir()
+	script, pidfile := stubbornDescendant(t, work, true)
+	ask, _ := fakeAsk(t, "```ply\n"+script+"\n```")
+	bin, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := newRunner(t, work, os.Getenv("PATH"))
+	r.Env = []string{"PLY_TEST_PROGRAM=1", "ASK=" + ask, "PLY_DEPTH=1"}
+	session := filepath.Join(t.TempDir(), "nested.jsonl")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan Result, 1)
+	go func() {
+		done <- r.Run(ctx, shellQuote(bin)+" -sh -C "+shellQuote(work)+
+			" -f "+shellQuote(session)+" child")
+	}()
+	pid := waitForPID(t, pidfile)
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("nested Ply did not stop after cancellation")
+	}
+	requireProcessStopped(t, pid)
+}
+
+func TestCanceledRunPreservesSuccessfulExitButMarksInterruption(t *testing.T) {
+	dir := t.TempDir()
+	pidfile := filepath.Join(dir, "ready.pid")
+	r := newRunner(t, dir, os.Getenv("PATH"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan Result, 1)
+	go func() {
+		done <- r.Run(ctx, "trap 'exit 0' INT; echo $$ > "+shellQuote(pidfile)+"; sleep 30 & wait")
+	}()
+	waitForPID(t, pidfile)
+	cancel()
+	select {
+	case res := <-done:
+		if !res.Interrupted || res.Code != 0 || res.StartError || res.Killed {
+			t.Fatalf("result=%#v, want interrupted exit 0", res)
+		}
+		if !strings.Contains(res.Typescript(), "interrupted; command effects may exist") {
+			t.Fatalf("typescript hides interruption: %s", res.Typescript())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("canceled action did not stop")
+	}
+}
+
+// stubbornDescendant leaves an interrupt-ignoring child in the shell's group.
+// With redirected output, both the group leader and its output copying finish
+// immediately on SIGINT; neither is proof that the child is gone.
+func stubbornDescendant(t *testing.T, dir string, redirect bool) (script, pidfile string) {
+	t.Helper()
+	pidfile = filepath.Join(dir, "stubborn.pid")
+	groupfile := filepath.Join(dir, "group.pid")
+	child := "trap '' INT TERM HUP; echo $$ > " + shellQuote(pidfile) + "; exec sleep 30"
+	script = "trap 'exit 130' INT\necho $$ > " + shellQuote(groupfile) + "\n/bin/sh -c " + shellQuote(child)
+	if redirect {
+		script += " >/dev/null 2>&1"
+	}
+	script += " &\nwait"
+	t.Cleanup(func() {
+		if body, err := os.ReadFile(groupfile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(body))); err == nil && pid > 0 {
+				_ = syscall.Kill(-pid, syscall.SIGKILL)
+			}
+		}
+		if body, err := os.ReadFile(pidfile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(body))); err == nil && pid > 0 {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	return script, pidfile
+}
+
+func waitForPID(t *testing.T, path string) int {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		body, err := os.ReadFile(path)
+		if err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(body))); err == nil && pid > 0 {
+				return pid
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("process never wrote %s", path)
+	return 0
+}
+
+func requireProcessStopped(t *testing.T, pid int) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if syscall.Kill(pid, 0) != nil {
+			return
+		}
+		// A container's PID 1 may leave a killed orphan as a zombie. It
+		// cannot perform more actions and is waiting only to be reaped.
+		state, _ := exec.Command("ps", "-o", "stat=", "-p", fmt.Sprint(pid)).Output()
+		if strings.HasPrefix(strings.TrimSpace(string(state)), "Z") {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("owned descendant %d is still running after teardown", pid)
 }
 
 // TestToolboxScopesPATH: the toolbox is the capability set. A program that

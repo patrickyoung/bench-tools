@@ -581,14 +581,38 @@ done
 
 ### What is in flight
 
-There is no `ply ps`, because it is a pipeline. A run that finished wrote a
-`done` event; one that was killed did not:
+There is no `ply ps`: the caller or supervisor owns the process handle and
+exit status. Ask's `done` event ends one model call, often before its proposed
+command has run. A final Ask event cannot prove Ply is alive, stopped, or
+finished. In an ordinary shell, keep the actual child handle:
 
 ```sh
-for s in ~/.ply/sessions/*.jsonl; do
-    tail -1 "$s" | grep -q '"type":"done"' || echo "unfinished: $s"
-done
+ply -sh -checkpoint run.current -check './check-result' 'finish the task' &
+worker=$!
+status=0
+wait "$worker" || status=$?
+printf 'Ply exited %s\n' "$status"
 ```
+
+A verifier receipt records the check's result. Replay verifies retained
+history, not current process liveness or the truth of the task. A stopped
+process with an uncertain external effect still needs inspection before retry.
+
+Ordinary action results enter the Ask conversation through a sealed, sourced
+`ask append` before the next model call or a turn-limit stop. Resuming a
+checkpoint therefore retains the last observed result. Interruptions are
+recorded when cleanup can complete; an abrupt kill between an external effect
+and recording it cannot provide exactly-once behavior. Non-UTF-8 terminal
+output is explicitly represented as a reversible quoted byte string.
+Rejected check results use the same seam before a turn or cycle limit stops
+the invocation. Accepted and broken checks keep their typed terminal receipts.
+
+Confinement and external action-boundary failures retain terminal typed
+receipts instead of adding a model-visible message; their approval adjacency
+is part of the evidence contract. Before retrying one of those stops, the
+supervisor must inspect the receipt and current work and explicitly provide
+the relevant findings. A bare session resume does not fold those notes into
+the model's context or establish that repeating the action is safe.
 
 ### Compaction changes the session
 
@@ -596,7 +620,7 @@ done
 says so on stderr:
 
 ```
-ply: context was full; compacted into ~/.ply/sessions/20260802-002839-86d69eae.jsonl
+ply: context compacted into ~/.ply/sessions/20260802-002839-86d69eae.jsonl
 ```
 
 Your original `-f` path still names the full one. Resuming from it will
@@ -617,6 +641,34 @@ The file contains the absolute current Ask session path and a newline. Ply
 writes it before the first model turn and atomically replaces it after each
 successful compaction. A failure to maintain a requested control file is an
 error; the file is a pointer, not another transcript.
+
+For proactive compaction, use `-compact-at N`. Ask compares N with measured
+provider usage plus a conservative allowance for newly appended messages.
+Choose N with headroom below the model's context window; it is an estimate,
+and unknown media costs or a changed next system prompt require extra space.
+`ask context -json -limit N SESSION` exposes the basis and estimated headroom.
+Ply verifies a returned session before accepting it, appends the full original
+goal and supplied input, and only then publishes its checkpoint. The limit
+`-compactions N` permits N handoffs and their continuations; a further overflow
+stops the invocation rather than performing another handoff.
+
+`-stream` forwards live model progress to stderr; `-q` suppresses it. A streamed
+command is still only text until the complete response has passed the parser.
+Steering is checked before generation, before using its result, after an
+approval call, and after a candidate verifier. Lines arriving during generation
+defer that proposal; lines arriving during a check defer finalization. A running shell command
+continues under its original timeout. SIGINT or SIGTERM cancels it, cleans up
+its owned process group, and records the observed interruption when possible.
+If guidance defers an approved action, its spent grant remains in history
+with an explicit observation that the action did not run. Any later proposal
+must request approval again.
+
+When a job should outlive one shell action, put the optional `contrib/job`
+program in the toolbox. It starts an external per-job supervisor and returns
+a handle; later actions can query, wait with a deadline, retrieve output, or
+cancel. [The job guide](contrib/jobs.md) explains the lifecycle and the unknown
+state after supervisor loss. Do not treat a missing live handle as permission
+to repeat an uncertain effect.
 
 ## Putting the boundary in the operating system
 

@@ -87,8 +87,12 @@ func (v *view) Result(r Result) {
 	switch {
 	case r.ConfinementFailed:
 		s.WriteString(v.red("[ply: "+r.ConfinementDetail+"; stopped] exit 125") + "\n")
+	case r.Interrupted:
+		s.WriteString(v.red(fmt.Sprintf("[ply: interrupted; effects may exist] exit %d", r.Code)) + "\n")
 	case r.Killed:
 		s.WriteString(v.red(fmt.Sprintf("[ply: killed after %s] exit %d", r.Timeout, r.Code)) + "\n")
+	case r.OutputIncomplete:
+		s.WriteString(v.red(fmt.Sprintf("[ply: output incomplete; inherited pipes did not close] exit %d", r.Code)) + "\n")
 	case r.Code != 0:
 		s.WriteString(v.red(fmt.Sprintf("exit %d", r.Code)) + "\n")
 	}
@@ -126,11 +130,11 @@ func (v *view) Check(r Result) {
 	if v.quiet {
 		return
 	}
-	if r.Code == 0 {
+	if verifierOutcome(r) == "accepted" {
 		fmt.Fprintln(v.w, v.dim("ply: check passed: ")+v.bold(oneline(r.Cmd)))
 		return
 	}
-	if r.Code != 1 {
+	if verifierOutcome(r) == "broken" {
 		fmt.Fprintln(v.w, v.red("ply: check broken: ")+v.bold(oneline(r.Cmd)))
 		v.Result(r)
 		return

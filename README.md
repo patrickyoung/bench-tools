@@ -123,7 +123,14 @@ check runs with the caller's PATH, with any toolbox prepended.
 | `-cycles N` | A limit on candidate/check cycles |
 | `-timeout 90s` | A time limit for each command |
 | `-m provider/model` / `-effort NAME` | Pass model policy through to Ask |
+| `-verbosity LEVEL` | Ask for concise output by default (`low`); empty uses Ask's default |
 | `-goal-file FILE` | Read a private goal from a bounded regular file |
+
+Ply's default instructions request command blocks with minimal narration and
+short final reports, while preserving the user's requested detail and complete
+artifacts. `-verbosity` / `PLY_VERBOSITY` also passes a response preference to
+Ask; supported OpenAI Responses models honor it, and other providers may ignore
+it. This controls generated text, unlike `-q`, which only hides the typescript.
 
 A toolbox is an ordinary directory. For example, in a fresh workspace:
 
@@ -168,7 +175,9 @@ ply system
 ```
 
 The conversation is an Ask session. Every candidate verifier outcome is a
-typed, sealed `ply.verifier/v1` receipt; loaded skills are recorded too. Replay
+typed, sealed `ply.verifier/v2` receipt; output bytes use base64 and are bound
+by their decoded-byte digest. Updated readers retain v1 support. Rebuild Ask,
+Ply, and receipt consumers together when upgrading. Loaded skills are recorded too. Replay
 checks the retained history's integrity, not the wisdom of the verifier or the
 truth of the answer. A run without `-check` has no verifier verdict.
 
@@ -190,11 +199,34 @@ ply -sh -checkpoint "$HOME/.local/state/ply/demo.current" -compact \
 Supply your own `./check-result`. Repeating the same invocation resumes its
 context, and the pre-check still decides whether work remains. Limits are per
 invocation. A checkpoint is not a filesystem snapshot or permission to repeat
-an uncertain external effect.
+an uncertain external effect. Each ordinary action result and rejected check
+is appended and sealed before a turn or cycle limit can stop the loop, so resumed
+context includes the last observed result. An action proposal never becomes
+the final stdout report just because the turn budget ran out.
 
-`-steer FILE` reads newly appended, newline-terminated guidance between model
-turns. It does not change the tool grant or verifier. For durable scheduling,
+`-compact-at N` asks Ask to compact proactively at an estimated token count
+and implies `-compact`. Choose N below your model's window with space for
+output and new evidence. Ask owns this estimate; it is not an exact tokenizer.
+The original goal and supplied input are retained in each fresh session before
+the checkpoint advances. Inspect usage with
+`ask context -json -limit N SESSION`.
+
+`-stream` displays model progress on stderr while the response is generated;
+`-q` disables it. Actions still wait for a complete response.
+`-steer FILE` reads newly appended, newline-terminated guidance before turns,
+after generation, after approval, and after a candidate check. New guidance
+defers an unused response or finalization; it does not interrupt a running command or change
+the tool grant or verifier. For durable scheduling,
 wrap the invocation with [Tend](https://github.com/patrickyoung/tend).
+
+[contrib/job](contrib/job) provides separate start/status/wait/cancel commands
+for work that should continue while the loop does something else. It returns
+handles and retains output; see [the job guide](contrib/jobs.md). It is an
+ordinary optional program, with no job service inside Ply.
+
+[The evaluation harness](eval/README.md) runs paired, repeated task trials
+through explicit driver programs and external outcome checks. Deterministic
+lifecycle fixtures are reported separately from live model task quality.
 
 ## Review actions and constrain writes
 
