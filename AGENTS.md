@@ -20,7 +20,8 @@ When changing `hone`:
   sessions, it is a regression however good the lessons look;
 
 - **the verdict is a program's opinion or it is not a verdict.** Only a typed
-  `ply.verifier/v1` receipt, or a legacy prose note `ply` signed, counts. Do
+  `ply.verifier/v2` receipt, a compatible v1 receipt, or a legacy prose note
+  `ply` signed counts. Do
   not infer a verdict from a session's shape, from
   the model's final reply, or from the absence of a rejection — a run that
   passed and a run that gave up were once the same shape on disk, and that

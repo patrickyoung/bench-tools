@@ -68,13 +68,13 @@ Three runs in four teach nothing. That is the design working, not failing.
 .SS The verdict
 .B ply \-check
 writes each result into the session as a typed
-.B ply.verifier/v1
+.B ply.verifier/v2
 Ask note followed by a replay-verified prefix seal. It is attributed and not
 folded, so
 .B hone
 knows the outcome without guessing. A run with no check has no verdict and
-is refused, saying so. Logs from older Ply versions with its signed prose
-verdict remain readable.
+is refused, saying so. Legacy v1 receipts and older signed prose verdicts
+remain readable.
 .PP
 This is the whole reason it works. Everything else that learns from agent
 logs is learning from unlabelled ones, and the difference is not small: in

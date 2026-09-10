@@ -53,8 +53,12 @@ const (
 	passedMark          = "the check passed"
 	failedMark          = "the check did not pass"
 	skillMark           = "loaded skill "
-	verifierReceiptKind = "ply.verifier/v1"
+	verifierReceiptKind = "ply.verifier/v2"
 )
+
+func isVerifierReceipt(kind string) bool {
+	return kind == "ply.verifier/v1" || kind == verifierReceiptKind
+}
 
 // Skills is what ply put in the system prompt, by name.
 //
@@ -106,10 +110,10 @@ func (s *session) Verdict() verdict {
 		if n.Source != "ply" {
 			continue
 		}
-		if n.Kind == verifierReceiptKind {
+		if isVerifierReceipt(n.Kind) {
 			var receipt verifierReceipt
-			if json.Unmarshal(n.Body, &receipt) != nil {
-				continue
+			if json.Unmarshal(n.Body, &receipt) != nil || !receipt.validOutcome() {
+				return failed
 			}
 			switch receipt.Outcome {
 			case "accepted":

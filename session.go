@@ -58,10 +58,28 @@ type noteData struct {
 }
 
 type verifierReceipt struct {
-	Phase    string `json:"phase"`
-	Verifier string `json:"verifier"`
-	Outcome  string `json:"outcome"`
-	ExitCode int    `json:"exit_code"`
+	Phase            string `json:"phase"`
+	Verifier         string `json:"verifier"`
+	Outcome          string `json:"outcome"`
+	ExitCode         int    `json:"exit_code"`
+	Killed           bool   `json:"killed,omitempty"`
+	Interrupted      bool   `json:"interrupted,omitempty"`
+	OutputIncomplete bool   `json:"output_incomplete,omitempty"`
+	StartError       bool   `json:"start_error,omitempty"`
+	ElidedBytes      int64  `json:"elided_bytes,omitempty"`
+}
+
+func (r verifierReceipt) validOutcome() bool {
+	broken := r.Killed || r.Interrupted || r.OutputIncomplete || r.StartError || r.ElidedBytes > 0 || r.ExitCode != 0 && r.ExitCode != 1
+	switch r.Outcome {
+	case "accepted":
+		return !broken && r.ExitCode == 0 && r.ElidedBytes == 0
+	case "rejected":
+		return !broken && r.ExitCode == 1 && r.ElidedBytes == 0
+	case "broken":
+		return broken
+	}
+	return false
 }
 
 type block struct {
@@ -217,13 +235,13 @@ func (s *session) add(e event, first *bool) error {
 			return fmt.Errorf("%s: note event %d: %w", s.Path, e.Seq, err)
 		}
 		s.Notes = append(s.Notes, n)
-		if n.Source == "ply" && n.Kind == verifierReceiptKind {
+		if n.Source == "ply" && isVerifierReceipt(n.Kind) {
 			var receipt verifierReceipt
 			if err := json.Unmarshal(n.Body, &receipt); err != nil {
 				return fmt.Errorf("%s: verifier receipt event %d: %w", s.Path, e.Seq, err)
 			}
-			if receipt.Outcome != "accepted" && receipt.Outcome != "rejected" && receipt.Outcome != "broken" {
-				return fmt.Errorf("%s: verifier receipt event %d: unknown outcome %q", s.Path, e.Seq, receipt.Outcome)
+			if !receipt.validOutcome() {
+				return fmt.Errorf("%s: verifier receipt event %d: invalid outcome %q for observed execution", s.Path, e.Seq, receipt.Outcome)
 			}
 			s.Receipts = append(s.Receipts, receipt)
 			if receipt.Verifier != "" {

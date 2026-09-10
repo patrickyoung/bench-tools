@@ -108,11 +108,11 @@ The upstream fix now makes the evidence explicit:
 
 1. **`ask note -k ... -json - -seal`** appends typed JSON and a digest of its
    exact event prefix without folding either into model context.
-2. **`ply`** writes `ply.verifier/v1` receipts for rejection, acceptance, and
+2. **`ply`** writes `ply.verifier/v2` receipts for rejection, acceptance, and
    broken verifiers, binding candidate, verifier, output, and status.
 3. **`ask replay -check`** verifies request folds, event sequence, and seals.
 
-`hone` reads those receipts and still refuses sessions with no verdict. It
+`hone` reads v2 and legacy v1 receipts and still refuses sessions with no verdict. It
 does not guess. A mislabeled lesson is the 13x failure and the poisoning
 failure at the same time.
 
