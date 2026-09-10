@@ -28,6 +28,8 @@ ask — put a question through a language model, get the answer on stdout
   ask replay [flags] [session]    re-render a session (-check verifies replay)
   ask compact [flags] [session]   continue a full conversation in a fresh one
   ask note -s src [flags] [text]  record text or sealed structured JSON
+  ask append -s src [flags] [text] append a durable sourced user message
+  ask context [flags] [session]  inspect estimated context use and headroom
   ask system                      print the built-in system prompt
   ask version                     print the version (-V, --version)
   ask help                        print this summary (-h, --help)
@@ -37,6 +39,8 @@ Anything that is not a command is a message; -- forces a command-like word.
 streams: the answer is stdout. Progress and errors are stderr. Piped stdin
 is the message, or data for an instruction:
   git diff | ask "write a commit message"
+An unfinished or output-limited answer exits 1 with no normal stdout.
+-json still emits its recorded events; replay can display the saved text.
 
 conversation: each ask starts a fresh session. -c continues the current one;
 -f keeps a named thread in a file of your own.
@@ -62,15 +66,24 @@ flags:
   -d dir        conversation directory ($ASK_DIR, or ~/.ask/sessions)
   -effort e     reasoning effort: off, low, medium, high, xhigh; provider
                 mapping varies (default: the provider's own)
-  -max-tokens n max output tokens (default 16384). openai-codex does not
-                support this flag and refuses it
+                DeepSeek: medium/xhigh -> high; off disables thinking
+                Cerebras: xhigh -> high; off -> none (model dependent)
+  -verbosity v  answer detail: low, medium, high ($ASK_VERBOSITY)
+                OpenAI and openai-codex only; empty: provider default
+  -max-tokens n positive max output tokens (default 16384). Gemini accepts
+                at most 2147483647; openai-codex refuses this flag
   -header-fd n  descriptor containing one HTTP Authorization header;
                 use: oauth with PROFILE -- ask -header-fd 3 ...
   -schema file  constrain the answer with JSON Schema ("-" reads stdin)
+                DeepSeek refuses this flag; JSON mode is not a schema
   -json         emit this invocation's raw events instead of the answer
   -q            no progress on stderr; errors still print
 compact only:
+  -at n         compact at estimated token count n (0: unconditional)
+                Below n, print the existing absolute path; no model call.
+                Uses provider usage plus pending message byte allowance.
   -m spec       summarizer provider/model (default: the session's own)
+  -verbosity v  summarizer answer detail ($ASK_VERBOSITY); as above
   -d dir        conversation directory ($ASK_DIR)
   -header-fd n  descriptor containing one HTTP Authorization header
   -q            no progress on stderr; errors still print
@@ -78,6 +91,7 @@ compact only:
                 stamped source=summary, with the parent and the
                 summarizer's own session named in the header. The source
                 is never touched. stdout is the new session's path.
+                Without a session argument, current must be available.
 replay only:
   -d dir        conversation directory ($ASK_DIR)
   -check        verify the replay invariant before producing output
@@ -85,13 +99,34 @@ replay only:
   -json         emit raw events; combine with -check for a verified snapshot
 note only:
   -s source     program writing the note (required, one word)
-  -f file       session to append to (default: current)
+  -f file       session to append to (default: current; must be available)
   -d dir        conversation directory ($ASK_DIR)
   -q            no progress on stderr; errors still print
+  -k kind       structured record kind; requires -json and -seal
+  -json body    note JSON ("-" reads stdin); requires -k and -seal
+  -seal         durably seal the structured note; requires -k and -json
+append only:
+  -s source     program writing the message (required, one word)
+  -f file       existing session (default: current; must be available)
+  -d dir        conversation directory ($ASK_DIR)
+  -q            no progress on stderr; errors still print
+                Text comes from argv or stdin (UTF-8, 16MB maximum).
+                Appends a sealed user message without a model call.
+context only:
+  -d dir        conversation directory ($ASK_DIR)
+  -json         context usage and estimate as JSON
+  -limit n      optional token budget for estimated headroom
+                No model call. Estimates are not exact tokenization;
+                leave room for the next request and output.
+providers: anthropic · openai · openai-codex · gemini · openrouter ·
+  deepseek · cerebras
 keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
+  DEEPSEEK_API_KEY, CEREBRAS_API_KEY
 env: ASK_MODEL (-m) · ASK_SYSTEM (-S) · ASK_DIR (-d) · NO_COLOR
+  ASK_VERBOSITY (-verbosity)
 gateway: ANTHROPIC_BASE_URL · OPENAI_BASE_URL · OPENAI_CODEX_BASE_URL ·
-  GEMINI_BASE_URL · OPENROUTER_BASE_URL replace provider endpoints. Supply
+  GEMINI_BASE_URL · OPENROUTER_BASE_URL · DEEPSEEK_BASE_URL · CEREBRAS_BASE_URL
+  replace provider endpoints. Supply
   OAuth through -header-fd; OPENAI_CODEX_ACCOUNT_ID supplies its non-secret
   account routing id when that provider requires one
 vertex: ANTHROPIC_VERTEX_PROJECT_ID + CLOUD_ML_REGION route anthropic/ models
@@ -214,9 +249,12 @@ flags:
   -cycles n     rejected candidates before giving up (default 5, 0 = unbounded)
   -compact      when the context window fills, carry on: ask compact writes
                 a handoff note and the run continues in a fresh session
+  -compact-at n  compact at Ask's estimated token count; implies -compact
+                (default 0, wait for overflow; reserve output headroom)
   -compactions n  compactions before giving up (default 3, 0 = unbounded)
   -turns n      model turns before giving up (default 50, 0 = unbounded)
-  -steer file   read appended UTF-8 lines between model turns
+  -steer file   read appended lines before turns and before action/report use
+  -stream       stream model progress to stderr; -q disables it
   -may-job job  require exact May approval before every model action
   -cage         confine approved actions; needs -may-job and -contract-id
   -timeout d    per-command timeout, e.g. 30s (default 2m; killed is 124)
@@ -224,6 +262,7 @@ flags:
   -C dir        run commands here (default: the current directory)
   -m spec       provider/model, passed to ask ($ASK_MODEL is ask's own)
   -effort e     reasoning effort, passed literally to ask ($PLY_EFFORT)
+  -verbosity v  response verbosity, passed to ask (default low; empty omits)
   -goal-file file  read the task from a bounded regular file, never argv
   -S text       system prompt, replacing the default — ply system prints
                 it, so compose with -S "$(ply system; cat house.md)"
@@ -235,14 +274,13 @@ flags:
   -q            no typescript on stderr
 
 env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_ACTION_SHELL (-action-shell)
-     · PLY_EFFORT (-effort) · PLY_DIR
+     · PLY_EFFORT (-effort) · PLY_VERBOSITY (-verbosity) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
      (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
      · PLY_MAY_JOB · NO_COLOR
-     Models and keys belong to ask; ply passes it -m, -effort, -S, -f and
-     -q and nothing else. Commands run with $PLY naming this binary and
-     $PLY_DEPTH
-     counting the nesting, so a tool can start another ply: a sub-agent is
+     Models and keys belong to ask. Ask also appends observed results,
+     compacts context, and verifies sessions. Commands inherit $PLY (this
+     binary) and $PLY_DEPTH (the nesting count). A sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
       bound, protocol, or context · 3 approval declined · 75 approval required
