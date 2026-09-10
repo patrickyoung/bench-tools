@@ -1,0 +1,282 @@
+// Package chat turns one message into one answer.
+//
+// The whole loop is four steps: fold the log into a conversation, log the
+// request, stream the turn, log it. There is no tool loop and no agent
+// loop — the model answers, and the answer is the product. What makes the
+// session worth keeping is that every step is a line in an append-only
+// file, and the request line proves the fold that produced it.
+package chat
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math/rand/v2"
+	"strings"
+	"time"
+
+	"github.com/patrickyoung/ask/internal/event"
+	"github.com/patrickyoung/ask/internal/provider"
+)
+
+// ErrOverflow is terminal and permanent: the conversation no longer fits
+// the model's context window, so the same request will fail identically
+// forever. It is not an error to retry — it is an outcome, and the caller
+// turns it into an exit code a shell can branch on.
+var ErrOverflow = errors.New("context window is full")
+
+const maxAttempts = 6 // per-turn provider retries
+
+type Chat struct {
+	Provider  provider.Provider
+	Model     string // bare model name, as the provider wants it
+	System    string
+	MaxTokens int
+	Effort    string
+	Verbosity string
+	Schema    json.RawMessage
+	Evidence  *event.EvidenceData
+
+	Log    *event.Log
+	events []event.Event
+
+	// OnDelta streams text as it generates. It is a display hook — the log
+	// is the record.
+	OnDelta func(kind provider.ChunkKind, text string)
+}
+
+// Load seeds the in-memory view from an existing session.
+func (c *Chat) Load(events []event.Event) { c.events = events }
+
+// Turns reports how many answers this session already holds.
+func (c *Chat) Turns() int {
+	n := 0
+	for _, e := range c.events {
+		if e.Type == event.Assistant {
+			n++
+		}
+	}
+	return n
+}
+
+// Say appends a message, asks the model, and returns the answer. The
+// message is an ordered list of blocks: attachments as they were named,
+// then the text.
+func (c *Chat) Say(ctx context.Context, content []provider.Block) (string, error) {
+	user := userData(content, c.Evidence)
+	if err := user.CheckEvidence(); err != nil {
+		return "", err
+	}
+	if _, err := c.append(event.User, user); err != nil {
+		return "", err
+	}
+	msgs, err := event.Fold(c.events)
+	if err != nil {
+		return "", err
+	}
+	req := provider.Request{
+		Model:     c.Model,
+		System:    c.System,
+		Messages:  msgs,
+		MaxTokens: c.MaxTokens,
+		Effort:    c.Effort,
+		Verbosity: c.Verbosity,
+		Schema:    c.Schema,
+		// The log's own id is the conversation's name, which is how
+		// providers that pin a cache by session find the warm one.
+		Session: c.Log.ID(),
+	}
+	if _, err := c.append(event.Request, req.Logged()); err != nil {
+		return "", err
+	}
+	turn, err := c.stream(ctx, req)
+	if err != nil {
+		// Failed streams remain inspectable but never become model context.
+		if len(turn.Blocks) > 0 {
+			turn.Partial = true
+			if _, logErr := c.append(event.Assistant, turn); logErr != nil {
+				return "", errors.Join(err, logErr)
+			}
+			if logErr := c.Log.Sync(); logErr != nil {
+				return "", errors.Join(err, logErr)
+			}
+		}
+		if ctx.Err() != nil {
+			// Mark the abort even when nothing streamed, so an interrupted
+			// session is distinguishable from a crash. A partial turn is
+			// logged as partial: Fold skips it, so continuing this session
+			// asks the same question again rather than pretending half an
+			// answer was the answer.
+			if _, logErr := c.append(event.Abort, struct{}{}); logErr != nil {
+				return "", logErr
+			}
+			if logErr := c.Log.Sync(); logErr != nil {
+				return "", logErr
+			}
+			return "", ctx.Err()
+		}
+		var pe *provider.Error
+		if errors.As(err, &pe) && pe.Overflow() {
+			return "", fmt.Errorf("%w: %s", ErrOverflow, pe.Msg)
+		}
+		return "", err
+	}
+	if _, err := c.append(event.Assistant, turn); err != nil {
+		return "", err
+	}
+	if err := c.Log.Sync(); err != nil {
+		return "", err
+	}
+	if len(c.Schema) > 0 {
+		if turn.Stop != "end" {
+			return "", fmt.Errorf("structured output stopped with %q", turn.Stop)
+		}
+		return structuredAnswer(turn.Blocks), nil
+	}
+	if turn.Stop == "max_tokens" {
+		return "", errors.New("answer was cut off at the output limit (raise -max-tokens)")
+	}
+	if turn.Stop != "end" {
+		return "", fmt.Errorf("answer stopped with %q", turn.Stop)
+	}
+	return answer(turn.Blocks), nil
+}
+
+// userData picks how a message is recorded. A message that is only text —
+// which is nearly all of them — is written as one JSON string, so a
+// session log stays something grep and jq can read. Anything richer is
+// written as its blocks, in order.
+func userData(content []provider.Block, evidence *event.EvidenceData) event.UserData {
+	if len(content) == 1 && content[0].Type == provider.Text {
+		return event.UserData{Text: content[0].Text, Evidence: evidence}
+	}
+	return event.UserData{Blocks: content, Evidence: evidence}
+}
+
+func (c *Chat) append(t event.Type, data any) (event.Event, error) {
+	e, err := c.Log.Append(t, data)
+	if err != nil {
+		return e, err
+	}
+	c.events = append(c.events, e)
+	return e, nil
+}
+
+// stream runs one turn, retrying the failures worth retrying. Every wait
+// is logged: a slow answer should say why it was slow.
+func (c *Chat) stream(ctx context.Context, req provider.Request) (event.Turn, error) {
+	for attempt := 1; ; attempt++ {
+		turn, err := c.once(ctx, req)
+		if err == nil || ctx.Err() != nil {
+			return turn, err
+		}
+		var pe *provider.Error
+		if !errors.As(err, &pe) || !pe.Retryable() || attempt >= maxAttempts {
+			return turn, err
+		}
+		// A server-sent Retry-After is an instruction, not a suggestion:
+		// clamping it to the backoff cap burns an attempt into a guaranteed
+		// 429. Honor it up to a sanity bound; only the computed backoff
+		// stays under a minute.
+		wait := min(pe.RetryAfter, 5*time.Minute)
+		if wait <= 0 {
+			wait = time.Duration(float64(time.Second) * float64(int(1)<<attempt) * (0.5 + rand.Float64()))
+			wait = min(wait, time.Minute)
+		}
+		if _, logErr := c.append(event.Retry, event.RetryData{
+			Attempt: attempt, Status: pe.Status, WaitMS: wait.Milliseconds(), Error: pe.Msg,
+		}); logErr != nil {
+			return turn, logErr
+		}
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return turn, ctx.Err()
+		}
+	}
+}
+
+// once streams a single turn. The returned Turn is complete on nil error
+// and best-effort partial otherwise (deltas only — a torn stream has no
+// trustworthy blocks).
+func (c *Chat) once(ctx context.Context, req provider.Request) (event.Turn, error) {
+	start := time.Now()
+	turn := event.Turn{Model: req.Model}
+	var texts, reasons strings.Builder
+	partial := func() event.Turn {
+		p := event.Turn{Model: req.Model, MS: time.Since(start).Milliseconds()}
+		if reasons.Len() > 0 {
+			p.Blocks = append(p.Blocks, provider.Block{Type: provider.Reasoning, Text: reasons.String()})
+		}
+		if texts.Len() > 0 {
+			p.Blocks = append(p.Blocks, provider.Block{Type: provider.Text, Text: texts.String()})
+		}
+		return p
+	}
+	for chunk, err := range c.Provider.Stream(ctx, req) {
+		if err != nil {
+			return partial(), err
+		}
+		switch chunk.Kind {
+		case provider.KindText:
+			texts.WriteString(chunk.Text)
+		case provider.KindReasoning:
+			reasons.WriteString(chunk.Text)
+		case provider.KindBlock:
+			turn.Blocks = append(turn.Blocks, *chunk.Block)
+		case provider.KindUsage:
+			turn.Usage = *chunk.Usage
+		case provider.KindStop:
+			turn.Stop = chunk.Stop
+		}
+		if chunk.Kind == provider.KindText || chunk.Kind == provider.KindReasoning {
+			if c.OnDelta != nil {
+				c.OnDelta(chunk.Kind, chunk.Text)
+			}
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return partial(), err
+	}
+	if turn.Stop == "" {
+		return partial(), errors.New("stream ended without a stop reason")
+	}
+	turn.MS = time.Since(start).Milliseconds()
+	return turn, nil
+}
+
+// answer is the turn's text: what goes to stdout. Reasoning is not part of
+// it — it streamed to stderr for the human and stays in the log for the
+// record, but a filter's output is the answer alone.
+//
+// Text blocks are separate messages, not fragments of one, and a reasoning
+// model interleaves several with its thinking. Joining them with nothing
+// welds the last line of each to the first line of the next: a sentence
+// runs into a heading, a list item into the next list, and a closing ```
+// into the following ```lang to make ``````lang, which no markdown reader
+// and no program parsing the answer can recover. A blank line is what
+// separates two blocks of markdown, so that is the join.
+func answer(blocks []provider.Block) string {
+	var texts []string
+	for _, bl := range blocks {
+		if bl.Type == provider.Text && strings.TrimSpace(bl.Text) != "" {
+			texts = append(texts, strings.Trim(bl.Text, "\n"))
+		}
+	}
+	return strings.TrimSpace(strings.Join(texts, "\n\n"))
+}
+
+// structuredAnswer is byte-for-byte the provider's text stream, apart from
+// surrounding whitespace. JSON allows whitespace between tokens, but not
+// inside them; inserting markdown paragraph breaks between provider blocks
+// can therefore corrupt an otherwise valid document.
+func structuredAnswer(blocks []provider.Block) string {
+	var text strings.Builder
+	for _, bl := range blocks {
+		if bl.Type == provider.Text {
+			text.WriteString(bl.Text)
+		}
+	}
+	return strings.TrimSpace(text.String())
+}
