@@ -1,0 +1,100 @@
+.TH ACTION 1 "2026-08-30" "action 0.1.0" "User Commands"
+.SH NAME
+action \- control one exact effectful connector invocation
+.SH SYNOPSIS
+.B action ls
+.br
+.B action show
+.I name
+.br
+.B action inspect
+.I proposal.json
+.br
+.B action check
+.I proposal.json
+.br
+.B action run -job
+.I job
+.RI [ options ]
+.I name
+.br
+.B action run -job
+.I job
+.RI [ options ]
+.B -proposal
+.I proposal.json
+.SH DESCRIPTION
+.B action
+canonicalizes one JSON object, applies an operator-owned deterministic policy,
+uses May for exact human review when required, and only then releases the
+request to one explicitly named connector from ACTION_PATH.
+.SH COMMANDS
+.TP
+.B ls
+Print validated connector descriptors as JSONL.
+.TP
+.BI "show " name
+Print one validated connector descriptor.
+.TP
+.BI "inspect " proposal.json
+Validate and print one canonical proposal.
+.TP
+.BI "check " proposal.json
+Validate one proposal without output.
+.TP
+.B run
+Authorize and run one connector. With a connector name, read its input object
+from stdin. With -proposal, read both the name and input from the strict file.
+.SH RUN OPTIONS
+.TP
+.BI "-job " job
+Set the stable May job name. Required.
+.TP
+.BI "-policy " program
+Select a deterministic policy. Without it, every action goes to May.
+.TP
+.BI "-may " program
+Select May. The default is ACTION_MAY or may.
+.TP
+.BI "-record " session
+Append sealed action events to an existing Ask session.
+.TP
+.BI "-ask " program
+Select Ask for recording. The default is ACTION_ASK or ask.
+.TP
+.BI "-timeout " duration
+Set the connector deadline. Expiry after request release returns 125.
+.SH CONNECTORS
+Each executable supports describe and run. Describe prints one descriptor
+object. Run reads one complete canonical JSON object before causing an effect
+and prints one result object for terminal exits 0, 1, or 75.
+.SH ENVIRONMENT
+.TP
+.B ACTION_PATH
+Colon-separated controller-owned connector directories.
+.TP
+.B ACTION_POLICY
+Default deterministic policy program.
+.TP
+.B ACTION_MAY
+Default May program.
+.TP
+.B ACTION_ASK
+Default Ask program.
+.SH EXIT STATUS
+Zero is trustworthy success; one is a trustworthy negative result; two is a
+broken or invalid pre-release boundary, or a receipted connector report that
+no external effect occurred; three is denial; 75 is parked review
+or a receipted unfinished connector; 125 means an effect may exist without a
+complete trustworthy receipt and must not be retried automatically; 130 is a
+pre-release interruption.
+.SH SECURITY
+Action is not a sandbox. Keep connectors, policy, May, Ask, credentials, and
+their state outside model-writable roots. Discovery metadata and executable
+digests identify observations, not trust.
+.SH SEE ALSO
+.BR ask (1),
+.BR context (1),
+.BR may (1),
+.BR agent (1),
+.BR mcp (1)
