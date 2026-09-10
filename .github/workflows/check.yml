@@ -99,7 +99,23 @@ jobs:
           cache: false
       - name: Install the documented Linux backend
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap apparmor
+          # Ubuntu restricts unprivileged user namespaces unless the executable
+          # has an AppArmor grant. Scope that grant to the trusted system bwrap
+          # on this disposable runner; retain the host's global restriction.
+          # https://documentation.ubuntu.com/release-notes/24.04/
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo tee /etc/apparmor.d/bench-tools-bwrap > /dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bench-tools-bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          PROFILE
+            sudo apparmor_parser -r /etc/apparmor.d/bench-tools-bwrap
+          fi
       - name: Prove native confinement, failing if the host cannot supply it
         run: python3 scripts/check --component cage --native-cage
       - if: always()

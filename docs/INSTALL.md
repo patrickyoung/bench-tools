@@ -103,6 +103,11 @@ Cage uses macOS Seatbelt or Linux Bubblewrap. Linux needs a trusted system
 Bubblewrap installation and usable user namespaces. Run `cage check` on the
 actual host before relying on confinement; an unsupported host refuses
 execution. Cage limits writes and network access; host reads remain available.
+On Ubuntu with restricted unprivileged user namespaces, an administrator may
+need to allow the system Bubblewrap executable through an AppArmor profile;
+see [Ubuntu's user-namespace guidance](https://documentation.ubuntu.com/release-notes/24.04/).
+The installer does not change this host policy. Run `cage check` again after
+the administrator configures it.
 
 ## Update or remove
 

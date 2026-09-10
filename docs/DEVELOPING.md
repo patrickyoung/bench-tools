@@ -39,6 +39,12 @@ CI runs isolated component checks, process integration, native Cage proof,
 installation checks, and starters on both Linux and macOS. Its results are
 attached to the exact source commit in the [public workflow](https://github.com/patrickyoung/bench-tools/actions/workflows/check.yml).
 
+The Linux native-Cage job installs system Bubblewrap and grants that executable
+user-namespace access through AppArmor on its disposable Ubuntu runner. The
+host's global restriction stays enabled, and Cage's positive and negative
+confinement probes must all pass. This prepares a supported test host; the
+source installer does not change a user's host policy.
+
 Builds need Go 1.26+, Python 3.9+, Git, and a Unix shell. Draft shell tests need
 Perl; race checks need a C compiler; Weave release tests need Make and `install`.
 Inspect the exact prerequisites for your selection before a long run:
