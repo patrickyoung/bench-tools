@@ -116,7 +116,7 @@ not parse prose or own either judgment.
 A direct `ask | cite` pipeline cannot put Cite's later exit status into an Ask
 session: Cite is intentionally only a filter. If the verdict belongs in the
 event history, use the same command as Ply's check. Cite keeps no session and
-has no write access to Ask; Ply asks Ask to append a sealed `ply.verifier/v1`
+has no write access to Ask; Ply asks Ask to append a sealed `ply.verifier/v2`
 record for every verifier execution while the candidate remains the preceding
 assistant event.
 
