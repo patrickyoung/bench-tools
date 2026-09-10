@@ -1,0 +1,7 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-ask-m_kiox2h/source
+argv: go test -race -count=1 ./...
+
+ok  	github.com/patrickyoung/ask	9.393s
+ok  	github.com/patrickyoung/ask/internal/chat	3.428s
+ok  	github.com/patrickyoung/ask/internal/event	2.188s
+ok  	github.com/patrickyoung/ask/internal/provider	2.477s

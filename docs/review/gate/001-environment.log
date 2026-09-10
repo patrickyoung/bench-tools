@@ -1,0 +1,4 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-control-_w14vsya
+argv: go version
+
+go version go1.26.1 darwin/arm64

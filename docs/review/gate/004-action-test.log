@@ -1,0 +1,4 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-action-1sgthe8v/source
+argv: go test -count=1 ./...
+
+ok  	github.com/patrickyoung/action	4.157s

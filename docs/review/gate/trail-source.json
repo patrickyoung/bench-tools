@@ -1,0 +1,67 @@
+[
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "3177b67900dc33a5068d019a43ad97ce398009a911c12460f27b6f59c1df9a7e"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "b1b22a482f40d45d0025aecaf2b3016318ced7d7679d1c07ca362886b7e311ef"
+  },
+  {
+    "path": "GUIDE.md",
+    "mode": 420,
+    "sha256": "25dcf81a31e31efd02c3caf1fa8165bc200294c92aba8e363a434148d5fdea8c"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "f6b01fc15de2fcb09bf8a4304cea5cbe1b716ffb205dbe495aece10b4f2ab48c"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "bf842a3b42b102948f9af9c6ae7ee1cadaf50a03fd2aa96726a18cfc819f0159"
+  },
+  {
+    "path": "archive.go",
+    "mode": 420,
+    "sha256": "9d4992c22dc7150b4665bb967989fdf2625a9ad7b3f06ae75193697ec2133ca5"
+  },
+  {
+    "path": "docs_test.go",
+    "mode": 420,
+    "sha256": "c1ea78bf60e6298ff17f195a0c1444aa8e3e658489c10056c2d390b55456aa42"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "9b40862dcb70761496a23bbe50725aa6d8edebcd0d41c1b5b91ed89e68c87e9b"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "134cb0d47e6209df319486d3d2babda6d152401d6ec363dd8fd5601a3536308c"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "22db6ad56a78c94e44b7df510c1796ee043eca3567a6ba2f88469abd643f6131"
+  },
+  {
+    "path": "semantic.go",
+    "mode": 420,
+    "sha256": "31b3852d5b3046cff060839527305fef76a2435dca59bdd8486df351fa2d3db5"
+  },
+  {
+    "path": "trail.1",
+    "mode": 420,
+    "sha256": "f2c419695142283f46e1ca8dc87c1507589cbd67f9c531b80c5aee247c02cc69"
+  }
+]

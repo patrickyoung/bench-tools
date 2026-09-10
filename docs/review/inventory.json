@@ -1,0 +1,236 @@
+[
+  {
+    "name": "action",
+    "path": "/Users/patrick/projects/bench/action",
+    "head": "511cd7e7380e03b047a81634127954d8a05322bb",
+    "tree": "1b0053e297e495f61a9e74a1d01f2a1a826a9156",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/action.git",
+    "module": "module github.com/patrickyoung/action"
+  },
+  {
+    "name": "agent",
+    "path": "/Users/patrick/projects/bench/agent",
+    "head": "f8e566e20f15f718d5104bc776f5ed2b34d5ff7f",
+    "tree": "4dac241cf82dc991d3f9548f5dad102499680519",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/agent.git",
+    "module": null
+  },
+  {
+    "name": "ask",
+    "path": "/Users/patrick/projects/bench/ask",
+    "head": "57e1d609fbeed1f31906f238ea4004d3f053779f",
+    "tree": "93a30451c7ef84b0e9dad8e06d35d3f8845eed3f",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/ask.git",
+    "module": "module github.com/patrickyoung/ask"
+  },
+  {
+    "name": "bench",
+    "path": "/Users/patrick/projects/bench/bench",
+    "head": "983dd31e374f4705e786ad40cb6a67061af9cb6e",
+    "tree": "285707f39b25a814f300099dd993db6b9f1a2807",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/bench.git",
+    "module": "module github.com/patrickyoung/bench"
+  },
+  {
+    "name": "brief",
+    "path": "/Users/patrick/projects/bench/brief",
+    "head": "7116c0695331a835509ba65d05032bb8200f2045",
+    "tree": "22d6d31f82c8adfd463888ec934285feb07b7c3e",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/brief.git",
+    "module": "module github.com/patrickyoung/brief"
+  },
+  {
+    "name": "cage",
+    "path": "/Users/patrick/projects/bench/cage",
+    "head": "771973ea1cf5ee0a73a4e4f09f7e495ff2e37cc7",
+    "tree": "18e485cde137b6c8ee3226ed5ec52940b2bf785b",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/cage.git",
+    "module": "module github.com/patrickyoung/cage"
+  },
+  {
+    "name": "cite",
+    "path": "/Users/patrick/projects/bench/cite",
+    "head": "7322285d66199166423a650ae24a2c3c812d62be",
+    "tree": "0cfc90529fe762f155b55bd7327e3d1ea58c28b6",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/cite.git",
+    "module": "module github.com/patrickyoung/cite"
+  },
+  {
+    "name": "clerk",
+    "path": "/Users/patrick/projects/bench/clerk",
+    "head": "a91fe8df0d54c3acc45d83eb6c622fa25640af64",
+    "tree": "401d53963a60ed91730b26da6487edc7d9a3a99c",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/clerk.git",
+    "module": null
+  },
+  {
+    "name": "context",
+    "path": "/Users/patrick/projects/bench/context",
+    "head": "8133264852426395dc26aae34231502e9501a983",
+    "tree": "b456d03832f0fdcc2a0fa26e5dd9b9fae8fe9d2c",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/context.git",
+    "module": "module github.com/patrickyoung/context"
+  },
+  {
+    "name": "draft",
+    "path": "/Users/patrick/projects/bench/draft",
+    "head": "2fc900908cd1f90bd75537bec3063cfc7e695db5",
+    "tree": "0ba920c676186910ba877c9b4f99c5e571cde5ad",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/draft.git",
+    "module": null
+  },
+  {
+    "name": "guide",
+    "path": "/Users/patrick/projects/bench/guide",
+    "head": "14a62ca913d7e4293823cb35941d4c6628d8c029",
+    "tree": "78ed943d3f93757b23ce3cef0388da988530e303",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/bench-guide.git",
+    "module": null
+  },
+  {
+    "name": "hire",
+    "path": "/Users/patrick/projects/bench/hire",
+    "head": "631194190f9690091d0eacb837bf5905c073f7cb",
+    "tree": "33b5ae7c99c4270db4577c57d334d8ca335a3b15",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/bench-hire.git",
+    "module": "module github.com/patrickyoung/bench-hire"
+  },
+  {
+    "name": "hone",
+    "path": "/Users/patrick/projects/bench/hone",
+    "head": "dc51765d0367c1f25a3b18f5731733b4618d4e00",
+    "tree": "baa86743dc788822218ada923ca6cf4c64f36311",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/hone.git",
+    "module": "module github.com/patrickyoung/hone"
+  },
+  {
+    "name": "manage",
+    "path": "/Users/patrick/projects/bench/manage",
+    "head": "347f38dd550aadcba5c8b8890cda6c73f1a5c8a5",
+    "tree": "6a027685fe2f32c6824923056f0d464b0c4ce037",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/bench-manage.git",
+    "module": null
+  },
+  {
+    "name": "may",
+    "path": "/Users/patrick/projects/bench/may",
+    "head": "6d04f14e8220b0d32abfc5df2d46564747500f66",
+    "tree": "2b9e3e92f47df96ea3de7a38df57434e7634c45d",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/may.git",
+    "module": "module github.com/patrickyoung/may"
+  },
+  {
+    "name": "mcp",
+    "path": "/Users/patrick/projects/bench/mcp",
+    "head": "df8aac0e95756eb08cdb9b12750030f7db5f6dbd",
+    "tree": "8f57633bc81f6339a5710320044c60c6d1300653",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/mcp.git",
+    "module": "module github.com/patrickyoung/mcp"
+  },
+  {
+    "name": "oauth",
+    "path": "/Users/patrick/projects/bench/oauth",
+    "head": "134526d885f123c97917b3846ae779303ad04270",
+    "tree": "fc6ede37f15e6932fcf38aa48cfb6b111c49bdf8",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/oauth.git",
+    "module": "module github.com/patrickyoung/oauth"
+  },
+  {
+    "name": "pack",
+    "path": "/Users/patrick/projects/bench/pack",
+    "head": null,
+    "tree": null,
+    "status": null,
+    "origin": null,
+    "module": null
+  },
+  {
+    "name": "ply",
+    "path": "/Users/patrick/projects/bench/ply",
+    "head": "1ea0593f7373c9df238cf3ce068f3b58db9bf341",
+    "tree": "8c1e19c704989929d75d9826604eef77169903c1",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/ply.git",
+    "module": "module github.com/patrickyoung/ply"
+  },
+  {
+    "name": "rules",
+    "path": "/Users/patrick/projects/bench/rules",
+    "head": "da945ba984e7a552cbefa9043bd24e793d959e89",
+    "tree": "c508e6e7db0f0ae0c1fa6940e4f7e057237749e7",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/rules.git",
+    "module": "module github.com/patrickyoung/rules"
+  },
+  {
+    "name": "studio",
+    "path": "/Users/patrick/projects/bench/studio",
+    "head": null,
+    "tree": null,
+    "status": null,
+    "origin": null,
+    "module": "module github.com/patrickyoung/bench-studio"
+  },
+  {
+    "name": "tend",
+    "path": "/Users/patrick/projects/bench/tend",
+    "head": "77e678aec18ccf529fc67892e70dd03fc6a16205",
+    "tree": "ce9a6ee4eb496e62abce220f7b2f1acc27744e76",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/tend.git",
+    "module": "module github.com/patrickyoung/tend"
+  },
+  {
+    "name": "trail",
+    "path": "/Users/patrick/projects/bench/trail",
+    "head": "2ca0dad51b54bfc42843338d805ab69f395c1d81",
+    "tree": "04cc01f7b71052a43fb7f8729f71b769df45dc10",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/trail.git",
+    "module": "module github.com/patrickyoung/trail"
+  },
+  {
+    "name": "vouch",
+    "path": "/Users/patrick/projects/bench/vouch",
+    "head": "bf98d394083bf25a85476109958df573903248ba",
+    "tree": "91d5a480d9d29aac685a7e791bd356976eddb998",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/vouch.git",
+    "module": "module github.com/patrickyoung/vouch"
+  },
+  {
+    "name": "weave",
+    "path": "/Users/patrick/projects/bench/weave",
+    "head": "57b2f7e28576f98e6e5646c8e508821ef92cb646",
+    "tree": "979709ae043d5ec4e3dbcdaf47e8451e366f55c1",
+    "status": "",
+    "origin": null,
+    "module": "module github.com/patrickyoung/weave"
+  },
+  {
+    "name": "web",
+    "path": "/Users/patrick/projects/bench/web",
+    "head": "22b632da5d72209fb1b5db25b365ceb4c3f57b90",
+    "tree": "b250b6c24ddac50af63a8569df125fa086bc4331",
+    "status": "",
+    "origin": "https://github.com/patrickyoung/web.git",
+    "module": null
+  }
+]

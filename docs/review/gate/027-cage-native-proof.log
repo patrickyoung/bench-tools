@@ -1,0 +1,18 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-cage-kuar2u6l/source
+argv: /Users/patrick/projects/bench/bench-tools/.checks/20260910T005736Z-31014/bin/cage check
+
+backend: seatbelt (macOS Seatbelt via /usr/bin/sandbox-exec)
+workspace write: ok
+temporary write: ok
+outside write denied: ok - cage-check: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-cage-kuar2u6l/tmp/cage-check-2599211663/outside: Operation not permitted
+read-only workspace: ok - cage-check: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-cage-kuar2u6l/tmp/cage-check-2599211663/work/read-only-write: Operation not permitted
+explicit writable directory: ok
+explicit write replaces workspace: ok - cage-check: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-cage-kuar2u6l/tmp/cage-check-2599211663/work/implicit: Operation not permitted
+stdin preservation: ok
+stdout and stderr preservation: ok - exact-stderr
+exit propagation: ok - status 42
+signal propagation: ok - status 143
+default network denied: ok - cage check probe: dial tcp 127.0.0.1:56524: connect: operation not permitted
+deliberate -net: ok
+unavailable backend fails closed: ok - cage: confinement setup: simulated unavailable backend
+cage check: 13/13 passed

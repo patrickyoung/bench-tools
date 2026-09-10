@@ -1,0 +1,82 @@
+[
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "e227184c21f232ba0cf4801910d9511c09381cdb480c48f828302b1cd15381d7"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "6980da3e179e3f44fa620e022db4da64b848520d623bd0acb9b502f14b4d2641"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "65f0cf018988493adea1d1c2bfc2f5ecc5abe6a326fa3aabc9b9b8bf04e4cc94"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "1038e24a3484c627698f1901ae3e4552f77f340d57f9f4a6396544b0fea847bb"
+  },
+  {
+    "path": "cmd/oauth/main.go",
+    "mode": 420,
+    "sha256": "3d292c079037eae6c27fbe642620cdb07ca281e735e97d05e0c1cea27059c539"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "aefd44c8829ed34a7bc604f7a0de39ccfa4bb9a114532759117abbe08404d9a4"
+  },
+  {
+    "path": "install.sh",
+    "mode": 493,
+    "sha256": "c179b8650cec0bb39e9448cc79fa8fc0a64694a9a4a58aca84bab3095842a95b"
+  },
+  {
+    "path": "internal/protocol/protocol.go",
+    "mode": 420,
+    "sha256": "04ad9657d70250ba2c25fb81ea4b631eb23fa2d5cf9ebf765ff59166ca3b1543"
+  },
+  {
+    "path": "internal/protocol/protocol_test.go",
+    "mode": 420,
+    "sha256": "5f170ee2d1170a6f267849147b54a87911675bfee6343b5c4367ec7b3f504e95"
+  },
+  {
+    "path": "internal/run/cli.go",
+    "mode": 420,
+    "sha256": "169912ac27e7200ee97bf990e98c57a248a6e26766bf2f3165a2a268f9930599"
+  },
+  {
+    "path": "internal/run/cli_test.go",
+    "mode": 420,
+    "sha256": "56f53f7f2baf204287e28a67bd267e26f831f33e17c10eb566bfb426d375ad96"
+  },
+  {
+    "path": "internal/run/command.go",
+    "mode": 420,
+    "sha256": "a2848b1a5e2434bd00f44bd9c9b118c1f81060e529dbc1b24eb5134068c4509f"
+  },
+  {
+    "path": "internal/state/state.go",
+    "mode": 420,
+    "sha256": "ab384a32a1d09080ab5c35ce1ceab5ca2942e5313bfea9a62c616baa5f52cd35"
+  },
+  {
+    "path": "internal/state/state_test.go",
+    "mode": 420,
+    "sha256": "6925d9239752d1cf00d4e5938a5e6a598ed63ddca33741e03b62bd323b8085ed"
+  },
+  {
+    "path": "justfile",
+    "mode": 420,
+    "sha256": "14887879e678bac5154defe15376e1ca5d5efc0559ad50fbec75fd8019e7cb78"
+  }
+]

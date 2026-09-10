@@ -1,0 +1,650 @@
+{
+  "status": "complete",
+  "selected": [
+    "action",
+    "agent",
+    "ask",
+    "brief",
+    "cage",
+    "cite",
+    "context",
+    "draft",
+    "hone",
+    "may",
+    "mcp",
+    "oauth",
+    "ply",
+    "rules",
+    "tend",
+    "trail",
+    "weave"
+  ],
+  "native_cage_requested": true,
+  "checks": [
+    {
+      "check": "environment",
+      "exit": 0,
+      "seconds": 0.015,
+      "log": "001-environment.log"
+    },
+    {
+      "check": "boundaries",
+      "exit": 0,
+      "seconds": 0.538,
+      "log": "002-boundaries.log"
+    },
+    {
+      "check": "action-build-action",
+      "exit": 0,
+      "seconds": 0.177,
+      "log": "003-action-build-action.log"
+    },
+    {
+      "check": "action-test",
+      "exit": 0,
+      "seconds": 4.444,
+      "log": "004-action-test.log"
+    },
+    {
+      "check": "action-race",
+      "exit": 0,
+      "seconds": 58.258,
+      "log": "005-action-race.log"
+    },
+    {
+      "check": "action-vet",
+      "exit": 0,
+      "seconds": 0.114,
+      "log": "006-action-vet.log"
+    },
+    {
+      "check": "action-version-action",
+      "exit": 0,
+      "seconds": 0.168,
+      "log": "007-action-version-action.log"
+    },
+    {
+      "check": "agent-syntax",
+      "exit": 0,
+      "seconds": 0.008,
+      "log": "008-agent-syntax.log"
+    },
+    {
+      "check": "agent-test",
+      "exit": 0,
+      "seconds": 9.482,
+      "log": "009-agent-test.log"
+    },
+    {
+      "check": "ask-build-ask",
+      "exit": 0,
+      "seconds": 2.396,
+      "log": "010-ask-build-ask.log"
+    },
+    {
+      "check": "ask-test",
+      "exit": 0,
+      "seconds": 6.737,
+      "log": "011-ask-test.log"
+    },
+    {
+      "check": "ask-race",
+      "exit": 0,
+      "seconds": 14.501,
+      "log": "012-ask-race.log"
+    },
+    {
+      "check": "ask-vet",
+      "exit": 0,
+      "seconds": 0.621,
+      "log": "013-ask-vet.log"
+    },
+    {
+      "check": "ask-version-ask",
+      "exit": 0,
+      "seconds": 1.33,
+      "log": "014-ask-version-ask.log"
+    },
+    {
+      "check": "brief-build-brief",
+      "exit": 0,
+      "seconds": 0.335,
+      "log": "015-brief-build-brief.log"
+    },
+    {
+      "check": "brief-test",
+      "exit": 0,
+      "seconds": 2.171,
+      "log": "016-brief-test.log"
+    },
+    {
+      "check": "brief-race",
+      "exit": 0,
+      "seconds": 3.351,
+      "log": "017-brief-race.log"
+    },
+    {
+      "check": "brief-vet",
+      "exit": 0,
+      "seconds": 0.122,
+      "log": "018-brief-vet.log"
+    },
+    {
+      "check": "brief-version-brief",
+      "exit": 0,
+      "seconds": 0.167,
+      "log": "019-brief-version-brief.log"
+    },
+    {
+      "check": "cage-build-cage",
+      "exit": 0,
+      "seconds": 0.215,
+      "log": "020-cage-build-cage.log"
+    },
+    {
+      "check": "cage-test",
+      "exit": 0,
+      "seconds": 0.538,
+      "log": "021-cage-test.log"
+    },
+    {
+      "check": "cage-race",
+      "exit": 0,
+      "seconds": 1.632,
+      "log": "022-cage-race.log"
+    },
+    {
+      "check": "cage-vet",
+      "exit": 0,
+      "seconds": 0.116,
+      "log": "023-cage-vet.log"
+    },
+    {
+      "check": "cage-version-cage",
+      "exit": 0,
+      "seconds": 0.167,
+      "log": "024-cage-version-cage.log"
+    },
+    {
+      "check": "cage-cross-linux",
+      "exit": 0,
+      "seconds": 0.484,
+      "log": "025-cage-cross-linux.log"
+    },
+    {
+      "check": "cage-cross-windows",
+      "exit": 0,
+      "seconds": 0.477,
+      "log": "026-cage-cross-windows.log"
+    },
+    {
+      "check": "cage-native-proof",
+      "exit": 0,
+      "seconds": 0.285,
+      "log": "027-cage-native-proof.log"
+    },
+    {
+      "check": "cite-build-cite",
+      "exit": 0,
+      "seconds": 0.167,
+      "log": "028-cite-build-cite.log"
+    },
+    {
+      "check": "cite-test",
+      "exit": 0,
+      "seconds": 0.426,
+      "log": "029-cite-test.log"
+    },
+    {
+      "check": "cite-race",
+      "exit": 0,
+      "seconds": 1.501,
+      "log": "030-cite-race.log"
+    },
+    {
+      "check": "cite-vet",
+      "exit": 0,
+      "seconds": 0.097,
+      "log": "031-cite-vet.log"
+    },
+    {
+      "check": "cite-version-cite",
+      "exit": 0,
+      "seconds": 0.157,
+      "log": "032-cite-version-cite.log"
+    },
+    {
+      "check": "context-build-context",
+      "exit": 0,
+      "seconds": 0.173,
+      "log": "033-context-build-context.log"
+    },
+    {
+      "check": "context-test",
+      "exit": 0,
+      "seconds": 2.91,
+      "log": "034-context-test.log"
+    },
+    {
+      "check": "context-race",
+      "exit": 0,
+      "seconds": 5.149,
+      "log": "035-context-race.log"
+    },
+    {
+      "check": "context-vet",
+      "exit": 0,
+      "seconds": 0.149,
+      "log": "036-context-vet.log"
+    },
+    {
+      "check": "context-version-context",
+      "exit": 0,
+      "seconds": 0.16,
+      "log": "037-context-version-context.log"
+    },
+    {
+      "check": "ply-build-ply",
+      "exit": 0,
+      "seconds": 0.193,
+      "log": "038-ply-build-ply.log"
+    },
+    {
+      "check": "hone-build-hone",
+      "exit": 0,
+      "seconds": 0.196,
+      "log": "039-hone-build-hone.log"
+    },
+    {
+      "check": "may-build-may",
+      "exit": 0,
+      "seconds": 0.17,
+      "log": "040-may-build-may.log"
+    },
+    {
+      "check": "draft-syntax",
+      "exit": 0,
+      "seconds": 0.009,
+      "log": "041-draft-syntax.log"
+    },
+    {
+      "check": "draft-scratch-sync",
+      "exit": 0,
+      "seconds": 0.709,
+      "log": "042-draft-scratch-sync.log"
+    },
+    {
+      "check": "draft-test",
+      "exit": 0,
+      "seconds": 13.387,
+      "log": "043-draft-test.log"
+    },
+    {
+      "check": "draft-lint",
+      "exit": 0,
+      "seconds": 0.007,
+      "log": "044-draft-lint.log"
+    },
+    {
+      "check": "hone-test",
+      "exit": 0,
+      "seconds": 2.392,
+      "log": "045-hone-test.log"
+    },
+    {
+      "check": "hone-race",
+      "exit": 0,
+      "seconds": 3.691,
+      "log": "046-hone-race.log"
+    },
+    {
+      "check": "hone-vet",
+      "exit": 0,
+      "seconds": 0.11,
+      "log": "047-hone-vet.log"
+    },
+    {
+      "check": "hone-version-hone",
+      "exit": 0,
+      "seconds": 0.004,
+      "log": "048-hone-version-hone.log"
+    },
+    {
+      "check": "may-test",
+      "exit": 0,
+      "seconds": 0.806,
+      "log": "049-may-test.log"
+    },
+    {
+      "check": "may-race",
+      "exit": 0,
+      "seconds": 1.98,
+      "log": "050-may-race.log"
+    },
+    {
+      "check": "may-vet",
+      "exit": 0,
+      "seconds": 0.109,
+      "log": "051-may-vet.log"
+    },
+    {
+      "check": "may-version-may",
+      "exit": 0,
+      "seconds": 0.006,
+      "log": "052-may-version-may.log"
+    },
+    {
+      "check": "may-self-check",
+      "exit": 0,
+      "seconds": 0.099,
+      "log": "053-may-self-check.log"
+    },
+    {
+      "check": "mcp-build-mcp",
+      "exit": 0,
+      "seconds": 0.65,
+      "log": "054-mcp-build-mcp.log"
+    },
+    {
+      "check": "mcp-build-mcp-legacy",
+      "exit": 0,
+      "seconds": 0.408,
+      "log": "055-mcp-build-mcp-legacy.log"
+    },
+    {
+      "check": "mcp-build-mcpbox",
+      "exit": 0,
+      "seconds": 0.333,
+      "log": "056-mcp-build-mcpbox.log"
+    },
+    {
+      "check": "mcp-build-mcpserve",
+      "exit": 0,
+      "seconds": 0.413,
+      "log": "057-mcp-build-mcpserve.log"
+    },
+    {
+      "check": "mcp-test",
+      "exit": 0,
+      "seconds": 3.206,
+      "log": "058-mcp-test.log"
+    },
+    {
+      "check": "mcp-race",
+      "exit": 0,
+      "seconds": 31.823,
+      "log": "059-mcp-race.log"
+    },
+    {
+      "check": "mcp-vet",
+      "exit": 0,
+      "seconds": 0.258,
+      "log": "060-mcp-vet.log"
+    },
+    {
+      "check": "mcp-version-mcp",
+      "exit": 0,
+      "seconds": 0.222,
+      "log": "061-mcp-version-mcp.log"
+    },
+    {
+      "check": "mcp-version-mcp-legacy",
+      "exit": 0,
+      "seconds": 0.205,
+      "log": "062-mcp-version-mcp-legacy.log"
+    },
+    {
+      "check": "mcp-version-mcpbox",
+      "exit": 0,
+      "seconds": 0.185,
+      "log": "063-mcp-version-mcpbox.log"
+    },
+    {
+      "check": "mcp-version-mcpserve",
+      "exit": 0,
+      "seconds": 0.217,
+      "log": "064-mcp-version-mcpserve.log"
+    },
+    {
+      "check": "oauth-build-oauth",
+      "exit": 0,
+      "seconds": 0.312,
+      "log": "065-oauth-build-oauth.log"
+    },
+    {
+      "check": "oauth-test",
+      "exit": 0,
+      "seconds": 1.123,
+      "log": "066-oauth-test.log"
+    },
+    {
+      "check": "oauth-race",
+      "exit": 0,
+      "seconds": 2.355,
+      "log": "067-oauth-race.log"
+    },
+    {
+      "check": "oauth-vet",
+      "exit": 0,
+      "seconds": 0.214,
+      "log": "068-oauth-vet.log"
+    },
+    {
+      "check": "oauth-version-oauth",
+      "exit": 0,
+      "seconds": 0.209,
+      "log": "069-oauth-version-oauth.log"
+    },
+    {
+      "check": "ply-test",
+      "exit": 0,
+      "seconds": 35.079,
+      "log": "070-ply-test.log"
+    },
+    {
+      "check": "ply-race",
+      "exit": 0,
+      "seconds": 47.882,
+      "log": "071-ply-race.log"
+    },
+    {
+      "check": "ply-vet",
+      "exit": 0,
+      "seconds": 0.201,
+      "log": "072-ply-vet.log"
+    },
+    {
+      "check": "ply-version-ply",
+      "exit": 0,
+      "seconds": 0.005,
+      "log": "073-ply-version-ply.log"
+    },
+    {
+      "check": "ply-eval-fixtures",
+      "exit": 0,
+      "seconds": 18.456,
+      "log": "074-ply-eval-fixtures.log"
+    },
+    {
+      "check": "ply-job-tests",
+      "exit": 0,
+      "seconds": 24.202,
+      "log": "075-ply-job-tests.log"
+    },
+    {
+      "check": "ply-edit-tests",
+      "exit": 0,
+      "seconds": 2.796,
+      "log": "076-ply-edit-tests.log"
+    },
+    {
+      "check": "rules-build-rules",
+      "exit": 0,
+      "seconds": 0.155,
+      "log": "077-rules-build-rules.log"
+    },
+    {
+      "check": "rules-test",
+      "exit": 0,
+      "seconds": 0.423,
+      "log": "078-rules-test.log"
+    },
+    {
+      "check": "rules-race",
+      "exit": 0,
+      "seconds": 1.524,
+      "log": "079-rules-race.log"
+    },
+    {
+      "check": "rules-vet",
+      "exit": 0,
+      "seconds": 0.091,
+      "log": "080-rules-vet.log"
+    },
+    {
+      "check": "rules-version-rules",
+      "exit": 0,
+      "seconds": 0.156,
+      "log": "081-rules-version-rules.log"
+    },
+    {
+      "check": "tend-build-tend",
+      "exit": 0,
+      "seconds": 0.455,
+      "log": "082-tend-build-tend.log"
+    },
+    {
+      "check": "tend-test",
+      "exit": 0,
+      "seconds": 22.971,
+      "log": "083-tend-test.log"
+    },
+    {
+      "check": "tend-race",
+      "exit": 0,
+      "seconds": 23.89,
+      "log": "084-tend-race.log"
+    },
+    {
+      "check": "tend-vet",
+      "exit": 0,
+      "seconds": 0.165,
+      "log": "085-tend-vet.log"
+    },
+    {
+      "check": "tend-version-tend",
+      "exit": 0,
+      "seconds": 0.213,
+      "log": "086-tend-version-tend.log"
+    },
+    {
+      "check": "trail-build-trail",
+      "exit": 0,
+      "seconds": 0.155,
+      "log": "087-trail-build-trail.log"
+    },
+    {
+      "check": "trail-test",
+      "exit": 0,
+      "seconds": 0.741,
+      "log": "088-trail-test.log"
+    },
+    {
+      "check": "trail-race",
+      "exit": 0,
+      "seconds": 1.878,
+      "log": "089-trail-race.log"
+    },
+    {
+      "check": "trail-vet",
+      "exit": 0,
+      "seconds": 0.106,
+      "log": "090-trail-vet.log"
+    },
+    {
+      "check": "trail-version-trail",
+      "exit": 0,
+      "seconds": 0.16,
+      "log": "091-trail-version-trail.log"
+    },
+    {
+      "check": "weave-build-weave",
+      "exit": 0,
+      "seconds": 0.148,
+      "log": "092-weave-build-weave.log"
+    },
+    {
+      "check": "weave-test",
+      "exit": 0,
+      "seconds": 0.585,
+      "log": "093-weave-test.log"
+    },
+    {
+      "check": "weave-race",
+      "exit": 0,
+      "seconds": 2.795,
+      "log": "094-weave-race.log"
+    },
+    {
+      "check": "weave-vet",
+      "exit": 0,
+      "seconds": 0.097,
+      "log": "095-weave-vet.log"
+    },
+    {
+      "check": "weave-version-weave",
+      "exit": 0,
+      "seconds": 0.162,
+      "log": "096-weave-version-weave.log"
+    },
+    {
+      "check": "weave-python-business",
+      "exit": 0,
+      "seconds": 0.195,
+      "log": "097-weave-python-business.log"
+    },
+    {
+      "check": "weave-python-protocol",
+      "exit": 0,
+      "seconds": 3.608,
+      "log": "098-weave-python-protocol.log"
+    },
+    {
+      "check": "weave-python-receipts",
+      "exit": 0,
+      "seconds": 0.196,
+      "log": "099-weave-python-receipts.log"
+    },
+    {
+      "check": "weave-python-research_domain",
+      "exit": 0,
+      "seconds": 0.568,
+      "log": "100-weave-python-research_domain.log"
+    },
+    {
+      "check": "weave-python-release",
+      "exit": 0,
+      "seconds": 0.503,
+      "log": "101-weave-python-release.log"
+    },
+    {
+      "check": "weave-built-smoke",
+      "exit": 0,
+      "seconds": 0.158,
+      "log": "102-weave-built-smoke.log"
+    },
+    {
+      "check": "public-process-integration",
+      "exit": 0,
+      "seconds": 94.265,
+      "log": "103-public-process-integration.log"
+    },
+    {
+      "check": "boundaries-after",
+      "exit": 0,
+      "seconds": 0.586,
+      "log": "104-boundaries-after.log"
+    }
+  ],
+  "error": null
+}

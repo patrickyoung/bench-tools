@@ -1,0 +1,3 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-cage-kuar2u6l/source
+argv: go build -o /Users/patrick/projects/bench/bench-tools/.checks/20260910T005736Z-31014/cage-linux .
+

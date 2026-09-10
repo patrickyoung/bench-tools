@@ -1,0 +1,3 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-hone-d6qvlpbg/source
+argv: go vet ./...
+

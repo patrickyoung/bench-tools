@@ -1,0 +1,125 @@
+cwd: /Users/patrick/projects/bench/bench-tools
+argv: python3 /Users/patrick/projects/bench/bench-tools/scripts/check-integration.py --bin-dir /Users/patrick/projects/bench/bench-tools/.checks/20260910T005736Z-31014/bin
+
+ok ply: TestAskPlyContract (required, no skips)
+ok hone: TestScaffoldWritesFrontmatterBriefCanRead (required, no skips)
+ok Context -> Cite: structured evidence, exact output, rejection and broken-evidence status
+ok built Ply -> Ask: passing baseline check, sealed verifier receipt, no model call
+ok Action -> Ask -> Trail: parked fixture refuses effects; exact output, sealed receipts, read-only replay and tamper rejection
+running Weave's offline executable/example suite
+test_bad_source_and_conflicting_tradeoff_references_rejected (test_business.BusinessTests) ... ok
+test_both_complete_and_reference_results_are_labelled (test_business.BusinessTests) ... ok
+test_demand_capacity_and_heldout_evidence (test_business.BusinessTests) ... ok
+test_design_parameters_change_simulated_outcomes (test_business.BusinessTests) ... ok
+test_negative_experiment_is_valid_completed_work (test_business.BusinessTests) ... ok
+test_numeric_and_shape_corruption_fail (test_business.BusinessTests) ... ok
+test_prompts_are_json_explicit_and_do_not_mutate_inputs (test_business.BusinessTests) ... ok
+test_review_schema_is_closed_required_and_matches_results (test_business.BusinessTests) ... ok
+test_supported_singleton_survives_synthesis (test_business.BusinessTests) ... ok
+test_changed_artifact_prevents_admission_on_resume (test_integration.IntegrationTests) ... ok
+test_corrupted_ask_receipt_is_not_reused (test_integration.IntegrationTests) ... ok
+test_driver_death_during_ply_stops_without_retry (test_integration.IntegrationTests) ... ok
+test_driver_death_interrupts_owned_tend_jobs (test_integration.IntegrationTests) ... ok
+test_failed_worker_does_not_release_synthesis (test_integration.IntegrationTests) ... ok
+test_invoice_model_parameters_reach_simulation (test_integration.IntegrationTests) ... ok
+test_model_shell_action_is_refused_without_effect (test_integration.IntegrationTests) ... ok
+test_model_wires_and_ply_rejection_recovery (test_integration.IntegrationTests) ... ok
+test_precheck_without_session_has_current_controller_evidence (test_integration.IntegrationTests) ... ok
+test_reference_workflows_resume_without_new_attempts (test_integration.IntegrationTests) ... ok
+test_tend_same_key_writers_serialize (test_integration.IntegrationTests) ... ok
+test_three_hundred_tasks_respect_eight_worker_bound (test_integration.IntegrationTests) ... ok
+test_early_closed_stdin_and_allowed_idle_status (test_protocol.ProtocolTests) ... ok
+test_expired_deadline_and_interrupt_prevent_launch (test_protocol.ProtocolTests) ... ok
+test_finite_stdin_and_default_eof (test_protocol.ProtocolTests) ... ok
+test_interrupt_is_observed_while_command_runs (test_protocol.ProtocolTests) ... ok
+test_limit_accepts_exact_bytes_and_stops_noisy_producer (test_protocol.ProtocolTests) ... ok
+test_producer_failure_does_not_return_partial_answer (test_protocol.ProtocolTests) ... ok
+test_shared_deadline_bounds_an_inflight_command (test_protocol.ProtocolTests) ... ok
+test_simultaneous_large_output_and_input_cannot_deadlock (test_protocol.ProtocolTests) ... ok
+test_timeout_allows_sigint_cleanup (test_protocol.ProtocolTests) ... ok
+test_timeout_kills_and_reaps_a_program_that_ignores_interrupt (test_protocol.ProtocolTests) ... ok
+test_legacy_text_and_v2_binary_output (test_receipts.VerifierReceiptTests) ... ok
+test_interrupt_between_rounds_exits_without_a_traceback (test_recipe_runtime.RecipeRuntimeTests) ... ok
+test_domain_and_explicit_helpers_are_immutable_manifest_inputs (test_recipe_seam.RecipeSeamTests) ... ok
+test_frozen_helper_tamper_is_detected_before_acceptance (test_recipe_seam.RecipeSeamTests) ... ok
+test_helpers_cannot_replace_support_code_or_escape_recipe (test_recipe_seam.RecipeSeamTests) ... ok
+test_real_tend_custom_domain_output_capture_and_resume (test_recipe_seam.RecipeSeamTests) ... tend: w-b44799fcb177ba7b5d6f11ae1f2259c6fbf7f82e attempt 1 started
+tend: w-59a7100907f3517bb6ac665ab9b99500b9a2134a attempt 1 started
+ok
+test_allowlist_rejects_ambiguous_missing_or_indirect_paths (test_release.ReleaseTests) ... ok
+test_archives_checksums_manifest_and_reproducible_rebuild (test_release.ReleaseTests) ... ok
+test_build_uses_snapshot_even_if_checkout_changes_after_capture (test_release.ReleaseTests) ... ok
+test_changed_output_refuses_every_new_artifact (test_release.ReleaseTests) ... ok
+test_duplicate_targets_fail_before_building (test_release.ReleaseTests) ... ok
+test_failed_build_leaves_existing_output_untouched (test_release.ReleaseTests) ... ok
+test_make_install_accepts_staged_paths_with_spaces_without_rebuilding (test_release.ReleaseTests) ... ok
+test_confirmation_requires_exact_frozen_selection_and_dataset (test_research.ResearchTests) ... ok
+test_deadline_dataset_and_allowances_are_frozen_on_resume (test_research.ResearchTests) ... ok
+test_fixture_plumbing_counts_failed_and_duplicate_slots_and_freezes_all_selections (test_research.ResearchTests) ... trial 1 search: 3/4 slots; eligible incumbent=False
+trial 1 search: 4/4 slots; eligible incumbent=False
+trial 1 single: 1/4 slots; eligible incumbent=False
+trial 1 single: 2/4 slots; eligible incumbent=False
+trial 1 single: 3/4 slots; eligible incumbent=False
+trial 1 single: 4/4 slots; eligible incumbent=False
+trial 1 team: 3/4 slots; eligible incumbent=False
+trial 1 team: 4/4 slots; eligible incumbent=False
+trial 2 search: 3/4 slots; eligible incumbent=False
+trial 2 search: 4/4 slots; eligible incumbent=False
+trial 2 single: 1/4 slots; eligible incumbent=False
+trial 2 single: 2/4 slots; eligible incumbent=False
+trial 2 single: 3/4 slots; eligible incumbent=False
+trial 2 single: 4/4 slots; eligible incumbent=False
+trial 2 team: 3/4 slots; eligible incumbent=False
+trial 2 team: 4/4 slots; eligible incumbent=False
+ok
+test_partial_answer_and_retry_remain_visible_in_usage (test_research.ResearchTests) ... ok
+test_proposal_prompts_exclude_final_cases_and_local_evidence_paths (test_research.ResearchTests) ... ok
+test_real_reference_search_resume_has_no_new_tend_attempts (test_research.ResearchTests) ... tend: w-1d78e67976d7594d0bedf05b35a32ab26bd12834 attempt 1 started
+tend: w-93a7d95c1eb1b09554ed13bf0d17615e353d44ef attempt 1 started
+tend: w-018be6f91ba2d3b16151578b7c9557e4b8c84c88 attempt 1 started
+trial 1 search: 2/2 slots; eligible incumbent=False
+tend: w-9da81d520185a55ed790a93312cf8933a68a347e attempt 1 started
+trial 1 search: 2/2 slots; eligible incumbent=False
+ok
+test_real_three_arm_controller_with_messages_fixture_and_rejected_proposal (test_research.ResearchTests) ... tend: w-473cfa20792f432fcc773658d86918afd442cf4b attempt 1 started
+tend: w-bfbd68ae75e80593b6a88d41e7aa6016b132b2d9 attempt 1 started
+tend: w-ab45b966cae522b6065bdaddadd8510aeaa74824 attempt 1 started
+trial 1 search: 2/2 slots; eligible incumbent=False
+tend: w-85920ddaca04e8543cc13c871107faa71f4d3dfe attempt 1 started
+trial 1 single: 1/2 slots; eligible incumbent=False
+tend: w-325861f8410a0a5ccae8857029a2aeb2717d11dd attempt 1 started
+tend: w-6515c120d6462bff879c9216bbeafef1315f87b6 attempt 1 started
+trial 1 single: 2/2 slots; eligible incumbent=False
+tend: w-e9d3ca6e48a71e6fad37ea3bb8beb34c491563a4 attempt 1 started
+tend: w-df3a8f343311b0ecedc078d72f341429d17c0397 attempt 1 started
+tend: w-4a9989bbfbed822da4d784d58a5b06d62a6e2dec attempt 1 started
+tend: w-6515c120d6462bff879c9216bbeafef1315f87b6 attempt 1 started
+trial 1 team: 2/2 slots; eligible incumbent=False
+tend: w-01e5e3f1a60d323f067b3202aeab1e6b786e9914 attempt 1 started
+tend: w-5f9effb8545eab9f4e442e1315ffb059fcf37641 attempt 1 started
+tend: w-5542cbe90be00f8fffce9a246524d701ee103962 attempt 1 started
+trial 1 search: 2/2 slots; eligible incumbent=False
+trial 1 single: 1/2 slots; eligible incumbent=False
+trial 1 single: 2/2 slots; eligible incumbent=False
+trial 1 team: 2/2 slots; eligible incumbent=False
+ok
+test_receipt_usage_requires_observed_counts_and_preserves_cache_writes (test_research.ResearchTests) ... ok
+test_rejected_proposal_blocked_evaluation_rederives_after_deadline (test_research.ResearchTests) ... ok
+test_unknown_round_is_never_driven_or_retried (test_research.ResearchTests) ... ok
+test_batches_save_recorded_setup_but_charge_waiting (test_research_domain.ResearchDomainTests) ... ok
+test_every_split_has_stress_and_deterministic_complete_results (test_research_domain.ResearchDomainTests) ... ok
+test_frozen_rules_and_malformed_data_fail_closed (test_research_domain.ResearchDomainTests) ... ok
+test_precheck_and_correction_use_fixed_labor_and_waits (test_research_domain.ResearchDomainTests) ... ok
+test_priority_selects_ready_work_and_does_not_preempt (test_research_domain.ResearchDomainTests) ... ok
+test_public_evidence_and_bindings_are_development_only (test_research_domain.ResearchDomainTests) ... ok
+test_ranking_never_promotes_infeasibility_over_feasibility (test_research_domain.ResearchDomainTests) ... ok
+test_relative_gain_does_not_override_absolute_failure (test_research_domain.ResearchDomainTests) ... ok
+test_space_is_exact_and_physical_parameters_are_not_choices (test_research_domain.ResearchDomainTests) ... ok
+
+----------------------------------------------------------------------
+Ran 63 tests in 86.331s
+
+OK
+Installed binary and quickstart passed.
+ok Weave -> Tend/Ask/Ply offline examples
+All offline executable integration checks passed.

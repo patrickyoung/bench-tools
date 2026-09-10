@@ -1,0 +1,212 @@
+[
+  {
+    "path": ".github/workflows/ci.yml",
+    "mode": 420,
+    "sha256": "11110e783c7c77f180e04f315175a02c44dec6cf0e67945f58da8af99484033f"
+  },
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "95843340244c72bf3ccc60015a906eb9f65c3b41e7a1a1a93eec466992b56181"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "3cf28234087c8d5c0ec6eb292a7de8d66b54ab9da7920177a22e30c6126f1448"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "mode": 420,
+    "sha256": "ecf94a435a3f6d746dc50b87bfb0e2179be19c9dad013af03d0a8859d7d53d48"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "Makefile",
+    "mode": 420,
+    "sha256": "86c67d68919868aaf606d5f3db22fa16b256374bf180851a7618c64c41b9cb0a"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "c7ace4edbd7c026fd8048c77857ed77e667332826079fb617f68e78abe8290fd"
+  },
+  {
+    "path": "RELEASING.md",
+    "mode": 420,
+    "sha256": "19cb0e78719e8b6320b93993bb20ea3790780fc593def4735a7980e9369509d4"
+  },
+  {
+    "path": "examples/RESEARCH-DOMAIN.md",
+    "mode": 420,
+    "sha256": "167df4412b57905a92d3aae22db8db3a529bb4649517bc75cf10c8894bc0ae94"
+  },
+  {
+    "path": "examples/RESEARCH-RESULTS.md",
+    "mode": 420,
+    "sha256": "04c13f756d48571f41f9d16a5f6f60002e6ef9661f1e9d3b0d686df014d5fbb1"
+  },
+  {
+    "path": "examples/RESEARCH.md",
+    "mode": 420,
+    "sha256": "e39b025897419748d136aae87442d8de60363f5a6355612d21727006439f14ed"
+  },
+  {
+    "path": "examples/RESULTS.md",
+    "mode": 420,
+    "sha256": "122b72a9734d328ac314bc957db69857d1be1fe63b0fbd7eebe7795a4374b4fc"
+  },
+  {
+    "path": "examples/business.py",
+    "mode": 420,
+    "sha256": "e21ed914d2ce057654c42249c26d62aced1d89acc69777cf32a8be741c8db507"
+  },
+  {
+    "path": "examples/protocol.py",
+    "mode": 420,
+    "sha256": "19e199c30064b2539ea2fce3622ff709ad926e1a736a74ae72a4b3f29a3996fd"
+  },
+  {
+    "path": "examples/quickstart/README.md",
+    "mode": 420,
+    "sha256": "ad4cfa0158dedcc22552262af7f4ed149382c285f57c021dc2cbe85ab14165a5"
+  },
+  {
+    "path": "examples/quickstart/observations.jsonl",
+    "mode": 420,
+    "sha256": "254ca3b805cd7ae519f14966c87849ed5fe29d93de62648ecdaa35bf95a58053"
+  },
+  {
+    "path": "examples/quickstart/tasks.jsonl",
+    "mode": 420,
+    "sha256": "9d3c22494fbbb987df17d1da6e1236e5a9d7697ed4197cb212100a4ea7958ccb"
+  },
+  {
+    "path": "examples/research.py",
+    "mode": 493,
+    "sha256": "6bf847717fd1d9495cb5370199c7a3181b15f0d9295f39936d541e9e8365ff51"
+  },
+  {
+    "path": "examples/research_domain.py",
+    "mode": 420,
+    "sha256": "fc1d44195e8bc9bbb9ded8c8167db1236f9919858cbd26a32c2674ad3a6ad18d"
+  },
+  {
+    "path": "examples/research_tasks.py",
+    "mode": 420,
+    "sha256": "180b2b1b977b6d47ddb1ac22d6987d747dda043d9c09e8f0c95cadf83b2425ec"
+  },
+  {
+    "path": "examples/results/2026-09-07.json",
+    "mode": 420,
+    "sha256": "916c4742d742a34a9e042caaada7c29932b6e96ba73aa91bb1df14e430926d6c"
+  },
+  {
+    "path": "examples/run.py",
+    "mode": 493,
+    "sha256": "a6e47cba86f47278bbc449ac40678dceae0ae8c10917dd3e20fee5c5429c2eb0"
+  },
+  {
+    "path": "examples/worker.py",
+    "mode": 493,
+    "sha256": "b6cdd9066e5254e12ae4f272d4ec735e8f5a6d25be11a628ac1ebb1f1be166f4"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "4fecdec5b34e6b2ae824d8565414b6b7868544eb430c54a833304b3c3fde8c3e"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "fe6cb3c0cb07d3b27cac68bb69037827bc4b57839e7cb3a9da3c49dedbba9cc4"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "06b70b218f5a57971c25e43cec0f53ce38a71fcf12e5dd0c029989755fe41ef1"
+  },
+  {
+    "path": "scripts/bootstrap.py",
+    "mode": 493,
+    "sha256": "9bbc9886687a2db037740783d02274f3b2cd6093a24fe31bd8b0db3cacea1363"
+  },
+  {
+    "path": "scripts/dependencies.json",
+    "mode": 420,
+    "sha256": "4d2491b2a8dd093583a34151f1d1bc1b9945367bb48a252e4939c371979f726e"
+  },
+  {
+    "path": "scripts/release-files.txt",
+    "mode": 420,
+    "sha256": "59c169fee0683e1c897f5e5a29dd24b7e21fe6e409143ab9f634a7249452b652"
+  },
+  {
+    "path": "scripts/release.py",
+    "mode": 493,
+    "sha256": "7cf599c97d6ebe240ad128aa9052102f718ae8da5fa9809453415d5b29479682"
+  },
+  {
+    "path": "tests/check",
+    "mode": 493,
+    "sha256": "26519f8fc4b6c62e03f32b94ba4c32195f139dc65b69009ee6ed17292c2e4cb5"
+  },
+  {
+    "path": "tests/smoke",
+    "mode": 493,
+    "sha256": "752edc0157e25ba198a499aef42d1dcd12ef12fc92b07ca50099e0db7daf6f8c"
+  },
+  {
+    "path": "tests/test_business.py",
+    "mode": 420,
+    "sha256": "77442b5c877877cf4df44fd92d88f04bd016ea3b9a6c595b6d0fade9be2e1d8f"
+  },
+  {
+    "path": "tests/test_integration.py",
+    "mode": 420,
+    "sha256": "dfccf24e756ed6cc1fe827671016dc2f9fa8aa49e2fb7559b59fa066a8de13d2"
+  },
+  {
+    "path": "tests/test_protocol.py",
+    "mode": 420,
+    "sha256": "f8d9457634e7ebae2d0b38ca29276e9c490a650a9d1a07014903bb6c496c53b4"
+  },
+  {
+    "path": "tests/test_receipts.py",
+    "mode": 420,
+    "sha256": "7083bcd622fd28dd421aab83f175bdda09d22490bab283563508d47408ac10a4"
+  },
+  {
+    "path": "tests/test_recipe_runtime.py",
+    "mode": 420,
+    "sha256": "daf61a165b3a80fce9a9b666189aca0f17307ae92665c16c887b6cffa53e3549"
+  },
+  {
+    "path": "tests/test_recipe_seam.py",
+    "mode": 420,
+    "sha256": "cbca3aa06fbd20feeba3d007f51984b46f6c5dca3fcf5167742d54442bdaf985"
+  },
+  {
+    "path": "tests/test_release.py",
+    "mode": 420,
+    "sha256": "7fbde66b37ef89ef4fb8b9e55aa55b0af7dbc922d942fe8fa7317077eaffc3a6"
+  },
+  {
+    "path": "tests/test_research.py",
+    "mode": 420,
+    "sha256": "a6708fd1dcdfd617faab8af29ccebed75f4f6c16021eae5f2f8ee92e40cda0df"
+  },
+  {
+    "path": "tests/test_research_domain.py",
+    "mode": 420,
+    "sha256": "858a4f09bc08bf31fea6fb52376f31314c1dc9ff4c153cd969203ab51f0c58ab"
+  },
+  {
+    "path": "weave.1",
+    "mode": 420,
+    "sha256": "55b34656dfc4fb41a88c8fb413035c1ffd0a53de9bad6ade354c81839dea23a0"
+  }
+]

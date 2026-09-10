@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""Verify independent source exports, then compose the built public commands.
+
+No arguments runs every component and the process integration suite. Component
+selection runs only those standalone checks. Dependencies are downloaded by Go
+when absent from its cache; no paid provider or ambient credentials are used.
+"""
+import argparse
+from contextlib import ExitStack
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DRAFT_DEPENDENCIES = ("ask", "brief", "ply", "hone", "cage", "may")
+SYSTEM_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+BUILD_SUFFIXES = {".go", ".c", ".h", ".cc", ".cpp", ".cxx", ".m", ".mm", ".s", ".S", ".syso",
+                  ".py", ".sh", ".bash", ".zsh", ".js", ".ts", ".html", ".css", ".wasm", ".proto"}
+BUILD_NAMES = {"go.mod", "go.sum", "go.work", "Makefile", "makefile", "GNUmakefile", "justfile", "CMakeLists.txt"}
+
+
+def source_entries(root, component):
+    """Use current tracked AND nonignored new files, never a stale HEAD export."""
+    prefix = component["path"] + "/"
+    raw = subprocess.check_output(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z",
+         "--", component["path"]], cwd=root)
+    names = sorted(set(os.fsdecode(name) for name in raw.split(b"\0") if name))
+    ignored_raw = subprocess.check_output(
+        ["git", "ls-files", "--others", "--ignored", "--exclude-standard", "-z",
+         "--", component["path"]], cwd=root)
+    ignored = [os.fsdecode(name) for name in ignored_raw.split(b"\0") if name]
+    # Git ignores do not define compiler inputs. Refuse ignored source instead
+    # of producing a green export that omits code an ordinary leaf build sees.
+    # With go:embed, even arbitrary ignored bytes can be executable inputs;
+    # conservatively refuse them until the caller removes or tracks them.
+    has_embed = any(name.endswith(".go") and (root / name).is_file()
+                    and b"go:embed" in (root / name).read_bytes() for name in names)
+    hidden_inputs = [name for name in ignored if Path(name).suffix in BUILD_SUFFIXES
+                     or Path(name).name in BUILD_NAMES or has_embed]
+    if hidden_inputs:
+        raise ValueError("ignored files may affect the current build; track or remove them before verification: "
+                         + ", ".join(hidden_inputs))
+    result = []
+    for name in names:
+        if not name.startswith(prefix):
+            raise ValueError("source entry escaped its component: " + name)
+        relative = Path(name[len(prefix):])
+        if relative.is_absolute() or ".." in relative.parts or ".git" in relative.parts:
+            raise ValueError("unsafe source entry: " + name)
+        path = root / name
+        if not path.exists() and not path.is_symlink():
+            continue  # A current working-tree deletion must remain deleted.
+        result.append((relative, path))
+    if not result:
+        raise ValueError("component has no current source: " + component["name"])
+    return result
+
+
+def export_source(root, component, destination):
+    """Copy one leaf only; retain a digest manifest of the exact tested bytes."""
+    source_root = (root / component["path"]).resolve()
+    records = []
+    for relative, source in source_entries(root, component):
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        mode = source.lstat().st_mode
+        if stat.S_ISLNK(mode):
+            link = os.readlink(source)
+            try:
+                source.resolve().relative_to(source_root)
+            except ValueError:
+                raise ValueError("cross-component source symlink: " + str(source))
+            if Path(link).is_absolute():
+                raise ValueError("absolute symlink is not independently portable: " + str(source))
+            target.symlink_to(link)
+            records.append({"path": str(relative), "symlink": link})
+        elif stat.S_ISREG(mode):
+            raw = source.read_bytes()
+            target.write_bytes(raw)
+            target.chmod(stat.S_IMODE(mode))
+            records.append({"path": str(relative), "mode": stat.S_IMODE(mode),
+                            "sha256": hashlib.sha256(raw).hexdigest()})
+        else:
+            raise ValueError("non-source filesystem object: " + str(source))
+    return records
+
+
+def isolated_environment(home, temporary, runtime_bin, cache):
+    # In particular, do not inherit provider keys, personal Ask/Brief paths,
+    # tool overrides, approval settings, GOFLAGS, or a root Go workspace.
+    env = {
+        "PATH": str(runtime_bin) + os.pathsep + SYSTEM_PATH,
+        "HOME": str(home), "TMPDIR": str(temporary), "LANG": "C",
+        "LC_ALL": "C", "TZ": "UTC", "PYTHONDONTWRITEBYTECODE": "1",
+        "GOWORK": "off", "GOENV": "off", "GOTOOLCHAIN": "local",
+        "GOCACHE": cache["GOCACHE"], "GOMODCACHE": cache["GOMODCACHE"],
+        "GOPATH": str(home / "go"), "GOFLAGS": "",
+        "GOPROXY": os.environ.get("GOPROXY", "https://proxy.golang.org,direct"),
+        "GOSUMDB": os.environ.get("GOSUMDB", "sum.golang.org"),
+        "XDG_CACHE_HOME": str(home / ".cache"),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "XDG_STATE_HOME": str(home / ".local" / "state"),
+        "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    # These identify an installed compiler SDK, not tool behavior or credentials.
+    for name in ("SDKROOT", "DEVELOPER_DIR", "SYSTEMROOT"):
+        if name in os.environ:
+            env[name] = os.environ[name]
+    return env
+
+
+def darwin_draft_layout():
+    """Match native mktemp's write root without placing trusted source in it.
+
+    Darwin's no-template mktemp uses _CS_DARWIN_USER_TEMP_DIR before TMPDIR.
+    Draft's existing fixture deliberately keeps a trusted verifier beside its
+    source and an unsafe verifier beneath `mktemp -d`. Both sides of that
+    authority test must correspond to the real temporary write boundary.
+    """
+    probe = Path(subprocess.check_output(["/usr/bin/mktemp", "-d"],
+                                        env={"PATH": SYSTEM_PATH}, text=True).strip())
+    try:
+        native_root = probe.resolve().parent
+    finally:
+        probe.rmdir()
+    source_parent = Path("/tmp").resolve()
+    if source_parent == native_root or native_root in source_parent.parents:
+        raise RuntimeError("cannot place the Draft fixture source outside native mktemp's write root")
+    return source_parent, native_root
+
+
+def ply_evaluation_environment(base, directory):
+    """Nominate harmless executables for rejection tests, never ambient CLIs."""
+    directory.mkdir(parents=True, exist_ok=True)
+    env = dict(base)
+    for name in ("claude", "pi"):
+        path = directory / (name + "-must-not-run")
+        path.write_text("#!/bin/sh\nprintf '%s\\n' 'offline fixture: real model CLI execution is forbidden' >&2\nexit 125\n")
+        path.chmod(0o700)
+        env["PLY_EVAL_" + name.upper()] = str(path.resolve())
+    return env
+
+
+class CheckRun:
+    def __init__(self, root, selected, native_cage):
+        self.root = root
+        self.components = {c["name"]: c for c in json.loads((root / "components.json").read_text())["components"]}
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        self.directory = root / ".checks" / (stamp + "-" + str(os.getpid()))
+        self.directory.mkdir(parents=True)
+        self.bin = self.directory / "bin"
+        self.bin.mkdir()
+        self.stack = ExitStack()
+        self.control = Path(self.stack.enter_context(tempfile.TemporaryDirectory(prefix="bench-check-control-"))).resolve()
+        self.runtime = self.control / "system-bin"
+        self.runtime.mkdir()
+        self.exports = {}
+        self.built = set()
+        self.results = []
+        self.status = "running"
+        self.selected = selected
+        self.native_cage = native_cage
+
+    def prepare(self):
+        missing = []
+        # Tests invoke these commands directly or through /usr/bin/env.
+        for name in ("go", "python3", "git", "sh", "bash", "jq", "cc", "make"):
+            path = shutil.which(name)
+            if path is None:
+                missing.append(name)
+            else:
+                (self.runtime / name).symlink_to(Path(path).resolve())
+        if missing:
+            raise RuntimeError("missing verification dependencies: " + ", ".join(missing))
+        cache_env = {"PATH": os.environ.get("PATH", SYSTEM_PATH), "HOME": os.path.expanduser("~"),
+                     "GOWORK": "off", "GOENV": "off", "GOTOOLCHAIN": "local"}
+        self.cache = json.loads(subprocess.check_output(
+            [str(self.runtime / "go"), "env", "-json", "GOCACHE", "GOMODCACHE"], env=cache_env))
+        home, temporary = self.control / "home", self.control / "tmp"
+        home.mkdir(); temporary.mkdir()
+        self.env = isolated_environment(home, temporary, self.runtime, self.cache)
+        self.command("environment", ["go", "version"], self.control, self.env)
+        self.command("boundaries", ["python3", str(self.root / "scripts/check-boundaries.py")], self.root, self.env)
+
+    def command(self, label, argv, cwd, env):
+        index = len(self.results) + 1
+        log = self.directory / (f"{index:03d}-" + label + ".log")
+        start = time.monotonic()
+        print(f"[{label}] {shlex.join(map(str, argv))}", flush=True)
+        with log.open("w") as stream:
+            stream.write("cwd: " + str(cwd) + "\nargv: " + shlex.join(map(str, argv)) + "\n\n")
+            stream.flush()
+            # Programs own their own child supervision; inherited stderr/stdout
+            # remain ordinary streams, captured together only in this test log.
+            result = subprocess.run(list(map(str, argv)), cwd=cwd, env=env,
+                                    stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT)
+        record = {"check": label, "exit": result.returncode,
+                  "seconds": round(time.monotonic() - start, 3), "log": log.name}
+        self.results.append(record)
+        self.write_summary()
+        print(f"[{label}] exit {result.returncode} ({record['seconds']}s); {log.relative_to(self.root)}", flush=True)
+        if result.returncode:
+            # Logs contain fixture data only; the child environment has no
+            # ambient provider credentials or private home configuration.
+            lines = log.read_text(errors="replace").splitlines()
+            print("\n".join(lines[-50:]), file=sys.stderr)
+            raise RuntimeError("check failed: " + label)
+
+    def write_summary(self, error=None):
+        payload = {"status": self.status, "selected": self.selected, "native_cage_requested": self.native_cage,
+                   "checks": self.results, "error": error}
+        (self.directory / "summary.json").write_text(json.dumps(payload, indent=2) + "\n")
+
+    def export(self, name):
+        if name in self.exports:
+            return self.exports[name]
+        source_parent, native_temp = None, None
+        if name == "draft" and sys.platform == "darwin":
+            source_parent, native_temp = darwin_draft_layout()
+        scratch = Path(self.stack.enter_context(tempfile.TemporaryDirectory(
+            prefix="bench-check-" + name + "-", dir=source_parent))).resolve()
+        source, home, temporary = scratch / "source", scratch / "home", scratch / "tmp"
+        source.mkdir(); home.mkdir(); temporary.mkdir()
+        if native_temp is not None:
+            if source == native_temp or native_temp in source.parents:
+                raise RuntimeError("Draft trusted fixture source overlaps its temporary write root")
+            temporary = native_temp
+            (self.directory / "draft-temporary-layout.json").write_text(json.dumps({
+                "reason": "Darwin native mktemp chooses its OS user temporary directory before TMPDIR",
+                "source": str(source), "temporary_write_root": str(temporary),
+                "trusted_source_outside_temporary_write_root": True}, indent=2) + "\n")
+        files = export_source(self.root, self.components[name], source)
+        (self.directory / (name + "-source.json")).write_text(json.dumps(files, indent=2) + "\n")
+        env = isolated_environment(home, temporary, self.runtime, self.cache)
+        self.exports[name] = (source, env)
+        return source, env
+
+    def build(self, name):
+        if name in self.built:
+            return
+        component = self.components[name]
+        source, env = self.export(name)
+        if component["module"]:
+            for command in component["commands"]:
+                self.command(name + "-build-" + command["name"],
+                             ["go", "build", "-trimpath", "-buildvcs=false", "-o",
+                              self.bin / command["name"], command["package"]], source, env)
+        elif name == "agent":
+            # Preserve the public script's existing private companion lookup.
+            for entry in ("agent", "agent-action-shell"):
+                shutil.copy2(source / "bin" / entry, self.bin / entry)
+        elif name == "draft":
+            for dependency in DRAFT_DEPENDENCIES:
+                self.build(dependency)
+            # Preserve Draft's bin/../skills lookup without retaining Go source
+            # exports or cross-boundary symlinks under the repository.
+            shutil.copy2(source / "bin/draft", self.bin / "draft")
+            shutil.copytree(source / "skills/draft", self.directory / "skills/draft")
+        else:
+            raise ValueError("no standalone script procedure for " + name)
+        self.built.add(name)
+
+    def check_component(self, name):
+        self.build(name)
+        source, env = self.export(name)
+        component = self.components[name]
+        if component["module"]:
+            self.command(name + "-test", ["go", "test", "-count=1", "./..."], source, env)
+            self.command(name + "-race", ["go", "test", "-race", "-count=1", "./..."], source, env)
+            self.command(name + "-vet", ["go", "vet", "./..."], source, env)
+            for command in component["commands"]:
+                self.command(name + "-version-" + command["name"],
+                             [self.bin / command["name"], "version"], source, env)
+            if name == "may":
+                self.command("may-self-check", [self.bin / "may", "check"], source, env)
+            if name == "cage":
+                for target in ("linux", "windows"):
+                    target_env = {**env, "GOOS": target, "GOARCH": "amd64", "CGO_ENABLED": "0"}
+                    self.command("cage-cross-" + target,
+                                 ["go", "build", "-o", self.directory / ("cage-" + target), "."], source, target_env)
+                if self.native_cage:
+                    self.command("cage-native-proof", [self.bin / "cage", "check"], source, env)
+            if name == "weave":
+                for group in ("business", "protocol", "receipts", "research_domain", "release"):
+                    self.command("weave-python-" + group,
+                                 ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_" + group + ".py"], source, env)
+                self.command("weave-built-smoke", ["python3", "tests/smoke", self.bin / "weave"], source, env)
+            if name == "ply":
+                self.check_ply_extras(source, env)
+        elif name == "agent":
+            self.command("agent-syntax", ["sh", "-n", "bin/agent", "bin/agent-action-shell"], source, env)
+            self.command("agent-test", ["sh", "bin/agent_test.sh"], source, env)
+        elif name == "draft":
+            env = self.composition_env(env)
+            self.command("draft-syntax", ["sh", "-n", "bin/draft"], source, env)
+            # This deliberate generated-reference refresh affects only scratch
+            # bytes. It proves compatibility with this exact selected toolset.
+            self.command("draft-scratch-sync", [source / "bin/draft", "sync"], source, env)
+            self.command("draft-test", ["sh", "bin/draft_test.sh"], source, env)
+            self.command("draft-lint", [self.bin / "brief", "lint", "-strict", "skills/draft"], source, env)
+
+    def check_ply_extras(self, source, env):
+        # Native adapter rejection tests nominate an executable before testing
+        # auth permissions. They must reach that validation without discovering
+        # an installed real CLI. Execution fixtures override these sentinels.
+        evaluation_env = ply_evaluation_environment(env, self.control / "ply-eval-sentinels")
+        self.command("ply-eval-fixtures", ["python3", "-m", "unittest", "discover", "-s", "eval", "-p", "test_*.py", "-v"], source, evaluation_env)
+        self.command("ply-job-tests", ["python3", "contrib/job_test.py"], source, env)
+        self.command("ply-edit-tests", ["sh", "contrib/edit_test.sh"], source, env)
+
+    def composition_env(self, base):
+        env = {**base, "PATH": str(self.bin) + os.pathsep + base["PATH"]}
+        for name in self.built:
+            for command in self.components[name]["commands"]:
+                env[command["name"].upper().replace("-", "_")] = str(self.bin / command["name"])
+        # Explicit absence prevents optional held-back tools on host PATH from
+        # changing Draft's generated reference or test behavior.
+        env["VOUCH"] = str(self.control / "absent-vouch")
+        env["WEB"] = str(self.control / "absent-web")
+        return env
+
+    def integration(self):
+        for name in self.components:
+            self.build(name)
+        env = self.composition_env(self.env)
+        self.command("public-process-integration",
+                     ["python3", self.root / "scripts/check-integration.py", "--bin-dir", self.bin],
+                     self.root, env)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("components", nargs="*", help="standalone components to check (default: all, then integration)")
+    parser.add_argument("--component", action="append", default=[], help="select a standalone component; repeatable")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--standalone", action="store_true", help="all independent checks, without process integration")
+    mode.add_argument("--integration-only", action="store_true", help="independently build every command, then run process integration")
+    parser.add_argument("--native-cage", action="store_true", help="also require native kernel confinement proof (cannot silently skip)")
+    parser.add_argument("--list", action="store_true", help="print selectable components as JSON and exit")
+    args = parser.parse_args(argv)
+    available = [c["name"] for c in json.loads((ROOT / "components.json").read_text())["components"]]
+    if args.list:
+        print(json.dumps(available))
+        return 0
+    explicit = args.components + args.component
+    if args.integration_only and explicit:
+        parser.error("integration requires the complete command set; omit component selection")
+    unknown = set(explicit) - set(available)
+    if unknown:
+        parser.error("unknown components: " + ", ".join(sorted(unknown)))
+    selected = list(dict.fromkeys(explicit)) if explicit else available
+    if args.native_cage and (args.integration_only or "cage" not in selected):
+        parser.error("--native-cage requires selecting cage standalone checks")
+    run = CheckRun(ROOT, selected, args.native_cage)
+    print("Verification logs: " + str(run.directory), flush=True)
+    try:
+        with run.stack:
+            run.prepare()
+            if not args.integration_only:
+                for name in selected:
+                    run.check_component(name)
+            if args.integration_only or (not explicit and not args.standalone):
+                run.integration()
+            run.command("boundaries-after", ["python3", ROOT / "scripts/check-boundaries.py"], ROOT, run.env)
+            run.status = "complete"
+            run.write_summary()
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyboardInterrupt) as error:
+        run.status = "failed"
+        run.write_summary(str(error) or "interrupted")
+        print("Verification failed: " + (str(error) or "interrupted"), file=sys.stderr)
+        print("Full logs: " + str(run.directory), file=sys.stderr)
+        return 1
+    print("Requested checks passed. Full logs: " + str(run.directory), flush=True)
+    if "cage" in selected and not args.native_cage:
+        print("Native Cage proof was not requested; use scripts/check --component cage --native-cage on a supported host.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

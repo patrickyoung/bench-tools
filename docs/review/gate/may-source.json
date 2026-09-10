@@ -1,0 +1,77 @@
+[
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "0c9d511c9a5e2ef33714c5e72aec6b47e59808e3181449f2215b844b4ac7876f"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "c23b8715c05c1aeba02fca731e2fb6268e03e43498e96ae9240c367921171d19"
+  },
+  {
+    "path": "GUIDE.md",
+    "mode": 420,
+    "sha256": "f5532cb67a872fc822007518d3761bd309c13ba44af343b3a449b7d64f3bb3c2"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "69101dfb7a8e53fa9027f34994aceeb629e159ac156e8e982911f1fa53ba40c9"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "19b1a59dfd60f212c59f1fa710638fe988710e42387a0d857813bd377adde39e"
+  },
+  {
+    "path": "check.go",
+    "mode": 420,
+    "sha256": "92ba9706c498966309a2b019fc7e428582ecbd0570f78d9fb11dcca16183fd04"
+  },
+  {
+    "path": "docs_test.go",
+    "mode": 420,
+    "sha256": "59d34ca7cea9107782713759edb413b8ef67f0e35fefa8c91f0e153344b775cd"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "bdd5d9f092ae6c104ace1df1b75c9f7ae82cb8dcd859b9d00a0a75069c9b41ab"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "9cdcda4535896cd1a550eda07b3007216aefbe19913d67f87412f685018c6cfd"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "b70adac945a67db9a3486d5b381b598d783724ebf8c572384da0dff66f803098"
+  },
+  {
+    "path": "may.1",
+    "mode": 420,
+    "sha256": "5cb91e2ab52ae4e0f76fcbde817daf6a6b5e83c1807d554530ab536f823ff4d0"
+  },
+  {
+    "path": "state.go",
+    "mode": 420,
+    "sha256": "66870cc5a1458b7b3baae30fdbe25d77977f942edd27f7494a30260786aa5dcf"
+  },
+  {
+    "path": "tty_unix.go",
+    "mode": 420,
+    "sha256": "1db39efd8bfe762df6a68eea513c9c37d87c109644aa82c3c64aef6c713c7134"
+  },
+  {
+    "path": "tty_windows.go",
+    "mode": 420,
+    "sha256": "787b37dd6f9441a2ee35c3ce8b8966722320f3b087ad596fbe727421aa672f1f"
+  }
+]

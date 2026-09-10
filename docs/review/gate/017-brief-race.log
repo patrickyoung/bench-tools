@@ -1,0 +1,4 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-brief-o66v88s3/source
+argv: go test -race -count=1 ./...
+
+ok  	github.com/patrickyoung/brief	2.833s

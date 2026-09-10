@@ -1,0 +1,4 @@
+cwd: /Users/patrick/projects/bench/bench-tools
+argv: python3 /Users/patrick/projects/bench/bench-tools/scripts/check-boundaries.py
+
+boundaries: ok

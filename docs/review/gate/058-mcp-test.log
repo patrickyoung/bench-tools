@@ -1,0 +1,13 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-mcp-r_ygeata/source
+argv: go test -count=1 ./...
+
+ok  	github.com/patrickyoung/mcp/cmd/mcp	0.206s
+ok  	github.com/patrickyoung/mcp/cmd/mcp-legacy	0.388s
+?   	github.com/patrickyoung/mcp/cmd/mcpbox	[no test files]
+?   	github.com/patrickyoung/mcp/cmd/mcpserve	[no test files]
+?   	github.com/patrickyoung/mcp/examples/hello-server	[no test files]
+?   	github.com/patrickyoung/mcp/internal/admit	[no test files]
+ok  	github.com/patrickyoung/mcp/internal/box	2.212s
+ok  	github.com/patrickyoung/mcp/internal/mcpcli	0.682s
+ok  	github.com/patrickyoung/mcp/internal/mcpclient	1.279s
+ok  	github.com/patrickyoung/mcp/internal/mcpserve	0.934s

@@ -1,0 +1,36 @@
+test_baseline_is_optional_and_detects_content_mode_and_untracked_files (test_boundaries.Boundaries) ... ok
+test_command_paths_cannot_escape (test_boundaries.Boundaries) ... ok
+test_comments_and_strings_are_not_import_edges (test_boundaries.Boundaries) ... ok
+test_cross_tool_import_in_untracked_platform_file_is_refused (test_boundaries.Boundaries) ... ok
+test_cross_tool_instruction_and_directory_symlinks_are_refused (test_boundaries.Boundaries) ... ok
+test_cross_tool_test_import_is_also_refused (test_boundaries.Boundaries) ... ok
+test_dangling_and_external_links_fail_without_reading_target (test_boundaries.Boundaries) ... ok
+test_examples_need_not_be_installed_commands (test_boundaries.Boundaries) ... ok
+test_excluded_reviewed_application_is_still_a_tool_boundary (test_boundaries.Boundaries) ... ok
+test_independent_tools_and_own_internal_imports_pass (test_boundaries.Boundaries) ... ok
+test_local_replacement_is_refused_even_for_external_module (test_boundaries.Boundaries) ... ok
+test_manifest_rejects_colliding_commands_and_wrong_module (test_boundaries.Boundaries) ... ok
+test_missing_or_wrong_main_package_and_omitted_cmd_are_refused (test_boundaries.Boundaries) ... ok
+test_nested_git_markers_are_refused (test_boundaries.Boundaries) ... ok
+test_raw_quoted_and_escaped_imports_cannot_bypass_parser (test_boundaries.Boundaries) ... ok
+test_remote_replacement_cannot_alias_sibling_code (test_boundaries.Boundaries) ... ok
+test_reviewed_family_inventory_cannot_silently_disappear (test_boundaries.Boundaries) ... ok
+test_root_module_workspace_and_nested_modules_are_refused (test_boundaries.Boundaries) ... ok
+test_same_tool_symlink_is_allowed (test_boundaries.Boundaries) ... ok
+test_shell_entry_must_be_executable_and_local (test_boundaries.Boundaries) ... ok
+test_undeclared_tool_or_shared_go_source_is_refused (test_boundaries.Boundaries) ... ok
+test_unused_sibling_requirement_is_refused (test_boundaries.Boundaries) ... ok
+test_ambient_authority_does_not_enter_standalone_checks (test_check.EnvironmentTests) ... ok
+test_draft_native_temp_boundary_preserves_trusted_and_unsafe_fixture_roots (test_check.EnvironmentTests) ... ok
+test_ply_rejection_fixtures_cannot_nominate_real_cli_or_auth_state (test_check.EnvironmentTests) ... ok
+test_cross_component_symlink_fails_closed (test_check.ExportTests) ... ok
+test_current_deletion_is_not_restored_from_index (test_check.ExportTests) ... ok
+test_current_edits_and_new_source_survive_without_siblings_or_ignored_state (test_check.ExportTests) ... ok
+test_ignored_embed_bytes_cannot_be_silently_omitted (test_check.ExportTests) ... ok
+test_ignored_go_source_cannot_be_silently_omitted (test_check.ExportTests) ... ok
+test_internal_relative_symlink_keeps_its_own_component_target (test_check.ExportTests) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 2.801s
+
+OK

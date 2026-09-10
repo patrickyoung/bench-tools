@@ -1,0 +1,177 @@
+[
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "99367e7b3fda6fa319ff9b82c05f63b53d6559508668bcc37fef980eadb4a7b8"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "3d614bc94016b673758032ec6d6e38b7f8e2f463c0bc8a17bdf53480c85cc64f"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "9a4d90295ef1c4ab1c504829a9975c8faba08fa7c887852215dc36882861bc2a"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "ee1c147d6e73bd0faf4f4ced0b2203438564a772b39721c49a82290cde9f2c8e"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "1969d129e12f3e358f17629baaa660933681c65f0e7b51a47c8cb7cfa5309045"
+  },
+  {
+    "path": "cmd/mcp-legacy/main.go",
+    "mode": 420,
+    "sha256": "77cca6e776676ea1aa02c3669a92b89fe313a70b8dbdf48982782ea5ac9b990d"
+  },
+  {
+    "path": "cmd/mcp-legacy/main_test.go",
+    "mode": 420,
+    "sha256": "81c26d123255056cb7e60da15e4f3372f3c341380f22dffeee00393f1c10c6af"
+  },
+  {
+    "path": "cmd/mcp/main.go",
+    "mode": 420,
+    "sha256": "c3cb54093367d3db22ca571da552153d042a7516d620f213bd43d0b0ece12d13"
+  },
+  {
+    "path": "cmd/mcp/main_test.go",
+    "mode": 420,
+    "sha256": "ab0a55f033f6267e0f1c9192dddf38e1caf54f5993f57f097a3bde5792f0baee"
+  },
+  {
+    "path": "cmd/mcpbox/main.go",
+    "mode": 420,
+    "sha256": "9a2b9b881ef12b9c619dcaed5ce1f48e5c4fc08735904ced49f81c14c96b13bb"
+  },
+  {
+    "path": "cmd/mcpserve/main.go",
+    "mode": 420,
+    "sha256": "3eaf050c88adc3c0de1236a44716f1184e3bbaa3f3f8868a8e2319b3990c9be3"
+  },
+  {
+    "path": "docs/readme/flow.gif",
+    "mode": 420,
+    "sha256": "95a52a38c5719329d5f9c2148ae0403fff32cf0175ca8436a53c21505e9f5f36"
+  },
+  {
+    "path": "docs/readme/flow.png",
+    "mode": 420,
+    "sha256": "fc00e0342e831e1ebb9efe265870677b8e921d50f1138f6601c87bfa39b2617a"
+  },
+  {
+    "path": "examples/filter-server/dispatch",
+    "mode": 493,
+    "sha256": "8a0ab6b67749b508005caa31d4b5420e169a62ee337b70e11620499e4e0d3d95"
+  },
+  {
+    "path": "examples/filter-server/manifest.json",
+    "mode": 420,
+    "sha256": "dab36ec9608b75321f6e7c07afcb15ad8d41818b4998aa57ae3236b8bae7ddfd"
+  },
+  {
+    "path": "examples/hello-server/main.go",
+    "mode": 420,
+    "sha256": "1bfbdb2261672f0f3c1e0a814d55ee2be17b07074c03e90dbd0dfca2640a0b73"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "f6654eed230ebe518243421d53e8f1c52ccab960d22dab60f7817a16777e0dba"
+  },
+  {
+    "path": "go.sum",
+    "mode": 420,
+    "sha256": "3217ba72b22c5fffe92b8c0d35c6925a2564d8100a9b4b9fa5080a4fae91a4e4"
+  },
+  {
+    "path": "install.sh",
+    "mode": 493,
+    "sha256": "770d653a3e31ef488dbcb4430addd5420ca752a70b60b50c640080a775c89f23"
+  },
+  {
+    "path": "internal/admit/admit.go",
+    "mode": 420,
+    "sha256": "caff5a9643b5d0fa46b5cfa368061c01270c0b6f42121c3b8de006493408e513"
+  },
+  {
+    "path": "internal/box/box.go",
+    "mode": 420,
+    "sha256": "0d7731e11deae8fa9cec558476c118a9a2cd0be380b1cd211a1c09b0544ceaad"
+  },
+  {
+    "path": "internal/box/box_test.go",
+    "mode": 420,
+    "sha256": "a7cd14f1669117d14965d690a2923f1fee4ecdfdd4444ba131a0d37a249a960b"
+  },
+  {
+    "path": "internal/mcpcli/run.go",
+    "mode": 420,
+    "sha256": "5713ab8b308d97d0126c8e7cf0d631ed98c7cbcec7485a0458dc875ac0da47f0"
+  },
+  {
+    "path": "internal/mcpcli/run_test.go",
+    "mode": 420,
+    "sha256": "412b5e1f752285efc3cdb0b70b2059e322ce7d930bbebcb3fc9aaa99cbd88371"
+  },
+  {
+    "path": "internal/mcpclient/client.go",
+    "mode": 420,
+    "sha256": "344c5c936165a7f4db9c0fd9c9d35df2d87be34e0872a387cdcadbeeeb9af4d1"
+  },
+  {
+    "path": "internal/mcpclient/client_test.go",
+    "mode": 420,
+    "sha256": "917edf2cf7943aa5f92922ac84e1f04c106cd2f73a23bd5c4390a4915d347b6c"
+  },
+  {
+    "path": "internal/mcpclient/legacy.go",
+    "mode": 420,
+    "sha256": "70124e00e05440237338daab747c1ba442219d87c6ef3e70cc1a6ababda4629b"
+  },
+  {
+    "path": "internal/mcpclient/legacy_test.go",
+    "mode": 420,
+    "sha256": "2e19d10e574d81da789be4c58a63216f739ee3ab506323f89297d37bf0f0a9e2"
+  },
+  {
+    "path": "internal/mcpclient/record.go",
+    "mode": 420,
+    "sha256": "5cc13a1ed9b94f5341dd9f22ef623901fb21c22fb50b8f32eb99343a8cbc9dec"
+  },
+  {
+    "path": "internal/mcpclient/transport_http.go",
+    "mode": 420,
+    "sha256": "4324901b7c87c18cb29c053cabdc9f2ee23b5d3c0402f4e2a42c55ad6caa064c"
+  },
+  {
+    "path": "internal/mcpclient/transport_unix.go",
+    "mode": 420,
+    "sha256": "e40f207ceae73761d41e06939ce58784a48f9b5f10da634fac2405b1d08dad41"
+  },
+  {
+    "path": "internal/mcpserve/server.go",
+    "mode": 420,
+    "sha256": "7ad0b6e641c8f154ac24689892858f28afb19bddd8e71a09e7500db850cd11f7"
+  },
+  {
+    "path": "internal/mcpserve/server_test.go",
+    "mode": 420,
+    "sha256": "c748fc03bab58f2c8094cec56396366b486cd10e7ef14bbcfb9ca149f1bb04e8"
+  },
+  {
+    "path": "justfile",
+    "mode": 420,
+    "sha256": "d2a86b27c36c69b4db10a43e4159381137aabf766f9e30ad98fcca688f2aed18"
+  }
+]

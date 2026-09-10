@@ -1,0 +1,44 @@
+
+pack -- offline. No model, no network, no keys.
+
+  every line is one JSON object                           ok
+  every line has id, src and ref -- or src and err        ok
+  ids are content addresses of the text                   ok
+  all three shapes reached one pack                       ok
+  building a pack costs exactly two model calls           ok
+  an unbounded query is bounded anyway (10,005 rows in)   ok
+  the graph walk is bounded by depth and count            ok
+  a second build makes no model calls                     ok
+  rebuild reproduces the pack byte for byte               ok
+  rebuild makes no model calls                            ok
+  a build survives a source that fails                    ok
+  the failed source is a line in the pack, not a hole     ok
+  the other two sources still arrived                     ok
+  a later build retries the source that failed            ok
+  an over-budget pack exits 3                             ok
+  and writes no pack at all -- refusal, not truncation    ok
+  an answer citing an id not in the pack exits 4          ok
+  and names the id it invented                            ok
+  the same pack answers cleanly with a grounded reply     ok
+  prose where JSON was asked for exits 2                  ok
+  a route naming a source that does not exist exits 2     ok
+  the suite scores full recall                            ok
+  and reports it                                          ok
+  scoring recall a second time makes no model calls       ok
+  a suite with a needle no source holds exits nonzero     ok
+  and says which question fell short                      ok
+  a writable connection WOULD execute an injected DROP    ok
+  the read-only connection refuses it                     ok
+  and the source reports the failure rather than an empty resultok
+  the same source reached through capabilities            skip  (PACK_MCP=1 WIKI_TOOLS=/path/to/tools)
+  every source card passes brief lint                     ok
+  a card with no frontmatter fails lint                   ok
+  why prints the line it was asked about                  ok
+  why prints the query that fetched it                    ok
+  why prints the question that wanted it                  ok
+  why admits it when no session was logged                ok
+  why on an id nothing holds exits nonzero                ok
+  every card names a program, and every program a card    ok
+
+  38 ok
+

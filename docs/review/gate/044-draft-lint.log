@@ -1,0 +1,4 @@
+cwd: /private/tmp/bench-check-draft-f3shgcmr/source
+argv: /Users/patrick/projects/bench/bench-tools/.checks/20260910T005736Z-31014/bin/brief lint -strict skills/draft
+
+brief: 1 skill(s), 0 error(s), 0 warning(s)

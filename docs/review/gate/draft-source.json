@@ -1,0 +1,52 @@
+[
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "c3b6160d7e891a6751c870ccbefa0b038d4290021119fa8be965db611a3e9d03"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "115f59d3e13928c783c7d46fb4bfde0fde9084f5e5744861054c533f2fc9dfb3"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "68daf13cf1f99b605bcdbaec3cc93410ef47db0f1cca03926fcfd4d3b65e8371"
+  },
+  {
+    "path": "bin/draft",
+    "mode": 493,
+    "sha256": "9c36e89c2deb415eff18f079438d5e2bb7ba40ff9ecabf8ba02702ab0107332e"
+  },
+  {
+    "path": "bin/draft_test.sh",
+    "mode": 420,
+    "sha256": "e63fa011e87f254d180ded694186915d1613ca2347b5485c7550806f24d09607"
+  },
+  {
+    "path": "justfile",
+    "mode": 420,
+    "sha256": "cd1b5f5977f26d2a8a9f3e9f6f532cc65538f4ec77b6609272baf801f28079bc"
+  },
+  {
+    "path": "skills/draft/SKILL.md",
+    "mode": 420,
+    "sha256": "7c99f0a0e76f5df31bdf9d09f772050a22c36ccda9502debb9ca43e9bcef7ef4"
+  },
+  {
+    "path": "skills/draft/references/template.md",
+    "mode": 420,
+    "sha256": "39eec0b5bb3243a930e29e4e1826e64df4c358378ed8519a7c7b0d3d82c72a58"
+  },
+  {
+    "path": "skills/draft/references/tools.md",
+    "mode": 420,
+    "sha256": "d1264392029fb74a35a0162f3ce29908b3d48e75db90c91d85ea4d02ec9b8691"
+  }
+]

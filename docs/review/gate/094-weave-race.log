@@ -1,0 +1,4 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-weave-28jbacs9/source
+argv: go test -race -count=1 ./...
+
+ok  	github.com/patrickyoung/weave	2.448s

@@ -1,0 +1,117 @@
+[
+  {
+    "path": ".github/workflows/ci.yml",
+    "mode": 420,
+    "sha256": "913d10c8076e59927dd31be92a172715b688c22c9db3a74f8c22566e8c17d480"
+  },
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "2d0380c1664740320ed6c018f8b74a9205af733d1bee1df5cb4c622940cdfdb2"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "afb4705efefaa1032690515d120b3a1147affa34412ff03d77bdf87f998f5208"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "833655042435356754b5f165953f14f508026a0934e9cb4c403d0a16eed623b1"
+  },
+  {
+    "path": "GUIDE.md",
+    "mode": 420,
+    "sha256": "bd8ab32f1bd5e494528e45703616640922df226068e9aa08a0230e97a69fe6bd"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "6b2a17357c8cb8e7d6820351ddf68cbf7e9637b5020474616e03566169ca203b"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "d7f5649581b2dce4ec67e36da42c67ad9f151d58a109160ebc571d271e2c3184"
+  },
+  {
+    "path": "ask.go",
+    "mode": 420,
+    "sha256": "ea503a2645a0417532e072bd80515a4d30a8ba355927eef6aed217609675c588"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "5144c05cd138d24676f32d839f3569960e173dc4e01f35b1d8bcb0bea77452d8"
+  },
+  {
+    "path": "help.go",
+    "mode": 420,
+    "sha256": "6dcebc9199ef85e62f93e68075e33184560495da9ba33e926871757c8636c9b1"
+  },
+  {
+    "path": "hone.1",
+    "mode": 420,
+    "sha256": "331b02ae87b007c486b57ccc0492536900558ec36fe10578d9b3083addb49af4"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "6b3a1271933aa9e06809a960c6f6d024f7ebed1a2643854aec40cccb5ed4d68f"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "2beb1b3f23cf9a3589631a0a38d507d819ae92143c60b0d8353b1c8d2c215ce3"
+  },
+  {
+    "path": "proposal.go",
+    "mode": 420,
+    "sha256": "7f977f29e3ebb22c90b38ca10507bbf4b1c716607d0e9dc118df7064fe582e64"
+  },
+  {
+    "path": "receipt_versions_test.go",
+    "mode": 420,
+    "sha256": "94c7f405a75048eef361408acb0de2b3e63bc475281059287bd6704799578ed9"
+  },
+  {
+    "path": "recover.go",
+    "mode": 420,
+    "sha256": "de683e0b5cf6875663c0d1870f5840ec63367f9eae8561b5cf8ea227b185f571"
+  },
+  {
+    "path": "recover_test.go",
+    "mode": 420,
+    "sha256": "8e919897d50856fe75605df699205c601dd29e8a2a4e7c53a3a2823cdd703a77"
+  },
+  {
+    "path": "session.go",
+    "mode": 420,
+    "sha256": "88f05bb4f9c1293955b970c08fad7d33990daed2e64f9c1f368e858e141b0fb2"
+  },
+  {
+    "path": "session_test.go",
+    "mode": 420,
+    "sha256": "2450b138aaf7f5ded6a7ff81c665fa23bdab5ae0ce5c3b34d41e39f8d8372245"
+  },
+  {
+    "path": "skill.go",
+    "mode": 420,
+    "sha256": "6bf95008bbe1e1295ded54b38ff0b8b8b231f379521f81ae83d0a64625f2e438"
+  },
+  {
+    "path": "skill_test.go",
+    "mode": 420,
+    "sha256": "86765192424a33050b96f32ee0e53b0fb368ce458fbb81e1455552ea4e25482a"
+  },
+  {
+    "path": "system.go",
+    "mode": 420,
+    "sha256": "cd77389b5c68351c4e510cb80b6cac579a65321a5b0018eef091255ca31304f6"
+  }
+]

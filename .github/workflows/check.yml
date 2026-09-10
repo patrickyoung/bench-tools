@@ -1,0 +1,140 @@
+name: Independent tools
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boundaries:
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.matrix.outputs.components }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7, matches imported Weave CI
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/ask/go.mod
+          cache: false
+      - run: python3 scripts/check-boundaries.py
+      - run: python3 -m unittest discover -s scripts/tests -v
+      - id: matrix
+        run: echo "components=$(python3 scripts/check --list)" >> "$GITHUB_OUTPUT"
+
+  standalone:
+    needs: boundaries
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        component: ${{ fromJSON(needs.boundaries.outputs.components) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/ask/go.mod
+          cache: false
+      - name: Ensure shell test dependencies
+        run: |
+          if ! command -v jq >/dev/null; then
+            if [ "$RUNNER_OS" = Linux ]; then
+              sudo apt-get update && sudo apt-get install -y jq
+            else
+              brew install jq
+            fi
+          fi
+          for command in python3 git sh bash jq cc make; do command -v "$command"; done
+      - name: Check isolated source with no sibling checkout
+        run: python3 scripts/check --component '${{ matrix.component }}'
+      - name: Preserve complete verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: standalone-${{ matrix.os }}-${{ matrix.component }}
+          path: .checks/
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  integration:
+    needs: boundaries
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/ask/go.mod
+          cache: false
+      - name: Ensure shell test dependencies
+        run: |
+          if ! command -v jq >/dev/null; then
+            if [ "$RUNNER_OS" = Linux ]; then
+              sudo apt-get update && sudo apt-get install -y jq
+            else
+              brew install jq
+            fi
+          fi
+          for command in python3 git sh bash jq cc make; do command -v "$command"; done
+      - name: Compose independently built public commands with local fixtures
+        run: python3 scripts/check --integration-only
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: integration-${{ matrix.os }}
+          path: .checks/
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  native-cage:
+    needs: boundaries
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/cage/go.mod
+          cache: false
+      - name: Ensure shell test dependencies
+        run: |
+          if ! command -v jq >/dev/null; then
+            if [ "$RUNNER_OS" = Linux ]; then
+              sudo apt-get update && sudo apt-get install -y jq
+            else
+              brew install jq
+            fi
+          fi
+          for command in python3 git sh bash jq cc make; do command -v "$command"; done
+      - name: Install the documented Linux backend
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - name: Prove native confinement, failing if the host cannot supply it
+        run: python3 scripts/check --component cage --native-cage
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: native-cage-${{ matrix.os }}
+          path: .checks/
+          include-hidden-files: true
+          if-no-files-found: warn

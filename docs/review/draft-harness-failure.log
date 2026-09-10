@@ -1,0 +1,8 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-draft-8ro5tj3v/source
+argv: sh bin/draft_test.sh
+
+FAIL: admission refuses verifier state inside Cage's temporary write root
+  exit 0, want 2
+FAIL: unsafe verifier state was not diagnosed
+  draft: admitted verifier: 0c116854b8a88947642547736d3da1420a480693a5cd7d7a240d9095bce8956f.sh
+76 passed, 2 failed

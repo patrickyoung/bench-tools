@@ -1,0 +1,92 @@
+[
+  {
+    "path": ".context/connectors/wikipedia",
+    "mode": 493,
+    "sha256": "4cde82c26beb245a0208e544623cf001f0b0522f46862cc16c00054e42db7107"
+  },
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "91fc0f5ca9f6e862e64095ec189a62b77b976d82ba12ec53f5165510812b8df2"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "6669f403a5c752e2fed092e1efd387ad5ebc194c9fb2633b44ae17186389e308"
+  },
+  {
+    "path": "CONNECTORS.md",
+    "mode": 420,
+    "sha256": "c09f8c1718b7b6f92e5f3f54805793bfb82859f7cc19df4c9b4fe4b2fe6d14a6"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "c95229ce044dbb7d104c08afefc32a2d0779b2360f7e4db0556c13785746c4aa"
+  },
+  {
+    "path": "GUIDE.md",
+    "mode": 420,
+    "sha256": "394236a9184ab1ff484b8d409342e4be3d10a05b80a16add146e12a3a3453129"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "6cd62d3f5a2e5c412a222847545a1dcd5a0f9e4a96452aacf087d8f267598906"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "3de2443f9441e29f0245856abe38981bdf4237fcda4def4e7b9268dbf4a11ca2"
+  },
+  {
+    "path": "connectors.go",
+    "mode": 420,
+    "sha256": "b7d293e7eda6447f03f5021e2547bb5b13011efbde0b1a1b4169c1c86a07bc78"
+  },
+  {
+    "path": "context.1",
+    "mode": 420,
+    "sha256": "559707af48ec5f0465b639059c7cb99b46523e3481218cb4b7b697222062be82"
+  },
+  {
+    "path": "docs_test.go",
+    "mode": 420,
+    "sha256": "f4d1d4ff5e809a2cb4205ad4411b29bb2abb73a9bc731a0b2e81a40fd3d66745"
+  },
+  {
+    "path": "examples/connectors/handbook",
+    "mode": 493,
+    "sha256": "257f74c10c744dc5db0d63cb304bd12884f0988a6818e405b73edb30d73573f7"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "895cc096f0b5f633cbb480490b7e54f8dd7d276075cab04dcac5010d38f7fe1e"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "e00ec448afd86007fe765b333ec29ea4d0e596dcdf128d08078bad08bfb0e140"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "dab062b6d373369044b1d262dfa77047d43116d892150116b99460a2668a3bf7"
+  },
+  {
+    "path": "record.go",
+    "mode": 420,
+    "sha256": "37c1e8e9c0fbc20c30da63241ac9862911d50beccbfc79a6a3ad060ac88b3aa1"
+  },
+  {
+    "path": "wikipedia_test.go",
+    "mode": 420,
+    "sha256": "0ce3f6387c827864186a29800d24713b27086c093f688ffa514d754d438eabcd"
+  }
+]

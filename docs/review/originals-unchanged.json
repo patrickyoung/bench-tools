@@ -1,0 +1,122 @@
+[
+  {
+    "name": "action",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "agent",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "ask",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "bench",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "brief",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "cage",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "cite",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "clerk",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "context",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "draft",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "guide",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "hire",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "hone",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "manage",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "may",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "mcp",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "oauth",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "ply",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "rules",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "tend",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "trail",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "vouch",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "weave",
+    "same_head": true,
+    "clean": true
+  },
+  {
+    "name": "web",
+    "same_head": true,
+    "clean": true
+  }
+]

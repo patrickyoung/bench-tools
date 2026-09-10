@@ -1,0 +1,14 @@
+
+the guide itself
+  every relative link resolves                            ok
+  and none of them escapes the repo                       ok
+  every filter chapter has a README, a demo and a check   ok
+  every app has a README, a DESIGN, a justfile and a checkok
+  every combo introduces itself on line 2                 ok
+  the guide trips none of the traps it documents          ok
+  the kit installer does not depend on a sibling checkout ok
+  the standalone Cage installer is pinned to a release    ok
+  a check survives a stdin nobody will ever close         ok
+
+  9 ok
+

@@ -1,0 +1,8 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-weave-28jbacs9/source
+argv: python3 -m unittest discover -s tests -p test_protocol.py
+
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 3.334s
+
+OK

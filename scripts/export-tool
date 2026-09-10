@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Export a clean committed tool to a new directory without sibling source."""
+import argparse
+import json
+import pathlib
+import subprocess
+import tempfile
+
+root = pathlib.Path(__file__).resolve().parents[1]
+components = {c['name']: c for c in json.loads((root / 'components.json').read_text())['components']}
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('tool', choices=sorted(components))
+parser.add_argument('destination', type=pathlib.Path)
+args = parser.parse_args()
+component = components[args.tool]
+if args.destination.exists():
+    parser.error('destination already exists; choose a new directory')
+status = subprocess.check_output(['git', '-C', str(root), 'status', '--porcelain',
+                                  '--untracked-files=all', '--', component['path']], text=True)
+if status:
+    parser.error('component has uncommitted changes; commit before exporting')
+# Git supplies tracked files and executable modes only. Never copy .git,
+# ignored credentials/state, built binaries, or adjacent tool directories.
+with tempfile.TemporaryFile() as archive:
+    subprocess.run(['git', '-C', str(root), 'archive', 'HEAD:' + component['path']],
+                   stdout=archive, check=True)
+    archive.seek(0)
+    args.destination.mkdir(parents=True)
+    subprocess.run(['tar', '-x', '-f', '-', '-C', str(args.destination)],
+                   stdin=archive, check=True)
+print(args.destination.resolve())

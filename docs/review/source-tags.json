@@ -1,0 +1,26 @@
+[
+  {
+    "component": "agent",
+    "source_tag": "v0.2.1",
+    "object": "e7554b5711cbe67e58e287562d72e2a00d7e9d49",
+    "preserved_tag": "upstream/agent/v0.2.1"
+  },
+  {
+    "component": "brief",
+    "source_tag": "v0.1.1",
+    "object": "4f4fad321dda448c5895a10b03fcc5191621530f",
+    "preserved_tag": "upstream/brief/v0.1.1"
+  },
+  {
+    "component": "cage",
+    "source_tag": "v0.1.0",
+    "object": "7a1edf71d48bfd2102721eaacf9a8521d45d47c1",
+    "preserved_tag": "upstream/cage/v0.1.0"
+  },
+  {
+    "component": "ply",
+    "source_tag": "v0.1.2",
+    "object": "5f9ad95ce013de6d47ba4f69606d58505c042930",
+    "preserved_tag": "upstream/ply/v0.1.2"
+  }
+]

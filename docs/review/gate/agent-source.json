@@ -1,0 +1,772 @@
+[
+  {
+    "path": ".claude-plugin/marketplace.json",
+    "mode": 420,
+    "sha256": "6b0cff7a036d26485b030cbb7b285783e536459f3506991223330945000789ef"
+  },
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "c3c8478e24b21df57c35648f09472f40b2a128a9d0aefbcb3829e6600e835665"
+  },
+  {
+    "path": "DESIGN.md",
+    "mode": 420,
+    "sha256": "2e3c38bc54fb6205dadcc52b118b1bf15cb3b1c3f8d00fd9f0c6ed3edc6a8d94"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "MCP.md",
+    "mode": 420,
+    "sha256": "0d2db123703685efd8ac41e8f7bc37763f0cc9666c7605a74461382a94165d5d"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "29f7d7b91829024e06631f435ecbf8cff6986be06f41254533b61b66e5da064c"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "87c35dfacb4f549cdff10c67d2d44943b02cc1b2009d9a307c4a7db99cbb0054"
+  },
+  {
+    "path": "bin/agent",
+    "mode": 493,
+    "sha256": "271d104792f1f914f8db7e8f0c0ecf72fbebf4c72b2d0e8785d3454f52fb5b4f"
+  },
+  {
+    "path": "bin/agent-action-shell",
+    "mode": 493,
+    "sha256": "f7d9ba237a8a16c7b0035851ea6b9d41e18c29f86181d347426a6e2c8fa81753"
+  },
+  {
+    "path": "bin/agent_test.sh",
+    "mode": 493,
+    "sha256": "d5e477db1ecc44b9536a46468c54405e03703542e9e19a440a13ffa123becf2c"
+  },
+  {
+    "path": "docs/.nojekyll",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "docs/compare.html",
+    "mode": 420,
+    "sha256": "e2d37ef1ec314fecff5e4293207d0ce37871e783389b4180ed4acf875882b94d"
+  },
+  {
+    "path": "docs/components.html",
+    "mode": 420,
+    "sha256": "105a31c5a73a40be7805768223283c2abc316f598f447d7dd523a349e1bfa545"
+  },
+  {
+    "path": "docs/downloads/SHA256SUMS",
+    "mode": 420,
+    "sha256": "40014fd8717f631d78c0e3ad201dfcdb8c5a0638de67aa5f9aa54870dda19145"
+  },
+  {
+    "path": "docs/downloads/bench-system-builder-0.1.0.zip",
+    "mode": 420,
+    "sha256": "204d6438dea2ab36a8ec90dc24658d3c977393ebca779204c0c776274148c271"
+  },
+  {
+    "path": "docs/downloads/bench-system-builder-0.1.0.zip.sha256",
+    "mode": 420,
+    "sha256": "8ad8ecf591e8d465f375c260e51a0766415da1697e612d789a50ca013bd34877"
+  },
+  {
+    "path": "docs/downloads/bench-system-builder-0.2.0.zip",
+    "mode": 420,
+    "sha256": "5e92c6be91f35c0974d2850d7bae1165d55bcf96aca3dd3fc6b1ebc14ba04857"
+  },
+  {
+    "path": "docs/downloads/bench-system-builder-0.2.0.zip.sha256",
+    "mode": 420,
+    "sha256": "bbbbf9eddbdc79bbb84f0d51e43755c6c531d84b3f38cdbfe7cbbda5525a9643"
+  },
+  {
+    "path": "docs/downloads/building-with-bench-0.1.0.zip",
+    "mode": 420,
+    "sha256": "9d36e28e8cc26ed8243b5fb9b22b5849cde81ffa7d0e0c19050112452c4ce01c"
+  },
+  {
+    "path": "docs/downloads/building-with-bench-0.1.0.zip.sha256",
+    "mode": 420,
+    "sha256": "8233d87428987f9190a4784c3d424fb4ceeab270c5c561f7c7efbbb4360feabc"
+  },
+  {
+    "path": "docs/downloads/building-with-bench-0.2.0.zip",
+    "mode": 420,
+    "sha256": "bba88642a9498ece93d4e200b0bcfd7499cbfa170b639ed0f599ec29c85502f8"
+  },
+  {
+    "path": "docs/downloads/building-with-bench-0.2.0.zip.sha256",
+    "mode": 420,
+    "sha256": "e9b2799db4cededc57ceeb5201cb3a4de664f3f535c8fe5c664745f83e5db6b3"
+  },
+  {
+    "path": "docs/downloads/operating-bench-agents-0.1.0.zip",
+    "mode": 420,
+    "sha256": "14ec8399e63e21ac9853cde944abc5d4e363a45a4adc987cca209dfbd8b9c708"
+  },
+  {
+    "path": "docs/downloads/operating-bench-agents-0.1.0.zip.sha256",
+    "mode": 420,
+    "sha256": "ccf400985190bf3fe59c4ef7897f3f83ad4e4d9002a3ff9485cc5f4e31e61c94"
+  },
+  {
+    "path": "docs/downloads/operating-bench-agents-0.2.0.zip",
+    "mode": 420,
+    "sha256": "55d92deb4d2edb17e213699de85f96c0fc843e64c0eb5a62098f1d45d4a8fc3d"
+  },
+  {
+    "path": "docs/downloads/operating-bench-agents-0.2.0.zip.sha256",
+    "mode": 420,
+    "sha256": "1dffdc35d78aaa7dce5d076d41866e482aba16b81a451c31d89daace12e19465"
+  },
+  {
+    "path": "docs/downloads/stewarding-bench-platform-0.1.0.zip",
+    "mode": 420,
+    "sha256": "b15f91e9ba965a411e033ef1feac02bcda514bbda41f69551293a289c441ccf7"
+  },
+  {
+    "path": "docs/downloads/stewarding-bench-platform-0.1.0.zip.sha256",
+    "mode": 420,
+    "sha256": "7733e247a7688a6876a39487e28db22f6ac621344cc073961e970e323326e62c"
+  },
+  {
+    "path": "docs/downloads/stewarding-bench-platform-0.2.0.zip",
+    "mode": 420,
+    "sha256": "c4d0956296bfa7d097bef67882fed3d139ce0f6c2e145883c1022c9ada1539d3"
+  },
+  {
+    "path": "docs/downloads/stewarding-bench-platform-0.2.0.zip.sha256",
+    "mode": 420,
+    "sha256": "14ad7b02f53f07ae509e100f5efdc22a31a214678d815d4a49e809714703cff3"
+  },
+  {
+    "path": "docs/guide.html",
+    "mode": 420,
+    "sha256": "968d8c36f398d5cad24ac4e5de42430bffc0ecc76a7e6c879a069af4e9f73f34"
+  },
+  {
+    "path": "docs/index.html",
+    "mode": 420,
+    "sha256": "f940c617bc9007c41fddb0ac75ffc47e146bb33d3cfd616e60eb890c327e3ecf"
+  },
+  {
+    "path": "docs/platforms.html",
+    "mode": 420,
+    "sha256": "03a070b77eb224b35351b596bfde5a97d4aefb3881f350845654a08357c1cafb"
+  },
+  {
+    "path": "docs/readme/flow.gif",
+    "mode": 420,
+    "sha256": "d76b5eb1bf749f48ca3f3d5b2d93c3b895515c79ad64406e8e5421083a13e402"
+  },
+  {
+    "path": "docs/readme/flow.png",
+    "mode": 420,
+    "sha256": "dc4f161423f597d8e9da3671e09065a1d9c0545cd2ed2a88f952818e70bacaba"
+  },
+  {
+    "path": "eval/README.md",
+    "mode": 420,
+    "sha256": "427d419a5686532a225457ba4b83ebe9a915fb0b734539d4afaf38debd2cf181"
+  },
+  {
+    "path": "eval/corpus/broken-watch/.agent/learning/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/.agent/runs/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/AGENTS.md",
+    "mode": 420,
+    "sha256": "729de14c12a65d773abd617ce0e5b25a5a1d886cc2ee4a8e0d2a2b57deb7cbad"
+  },
+  {
+    "path": "eval/corpus/broken-watch/GOAL.md",
+    "mode": 420,
+    "sha256": "f50edd9ee95be96f8f2309467391296f8baa1e4070c3c5e61c4cf59bec164964"
+  },
+  {
+    "path": "eval/corpus/broken-watch/HEARTBEAT.md",
+    "mode": 420,
+    "sha256": "d0710873785d8d5e79ab4b571a74f1fdce1cc00a3f21d51fa04531b0fef34387"
+  },
+  {
+    "path": "eval/corpus/broken-watch/agents/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/bin/check",
+    "mode": 493,
+    "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc"
+  },
+  {
+    "path": "eval/corpus/broken-watch/bin/wake",
+    "mode": 493,
+    "sha256": "4d8fe24768718d56bd8c282eb86ad8c8411b2d3d4f8cc99d84fc37f55f7d3780"
+  },
+  {
+    "path": "eval/corpus/broken-watch/skills/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/state/kv/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/tools/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/broken-watch/work/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/.agent/learning/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/.agent/runs/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/AGENTS.md",
+    "mode": 420,
+    "sha256": "0f5e92c8df29957013333206c980eb997ee28389326ccd81a71d5427c114064b"
+  },
+  {
+    "path": "eval/corpus/delegator/GOAL.md",
+    "mode": 420,
+    "sha256": "da598bb515013fde730b994e5ef696f8a0a8ebae60b46b64d05255c30a6f73da"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/.agent/learning/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/.agent/runs/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/AGENTS.md",
+    "mode": 420,
+    "sha256": "07f5c3ec516bf0a8092d5c39f251bba1919e91ed013ac610a92e2ab3b10db878"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/GOAL.md",
+    "mode": 420,
+    "sha256": "9c8d4d0e0ac1824ab808a3c7f4cadc70353f4a4824a1779b1996876dac85619b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/agents/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/bin/check",
+    "mode": 493,
+    "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/bin/wake",
+    "mode": 493,
+    "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/skills/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/state/kv/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/tools/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/agents/researcher/work/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/bin/check",
+    "mode": 493,
+    "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc"
+  },
+  {
+    "path": "eval/corpus/delegator/bin/wake",
+    "mode": 493,
+    "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+  },
+  {
+    "path": "eval/corpus/delegator/skills/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/state/kv/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/tools/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/delegator/work/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/.agent/learning/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/.agent/runs/fixture-history.jsonl",
+    "mode": 420,
+    "sha256": "fbad07d7fd63d349d40622700bc7eaccd193720b3051c54b4c2df8fe9f13e2f6"
+  },
+  {
+    "path": "eval/corpus/done/AGENTS.md",
+    "mode": 420,
+    "sha256": "e0959b490b631e544408ae78458821416895e3bddd0b93a729780e69b9e5492c"
+  },
+  {
+    "path": "eval/corpus/done/GOAL.md",
+    "mode": 420,
+    "sha256": "1d8bbd6f4f1329f46ea3eff506e149c832e7bdb5d15a149a5d84c96162dfd1b5"
+  },
+  {
+    "path": "eval/corpus/done/agents/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/bin/check",
+    "mode": 493,
+    "sha256": "ffe6faaf1c0cd28bc5b6e0186450fae48751c823e738666b5fa9196e4e04e75e"
+  },
+  {
+    "path": "eval/corpus/done/bin/wake",
+    "mode": 493,
+    "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+  },
+  {
+    "path": "eval/corpus/done/skills/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/state/kv/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/tools/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/done/work/result.txt",
+    "mode": 420,
+    "sha256": "ed1a545bb85e55816bbf9566b028b2a0bc456b88f49f6f266c0401048824194b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/.agent/learning/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/.agent/runs/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/AGENTS.md",
+    "mode": 420,
+    "sha256": "687704dbe2af32e71007dd3534ac98cd5ae8aa6f89fa341b44e3e35da7910f14"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/GOAL.md",
+    "mode": 420,
+    "sha256": "aab4da479492a7ccba5ffb678a878d8f850d779841ac031c4b4dfef552da723f"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/HEARTBEAT.md",
+    "mode": 420,
+    "sha256": "af6e41e21b76fbd080def092c7970aea361a8ca10dfb779de7b375b4807ce0b8"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/agents/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/bin/check",
+    "mode": 493,
+    "sha256": "275239824e00e61b0a220e61a41791c7e9b4bd726f8b0c27077a338f8131c9dc"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/bin/wake",
+    "mode": 493,
+    "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/skills/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/state/kv/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/tools/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/corpus/quiet-watch/work/.gitkeep",
+    "mode": 420,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+  },
+  {
+    "path": "eval/run.sh",
+    "mode": 493,
+    "sha256": "584bb18038380f7bfd8814db2ce6d98739d1ccf671b987a309f40cc8e60d0a35"
+  },
+  {
+    "path": "justfile",
+    "mode": 420,
+    "sha256": "932caedd8ec4efbf77688ebfb7874f9caf3f26abe2bab9ba72807231835401ad"
+  },
+  {
+    "path": "plugins/bench-system-builder/.claude-plugin/plugin.json",
+    "mode": 420,
+    "sha256": "802fc0b454793a82192d55126d849417f17fd683a8aba6432135fc4f347b99c1"
+  },
+  {
+    "path": "plugins/bench-system-builder/LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "plugins/bench-system-builder/README.md",
+    "mode": 420,
+    "sha256": "d98dee6eec4f7f74ae3de7e93313882d9d25a0b6d3a66834c2d6eac43d1e4869"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/SKILL.md",
+    "mode": 420,
+    "sha256": "9cdb375fcbd4efa374455aeee43234bcf66ae9d5834b23674a5650a01fbdb5ed"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/00-job-brief.md",
+    "mode": 420,
+    "sha256": "e1421e67f7039037109c0945a396ff50fdc46432d4480836962b5f565b5cf828"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/01-process-map.md",
+    "mode": 420,
+    "sha256": "8b125c2851a0df99a8627bb2fe84a9e31a53e44f09e2d0ae40864a5bebadace4"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/02-case-library.csv",
+    "mode": 420,
+    "sha256": "d14cc8206515d4dc2c11140b9acd5b2d7a9da348a10d4cb28cabbf8847d971ca"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/03-source-register.csv",
+    "mode": 420,
+    "sha256": "fbf53a393786dcafdcd5602adf57f5f68a2d516739afdf10b832c0eaf0b0e3e5"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/04-authority-register.csv",
+    "mode": 420,
+    "sha256": "8fbe1d5a1288dbd96eeba6f9dfbc2919a0cde3c77aa4ff9cad100ec47b51d2b0"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/05-system-design.md",
+    "mode": 420,
+    "sha256": "46e04eeeddeb0e8d233e6b47b82cc84e77cce9d966b2b4c5a45141c982ef05f0"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/06-proof-plan.md",
+    "mode": 420,
+    "sha256": "77947f2ae6fda5e3f680b2b31b7458354237403c7ceaab8e2f0db0ede76b5077"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/07-pilot-plan.md",
+    "mode": 420,
+    "sha256": "ae5698d957eae8f20fb433a5998eef40f10ea61847807da1764abe2bdec84a04"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/BUILD-REPORT.md",
+    "mode": 420,
+    "sha256": "2dd6de2f1d60eb9f6c58e448b166673ecc9b69b4760fa1df932d8eb10358c844"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/FIRST-RUN-REPORT.md",
+    "mode": 420,
+    "sha256": "a3f017b892e7d04faf960c3a9c7afe7a1e28d02fbb041d60e82970811a6be612"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/assets/STEWARD-HANDOFF.md",
+    "mode": 420,
+    "sha256": "9ea73fffd15639d6d051dc69574772bfc702893b2b29a5f6bf141c3a85421f71"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/evaluations/cases.json",
+    "mode": 420,
+    "sha256": "a9deb5c8fac02c474df7a5a556101b64f268f217d0b724983103cc83622d7ed8"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/authority-and-effects.md",
+    "mode": 420,
+    "sha256": "0b897040fac97b233fbc407a2f03fef888f9b81ba647ad2c3ac2bc8684e78b5c"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/compatibility.md",
+    "mode": 420,
+    "sha256": "c1032e2eb59660223c885eddefe1c96533609ae072f36b5c1e9e8972762c9893"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/evidence-and-proof.md",
+    "mode": 420,
+    "sha256": "15c126da43b093915e23f480193c858ba6ea1855afbf781b7709da5a8c433536"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/home-materialization.md",
+    "mode": 420,
+    "sha256": "2500288120cd920cc9038f38124dbc89d92faedb4d786f93219aa457fef41f41"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/lifecycle.md",
+    "mode": 420,
+    "sha256": "dab1a6a4a752540415da37d919e53b9cc4d2e303f7fd31ad04e0aa7de611fd20"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/model-readiness.md",
+    "mode": 420,
+    "sha256": "719c4ad2865b08b0af752d093da87cb54cd9b2bca91fca3d8c3b07a1d039f448"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/platform-owners.md",
+    "mode": 420,
+    "sha256": "7dd07ea405e08972811c789280f5c758ec4ef50266f61ada7551a7a0d85926cb"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/steward-handoff.md",
+    "mode": 420,
+    "sha256": "af45eea64bfd8650622d3eaaed601a5ee179b01332bdf100141798c216a8b036"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/suite-commands.md",
+    "mode": 420,
+    "sha256": "4b80595a12b952fb0c3ae74980659d31e54ee171cdd726a9856944ff57263108"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/surface-routing.md",
+    "mode": 420,
+    "sha256": "13f280a033253556dbdf243ca6ef501797e0a6e16d6b751b9c05ea12b75b24f5"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/references/worked-example.md",
+    "mode": 420,
+    "sha256": "99ce04d710650f2e0e04d6d464b35a09c06bb094b06c77a5047937193d77d08d"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/scripts/doctor.sh",
+    "mode": 493,
+    "sha256": "b00b31017bcdca2677650de99db5828d1ae8156c50c929bcc7d2ad8b65e20334"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/building-with-bench/scripts/probe-model-access.sh",
+    "mode": 493,
+    "sha256": "dda57a84fbcec75ab14d60434db4f02fa458088490d402efedff6792494dffac"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/SKILL.md",
+    "mode": 420,
+    "sha256": "8bd7ed3c37f07a86c25765ad8af19ba9d69d3d36d6b6135a58d910c4e2504a6f"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/assets/INCIDENT.md",
+    "mode": 420,
+    "sha256": "e4aa392383fedb6a35c09d38b96282041c8fb9f18e2fcc0a7afc940cd5fe992f"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/assets/LOCAL-RUNBOOK.md",
+    "mode": 420,
+    "sha256": "b5a4d0d1bd2f4f7e365e4cf109e3ebee67cf2e1b335db7248aa436805f96d618"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/assets/OPERATING-RECORD.md",
+    "mode": 420,
+    "sha256": "91916298b91dcd7b47802ebaffcc89a7235d56e3f58e4c725db3294795eec350"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/assets/RETIREMENT.md",
+    "mode": 420,
+    "sha256": "cd5ed68a0d49ab69f1fcf663433afb50e5b4c18d65361b8c8ba153a805808bac"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/assets/SCHEDULE-PLAN.md",
+    "mode": 420,
+    "sha256": "b13ca2968f7056c0419ab7f8a4e9af8193a8421947e1cce9e32b3b6515c620b6"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/evaluations/cases.json",
+    "mode": 420,
+    "sha256": "a5e4632b091227b1fb484e479ef6e1b813f38766c81f4e7df5a15d9abe2e4aaf"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/references/change-and-retirement.md",
+    "mode": 420,
+    "sha256": "b80c7f5103dcd5e76f03bfd2d9ac93fae2f90b117c4cb33b522cfed08ad1da95"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/references/incidents-and-effects.md",
+    "mode": 420,
+    "sha256": "abaaeeeb64f1517471b172a1b3d2e1fc890578325a8af58d3287376bd876c6da"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/references/runbook.md",
+    "mode": 420,
+    "sha256": "33300b86c6c051d9da6eb0377915fcf0eb3fe91d164e9d8158418aeb129d630e"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/references/runtime-and-surfaces.md",
+    "mode": 420,
+    "sha256": "4cae9a3505549f5f6c891ab9095029e3001481c22ec33b2ed35ae0819a95c204"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/references/scheduling.md",
+    "mode": 420,
+    "sha256": "6ee20b8c33f6ea5c287c8e5abdacdeecea683c5c3fb5ccfe55e57a0f33194db8"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/operating-bench-agents/scripts/prepare-local-operations.sh",
+    "mode": 493,
+    "sha256": "775db51e4e47c187e9c08f3a50491508afc2c0feb6e79ae855affac962293d60"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/SKILL.md",
+    "mode": 420,
+    "sha256": "3ab998de4e6d25619634565466cc538449437bfa96d760356819c02ccacd8e4f"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/assets/CHECK-REVIEW.md",
+    "mode": 420,
+    "sha256": "0d70b32dd8e7128401d3c17e6decb1eb6b54842bae359316c1991dfefaaedd89"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/assets/CONNECTION-REVIEW.csv",
+    "mode": 420,
+    "sha256": "55d64e4e3f0ecb816aa47ff02948a38cd3a675454a5670ea5449ca35277bb0af"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/assets/PLATFORM-READINESS.md",
+    "mode": 420,
+    "sha256": "c619bdd165618f105e64971575de4de5d25b4f1dc74942bb9c4ff4bf77fd956d"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/evaluations/cases.json",
+    "mode": 420,
+    "sha256": "0a107fbb250a82b4b4d7f7d110b8531f85fac2ed1c23f7ed3cf06328e97596f2"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/checks-and-security.md",
+    "mode": 420,
+    "sha256": "09c86a7c696d5737b63256a3780a44c7a4ee36c3fd88eba580d33e04258b3e96"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/connections-and-effects.md",
+    "mode": 420,
+    "sha256": "3e614b4d9136d50571a6f9aa64fea275b429dae5811da47346f302c6252ceaa3"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/cowork-integration.md",
+    "mode": 420,
+    "sha256": "bac520deeb6603d4bd0a401e8a62a34ec9f0124d2f9b4ddd24cf476eec0f32b9"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/model-access.md",
+    "mode": 420,
+    "sha256": "16782c50f9ac10d642bd041a1a835f7a651c52e7ccc1a65bf3306b6ea055275b"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/operations.md",
+    "mode": 420,
+    "sha256": "ae3c53cba517d08aaf418c14fe803e6cb1f6d172a4fb1b21365481ac50dcb89c"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/references/source-free-install.md",
+    "mode": 420,
+    "sha256": "e88c7b37edcc1e1392a709c554f68e15e84812966bf74a11996527b9cf7044ab"
+  },
+  {
+    "path": "plugins/bench-system-builder/skills/stewarding-bench-platform/scripts/install-bench-suite.sh",
+    "mode": 493,
+    "sha256": "501158e05d192a22a83a47a65dc8c1dc3250539ec8c1bab3635c271486bd3158"
+  },
+  {
+    "path": "scripts/package-skill-downloads.sh",
+    "mode": 493,
+    "sha256": "319e0acad67c087c3f3d76ca774570b290509cd355b4dd7dacb392fd9f71dc54"
+  },
+  {
+    "path": "scripts/test-bench-system-builder.sh",
+    "mode": 493,
+    "sha256": "2de834e99347eabb9c53985496694eef46ecb7ca8b1960b5ac37b3b94a54fc28"
+  }
+]

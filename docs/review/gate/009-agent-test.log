@@ -1,0 +1,174 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/source
+argv: sh bin/agent_test.sh
+
+ok 1 - version follows the suite component contract
+agent: scaffolded /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief; edit GOAL.md and bin/check, then run agent check /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief
+ok 2 - new creates AGENTS.md
+ok 3 - new creates GOAL.md
+ok 4 - new creates executable truth
+ok 5 - new creates cheap wake probe
+ok 6 - new creates mutable work root
+ok 7 - new creates mutable state root
+ok 8 - new creates file-shaped KV state
+ok 9 - new creates run evidence root
+ok 10 - new creates checkpoint root
+ok 11 - new creates skill-selection evidence root
+ok 12 - new creates learning evidence root
+ok 13 - new creates reviewed learning proposal root
+ok 14 - new creates definition proposal root
+ok 15 - new creates external action proposal root
+ok 16 - new creates amendment evidence root
+ok 17 - fresh scaffold validates
+agent: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief is a valid agent home
+ok 18 - show emits a compiled hash
+ok 19 - show emits a definition hash
+ok 20 - show emits a wake hash
+ok 21 - show emits definition byte counts
+ok 22 - show includes operating instructions
+ok 23 - show keeps goal distinct
+ok 24 - show makes default authority visible
+ok 25 - show names checkpoint root
+ok 26 - show names skill-selection evidence
+ok 27 - show names action proposal root
+agent: scaffolded /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief/agents/researcher; edit GOAL.md and bin/check, then run agent check /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief/agents/researcher
+agent: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief/agents/researcher is a valid agent home
+agent: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/support-chief is a valid agent home
+ok 28 - show catalogues validated specialist homes
+ok 29 - check refuses symlinked specialist homes
+agent: scaffolded /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/bad; edit GOAL.md and bin/check, then run agent check /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/bad
+ok 30 - check refuses symlinked context
+agent: scaffolded /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/locked; edit GOAL.md and bin/check, then run agent check /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-agent-shnk3_ev/tmp/agent-test.Wj0b8T/locked
+ok 31 - check refuses unwritable mutable state
+ok 32 - check refuses hard links in writable roots
+ok 33 - action boundary rechecks hard links
+ok 34 - hard-link refusal is explained
+ok 35 - action boundary reaches pinned Cage
+ok 36 - toolbox cannot shadow pre-Cage hard-link scanner
+ok 37 - action boundary pins Cage temporary writes
+ok 38 - action boundary refuses replaceable temporary roots
+ok 39 - empty heartbeat makes no Ply call
+ok 40 - quiet wake makes no Ply call
+ok 41 - changed wake starts Ply
+ok 42 - heartbeat replaces the standing goal
+ok 43 - wake output becomes initial evidence
+ok 44 - heartbeat does not silently pursue GOAL.md
+ok 45 - broken wake status stops before Ply
+ok 46 - oversized wake evidence stops before Ply
+ok 47 - specialist run succeeds
+ok 48 - specialist preserves child stdout
+ok 49 - specialist receives bounded invocation task
+ok 50 - specialist loads only child instructions
+ok 51 - specialist does not inherit parent instructions
+ok 52 - specialist stores separate replay evidence
+ok 53 - specialist model choice is caller-owned
+ok 54 - specialist rejects path-shaped names
+ok 55 - learn preserves Hone stdout
+ok 56 - learn forwards an explicit destination skill
+ok 57 - learn forwards the exact home session
+ok 58 - learn scopes writes to home skills
+ok 59 - learn stores wording evidence under controller state
+ok 60 - learn pins Ask for replay and wording
+ok 61 - learn forwards dry-run mode
+ok 62 - learn forwards model-free evidence review
+ok 63 - learn scopes exact proposal preparation
+ok 64 - learn forwards Hone exact preparation
+ok 65 - learn show invokes Hone without a session
+ok 66 - learn show reads the scoped proposal
+ok 67 - learn show resolves no Ask program
+ok 68 - learn admit invokes Hone on reviewed bytes
+ok 69 - learn admit pins Ask for provenance replay
+ok 70 - learn refuses to overwrite an exact proposal
+ok 71 - learn refuses path-shaped proposal names
+ok 72 - learn refuses symlinked proposal artifacts
+ok 73 - learn refuses multiply-linked proposal artifacts
+ok 74 - learn preserves Hone nothing-to-learn status
+ok 75 - learn refuses sessions outside home evidence
+ok 76 - learn refuses path-shaped skill destinations
+ok 77 - history preserves Trail JSONL stdout
+ok 78 - history defaults to Trail list
+ok 79 - history scopes list to home evidence
+ok 80 - history forwards one literal semantic query
+ok 81 - history resolves a session inside home evidence
+ok 82 - history forwards bounded windows
+ok 83 - history window keeps the selected session
+ok 84 - history check delegates replay to exact Ask
+ok 85 - history refuses sessions outside home evidence
+ok 86 - action review reports an empty catalogue without mutation
+ok 87 - action review exposes the exact proposal bytes
+ok 88 - action review exposes the stable May job
+ok 89 - action review never invokes a connector
+ok 90 - act preserves Action parked status
+ok 91 - act passes the proposal without shell parsing
+ok 92 - act binds events to the selected Ask session
+ok 93 - act forwards the deterministic policy literally
+ok 94 - act selects controller-only connectors
+ok 95 - act refuses proposals outside work/actions
+ok 96 - proposal review reports an empty catalogue without mutation
+ok 97 - proposal review prints a bounded catalogue
+ok 98 - proposal review exposes the exact target
+ok 99 - proposal review exposes the exact May action
+ok 100 - proposal review includes literal patch bytes
+ok 101 - proposal review does not invoke May
+ok 102 - amend parks one exact May request before writing definition
+ok 103 - parked amendment leaves definition unchanged
+ok 104 - amend binds the definition hash
+ok 105 - amend binds the proposal hash
+ok 106 - amend uses a stable exact-action job
+ok 107 - amend refuses a grant after proposal bytes change
+ok 108 - stale grant leaves definition unchanged
+ok 109 - approved amendment applies one reviewed root definition patch
+ok 110 - approved amendment records controller evidence
+ok 111 - amendment receipt binds before and after definition
+ok 112 - amendment receipt retains the May result
+ok 113 - amend rejects an approved patch that breaks home validation
+ok 114 - failed amendment restores the exact definition file
+ok 115 - failed amendment reports rollback
+ok 116 - amend refuses non-root-definition targets
+ok 117 - history preserves Trail negative status
+ok 118 - check refuses symlinked learning destinations
+ok 119 - check refuses symlinked skill instructions
+ok 120 - check reserves the private agent-context identity
+ok 121 - check refuses toolbox targets in model-writable roots
+ok 122 - run refuses a Ply without required boundary capabilities
+ok 123 - incompatible Ply names the missing capability
+ok 124 - run refuses an ambient temporary root inside home
+ok 125 - unsafe ambient temporary root is explained
+ok 126 - unsafe ambient temporary root stops before Ply
+ok 127 - oversized piped evidence stops before Ply
+ok 128 - oversized piped evidence names the limit
+ok 129 - oversized piped evidence makes no model call
+ok 130 - run preserves Ply stdout
+ok 131 - goal reaches Ply through a private file
+ok 132 - invocation input reaches the private task file
+ok 133 - piped input reaches Ply stdin
+ok 134 - goal text is absent from Ply argv
+ok 135 - invocation text is absent from Ply argv
+ok 136 - piped evidence is absent from Ply argv
+ok 137 - private context is delivered through a skill
+ok 138 - local skills are scoped through BRIEF_PATH
+ok 139 - run evidence is scoped through PLY_DIR
+ok 140 - run pins Ask for Ply model calls
+ok 141 - ambient Ply composition variables are scrubbed
+ok 142 - selector uses run model, effort, and home evidence root
+ok 143 - run provides a private action temporary root
+ok 144 - private action temporary root stays outside home
+ok 145 - private controller inputs are absent from Ply env
+ok 146 - Ply works in the mutable work root
+ok 147 - model selection is forwarded
+ok 148 - effort selection is forwarded
+ok 149 - confined action shell is forwarded
+ok 150 - generic nested Ply delegation is disabled
+ok 151 - governing context is composed after the selected skill
+ok 152 - context body does not leak into argv
+ok 153 - older home without checkpoint root still validates
+ok 154 - checkpoint run creates controller root lazily
+ok 155 - checkpoint name maps to one home-scoped Ply pointer
+ok 156 - checkpoint rejects path-shaped names
+ok 157 - invalid checkpoint stops before Ply
+ok 158 - checkpoint refuses sessions outside home evidence
+ok 159 - installed symlink resolves private action wrapper
+ok 160 - run preserves Ply incomplete exit status
+ok 161 - no-cage mode is explicit
+ok 162 - no-cage omits action shell
+ok 163 - network flag requires confinement
+1..163

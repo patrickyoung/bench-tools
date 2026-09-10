@@ -1,0 +1,6 @@
+{
+  "reason": "Darwin native mktemp chooses its OS user temporary directory before TMPDIR",
+  "source": "/private/tmp/bench-check-draft-k3_2gh8d/source",
+  "temporary_write_root": "/private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T",
+  "trusted_source_outside_temporary_write_root": true
+}

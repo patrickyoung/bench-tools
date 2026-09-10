@@ -1,0 +1,4 @@
+cwd: /private/tmp/bench-check-draft-f3shgcmr/source
+argv: sh bin/draft_test.sh
+
+78 passed, 0 failed

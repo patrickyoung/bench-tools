@@ -176,6 +176,10 @@
           "package": "./cmd/mcp"
         },
         {
+          "name": "mcp-legacy",
+          "package": "./cmd/mcp-legacy"
+        },
+        {
           "name": "mcpbox",
           "package": "./cmd/mcpbox"
         },
@@ -197,7 +201,7 @@
       "commands": [
         {
           "name": "oauth",
-          "package": "."
+          "package": "./cmd/oauth"
         }
       ]
     },

@@ -1,0 +1,7 @@
+{
+  "components.json": "2c593850f2458319787743217d5802e28e04abee58be0ea4eae860b66856b881",
+  "scripts/check": "6ce3afc623e588bd743f7ad9dc11882862dc951f39d80bc168eeb7c12626cdda",
+  "scripts/check-boundaries.py": "f91d36dccd3400b7f59f947bf24d9b9c6b7f3626a2f9ed13c360a9d157d2a51d",
+  "scripts/check-integration.py": "80c7133f488748dcc5959695a9ef21e635e0a7d854632f3e85a9bb8ea154e736",
+  "scripts/go-boundaries/main.go": "60bd8df3fab98445b8239fe2f1ede7652045562bfdf282993d3441e6b2172411"
+}

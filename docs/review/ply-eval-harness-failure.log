@@ -1,0 +1,47 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-ply-5t108871/source
+argv: python3 -m unittest discover -s eval -p 'test_*.py' -v
+
+test_fake_cli_receives_isolated_auth_and_literal_policy_and_records_usage (test_codex_driver.CodexAdapterTests) ... ok
+test_incomplete_usage_remains_unknown (test_codex_driver.CodexAdapterTests) ... ok
+test_lifecycle_is_rejected_before_auth_or_process_launch (test_codex_driver.CodexAdapterTests) ... ok
+test_cumulative_usage_counts_compaction_and_cancelled_turns_once (test_eval.HarnessTests) ... ok
+test_existing_output_directory_is_never_retried (test_eval.HarnessTests) ... ok
+test_expired_budget_does_not_launch_a_driver (test_eval.HarnessTests) ... ok
+test_group_escalation_outlives_exited_leader_and_redirected_output (test_eval.HarnessTests) ... ok
+test_malformed_result_is_invalid_even_when_exit_zero (test_eval.HarnessTests) ... ok
+test_normal_exit_with_surviving_descendants_is_invalid_and_cleaned (test_eval.HarnessTests) ... ok
+test_oracle_child_with_inherited_output_cannot_outlive_timeout (test_eval.HarnessTests) ... ok
+test_oracle_tamper_cannot_produce_measured_success (test_eval.HarnessTests) ... ok
+test_repeated_pairs_use_identical_fixtures_isolated_state_and_external_oracles (test_eval.HarnessTests) ... ok
+test_timeout_is_bounded_and_does_not_count_as_a_paired_loss (test_eval.HarnessTests) ... ok
+test_unknown_usage_is_not_zero_and_impossible_usage_is_refused (test_eval.HarnessTests) ... ok
+test_unsupported_lifecycle_is_explicit_and_unpaired (test_eval.HarnessTests) ... ok
+test_claude_cli_isolated_prompt_native_tools_and_turn_limit (test_native_drivers.NativeExecutableTests) ... ok
+test_pi_cli_disables_discovery_and_uses_trial_session (test_native_drivers.NativeExecutableTests) ... ok
+test_rejects_lifecycle_resume_and_public_auth_root (test_native_drivers.NativeExecutableTests) ... FAIL
+test_claude_error_and_missing_usage_remain_visible (test_native_drivers.NativeParserTests) ... ok
+test_claude_terminal_usage_and_model_not_double_counted (test_native_drivers.NativeParserTests) ... ok
+test_missing_or_duplicate_claude_result_is_invalid (test_native_drivers.NativeParserTests) ... ok
+test_pi_compaction_and_nested_tool_usage_are_included (test_native_drivers.NativeParserTests) ... ok
+test_pi_counts_completed_messages_once_and_reports_catalog_estimate (test_native_drivers.NativeParserTests) ... ok
+test_pi_incomplete_agent_stream_is_invalid (test_native_drivers.NativeParserTests) ... ok
+test_pi_native_error_overrides_zero_cli_exit (test_native_drivers.NativeParserTests) ... ok
+test_pi_retry_makes_total_unknown_preserves_observed_usage (test_native_drivers.NativeParserTests) ... ok
+test_success_marker_must_be_whole_line (test_native_drivers.NativeParserTests) ... ok
+
+======================================================================
+FAIL: test_rejects_lifecycle_resume_and_public_auth_root (test_native_drivers.NativeExecutableTests)
+----------------------------------------------------------------------
+ValueError: configure PLY_EVAL_CLAUDE
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-ply-5t108871/source/eval/test_native_drivers.py", line 188, in test_rejects_lifecycle_resume_and_public_auth_root
+    module.invocation(self.request, self.env)
+AssertionError: "private" does not match "configure PLY_EVAL_CLAUDE"
+
+----------------------------------------------------------------------
+Ran 27 tests in 17.894s
+
+FAILED (failures=1)

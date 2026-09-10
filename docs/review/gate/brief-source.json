@@ -1,0 +1,112 @@
+[
+  {
+    "path": ".github/workflows/ci.yml",
+    "mode": 420,
+    "sha256": "fd28a953e9399770be9dea36da64e30ddb4d5d6ba8ea5a700f4eaf16dd10bb10"
+  },
+  {
+    "path": ".gitignore",
+    "mode": 420,
+    "sha256": "36a600901789ea256d2fbb10eb3d3bc1716c6a3357576ee680bc4271b79f2117"
+  },
+  {
+    "path": "AGENTS.md",
+    "mode": 420,
+    "sha256": "9ae637069c4605ba0ec8db0120a799a200bc8cf2ae7c6df482d7e2ca373b3849"
+  },
+  {
+    "path": "GUIDE.md",
+    "mode": 420,
+    "sha256": "84646a7daf292c2c78adeb90ce2d03b9744bb6866f554e4d1cf06a5310c1831c"
+  },
+  {
+    "path": "LICENSE",
+    "mode": 420,
+    "sha256": "883f2c68312d576040511b1e738462a95e19132163c5d786b302edb967e0156e"
+  },
+  {
+    "path": "README.md",
+    "mode": 420,
+    "sha256": "6fb69be2d21b07f914d29b82998ded01e0d0522b16e951c18f5897b50fb10066"
+  },
+  {
+    "path": "SECURITY.md",
+    "mode": 420,
+    "sha256": "b83568bbf63e945061231809ed830294aa3bbf37e6e88a9334385d063547ab71"
+  },
+  {
+    "path": "brief.1",
+    "mode": 420,
+    "sha256": "eb2efdaa5cf2c486d7bb206dae4c26ae68b1d89d9fbc23896f6f40f5eac798da"
+  },
+  {
+    "path": "find.go",
+    "mode": 420,
+    "sha256": "13350b3bdc4e7ac56ebfcc9b3ee6bff0054bbff584fb777e2171f5545c253eb2"
+  },
+  {
+    "path": "find_test.go",
+    "mode": 420,
+    "sha256": "5923e3aeea2d66f6c51bc1e3c62296e481c8fab78d67b18a95f306ff7488b693"
+  },
+  {
+    "path": "go.mod",
+    "mode": 420,
+    "sha256": "cbee9fca11a9bf93aba3b34bc7d8bd384172afe87eab5dc0074d13b5a475abca"
+  },
+  {
+    "path": "go.sum",
+    "mode": 420,
+    "sha256": "50bf899d365a14aa07146813826efa5b9baee45570e3e5bf6d6dc838b71e4e30"
+  },
+  {
+    "path": "lint.go",
+    "mode": 420,
+    "sha256": "9ed703359075790b803d77e8e98287bc2e816ea380dd4595cf5825c2a8c87183"
+  },
+  {
+    "path": "lint_test.go",
+    "mode": 420,
+    "sha256": "a49392e1841d88e8857a8f643fbae29af3881ceca99da2792b4531ce4934db84"
+  },
+  {
+    "path": "main.go",
+    "mode": 420,
+    "sha256": "fa31c5ff6c9e11bef88607a6078c901d4a8c1d7b4f0cd7723775f2b465faa077"
+  },
+  {
+    "path": "main_test.go",
+    "mode": 420,
+    "sha256": "18f08444ee1537e7ae280eda9fb1b95ea1784418f9e380ba41ccfcc42b2930da"
+  },
+  {
+    "path": "new.go",
+    "mode": 420,
+    "sha256": "f8e2cf64bfea63254e37f899ad18775a9e8417fffaae1ea6af09607c64179268"
+  },
+  {
+    "path": "prompt.go",
+    "mode": 420,
+    "sha256": "66f0c510824fc256b75bd32bac8851b6969a60c26596a4aa95553800c1e1fb41"
+  },
+  {
+    "path": "skill.go",
+    "mode": 420,
+    "sha256": "6b2abc97c4a305c14b8194d776f25bdea71120324460e02c7b760e08744ad95e"
+  },
+  {
+    "path": "skill_test.go",
+    "mode": 420,
+    "sha256": "a87be674f810f496efb6891d91f81fb47549c8c5a27f7f3e1837d2f1ae886234"
+  },
+  {
+    "path": "store.go",
+    "mode": 420,
+    "sha256": "1d250c90863f1b1bdce383c3545f14e0b75fa870d9af726387aa965b0f23eb2d"
+  },
+  {
+    "path": "store_test.go",
+    "mode": 420,
+    "sha256": "f0a99dc9228eb404c2a01533d9ff834ece459f9285cbcc2151eef45041d2eeef"
+  }
+]

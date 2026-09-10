@@ -1,0 +1,7 @@
+cwd: /private/var/folders/tp/w7k3m3fj03qbzd73pg6rqyp80000gp/T/bench-check-oauth-bmufgtzp/source
+argv: go test -count=1 ./...
+
+?   	github.com/patrickyoung/oauth/cmd/oauth	[no test files]
+ok  	github.com/patrickyoung/oauth/internal/protocol	0.192s
+ok  	github.com/patrickyoung/oauth/internal/run	0.405s
+ok  	github.com/patrickyoung/oauth/internal/state	0.502s
