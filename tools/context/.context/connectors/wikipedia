@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Search English Wikipedia and emit Context JSONL records."""
+
+import html
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+API = os.environ.get("WIKIPEDIA_API", "https://en.wikipedia.org/w/api.php")
+USER_AGENT = os.environ.get(
+    "WIKIPEDIA_USER_AGENT",
+    "context-wikipedia/0.1 (https://github.com/patrickyoung)",
+)
+LIMIT = 5
+TIMEOUT_SECONDS = 15
+QUESTION_WORDS = {
+    "a", "about", "an", "and", "are", "as", "at", "be", "been", "being",
+    "between", "can", "could", "did", "do", "does", "for", "from", "how",
+    "in", "is", "it", "of", "on", "or", "relate", "related", "relates",
+    "should", "that", "the", "this", "to", "was", "were", "what", "when",
+    "where", "which", "who", "whom", "whose", "why", "will", "with", "would",
+}
+
+
+def describe():
+    print(json.dumps({
+        "kind": "source",
+        "version": 1,
+        "name": "wikipedia",
+        "description": (
+            "Search English Wikipedia and retrieve concise article extracts "
+            "for general background; use primary sources for consequential claims"
+        ),
+        "types": ["document"],
+        "scope": "English Wikipedia articles",
+    }))
+
+
+def plain_text(snippet):
+    without_tags = re.sub(r"<[^>]*>", "", snippet)
+    return " ".join(html.unescape(without_tags).split())
+
+
+def search_terms(query):
+    """Turn a natural-language question into transparent search keywords."""
+    first = query.split(maxsplit=1)[0].lower() if query.split() else ""
+    if not query.rstrip().endswith("?") and first not in QUESTION_WORDS:
+        return query
+    words = re.findall(r"[^\W_]+(?:['’-][^\W_]+)*", query, flags=re.UNICODE)
+    useful = [word for word in words if word.lower() not in QUESTION_WORDS]
+    return " ".join(useful) if useful else query
+
+
+def request_results(query):
+    params = urlencode({
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": query,
+        "gsrnamespace": "0",
+        "gsrlimit": str(LIMIT),
+        "gsrprop": "snippet|timestamp|wordcount",
+        "prop": "extracts|info",
+        "exintro": "1",
+        "explaintext": "1",
+        "exchars": "1200",
+        "inprop": "url",
+        "format": "json",
+        "formatversion": "2",
+        "utf8": "1",
+    })
+    request = Request(
+        API + ("&" if "?" in API else "?") + params,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        payload = json.load(response)
+    if "error" in payload:
+        error = payload["error"]
+        raise RuntimeError(
+            "Wikipedia API error "
+            + str(error.get("code", "unknown"))
+            + ": "
+            + str(error.get("info", "no detail"))
+        )
+    pages = payload.get("query", {}).get("pages", [])
+    return sorted(pages, key=lambda page: page.get("index", LIMIT + 1))
+
+
+def query():
+    text = sys.stdin.read().strip()
+    if not text:
+        return 1
+    try:
+        effective_query = search_terms(text)
+        results = request_results(effective_query)
+    except HTTPError as error:
+        retry = error.headers.get("Retry-After")
+        detail = f"HTTP {error.code}"
+        if retry:
+            detail += f"; retry after {retry}"
+        print(f"wikipedia: {detail}", file=sys.stderr)
+        return 2
+    except (URLError, TimeoutError, json.JSONDecodeError, RuntimeError) as error:
+        print(f"wikipedia: {error}", file=sys.stderr)
+        return 2
+
+    if not results:
+        return 1
+
+    retrieved = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    for fallback_rank, result in enumerate(results, start=1):
+        page_id = str(result["pageid"])
+        revision_id = result.get("lastrevid")
+        stable_id = page_id + ("@" + str(revision_id) if revision_id else "")
+        page_url = result.get("canonicalurl", "https://en.wikipedia.org/?curid=" + page_id)
+        citation_url = (
+            "https://en.wikipedia.org/w/index.php?oldid=" + str(revision_id)
+            if revision_id else page_url
+        )
+        match = plain_text(result.get("snippet", ""))
+        extract = " ".join(result.get("extract", "").split())
+        record = {
+            "kind": "context",
+            "version": 1,
+            "source": "wikipedia",
+            "type": "document",
+            "id": stable_id,
+            "title": result["title"],
+            "retrieved_at": retrieved,
+            "content": {
+                "text": extract or match,
+                "match": match,
+                "format": "text",
+                "word_count": result.get("wordcount"),
+                "search_rank": result.get("index", fallback_rank),
+                "search_query": effective_query,
+            },
+            "citation": {
+                "locator": "pageid:" + page_id + (
+                    ";revid:" + str(revision_id) if revision_id else ""
+                ),
+                "url": citation_url,
+            },
+            "page_id": int(page_id),
+            "page_url": page_url,
+            "license": {
+                "name": "CC BY-SA 4.0",
+                "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+                "attribution": "Wikipedia contributors; see the cited page history",
+            },
+        }
+        if result.get("timestamp"):
+            record["modified_at"] = result["timestamp"]
+        print(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+    return 0
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("usage: wikipedia describe|query", file=sys.stderr)
+        return 2
+    if sys.argv[1] == "describe":
+        describe()
+        return 0
+    if sys.argv[1] == "query":
+        try:
+            return query()
+        except Exception as error:
+            print(f"wikipedia: invalid API response: {error}", file=sys.stderr)
+            return 2
+    print("usage: wikipedia describe|query", file=sys.stderr)
+    return 2
+
+
+raise SystemExit(main())

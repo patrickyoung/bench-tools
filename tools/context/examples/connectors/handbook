@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Small local Context connector; replace DOCS with a provider SDK call."""
+
+import json
+import sys
+from datetime import datetime, timezone
+
+
+DOCS = [
+    {
+        "id": "paid-leave",
+        "title": "Paid leave",
+        "text": "Full-time employees receive twenty days of paid leave.",
+        "locator": "handbook.md#paid-leave",
+    },
+    {
+        "id": "incidents",
+        "title": "Incident response",
+        "text": "Coordinate active incidents in the #incidents channel.",
+        "locator": "handbook.md#incidents",
+    },
+]
+
+
+def describe():
+    print(json.dumps({
+        "kind": "source",
+        "version": 1,
+        "name": "handbook",
+        "description": "Search the example employee handbook",
+        "types": ["document"],
+    }))
+
+
+def query():
+    words = {word.strip(".,?!").lower() for word in sys.stdin.read().split()}
+    matches = [doc for doc in DOCS if words & set(doc["text"].lower().split())]
+    if not matches:
+        return 1
+    retrieved = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    for doc in matches:
+        print(json.dumps({
+            "kind": "context",
+            "version": 1,
+            "source": "handbook",
+            "type": "document",
+            "id": doc["id"],
+            "title": doc["title"],
+            "retrieved_at": retrieved,
+            "content": {"text": doc["text"], "format": "text"},
+            "citation": {"locator": doc["locator"]},
+        }))
+    return 0
+
+
+def main():
+    if len(sys.argv) != 2:
+        return 2
+    if sys.argv[1] == "describe":
+        describe()
+        return 0
+    if sys.argv[1] == "query":
+        return query()
+    return 2
+
+
+raise SystemExit(main())
