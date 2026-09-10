@@ -218,7 +218,7 @@ func askPick(cat []entry, task string, n int, quiet bool) ([]string, error) {
 	if err := os.WriteFile(cataloguePath, index.Bytes(), 0o600); err != nil {
 		return nil, fmt.Errorf("write private selector catalogue: %w", err)
 	}
-	args := []string{"-n", "-q", "-f", sess, "-S", selectPrompt(n), "-a", cataloguePath}
+	args := []string{"-q", "-f", sess, "-S", selectPrompt(n), "-a", cataloguePath}
 	if m := os.Getenv("BRIEF_MODEL"); m != "" {
 		args = append(args, "-m", m)
 	}

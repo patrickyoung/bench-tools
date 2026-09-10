@@ -67,9 +67,9 @@ When changing `brief`:
   the bound. Half a procedure that reads like a whole one is the failure
   nothing downstream can detect;
 
-- **keep `find -ask` out of the caller's conversation.** It runs `ask -n -f`
-  into a session of `brief`'s own. `ask` continues by default, and a
-  selection that landed in the current conversation would answer the next
+- **keep `find -ask` out of the caller's conversation.** It runs `ask -f`
+  into a fresh, uniquely named session of `brief`'s own. A
+  selection that landed in the caller's conversation would answer the next
   question with a catalogue on the model's mind. The session is kept, not
   deleted: a skill selection is a decision made on somebody's behalf, and
   `ask replay -check` is what makes it reviewable;

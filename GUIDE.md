@@ -120,17 +120,14 @@ The `||` is the whole design in one character: `brief find` exits 1 when
 nothing fits, and "nothing fits" means *ask the model normally*, not *fail*.
 A skill loaded for a task it does not suit is worse than no skill.
 
-One thing to know about that function: `ask` continues the current
-conversation by default, so `skilled` attaches a skill to whatever was
-already being discussed. Usually that is what you want — you asked three
-questions and now you want the fourth answered with a procedure in hand.
-When it is not, add `-n`:
+Each call starts a fresh Ask conversation by default. To continue the
+current conversation with a selected skill, add `-c`:
 
 ```sh
 skilled() {
   local s
-  s=$(brief find -ask -q "$*") || { ask -n "$@"; return; }
-  ask -n -S "$(ask system; brief cat "$s")" "$@"
+  s=$(brief find -ask -q "$*") || { ask -c "$@"; return; }
+  ask -c -S "$(ask system; brief cat "$s")" "$@"
 }
 ```
 
@@ -215,8 +212,8 @@ too.
 
 ## 6. Every choice is replayable
 
-`-ask` never touches the conversation you are having. It runs `ask -n -f`
-into a session of `brief`'s own, and says which one:
+`-ask` never touches the conversation you are having. It runs `ask -f`
+into a fresh, uniquely named session of `brief`'s own, and says which one:
 
 ```
 $ brief find -ask "the input is a patch that needs a message"
@@ -272,19 +269,20 @@ model never saw the other eight skills.
 ## 7.5. Does it actually change the answer?
 
 Three A/B runs against skills from `anthropics/skills` — nothing written
-for `brief` or for `ask`, nothing modified. Same model, `-n` on both sides,
-identical question; the only difference is `brief cat X` in the system
-prompt.
+for `brief` or for `ask`, nothing modified. Same model, fresh conversations
+on both sides, identical question; the only difference is `brief cat X` in
+the system prompt. These historical runs used Ask's former `-n` flag; the
+equivalent commands below use the current fresh-session default.
 
 **A reference skill.** `brand-guidelines`, 2.2 KB:
 
 ```
-$ ask -n -q -S "$(ask system)" \
+$ ask -q -S "$(ask system)" \
     'CSS custom properties for the brand palette. Hex values only.'
   --brand-primary: #2563EB;      <- invented, a generic Tailwind palette
   --brand-accent:  #F59E0B;
 
-$ ask -n -q -S "$(ask system; brief cat brand-guidelines)" \
+$ ask -q -S "$(ask system; brief cat brand-guidelines)" \
     'CSS custom properties for the brand palette. Hex values only.'
   --color-orange:  #d97757;      <- the actual brand values
   --color-blue:    #6a9bcc;

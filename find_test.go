@@ -28,7 +28,7 @@ func fakeAsk(t *testing.T, reply string, code int) string {
 		"    system) printf '%s' \"$arg\" > \"" + dir + "/system\"; next=; continue ;;\n" +
 		"    attachment) cat \"$arg\" > \"" + dir + "/attachment\"; next=; continue ;;\n" +
 		"  esac\n" +
-		"  case $arg in -S) next=system ;; -a) next=attachment ;; esac\n" +
+		"  case $arg in -n) echo 'ask: flag provided but not defined: -n' >&2; exit 2 ;; -S) next=system ;; -a) next=attachment ;; esac\n" +
 		"done\n" +
 		"cat > \"" + dir + "/stdin\"\n" +
 		"cat \"" + dir + "/reply\"\n" +
@@ -109,9 +109,8 @@ func TestFindAskSendsLevelOneAndNothingElse(t *testing.T) {
 }
 
 // TestFindAskKeepsItsOwnConversation. Choosing a skill must not become a
-// turn in the conversation the skill is about to be used for: ask
-// continues by default, and a caller who ran brief would find their next
-// question answered with a catalogue on the model's mind.
+// turn in the conversation the skill is about to be used for: a caller
+// continuing their current session must not get a catalogue added to it.
 func TestFindAskKeepsItsOwnConversation(t *testing.T) {
 	withPath(t, catalogueTree(t))
 	dir := fakeAsk(t, "web-perf\n", 0)
@@ -130,8 +129,8 @@ func TestFindAskKeepsItsOwnConversation(t *testing.T) {
 			sess = argv[i+1]
 		}
 	}
-	if !flags["-n"] {
-		t.Error("ask was not told to start a new conversation (-n)")
+	if flags["-n"] {
+		t.Error("obsolete Ask -n flag was sent")
 	}
 	if !flags["-m"] || !flags["anthropic/cheap-model"] {
 		t.Error("BRIEF_MODEL did not reach ask")
@@ -153,6 +152,15 @@ func TestFindAskKeepsItsOwnConversation(t *testing.T) {
 	}
 	if system := recorded(t, dir, "system"); strings.Contains(system, "slow page") || !strings.Contains(system, "choosing which skill") {
 		t.Errorf("selector system prompt has wrong precedence/content: %q", system)
+	}
+	if code, _, _ := exec(t, "", "find", "-ask", "-q", "another slow page"); code != exitYes {
+		t.Fatalf("second selection code %d", code)
+	}
+	nextArgv := strings.Split(strings.TrimSpace(recorded(t, dir, "argv")), "\n")
+	for i, arg := range nextArgv {
+		if arg == "-f" && i+1 < len(nextArgv) && nextArgv[i+1] == sess {
+			t.Fatal("separate selections reused a conversation")
+		}
 	}
 }
 
