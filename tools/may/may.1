@@ -1,0 +1,116 @@
+.TH MAY 1 "2026-08-20" "may 0.1.0" "User Commands"
+.SH NAME
+may \- ask a human before one exact action
+.SH SYNOPSIS
+.B may
+.RI [ JOB ]
+.br
+.B may pending
+.br
+.B may request
+.I JOB
+.br
+.B may decide
+.I DIGEST
+.br
+.B may
+.RB { check | help | version }
+.SH DESCRIPTION
+.B may
+reads one human-readable action from standard input (stdin) and binds a human
+answer to those exact bytes.
+The action must be non-empty UTF-8 without NUL and may contain at most 16 KiB.
+.PP
+Without
+.IR JOB ,
+May writes the quoted action and its digest to
+.B /dev/tty
+and asks y/N there.
+Only y or yes, case-insensitively, approves.
+Standard input is never an approval channel.
+.PP
+With
+.IR JOB ,
+May computes lowercase hexadecimal SHA-256 over the exact byte sequence
+.BR may-v1 ,
+NUL, the job, NUL, and the exact action. This is the public v1 digest wire
+contract.
+A matching grant is atomically moved to spent state before status 0.
+A matching decline returns status 3.
+With neither, May records a pending request and returns status 75.
+.SH COMMANDS
+.TP
+.BI "request " JOB
+Perform the same exact job transition and write one strict JSON result with
+the version, job, digest, action, and parked, declined, or spent verdict.
+The exit status remains 75, 3, or 0; state or output failure is status 2.
+This command reports authority and never creates it.
+.TP
+.B pending
+Write every validated pending request as one JSON object per line.
+.TP
+.BI "decide " DIGEST
+Load one pending request, display its job, quoted action, and digest on the
+controlling terminal, and ask y/N.
+Approval moves it to granted state; refusal moves it to declined state.
+.TP
+.B check
+Run the offline acceptance check in a temporary state directory.
+.TP
+.BR help , " " \-h , " " \--help
+Print a command summary.
+.TP
+.BR version , " " \-V , " " \--version
+Print the May version.
+.TP
+.B \--
+Treat the following single word as a job, even when it is a command name or
+begins with a hyphen.
+.SH STATE
+State is stored under
+.BR ~/.local/state/may .
+The
+.BR pending ,
+.BR granted ,
+.BR declined ,
+and
+.B spent
+directories contain exact request records.
+.B audit.jsonl
+is an append-only record of times, jobs, digests, exact actions, and verdicts.
+There is no state-location environment variable or configuration file.
+.SH EXIT STATUS
+.TP
+.B 0
+A human approved the exact action, or a non-gating command succeeded.
+.TP
+.B 1
+The acceptance check found a failure.
+.TP
+.B 2
+Usage, input, state, or I/O failure.
+.TP
+.B 3
+A human declined, or no controlling terminal was available to ask one.
+.TP
+.B 75
+The exact job request is durably parked awaiting a human.
+.SH SECURITY
+May itself, its decision command, and its state are operator capabilities.
+They must remain outside model toolboxes and agent-writable sandboxes.
+Consequential connector programs invoke May by an absolute,
+operator-controlled path.
+.PP
+May has no auto-approve flag, environment bypass, model judgment, daemon,
+network request, or configuration file.
+.SH EXAMPLES
+.nf
+printf '%s\n' 'publish release v1.4.2' | may
+printf '%s\n' 'publish release v1.4.2' | may release-142
+printf '%s\n' 'publish release v1.4.2' | may request release-142
+may pending
+may decide DIGEST
+.fi
+.SH SEE ALSO
+.BR cage (1),
+.BR vouch (1)
