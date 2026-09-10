@@ -1,0 +1,4 @@
+{"id":"baseline","needs":[],"input":{"goal":"measure the current process"}}
+{"id":"operations","needs":["baseline"],"input":{"goal":"propose a flow improvement"}}
+{"id":"controls","needs":["baseline"],"input":{"goal":"check service and rework risks"}}
+{"id":"compare","needs":["operations","controls"],"input":{"goal":"compare measured proposals"}}

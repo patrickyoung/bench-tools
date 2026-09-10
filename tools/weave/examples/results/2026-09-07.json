@@ -1,0 +1,3553 @@
+{
+  "claims_live_business_improvement": false,
+  "comparison": {
+    "arm_totals": [
+      {
+        "arm": "search",
+        "candidate_slots": 27,
+        "confirmed_selections": 0,
+        "duplicates": 0,
+        "feasible_candidate_slots": 11,
+        "trials": 3,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 1008.0319999999999,
+          "input_tokens": 0,
+          "model_ms": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0,
+          "requests": 0,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "single",
+        "candidate_slots": 27,
+        "confirmed_selections": 0,
+        "duplicates": 0,
+        "feasible_candidate_slots": 20,
+        "trials": 3,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 826669.4779999999,
+          "input_tokens": 255346,
+          "model_ms": 808185,
+          "output_tokens": 23541,
+          "reasoning_tokens": 20552,
+          "requests": 27,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "team",
+        "candidate_slots": 27,
+        "confirmed_selections": 0,
+        "duplicates": 14,
+        "feasible_candidate_slots": 27,
+        "trials": 3,
+        "usage": {
+          "cached_input_tokens": 25088,
+          "complete": true,
+          "execution_span_ms": 381018.39,
+          "input_tokens": 235959,
+          "model_ms": 785171,
+          "output_tokens": 22371,
+          "reasoning_tokens": 19250,
+          "requests": 27,
+          "retries": 0,
+          "timing_complete": true
+        }
+      }
+    ],
+    "arms": [
+      {
+        "arm": "search",
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 0,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 1,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 335.171,
+          "input_tokens": 0,
+          "model_ms": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0,
+          "requests": 0,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "single",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 1,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 205697.22499999998,
+          "input_tokens": 85084,
+          "model_ms": 199463,
+          "output_tokens": 5746,
+          "reasoning_tokens": 4775,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "team",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 5,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 1,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 140044.039,
+          "input_tokens": 78699,
+          "model_ms": 283152,
+          "output_tokens": 8062,
+          "reasoning_tokens": 6981,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "search",
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 0,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 2,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 341.408,
+          "input_tokens": 0,
+          "model_ms": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0,
+          "requests": 0,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "single",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 2,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 302728.22,
+          "input_tokens": 84945,
+          "model_ms": 296565,
+          "output_tokens": 8717,
+          "reasoning_tokens": 7757,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "team",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 4,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 2,
+        "usage": {
+          "cached_input_tokens": 19584,
+          "complete": true,
+          "execution_span_ms": 121826.16100000001,
+          "input_tokens": 78750,
+          "model_ms": 283707,
+          "output_tokens": 8082,
+          "reasoning_tokens": 7036,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "search",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 0,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 3,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 331.453,
+          "input_tokens": 0,
+          "model_ms": 0,
+          "output_tokens": 0,
+          "reasoning_tokens": 0,
+          "requests": 0,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "single",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 0,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 3,
+        "usage": {
+          "cached_input_tokens": 0,
+          "complete": true,
+          "execution_span_ms": 318244.033,
+          "input_tokens": 85317,
+          "model_ms": 312157,
+          "output_tokens": 9078,
+          "reasoning_tokens": 8020,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      },
+      {
+        "arm": "team",
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "confirmed": false,
+        "duplicates": 5,
+        "evaluated": 9,
+        "experiment_slots": 9,
+        "failed": 0,
+        "proposal_slots": 9,
+        "search_eligible": false,
+        "search_feasible": true,
+        "trial": 3,
+        "usage": {
+          "cached_input_tokens": 5504,
+          "complete": true,
+          "execution_span_ms": 119148.19,
+          "input_tokens": 78510,
+          "model_ms": 218312,
+          "output_tokens": 6227,
+          "reasoning_tokens": 5233,
+          "requests": 9,
+          "retries": 0,
+          "timing_complete": true
+        }
+      }
+    ],
+    "limits": [
+      "This version accepts only explicitly uncalibrated synthetic fixtures; historical evidence needs a separately reviewed ingestion and calibration contract.",
+      "Repeated trials measure search variability on one fixed benchmark, not independent business samples.",
+      "Equal proposal/evaluation caps are not equal realized token costs; actual usage is recorded.",
+      "Final cases are withheld from model prompts until every selection is frozen; report-only model calls have no file tools."
+    ],
+    "reasoning_effort": "medium",
+    "selected_candidate_measurements": [
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 288.0,
+            "mean_median_minutes": 24.261905,
+            "worst_p95_minutes": 39.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 4.727646,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.512195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 24.0,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 37.5,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.845127,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": 50.0,
+                "p95_change_pct": -42.307692
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.454264,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 22.785714,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 32.928571,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 5.218742,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": 42.410712,
+                "p95_change_pct": -49.34066
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 37.5,
+                "on_time_pct": 75.0,
+                "p95_cycle_minutes": 93.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.287671,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 26.0,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 39.0,
+                "rework_pct": 0.0,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.84,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": -30.666667,
+                "p95_change_pct": -58.064516
+              }
+            }
+          ],
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 25.714286,
+            "worst_p95_minutes": 38.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 8.980828,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.538084,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 26.5,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 38.5,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.352736,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": 65.625,
+                "p95_change_pct": -41.666667
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.285714,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.462151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 24.142857,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 34.214286,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.245104,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": 48.245616,
+                "p95_change_pct": -48.160173
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 95.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.280182,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 26.5,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 38.5,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.337196,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": -31.168831,
+                "p95_change_pct": -59.473684
+              }
+            }
+          ],
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        },
+        "final_holdout": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 308.0,
+            "mean_median_minutes": 27.238095,
+            "worst_p95_minutes": 117.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 15.906789,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.529412,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 27.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 114.5,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.344948,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": 68.75,
+                "p95_change_pct": 76.153846
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.563151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 25.464286,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 115.5,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.213166,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": 59.151788,
+                "p95_change_pct": 77.692308
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 94.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.295195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 29.25,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 117.5,
+                "rework_pct": 8.333333,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.337196,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": -24.025974,
+                "p95_change_pct": 25.0
+              }
+            }
+          ],
+          "split": "final-holdout",
+          "split_sha256": "sha256:76371ba279394e56d45325bf61b85277420fb64b467042347fa4ed3ea902cef9"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 348.0,
+            "mean_median_minutes": 21.833333,
+            "worst_p95_minutes": 45.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -5.755396,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.512195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 348.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 18.0,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 32.0,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.819629,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -15.121951,
+                "median_change_pct": 12.5,
+                "p95_change_pct": -50.769231
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.454264,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 348.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 18.0,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 32.0,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 5.171883,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -15.121951,
+                "median_change_pct": 12.5,
+                "p95_change_pct": -50.769231
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 37.5,
+                "on_time_pct": 75.0,
+                "p95_cycle_minutes": 93.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.287671,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 348.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 29.5,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 45.0,
+                "rework_pct": 0.0,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.692308,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -15.121951,
+                "median_change_pct": -21.333333,
+                "p95_change_pct": -51.612903
+              }
+            }
+          ],
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "feedback_validation": {
+          "eligible": true,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 20.571429,
+            "worst_p95_minutes": 42.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -12.815337,
+            "passed": true
+          },
+          "relative_improved": true,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.538084,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 351.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 29.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.333333,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -13.546798,
+                "median_change_pct": 0.0,
+                "p95_change_pct": -56.060606
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.285714,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.462151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 351.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 19.214286,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 29.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.214047,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -13.546798,
+                "median_change_pct": 17.98246,
+                "p95_change_pct": -56.060606
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 95.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.280182,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 351.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 26.5,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 42.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.333333,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -13.546798,
+                "median_change_pct": -31.168831,
+                "p95_change_pct": -55.789474
+              }
+            }
+          ],
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        },
+        "final_holdout": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 368.0,
+            "mean_median_minutes": 23.119048,
+            "worst_p95_minutes": 132.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -1.621074,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.529412,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 368.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 18.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 117.0,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.325635,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -9.58231,
+                "median_change_pct": 12.5,
+                "p95_change_pct": 80.0
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.563151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 368.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 18.857143,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 117.0,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.194757,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -9.58231,
+                "median_change_pct": 17.857144,
+                "p95_change_pct": 80.0
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 94.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.295195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 368.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 32.5,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 132.0,
+                "rework_pct": 8.333333,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.164835,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -9.58231,
+                "median_change_pct": -15.584416,
+                "p95_change_pct": 40.425532
+              }
+            }
+          ],
+          "split": "final-holdout",
+          "split_sha256": "sha256:76371ba279394e56d45325bf61b85277420fb64b467042347fa4ed3ea902cef9"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 288.0,
+            "mean_median_minutes": 24.464286,
+            "worst_p95_minutes": 39.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 5.601233,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.512195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 24.25,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 37.5,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.845127,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": 51.5625,
+                "p95_change_pct": -42.307692
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.454264,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 21.892857,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 32.928571,
+                "rework_pct": 0.0,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 5.218742,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": 36.830356,
+                "p95_change_pct": -49.34066
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 410.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 37.5,
+                "on_time_pct": 75.0,
+                "p95_cycle_minutes": 93.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.287671,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 100.0,
+                "invoices": 24,
+                "labor_minutes": 288.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 27.25,
+                "on_time_pct": 100.0,
+                "p95_cycle_minutes": 39.0,
+                "rework_pct": 0.0,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.834887,
+                "touches": 48
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -29.756098,
+                "median_change_pct": -27.333333,
+                "p95_change_pct": -58.064516
+              }
+            }
+          ],
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 26.011905,
+            "worst_p95_minutes": 38.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 10.24218,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.538084,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 26.5,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 38.5,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.352736,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": 65.625,
+                "p95_change_pct": -41.666667
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.285714,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 66.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.462151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 23.535714,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 34.214286,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.245104,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": 44.517545,
+                "p95_change_pct": -48.160173
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 406.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 95.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.280182,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": true,
+                  "service": true
+                },
+                "passed": true,
+                "violations": []
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 291.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 28.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 38.5,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.337196,
+                "touches": 49
+              },
+              "relative": {
+                "guardrails_passed": true,
+                "labor_change_pct": -28.325123,
+                "median_change_pct": -27.272727,
+                "p95_change_pct": -59.473684
+              }
+            }
+          ],
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        },
+        "final_holdout": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 308.0,
+            "mean_median_minutes": 27.630952,
+            "worst_p95_minutes": 117.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 17.578521,
+            "passed": false
+          },
+          "relative_improved": false,
+          "scenarios": [
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.529412,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "normal",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 27.0,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 114.5,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 3.344948,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": 68.75,
+                "p95_change_pct": 76.153846
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 16.0,
+                "on_time_pct": 95.833333,
+                "p95_cycle_minutes": 65.0,
+                "rework_pct": 4.166667,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.563151,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "demand-40",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 25.392857,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 115.5,
+                "rework_pct": 8.333333,
+                "staff": 2,
+                "staff_hours": 16.0,
+                "throughput_per_hour": 4.213166,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": 58.705356,
+                "p95_change_pct": 77.692308
+              }
+            },
+            {
+              "baseline_metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 95.833333,
+                "invoices": 24,
+                "labor_minutes": 407.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 38.5,
+                "on_time_pct": 70.833333,
+                "p95_cycle_minutes": 94.0,
+                "rework_pct": 4.166667,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.295195,
+                "touches": 25
+              },
+              "feasibility": {
+                "checks": {
+                  "backlog": true,
+                  "rework": false,
+                  "service": false
+                },
+                "passed": false,
+                "violations": [
+                  "service",
+                  "rework"
+                ]
+              },
+              "id": "staff-absence",
+              "metrics": {
+                "backlog_at_horizon": 0,
+                "first_pass_pct": 91.666667,
+                "invoices": 24,
+                "labor_minutes": 308.0,
+                "max_backlog_age_minutes": 0,
+                "median_cycle_minutes": 30.5,
+                "on_time_pct": 91.666667,
+                "p95_cycle_minutes": 117.5,
+                "rework_pct": 8.333333,
+                "staff": 1,
+                "staff_hours": 8.0,
+                "throughput_per_hour": 3.337196,
+                "touches": 50
+              },
+              "relative": {
+                "guardrails_passed": false,
+                "labor_change_pct": -24.324324,
+                "median_change_pct": -20.779221,
+                "p95_change_pct": 25.0
+              }
+            }
+          ],
+          "split": "final-holdout",
+          "split_sha256": "sha256:76371ba279394e56d45325bf61b85277420fb64b467042347fa4ed3ea902cef9"
+        }
+      }
+    ]
+  },
+  "date": "2026-09-07",
+  "diagnostic": {
+    "best_candidate_by_common_rank": {
+      "batch": "single",
+      "order": "earliest_due",
+      "receipt_precheck": true,
+      "review": "flagged_or_audit"
+    },
+    "configurations": [
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 410.0,
+            "mean_median_minutes": 23.166667,
+            "worst_p95_minutes": 93.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 0.0,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 406.0,
+            "mean_median_minutes": 23.595238,
+            "worst_p95_minutes": 95.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 0.0,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 350.0,
+            "mean_median_minutes": 25.571429,
+            "worst_p95_minutes": 78.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 10.380268,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 346.0,
+            "mean_median_minutes": 27.535714,
+            "worst_p95_minutes": 78.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 16.700303,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 421.0,
+            "mean_median_minutes": 45.666667,
+            "worst_p95_minutes": 197.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 97.122302,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 43.0,
+            "worst_p95_minutes": 192.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 82.240162,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 361.0,
+            "mean_median_minutes": 44.333333,
+            "worst_p95_minutes": 183.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 91.366906,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 43.190476,
+            "worst_p95_minutes": 179.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 83.047428,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 409.0,
+            "mean_median_minutes": 22.833333,
+            "worst_p95_minutes": 185.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -1.438849,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 21.261905,
+            "worst_p95_minutes": 186.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -9.889001,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 349.0,
+            "mean_median_minutes": 24.678571,
+            "worst_p95_minutes": 182.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 6.526207,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 26.880952,
+            "worst_p95_minutes": 181.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 13.925328,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 28.880952,
+            "worst_p95_minutes": 65.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 24.665981,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 28.190476,
+            "worst_p95_minutes": 64.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 19.475279,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.738095,
+            "worst_p95_minutes": 46.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 19.732786,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.916667,
+            "worst_p95_minutes": 45.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 18.314834,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 360.0,
+            "mean_median_minutes": 27.071429,
+            "worst_p95_minutes": 126.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 16.855088,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 25.47619,
+            "worst_p95_minutes": 116.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 7.971746,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 300.0,
+            "mean_median_minutes": 28.214286,
+            "worst_p95_minutes": 117.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 21.788283,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 27.261905,
+            "worst_p95_minutes": 115.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 15.539859,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 348.0,
+            "mean_median_minutes": 22.166667,
+            "worst_p95_minutes": 45.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -4.316547,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": true,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 20.571429,
+            "worst_p95_minutes": 43.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -12.815337,
+            "passed": true
+          },
+          "relative_improved": true,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "fifo",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 288.0,
+            "mean_median_minutes": 24.464286,
+            "worst_p95_minutes": 39.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 5.601233,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 26.011905,
+            "worst_p95_minutes": 38.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 10.24218,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 410.0,
+            "mean_median_minutes": 26.333333,
+            "worst_p95_minutes": 83.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 13.669065,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 406.0,
+            "mean_median_minutes": 26.761905,
+            "worst_p95_minutes": 79.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 13.420787,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 350.0,
+            "mean_median_minutes": 28.738095,
+            "worst_p95_minutes": 78.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 24.049332,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 346.0,
+            "mean_median_minutes": 29.535714,
+            "worst_p95_minutes": 78.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 25.17659,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 421.0,
+            "mean_median_minutes": 50.666667,
+            "worst_p95_minutes": 186.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 118.705036,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 47.333333,
+            "worst_p95_minutes": 179.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 100.60545,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 361.0,
+            "mean_median_minutes": 50.452381,
+            "worst_p95_minutes": 182.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 117.780062,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 45.619048,
+            "worst_p95_minutes": 179.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 93.340062,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 409.0,
+            "mean_median_minutes": 24.833333,
+            "worst_p95_minutes": 174.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 7.194245,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 24.595238,
+            "worst_p95_minutes": 172.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 4.238143,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 349.0,
+            "mean_median_minutes": 27.107143,
+            "worst_p95_minutes": 182.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 17.00925,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 29.988095,
+            "worst_p95_minutes": 181.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 27.093846,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 29.047619,
+            "worst_p95_minutes": 64.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 25.385406,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 28.857143,
+            "worst_p95_minutes": 63.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 22.300707,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.25,
+            "worst_p95_minutes": 46.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 17.625899,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.571429,
+            "worst_p95_minutes": 45.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 16.851666,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 360.0,
+            "mean_median_minutes": 25.738095,
+            "worst_p95_minutes": 136.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 11.099692,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 25.47619,
+            "worst_p95_minutes": 116.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 7.971746,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 300.0,
+            "mean_median_minutes": 27.77381,
+            "worst_p95_minutes": 117.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 19.886948,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 26.797619,
+            "worst_p95_minutes": 115.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 13.57215,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 348.0,
+            "mean_median_minutes": 21.833333,
+            "worst_p95_minutes": 45.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -5.755396,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": true,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 20.571429,
+            "worst_p95_minutes": 42.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -12.815337,
+            "passed": true
+          },
+          "relative_improved": true,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "earliest_due",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 288.0,
+            "mean_median_minutes": 24.261905,
+            "worst_p95_minutes": 39.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 4.727646,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 25.714286,
+            "worst_p95_minutes": 38.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 8.980828,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 410.0,
+            "mean_median_minutes": 19.5,
+            "worst_p95_minutes": 164.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -15.827338,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 406.0,
+            "mean_median_minutes": 20.095238,
+            "worst_p95_minutes": 103.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -14.833502,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 350.0,
+            "mean_median_minutes": 25.321429,
+            "worst_p95_minutes": 92.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 9.301131,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 346.0,
+            "mean_median_minutes": 27.285714,
+            "worst_p95_minutes": 90.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 15.640768,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 421.0,
+            "mean_median_minutes": 46.0,
+            "worst_p95_minutes": 191.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 98.561151,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 41.5,
+            "worst_p95_minutes": 222.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 75.882947,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 361.0,
+            "mean_median_minutes": 43.0,
+            "worst_p95_minutes": 201.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 85.611511,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 42.440476,
+            "worst_p95_minutes": 199.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 79.868821,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 409.0,
+            "mean_median_minutes": 18.166667,
+            "worst_p95_minutes": 180.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -21.582734,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 411.0,
+            "mean_median_minutes": 18.428571,
+            "worst_p95_minutes": 196.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": -21.897074,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": false,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 349.0,
+            "mean_median_minutes": 24.678571,
+            "worst_p95_minutes": 182.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 6.526207,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 25.714286,
+            "worst_p95_minutes": 181.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 8.980828,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 28.714286,
+            "worst_p95_minutes": 75.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 23.946557,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 396.0,
+            "mean_median_minutes": 26.52381,
+            "worst_p95_minutes": 106.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 12.411706,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "all"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.738095,
+            "worst_p95_minutes": 46.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 19.732786,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 336.0,
+            "mean_median_minutes": 27.916667,
+            "worst_p95_minutes": 47.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 18.314834,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 360.0,
+            "mean_median_minutes": 24.809524,
+            "worst_p95_minutes": 138.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 7.091469,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 25.47619,
+            "worst_p95_minutes": 116.0
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 7.971746,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "flagged"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 300.0,
+            "mean_median_minutes": 27.714286,
+            "worst_p95_minutes": 117.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 19.63001,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": false,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": false,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 26.916667,
+            "worst_p95_minutes": 115.5
+          },
+          "relative": {
+            "guardrails_passed": false,
+            "mean_median_change_pct": 14.076691,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "single",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 348.0,
+            "mean_median_minutes": 21.5,
+            "worst_p95_minutes": 47.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -7.194245,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": true,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 351.0,
+            "mean_median_minutes": 20.571429,
+            "worst_p95_minutes": 43.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": -12.815337,
+            "passed": true
+          },
+          "relative_improved": true,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      },
+      {
+        "candidate": {
+          "batch": "pairs",
+          "order": "shortest",
+          "receipt_precheck": true,
+          "review": "flagged_or_audit"
+        },
+        "development": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 288.0,
+            "mean_median_minutes": 24.464286,
+            "worst_p95_minutes": 39.0
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 5.601233,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "development",
+          "split_sha256": "sha256:641d383502306c483f45e3f6b660ab940e3e6562d07a6fc062526953ce07de98"
+        },
+        "eligible": false,
+        "feasible": true,
+        "feedback_validation": {
+          "eligible": false,
+          "feasible": true,
+          "objective": {
+            "mean_labor_minutes": 291.0,
+            "mean_median_minutes": 25.880952,
+            "worst_p95_minutes": 39.5
+          },
+          "relative": {
+            "guardrails_passed": true,
+            "mean_median_change_pct": 9.687185,
+            "passed": false
+          },
+          "relative_improved": false,
+          "split": "feedback-validation",
+          "split_sha256": "sha256:bc23fa954beb0616019dc98f34ce9c328cd8add72147af16eac63bc16fba1b1a"
+        }
+      }
+    ],
+    "count_rule": "candidate must pass on both development and feedback-validation",
+    "eligible": 0,
+    "evaluated": 36,
+    "excluded_from_comparison": true,
+    "feasible": 11,
+    "kind": "post-comparison-synthetic-diagnostic",
+    "limits": [
+      "Post-comparison enumeration is outside every arm's nine-slot search allowance.",
+      "No final-holdout enumeration, candidate revisions, contract tuning, or arm reruns.",
+      "Synthetic evidence does not establish operational or causal business improvement."
+    ],
+    "maximum_weaker_split_reduction": {
+      "changes_arm_selection": false,
+      "maximizers": [
+        {
+          "candidate": {
+            "batch": "single",
+            "order": "shortest",
+            "receipt_precheck": true,
+            "review": "flagged_or_audit"
+          },
+          "mean_median_reduction_pct": {
+            "development": 7.194245,
+            "validation": 12.815337
+          },
+          "weaker_split_reduction_pct": 7.194245
+        }
+      ],
+      "maximum_reduction_pct": 7.194245,
+      "posthoc": true,
+      "qualifying_configurations": 11,
+      "required_reduction_pct": 10,
+      "scope": "both splits feasible and both splits pass every p95/labor guard",
+      "statistic": "maximum over configurations of the weaker split's mean-median reduction",
+      "threshold_met_by_fixed_evaluator": false
+    },
+    "model_calls": 0,
+    "posthoc": true,
+    "selection_rule": "research.selection_key; same scorer as the completed comparison",
+    "usage": {
+      "cached_input_tokens": 0,
+      "complete": true,
+      "execution_span_ms": 3027.716,
+      "input_tokens": 0,
+      "model_ms": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "requests": 0,
+      "retries": 0,
+      "timing_complete": true
+    },
+    "version": 1
+  },
+  "evidence_scope": "Sanitized derived summary, not full audit evidence. Raw Ask logs, Tend events, attempt artifacts and audit files remain in local archives and are not distributed.",
+  "kind": "portable-aggregate-summary",
+  "protocol": {
+    "arms": [
+      "search",
+      "single",
+      "team"
+    ],
+    "budget": "failed and duplicate proposals consume slots; one Ask invocation per proposal; no replenishment",
+    "created_unix": 1788782091.503009,
+    "deadline_unix": 1788783891.503009,
+    "evaluations_per_arm": 9,
+    "mode": "model",
+    "model": "openai-codex/gpt-5.6-sol",
+    "seed": 7301,
+    "selection": "same declared rank; development and feedback-validation only; final test after all selections freeze",
+    "team_size": 3,
+    "trials": 3,
+    "version": 1
+  },
+  "provenance": {
+    "benchmark_file_sha256": "sha256:55f1551caa756a690c14f0ca2913d0030a7025acef82574c271f2f9797c4c8ef",
+    "benchmark_sha256": "sha256:09dbda71704aef7a4341f6691dbcd03a57a512f97d9789a675b7f16c3d784ddf",
+    "diagnostic_manifest_sha256": "sha256:b63c4093e7496c3a15ecf8ebf32c75e02b0ac1e90acfa055b8171c1dfc798cc7",
+    "diagnostic_report_sha256": "sha256:a27c20ca8f80ed23ed54f1c14cfac153933376bb17e27fb05c85d92d06ca87ea",
+    "domain_version": "invoice-research-domain/v1",
+    "experiment_sha256": "sha256:011bb368eeb3214fff97089330765ce466679e7e0a1611c16790e89244d98b14",
+    "live_report_sha256": "sha256:aaaf8e821b583780b263a313c934f102f488c32158f87f3973ae7d22e1c5f1f5",
+    "selections_sha256": "sha256:294b2ce6351f0d927644a82cf4ca3e779b6312ddee33325837fc133df00e3a5b",
+    "source_sha256": {
+      "protocol.py": "sha256:19e199c30064b2539ea2fce3622ff709ad926e1a736a74ae72a4b3f29a3996fd",
+      "research.py": "sha256:7266e75c4416299782d6d7bd315713f1cff0f62f142d3fa8b7e4f1aada06accd",
+      "research_domain.py": "sha256:fc1d44195e8bc9bbb9ded8c8167db1236f9919858cbd26a32c2674ad3a6ad18d",
+      "research_tasks.py": "sha256:180b2b1b977b6d47ddb1ac22d6987d747dda043d9c09e8f0c95cadf83b2425ec",
+      "run.py": "sha256:6b703eaee163be40760af1996c53aa427e5c6fe14d293f258463c90244666634",
+      "worker.py": "sha256:b6cdd9066e5254e12ae4f272d4ec735e8f5a6d25be11a628ac1ebb1f1be166f4"
+    }
+  },
+  "raw_evidence_distributed": false,
+  "version": "weave-research-summary/v1"
+}

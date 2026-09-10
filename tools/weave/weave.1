@@ -1,0 +1,63 @@
+.TH WEAVE 1 "September 7, 2026" "weave 0.1.0"
+.SH NAME
+weave \- print ready tasks from a finite graph and observed outcomes
+.SH SYNOPSIS
+.B weave
+.RB [ -- ]
+.I tasks.jsonl
+< observations.jsonl > ready.jsonl
+.br
+.B weave help
+.br
+.B weave version
+.SH DESCRIPTION
+Weave validates a finite task graph and a current observation snapshot,
+then prints unobserved tasks whose dependencies are all accepted.
+It neither executes tasks nor verifies the truth of evidence references.
+All input is validated before output. Empty output does not mean completion.
+.SH RECORDS
+Tasks require id, needs (an array of distinct existing task ids), and input
+(any JSON value). Extra fields survive. Output preserves the original line
+bytes and input order, with a newline terminator.
+.PP
+Input records end with LF or CRLF; an unterminated final record is accepted.
+Only the line terminator is excluded from the task digest. A CR without a
+following LF is payload. Output uses LF, or CRLF when the payload ends in CR,
+so reading the output again preserves the same payload and digest.
+.PP
+Observations require id, task_sha256, and state. The digest is sha256:
+followed by lowercase hex over the exact task line excluding LF or CRLF.
+States are queued, running, accepted, rejected, and unknown. Terminal states
+require evidence references with nonempty kind and ref strings.
+Absence means not admitted. Duplicate observations, stale hashes, missing
+dependencies, cycles, duplicate JSON keys and inconsistent states fail.
+Known field names are case-sensitive. Invalid UTF-8 and unpaired escaped
+Unicode surrogates fail, including in extension fields and evidence references.
+.SH OPTIONS
+.B help, -h, --help
+print usage without reading either input.
+.PP
+.B version, --version
+print the version without reading either input.
+.PP
+.B --
+treats the following task filename literally, including help, version, or -.
+Observations always come from standard input; - does not redirect task input.
+.SH LIMITS
+Each input: 16 MiB. Each line: 1 MiB. Each stream: 10000 records.
+Graph: 100000 edges. JSON nesting: 64 levels. IDs: 256 UTF-8 bytes.
+Line limits exclude LF or CRLF; stream limits include them. The outermost
+object is nesting level one, and empty containers count toward the limit.
+IDs must be nonempty and their size is measured after JSON string decoding.
+Blank lines are invalid.
+.SH EXIT STATUS
+0 means a valid projection, possibly empty.
+1 means invalid or inconsistent data.
+2 means bad usage or an operating failure, including output failure.
+Output failures may leave a partial stream; check the exit status before
+admitting work. Normal operating-system signal handling applies, including
+a possible SIGPIPE termination when a downstream reader closes the pipe.
+.SH ENVIRONMENT
+No Weave-specific environment variables are read by the filter.
+.SH SEE ALSO
+ask(1), ply(1), trail(1)
