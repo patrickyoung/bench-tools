@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+import pathlib
+need=["asset.blend","build_asset.py","preview.png","asset.glb"]
+for n in need:
+ p=pathlib.Path("output")/n
+ if not p.is_file() or p.stat().st_size<32: print("missing/short",p); raise SystemExit(1)
+with pathlib.Path("output/asset.blend").open("rb") as stream: header=stream.read(12)
+if not header.startswith((b"BLENDER",bytes.fromhex("28b52ffd"),bytes.fromhex("1f8b"))): print("invalid .blend container signature"); raise SystemExit(1)
+if pathlib.Path("output/preview.png").read_bytes()[:8]!=b"\x89PNG\r\n\x1a\n": print("invalid PNG"); raise SystemExit(1)
+if pathlib.Path("output/asset.glb").read_bytes()[:4]!=b"glTF": print("invalid GLB"); raise SystemExit(1)
+if not pathlib.Path("handoff.json").is_file(): print("missing handoff"); raise SystemExit(1)
+print("editable Blender master, script, preview and export present")
+
+# Check the public file handoff using this independently exported definition.
+import subprocess, sys
+raise SystemExit(subprocess.call([str(pathlib.Path(__file__).resolve().with_name("validate-handoff")), "handoff.json"]))

@@ -24,7 +24,7 @@ From the monorepo root, install the existing components:
 ```sh
 python3 scripts/install agent hire ask brief ply cage tend weave mcp a2a
 export PATH="$HOME/.local/bin:$PATH"
-python3 scripts/workers export page-team /absolute/path/to/page-team \
+python3 scripts/workers export-team page-team /absolute/path/to/page-team \
   --ref FULL_COMMIT --allow-experimental
 ```
 
@@ -40,7 +40,7 @@ Select the installed monorepo binaries instead of rebuilding sibling checkouts
 using its older setup recipe. Keep the application and expert copy unchanged
 while a run is admitted.
 
-Set the absolute executable paths in [config/example.env](../../workers/page-team/expert/config/example.env),
+Set the absolute executable paths in [config/example.env](../../teams/page-team/expert/config/example.env),
 export them, and configure [Ask](../../tools/ask/README.md) for your model.
 Credentials stay in the operator's provider setup. A harness login by itself
 does not configure Ask. Optional existing credential wrappers can be selected
@@ -48,7 +48,7 @@ through `AGENT_ASK`; no wrapper is copied into this expert.
 
 The creative case additionally needs Blender, GIMP 3's console and an existing
 image-generation executable with the JSON contract in the
-[worker setup](../../workers/page-team/expert/README.md). The observed native setup used Blender 5.2.1
+[worker setup](../../teams/page-team/expert/README.md). The observed native setup used Blender 5.2.1
 and GIMP 3.2.6 on macOS. Linux setup must supply those executables and a working
 Cage backend; this evaluation does not claim a fresh Linux-host installation.
 Python 3.9+ and Node 22+ must be on the selected process PATH.
@@ -78,7 +78,7 @@ retains the backlog, independent workspaces and contexts, native masters,
 production inputs, image provenance, screenshots and review evidence.
 `PAGE_TEAM_RUN/result.html` is the accepted artifact. Resume an existing run
 with empty stdin; a changed brief requires a new run. See the
-[worker manual](../../workers/page-team/expert/README.md) for limits, confinement and subprocess use.
+[worker manual](../../teams/page-team/expert/README.md) for limits, confinement and subprocess use.
 
 The [EPL brief](briefs/epl-showcase.md) uses explicitly illustrative scouting
 data. It is a showcase, not a source of real recruitment recommendations.
@@ -110,8 +110,8 @@ the page filter invokes the existing controller and Agent to run it.
 The deterministic tests call no model or native art tools:
 
 ```sh
-python3 workers/page-team/tests/contracts.py /absolute/path/to/page-team/expert
-node workers/page-team/tests/browser.mjs /absolute/path/to/page-team/expert
+python3 teams/page-team/tests/contracts.py /absolute/path/to/page-team/expert
+node teams/page-team/tests/browser.mjs /absolute/path/to/page-team/expert
 ```
 
 They reject malformed handoffs, changed hashes, broken review bindings, failed
@@ -125,9 +125,9 @@ supplied brief generator. This calls the configured model and screenshot judge:
 ```sh
 unset PAGE_TEAM_BROWSER_CHECK
 export PAGE_TEAM_RUN=/absolute/path/to/runs/smoke-001
-python3 workers/page-team/tests/smoke-brief.py |
+python3 teams/page-team/tests/smoke-brief.py |
   /absolute/path/to/page-team/expert/bin/page-team > fixture.html
-cmp fixture.html workers/page-team/tests/browser-fixture.html
+cmp fixture.html teams/page-team/tests/browser-fixture.html
 ```
 
 Use [the interface runbook](INTERFACES.md) for MCP, API and A2A. Use

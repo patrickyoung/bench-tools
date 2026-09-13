@@ -1,20 +1,41 @@
-# Team recipes
+# Reusable teams
 
-A recipe describes useful roles, inputs, handoffs and checks. It contains no
-customer brief or previous output. Hire reads the recipe as normal instructions;
-Agent and existing Bench commands execute the resulting expert folder.
+A worker defines one role. A team selects workers and supplies their existing
+execution wiring. Both are versioned in this monorepo; a run supplies a new
+brief, workspace and selected inputs.
 
-- [Simple site](simple-site.md): frontend and reviewer, with optional creative
-  specialists only when the current job benefits from them.
-- [Creative site](creative-site.md): visual and native artwork contributions,
-  frontend integration and review, with explicit source handoffs.
+| Team | Purpose | Authoritative roster |
+| --- | --- | --- |
+| [Page team](page-team/expert/README.md) | Plan, create, integrate and review a single-file site using the useful available roles. | [team.json](page-team/team.json) |
 
-Start from a clean [worker export](../workers/README.md). An unchanged suitable
-team can run directly without calling Hire again. For changes, use `hire build`
-against the exported authoring workspace, inspect the diff, run `hire verify`
-and the relevant acceptance cases. Preserve the source lock. Record adaptations
-and the revised file digests before using an altered assembly; the original
-export's hashes do not describe later edits or installed dependencies.
+```sh
+python3 scripts/workers list --teams --all
+git rev-parse HEAD
+python3 scripts/workers export-team page-team /absolute/path/to/team \
+  --ref FULL_COMMIT --allow-experimental
+```
 
-Recipes are not automatically installed or executed. They do not grant tools,
-credentials, filesystem access or scheduling authority.
+The exporter copies each selected worker into `expert/agents/ROLE` and its
+optional adapter into `expert/bin/workers/ROLE`. One full commit pins the roster,
+wiring and all member definitions. `team.lock.json` records every source, file
+hash and mode. The assembled copy is runnable; the source template alone is
+incomplete. Dependencies are installed only in the exported copy.
+
+To change membership, edit `team.json` in a branch and review the change. To add
+a different reusable team, add its template, roster and checks alongside this
+one, referencing existing workers. Use Hire when expertise or wiring needs
+adaptation; ordinary source assembly does not need a model call. Agent and the
+existing Bench commands retain execution, contexts, queues and checks.
+
+These brief-independent usage recipes describe which available roles to use:
+
+- [Simple site](simple-site.md): frontend and review, with creative roles only
+  where useful.
+- [Creative site](creative-site.md): native artwork and image contributions,
+  integration and review.
+- [Artistic site](artistic-site.md): p5.js/D3 artistic visualization, integration
+  and review.
+
+A recipe is guidance, not an executable team. It grants no tools, credentials
+or scheduling authority. The [library guide](../docs/WORKER-LIBRARY.md) explains
+source-only exports, adaptation, lifecycle and evaluation.

@@ -1,10 +1,10 @@
 # Creative site team
 
-Use the exported `page-team` definition at the caller's recorded source commit.
+Use the assembled `page-team` export from `scripts/workers export-team` at the caller's recorded source commit.
 The current brief supplies the art direction, content and required capabilities.
 
 The manager selects useful roles from Visual artist, Blender artist, Image
-maker, Image editor, Frontend and Reviewer. Independent source production may
+concept worker with the selected generator, Image editor, Frontend and Reviewer. Independent source production may
 start together. Image editing depends on the source images it actually needs;
 frontend integration depends on the accepted useful creative contributions.
 Review follows integration; final copying follows a passing review.

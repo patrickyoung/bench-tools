@@ -1,103 +1,127 @@
-# A worker library managed with Git
+# Workers and teams managed with Git
 
-[Home](../README.md) · [Catalog](../workers/README.md) · [Team recipes](../teams/README.md)
+[Home](../README.md) · [Workers](../workers/README.md) · [Teams](../teams/README.md)
 
-**Keep reusable expertise in the monorepo, review changes through GitHub, and
-assemble a clean, pinned folder for each team.** Hire builds or adapts that
-folder; Agent runs it. Git owns history and versions. The shell and existing
-Bench commands arrange execution.
+Keep reusable expertise in the monorepo, review changes through GitHub, and
+export a clean folder at a reviewed commit. Hire builds or adapts definitions;
+Agent runs them. Existing Unix programs arrange execution.
 
-## What is installed
-
-The [page team](../workers/page-team/expert/README.md) is the first library
-entry. Its manager, specialists, checks and adapters form one bundle. Its
-[metadata](../workers/page-team/worker.json) is the authoritative record of ID,
-owner, description, lifecycle status, requirements and approved source files.
-The catalog links to that record rather than duplicating its status.
-
-Architect, Writer and Present remain outside the library. The page team's
-historical showcase, briefs, recordings and evaluation stay under `examples/`.
-They are not exported. Its runtime definition is now independent of that
-showcase; domain-specific acceptance is supplied explicitly for a current job.
+## Three separate things
 
 ```text
 bench-tools/
   tools/                     existing independent programs
-  workers/
-    README.md                small catalog
-    page-team/
-      worker.json            identity, lifecycle, requirements, approved files
-      expert/                runnable definition, including child experts
-      tests/                 small synthetic tests; never exported
-  teams/                     reusable assembly recipes, without job content
-  scripts/workers            repository source utility; never a job runner
+  workers/ID/
+    worker.json              identity, lifecycle, requirements, approved files
+    expert/                  one independently usable definition
+    tests/                   synthetic cases, never exported
+  teams/ID/
+    team.json                lifecycle, approved wiring, member roster
+    expert/                  team wiring, without bundled worker copies
+    tests/                   assembly checks, never exported
+  teams/*.md                 brief-independent usage recipes
+  scripts/workers            repository source export utility
+
+outside the checkout/
+  selected-team/
+    team.lock.json           source identities and hashes
+    expert/
+      agents/ROLE/           clean copies of selected workers
+      bin/workers/ROLE       selected executable adapters
+  current-run/               current inputs, outputs and private evidence
 ```
 
-## Select and export a version
+Workers are reusable roles. Teams select and connect them. Runs contain work.
+A worker belongs to no single team: another roster can reuse the same source.
+The page team is an actual runnable assembly after export; its source template
+alone is incomplete. Human recipe documents describe useful ways to use it.
 
-From the checkout root:
+The [page team roster](../teams/page-team/team.json) now selects the independent
+p5.js/D3 Visual artist. The original smaller Canvas artist remains available
+separately. Architect, Writer and Present are outside this library. Historical
+showcases and their evaluation material stay under `examples/`.
+
+## Select and export
 
 ```sh
 python3 scripts/workers list --all
+python3 scripts/workers list --teams --all
 python3 scripts/workers check
 git rev-parse HEAD
-python3 scripts/workers export page-team /absolute/path/to/team \
+python3 scripts/workers export visual-artist /absolute/path/to/artist \
+  --ref FULL_COMMIT --allow-experimental
+python3 scripts/workers export-team page-team /absolute/path/to/team \
   --ref FULL_COMMIT --allow-experimental
 ```
 
-Replace `FULL_COMMIT` with the complete reviewed commit. The export requires a
-new destination; it refuses overwriting even an empty folder. It creates only
-`expert/` and `team.lock.json`. Uncommitted changes are never exported. Install
-the worker's dependencies in this copy using its setup instructions; keep the
-source library free of installed dependencies and runtime files.
+Replace `FULL_COMMIT` with the full reviewed commit. A new destination outside
+the checkout is required, even when an existing folder is empty. Uncommitted
+changes are never exported. Individual exports contain `expert/` and
+`worker.lock.json`; teams contain `expert/` and `team.lock.json`.
 
-`list` defaults to active workers. `--all` also shows experimental, deprecated
-and retired records. Export requires active status, except that the explicit
-`--allow-experimental` option enables an evaluation of an experimental entry.
-It never enables deprecated or retired entries at that selected source commit.
-An old commit retains its historical status: this is a maintenance policy,
-not a remote revocation service.
+One monorepo commit pins the team roster, wiring and every member. Each member
+maps a local role to a worker ID, with an optional approved executable adapter:
 
-The lock records the source repository, full commit, definition path, declared
-runtime requirements and each file's digest and executable mode. Agent need
-not parse it. The requirements include the tested Bench tools and Bench Manage
-source pins; provider/model and optional native-tool versions belong in the
-operator's private configuration. A source pin reproduces code, not identical
-model output or unchanged external services.
+```json
+"frontend": {"worker": "frontend", "adapter": "bin/worker-adapter"}
+```
+
+The exporter copies that worker's approved source into `agents/frontend` and
+copies the exact adapter bytes into `bin/workers/frontend`. The page adapter
+uses its filename as the role and invokes the existing `run-worker` command.
+Its manager member needs no such binding. Removing a roster entry removes both
+its definition and binding from the next export; source cannot contain hidden
+copies under these reserved directories. Role names alone do not establish
+compatible input/output contracts: review and test each changed assembly.
+
+Locks record the repository, full commit, source paths, declared requirements,
+file hashes and modes. Team locks also identify each member and its adapter.
+Agent does not read locks as instructions. Requirements identify tested tools;
+provider settings, credentials and native installations remain operator choices.
+A source pin reproduces code, not identical model output or external services.
+Nothing fetches `main`, resolves versions or upgrades workers during a run.
+
+Only active entries appear in default listings. `--all` shows every status.
+`--allow-experimental` permits evaluation of experimental teams and members;
+it does not allow deprecated or retired definitions. All selected members must
+qualify. An old pin retains its historical status: lifecycle metadata does not
+revoke already exported source.
 
 ## Approved source only
 
-The utility uses Git's archive facility, verifies its bytes against committed
-blobs, and materializes only explicitly listed regular files. Missing files,
-undeclared committed files, path escapes, symlinks, missing licenses/checks,
-oversized files, known output formats and embedded binary payloads are rejected.
-The current-source check also inspects untracked and ignored library files.
-Git attributes cannot silently omit or substitute exported source.
+Exports use Git archives, verify bytes against committed blobs and copy only
+explicitly listed regular text files. Missing or undeclared files, escapes,
+symlinks, oversized files, known output formats and embedded binary payloads
+are rejected. Git attributes cannot silently omit or substitute source. Current
+checks also inspect ignored and untracked library files.
 
-Approved source includes instructions, skills, deterministic tools, acceptance
-checks, interfaces, dependency manifests/locks and license notices. This first
-library supports text source only; binary source assets would require a
-separately reviewed packaging change. Small synthetic tests are kept beside
-the source and excluded from runtime exports.
+Instructions, skills, deterministic tools, checks, interfaces, package locks
+and licenses are source. Small synthetic tests stay beside it and are not
+exported. Generated pages, artwork, recordings, job briefs, customer data,
+sessions, runtime memories, caches, installed packages, credentials and
+development records are excluded. No `.git` history is copied.
 
-Generated sites, slides, documents, images, recordings, original job briefs,
-customer inputs, transcripts, sessions, checkpoints, run reports, runtime
-memory, caches, credentials and development files do not belong in the export.
-Never copy a live worker home or a whole repository into an assembly. An export
-contains no `.git` history. `.gitignore` alone is insufficient because it does
-not remove previously tracked content.
+Review the content of allowed Markdown and programs too: filenames cannot
+prove that paragraphs contain no prior job data. Promote generalized learning
+as a reviewed instruction or skill change. Never automatically promote run
+memory or output. Any seed memory must be curated and explicitly inventoried.
 
-Review the content of allowed Markdown/programs as well as their filenames.
-Mechanical checks cannot prove an arbitrary paragraph is free of prior job
-data. Improve a worker by reviewing a generalized instruction or skill change;
-never automatically promote a successful run's memory or output. Any useful
-seed `MEMORY.md` must be curated, reviewed and explicitly listed as source.
+## Build, use and change an assembly
 
-## Assemble with Hire; run with Agent
+Use a suitable unchanged export directly. Install its dependencies in that
+copy according to its README, never in the source library. Supply only the
+current brief and explicitly selected inputs, with separate work and control
+folders. The page team's filter is `expert/bin/page-team`: accepted HTML goes
+to stdout on exit 0, diagnostics to stderr. Each assigned worker receives its
+own Agent context and workspace through the existing adapters.
 
-Choose a [recipe](../teams/README.md) and a reviewed source snapshot. Export into
-a fresh authoring directory. If the existing team fits, use it directly.
-Otherwise give Hire the recipe and requested adaptation:
+For different membership, edit a team roster in a branch. For a new team, add
+its focused wiring, roster, metadata and synthetic checks under `teams/ID`;
+reference existing `workers/ID` definitions. Templates are explicit source,
+without inheritance or a dependency resolver. Adding a role requires a
+compatible contract, not a new runtime or scheduler.
+
+Use Hire when the requested expertise or wiring needs adaptation:
 
 ```sh
 hire build -C /absolute/path/to/team \
@@ -108,60 +132,44 @@ hire build -C /absolute/path/to/team \
 hire verify /absolute/path/to/team/expert
 ```
 
-Inspect the diff and evaluate the changed behavior. The original export lock
-still describes the starting source: preserve it, record adaptations and the
-revised source digests before relying on a changed assembly. The source export
-utility does not certify or re-lock arbitrary authoring work. Promote a useful
-adaptation through a pull request, then export its new commit for repeat use.
+Inspect and evaluate the changed behavior. Preserve the original lock as the
+starting record; its hashes do not describe later edits or dependencies.
+Record adaptations and revised digests locally. Promote reusable changes back
+to the appropriate worker or team through a pull request, then export the new
+commit. The utility does not certify or re-lock arbitrary authoring work.
 
-Each assignment gets a fresh workspace and explicitly selected current inputs.
-Use the worker's existing entry point; the page team's is `expert/bin/page-team`.
-It writes accepted HTML to stdout only on exit 0. Workspaces and controller
-records remain outside the definition. Nothing fetches `main`, resolves a
-registry, or upgrades workers while a job runs.
+Clean source packaging prevents accidental carryover. Agent's current Cage
+limits writes/network and permits host reads. If old runs must be unreadable,
+select an existing Unix account/container boundary exposing only the intended
+definitions, tools and current inputs.
 
-The page team's children remain together until each role has been checked
-without hidden dependencies on that bundle. Role names do not establish
-compatible handoffs. Recipes describe inputs, outputs, dependencies and
-acceptance; they introduce no additional runtime or scheduler.
-
-Clean exports prevent accidental carryover, not host-file access. Agent's
-current Cage limits writes/network and permits host reads. If old runs must
-be unreadable, select an existing Unix account/container boundary exposing
-only intended definitions, tools and current inputs. Do not call packaging
-alone a confidentiality boundary.
-
-## Maintain the library through GitHub
+## Maintain through GitHub
 
 | Operation | Mechanism |
 | --- | --- |
-| Add | Build outside source; curate an expert, metadata and synthetic positive/negative cases; submit a pull request as `experimental`. |
-| Adopt | Review source/export contents and checks; evaluate a representative fresh job; change status to `active`. |
-| Improve | Modify a branch or clean Hire authoring copy; review the source diff and affected checks. |
-| Upgrade | Export a new commit, exercise the team's acceptance cases, then deliberately select it for new jobs. Keep the earlier pin for rollback. |
-| Deprecate | Set `deprecated`, a reason and optional successor; keep it discoverable for migration, outside new-team selection. |
-| Retire | Set `retired` and a reason; exclude new exports at this revision and preserve history for tracing older work. |
+| Add | Curate source, metadata and positive/negative cases outside live work; submit a PR as experimental. |
+| Adopt | Review clean exports and checks, evaluate a representative fresh job, then set active. |
+| Improve | Change the owning worker or team in a branch; inspect the diff and run affected checks. |
+| Upgrade | Select a new full commit for new jobs after exercising assembly acceptance; retain the prior pin for rollback. |
+| Deprecate | Set deprecated, a reason and optional successor; stop new exports at that revision. |
+| Retire | Set retired and a reason; preserve history and never reuse the ID for an unrelated role. |
 
-Lifecycle changes do not stop admitted runs, revoke credentials or delete
-private data. Those are separate operator actions. Never reuse a retired ID
-for an unrelated worker. Full commits suffice initially; optional namespaced
-release tags can be added later without synchronized tool releases.
+Workers and teams have independent lifecycle records. Retiring a member blocks
+new exports of teams that still select it at that revision, making migration
+explicit. It does not stop running jobs, revoke credentials or erase data.
+Full commits suffice; release tags can be added without synchronized tool releases.
 
-Existing CI validates the catalog and export rules, documentation links and
-synthetic packaging cases. Its starter integration also exercises the relocated
-team through real public Bench commands and local model fixtures. Run the
-browser suite on an exported copy with its pinned dependency installed:
+CI checks inventories, pinned assembly, source exclusions, role independence,
+documentation and executable public-tool integration with local model fixtures.
+Run the page contracts and browser cases against an exported copy with its
+pinned browser dependency installed:
 
 ```sh
-python3 workers/page-team/tests/contracts.py /absolute/path/to/team/expert
-node workers/page-team/tests/browser.mjs /absolute/path/to/team/expert
+python3 teams/page-team/tests/contracts.py /absolute/path/to/team/expert
+node teams/page-team/tests/browser.mjs /absolute/path/to/team/expert
 ```
 
-A separately selected live smoke uses `workers/page-team/tests/smoke-brief.py`;
-its synthetic input is explicitly supplied for that evaluation and is never
-part of a runtime export. Keep its results and model evidence outside Git.
-Structural, fixture and live judgments establish different claims.
-
-GitHub [pull requests](https://docs.github.com/en/pull-requests/reference/pull-requests)
-provide review and check results. Git's [archive facility](https://git-scm.com/docs/git-archive)
-provides committed source. Hire remains the builder and Agent the runner.
+The standalone Visual artist has its own synthetic suite. An explicitly chosen
+live smoke can use `teams/page-team/tests/smoke-brief.py`; its supplied input
+and resulting evidence stay outside source. Fixture checks establish packaging
+and protocol behavior; evaluate actual creative quality against a fresh brief.

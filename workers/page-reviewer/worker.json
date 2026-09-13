@@ -1,0 +1,28 @@
+{
+  "id": "page-reviewer",
+  "description": "Write a candid page review from supplied source and browser observations.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9"
+  },
+  "files": [
+    "workers/page-reviewer/expert/AGENTS.md",
+    "workers/page-reviewer/expert/LICENSE",
+    "workers/page-reviewer/expert/README.md",
+    "workers/page-reviewer/expert/bin/check",
+    "workers/page-reviewer/expert/bin/validate-handoff",
+    "workers/page-reviewer/expert/tools/make-handoff"
+  ]
+}

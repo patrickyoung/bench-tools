@@ -1,0 +1,29 @@
+{
+  "id": "image-editor",
+  "description": "Finish images with editable GIMP masters and preserved originals.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9",
+    "gimp": "Operator-selected GIMP 3 console; record the actual version per run"
+  },
+  "files": [
+    "workers/image-editor/expert/AGENTS.md",
+    "workers/image-editor/expert/LICENSE",
+    "workers/image-editor/expert/README.md",
+    "workers/image-editor/expert/bin/check",
+    "workers/image-editor/expert/bin/validate-handoff",
+    "workers/image-editor/expert/tools/make-handoff"
+  ]
+}

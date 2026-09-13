@@ -14,8 +14,9 @@ adapting a worker; remove duplicate context/loop code by using Agent.
 ## Reuse the source library first
 
 Read `workers/README.md` and `teams/README.md`. Use `python3 scripts/workers
-list --all` to inspect status, then select a full reviewed source commit and
-export approved files into a new authoring directory. The exact command and
+list --all` for roles and `list --teams --all` for runnable assemblies. Select
+a full reviewed monorepo commit. Use `export` for one worker or `export-team`
+for a roster and clean member copies in a new authoring directory. The command and
 experimental opt-in are in the catalog. Never copy example showcases, an old
 run or a development checkout into a new team. The export contains the expert
 and its source lock; current job inputs are supplied separately.

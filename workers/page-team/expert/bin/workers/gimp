@@ -1,2 +1,0 @@
-#!/bin/sh
-PAGE_TEAM_SPECIALIST='gimp' exec "$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)/bin/run-worker"

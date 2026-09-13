@@ -1,0 +1,3 @@
+#!/bin/sh
+# The source exporter copies this binding under bin/workers/ROLE.
+PAGE_TEAM_SPECIALIST=${0##*/} exec "$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)/run-worker"

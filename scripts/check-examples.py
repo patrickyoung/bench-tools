@@ -250,44 +250,50 @@ def check_support(bins, scratch, env, server, native_cage):
           + (", native Cage" if native_cage else "; host boundary selected for this offline fixture"), flush=True)
 
 
-def check_page_worker_feedback(bins, scratch, env):
+def check_page_worker_feedback(bins, scratch, env, assembled):
     """Use the existing wire fixture to exercise the real worker's repair loop."""
     spec = importlib.util.spec_from_file_location("bench_integration_fixture", ROOT / "scripts/check-integration.py")
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
     bundle = scratch / "page-feedback-expert"
-    shutil.copytree(ROOT / "workers/page-team/expert", bundle,
+    shutil.copytree(assembled, bundle,
                     ignore=shutil.ignore_patterns("node_modules", "__pycache__"))
-    shutil.copytree(ROOT / "workers/page-team/tests/copy-editor", bundle / "agents/copy-editor")
-    job = scratch / "page-feedback/jobs/bench-manage-000001"
-    work, control = job / "work", job / "control"
-    work.mkdir(parents=True)
-    control.mkdir()
-    expected = "The player shows composure under pressure. Further live observation is needed."
-    def action(text):
-        return "```ply\nmkdir -p output\nprintf '%s\\n' '" + text + "' > output/edited.txt\nmake-handoff copy-editor 'Feedback fixture' output/edited.txt\n```"
-    replies = [action("WRONG"), "First candidate.", action(expected), "Corrected and checked."]
-    turns = []
-    def respond(request):
-        turns.append(request)
-        return replies[min(len(turns), len(replies)) - 1]
-    selected = dict(env, AGENT=str(bins / "agent"), PAGE_TEAM_SPECIALIST="copy-editor",
-                    BENCH_MANAGE_MODEL="openai/fixture", BENCH_MANAGE_EFFORT="medium",
-                    BENCH_MANAGE_TURNS="6", BENCH_MANAGE_SESSION=str(control / "session.jsonl"))
-    packet = {"task": {"id": "copy-repair", "input": {"worker": "copy-editor", "goal": "Preserve uncertainty"}},
-              "dependencies": []}
-    with fixture.model_fixture(selected, respond) as (fixture_env, calls):
-        result = invoke([bundle / "bin/run-worker"], work, fixture_env, data=json.dumps(packet).encode())
-        manifest = json.loads(result.stdout)
-        require(manifest["task_id"] == "copy-repair" and len(turns) == 4,
-                "page worker failed to preserve Agent's rejected-candidate correction loop")
-        require((work / "output/edited.txt").read_text().strip() == expected, "page worker accepted the wrong text")
-    session = next((control / "agent-evidence/runs").glob("*.jsonl"))
-    replay = invoke([bins / "ask", "replay", "-check", "-json", session], work, env)
-    verdicts = [e["data"]["body"].get("outcome") for e in map(json.loads, replay.stdout.splitlines())
-                if e["type"] == "note" and e["data"].get("kind") == "ply.verifier/v2"]
-    require("rejected" in verdicts and "accepted" in verdicts, "page worker lost rejection/acceptance evidence")
-    print("ok page-team worker: real Agent/Ply/Ask, rejected candidate, correction within one task, native Cage", flush=True)
+    shutil.copytree(ROOT / "teams/page-team/tests/copy-editor", bundle / "agents/copy-editor")
+    # A test-only extension and the real exported frontend both use public bindings.
+    shutil.copy2(bundle / "bin/worker-adapter", bundle / "bin/workers/copy-editor")
+    expected_copy = "The player shows composure under pressure. Further live observation is needed.\n"
+    expected_page = (ROOT / "teams/page-team/tests/browser-fixture.html").read_text()
+    for role, filename, expected in [("copy-editor", "edited.txt", expected_copy),
+                                      ("frontend", "index.html", expected_page)]:
+        job = scratch / ("page-feedback-" + role) / "jobs/bench-manage-000001"
+        work, control = job / "work", job / "control"
+        work.mkdir(parents=True)
+        control.mkdir()
+        def action(text):
+            return ("```ply\nmkdir -p output\ncat > output/" + filename + " <<'FIXTURE'\n"
+                    + text + "FIXTURE\nmake-handoff " + role + " 'Feedback fixture' output/" + filename + "\n```")
+        replies = [action("WRONG\n"), "First candidate.", action(expected), "Corrected and checked."]
+        turns = []
+        def respond(request):
+            turns.append(request)
+            return replies[min(len(turns), len(replies)) - 1]
+        selected = dict(env, AGENT=str(bins / "agent"),
+                        BENCH_MANAGE_MODEL="openai/fixture", BENCH_MANAGE_EFFORT="medium",
+                        BENCH_MANAGE_TURNS="6", BENCH_MANAGE_SESSION=str(control / "session.jsonl"))
+        packet = {"task": {"id": role + "-repair", "input": {"worker": role, "goal": "Check fixture output"}},
+                  "dependencies": []}
+        with fixture.model_fixture(selected, respond) as (fixture_env, calls):
+            result = invoke([bundle / "bin/workers" / role], work, fixture_env, data=json.dumps(packet).encode())
+            manifest = json.loads(result.stdout)
+            require(manifest["task_id"] == role + "-repair" and len(turns) == 4,
+                    role + " failed to preserve Agent's rejected-candidate correction loop")
+            require((work / "output" / filename).read_text() == expected, role + " accepted the wrong bytes")
+        session = next((control / "agent-evidence/runs").glob("*.jsonl"))
+        replay = invoke([bins / "ask", "replay", "-check", "-json", session], work, env)
+        verdicts = [e["data"]["body"].get("outcome") for e in map(json.loads, replay.stdout.splitlines())
+                    if e["type"] == "note" and e["data"].get("kind") == "ply.verifier/v2"]
+        require("rejected" in verdicts and "accepted" in verdicts, role + " lost rejection/acceptance evidence")
+        print("ok page-team " + role + ": exported binding, real Agent/Ply/Ask, rejection/repair, native Cage", flush=True)
 
 
 def main():
@@ -319,15 +325,21 @@ def main():
                 check_evidence(bins, scratch, env, server)
                 check_signup(bins, scratch, env)
                 check_support(bins, scratch, env, server, args.native_cage)
-                invoke([sys.executable, ROOT / "workers/page-team/tests/contracts.py"], scratch, env)
+                # Exercise the actual committed source assembly, never an incomplete template.
+                commit = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"]).decode().strip()
+                exported = scratch / "page-team-export"
+                invoke([sys.executable, ROOT / "scripts/workers", "export-team", "page-team",
+                        exported, "--ref", commit, "--allow-experimental"], scratch, env)
+                assembled = exported / "expert"
+                invoke([sys.executable, ROOT / "teams/page-team/tests/contracts.py", assembled], scratch, env)
                 page_work = scratch / "page-team-work"
                 page_work.mkdir()
                 invoke([bins / "agent", "check", "-C", page_work,
                         "-evidence", scratch / "page-team-evidence",
-                        ROOT / "workers/page-team/expert"], scratch, env)
+                        assembled], scratch, env)
                 print("ok page-team: nested definition structure and offline artifact/protocol contracts", flush=True)
                 if args.native_cage:
-                    check_page_worker_feedback(bins, scratch, env)
+                    check_page_worker_feedback(bins, scratch, env, assembled)
                 require(all(path == "/v1/responses" for path, _ in server.calls),
                         "fixture received an unexpected request path")
             finally:

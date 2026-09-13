@@ -1,0 +1,31 @@
+{
+  "id": "frontend",
+  "description": "Build and integrate a self-contained, accessible web page.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9",
+    "node": ">=22"
+  },
+  "files": [
+    "workers/frontend/expert/AGENTS.md",
+    "workers/frontend/expert/INTERACTIONS.md",
+    "workers/frontend/expert/LICENSE",
+    "workers/frontend/expert/README.md",
+    "workers/frontend/expert/bin/check",
+    "workers/frontend/expert/bin/validate-handoff",
+    "workers/frontend/expert/bin/validate-html",
+    "workers/frontend/expert/tools/make-handoff"
+  ]
+}

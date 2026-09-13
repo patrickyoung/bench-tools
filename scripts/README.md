@@ -179,7 +179,10 @@ for observed versions and the limits of that evidence.
 `python3 scripts/workers list --all` reads catalog metadata; `check` inspects
 source and approved export inventories. `export ID DEST --ref FULL_COMMIT`
 uses Git to write only committed, explicitly approved source into a new folder
-with `team.lock.json`. Experimental entries need `--allow-experimental`;
+with `worker.lock.json`. `list --teams --all` reads the team catalog;
+`export-team ID DEST --ref FULL_COMMIT` assembles its roster and approved
+adapters from the same commit, recording member provenance in `team.lock.json`.
+Neither command executes worker code. Experimental entries need `--allow-experimental`;
 deprecated and retired entries cannot be exported at that selected revision.
 This is a repository utility, not an installed Bench command or runtime. See
 [the library guide](../docs/WORKER-LIBRARY.md) for content exclusions, source

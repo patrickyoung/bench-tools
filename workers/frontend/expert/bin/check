@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+test -s output/index.html || { echo "missing index.html"; exit 1; }
+"$ROOT/bin/validate-html" output/index.html
+test -s handoff.json || { echo "missing handoff"; exit 1; }
+exec "$ROOT/bin/validate-handoff" handoff.json

@@ -56,6 +56,152 @@ class WorkerLibrary(unittest.TestCase):
     def export(self, ref=None, ok=True, extra=()):
         return self.call('export', 'tiny', str(self.dest), '--ref', ref or self.commit, *extra, ok=ok)
 
+    def make_team(self):
+        self.team = self.root / 'teams/site/expert'
+        (self.team / 'bin').mkdir(parents=True)
+        for name in ('AGENTS.md', 'README.md', 'LICENSE'):
+            (self.team / name).write_text('Synthetic team wiring.\n')
+        (self.team / 'bin/check').write_text('#!/bin/sh\ntouch EXPORT_EXECUTED_CODE\nexit 1\n')
+        (self.team / 'bin/check').chmod(0o755)
+        self.team_metadata = {'id': 'site', 'description': 'Synthetic team',
+            'owner': 'fixture', 'status': 'active', 'requires': {'fixture': '1'},
+            'members': {'first': {'worker': 'tiny'}, 'second': {'worker': 'tiny'}},
+            'files': sorted(p.relative_to(self.root).as_posix() for p in self.team.rglob('*') if p.is_file())}
+        self.save_team()
+        return self.commit_source()
+
+    def save_team(self):
+        (self.team.parent / 'team.json').write_text(json.dumps(self.team_metadata))
+
+    def export_team(self, ref, ok=True, extra=()):
+        return self.call('export-team', 'site', str(self.dest), '--ref', ref, *extra, ok=ok)
+
+    def test_team_assembles_pinned_worker_copies_and_records_ownership(self):
+        commit = self.make_team()
+        (self.expert / 'AGENTS.md').write_text('UNCOMMITTED JOB CONTENT')
+        self.team_metadata['members'] = {'changed': {'worker': 'absent'}}
+        self.save_team()
+        self.export_team(commit)
+        lock = json.loads((self.dest / 'team.lock.json').read_text())
+        self.assertEqual(lock['schema'], 'bench.team-lock/v1')
+        self.assertEqual(len(lock['files']), 12)
+        self.assertEqual(set(lock['members']), {'first', 'second'})
+        for slot, member in lock['members'].items():
+            self.assertEqual(member['worker'], 'tiny')
+            self.assertEqual(member['source']['commit'], commit)
+            self.assertEqual(member['source']['path'], 'workers/tiny/expert')
+            self.assertEqual(member['destination'], 'expert/agents/' + slot)
+            definition = self.dest / member['destination']
+            self.assertEqual((definition / 'AGENTS.md').read_text(), 'Synthetic source fixture.\n')
+            self.assertTrue(os.access(definition / 'bin/check', os.X_OK))
+        (self.dest / 'expert/agents/first/AGENTS.md').write_text('Local adaptation')
+        self.assertEqual((self.dest / 'expert/agents/second/AGENTS.md').read_text(), 'Synthetic source fixture.\n')
+        self.assertFalse((self.root / 'EXPORT_EXECUTED_CODE').exists())
+        self.assertFalse((self.dest / 'EXPORT_EXECUTED_CODE').exists())
+        self.assertFalse((self.dest / 'worker.lock.json').exists())
+
+    def test_worker_and_team_catalogs_are_separate(self):
+        self.make_team()
+        self.call('check')
+        self.assertEqual(json.loads(self.call('list').stdout)['id'], 'tiny')
+        self.assertEqual(json.loads(self.call('list', '--teams').stdout)['id'], 'site')
+
+    def test_team_rejects_retired_member_without_creating_destination(self):
+        original = self.make_team()
+        self.metadata.update(status='retired', reason='Synthetic retirement')
+        self.save_metadata()
+        self.export_team(self.commit_source(), ok=False, extra=('--allow-experimental',))
+        self.assertFalse(self.dest.exists())
+        # Historical pins remain usable and do not imply remote revocation.
+        self.export_team(original)
+
+    def test_team_experimental_opt_in_applies_to_members(self):
+        self.make_team()
+        self.metadata['status'] = 'experimental'
+        self.save_metadata()
+        commit = self.commit_source()
+        self.export_team(commit, ok=False)
+        self.export_team(commit, extra=('--allow-experimental',))
+
+    def test_retired_team_rejects_even_active_members(self):
+        self.make_team()
+        self.team_metadata.update(status='retired', reason='Synthetic retirement')
+        self.save_team()
+        self.export_team(self.commit_source(), ok=False, extra=('--allow-experimental',))
+
+    def test_team_missing_member_rejects(self):
+        self.make_team()
+        self.team_metadata['members']['second'] = {'worker': 'absent'}
+        self.save_team()
+        self.call('check', ok=False)
+        self.export_team(self.commit_source(), ok=False)
+        self.assertFalse(self.dest.exists())
+
+    def test_team_cannot_hide_bundled_worker_definitions(self):
+        self.make_team()
+        nested = self.team / 'agents/first/AGENTS.md'
+        nested.parent.mkdir(parents=True)
+        nested.write_text('Stale bundled worker')
+        self.team_metadata['files'].append(nested.relative_to(self.root).as_posix())
+        self.save_team()
+        self.call('check', ok=False)
+        self.export_team(self.commit_source(), ok=False)
+
+    def test_team_worker_undeclared_files_and_archive_changes_reject(self):
+        self.make_team()
+        (self.expert / 'leftover.txt').write_text('Prior job content')
+        self.export_team(self.commit_source(), ok=False)
+        (self.expert / 'leftover.txt').unlink()
+        (self.root / '.gitattributes').write_text('workers/tiny/expert/README.md export-ignore\n')
+        self.export_team(self.commit_source(), ok=False)
+        self.assertFalse(self.dest.exists())
+
+    def test_team_roster_path_escape_rejects(self):
+        self.make_team()
+        for members in [{'../escape': {'worker': 'tiny'}}, {'first': {'worker': '../../tiny'}}, {}, {'first': None}]:
+            self.team_metadata['members'] = members
+            self.save_team()
+            self.call('check', ok=False)
+            self.export_team(self.commit_source(), ok=False)
+
+    def test_team_output_does_not_overwrite(self):
+        commit = self.make_team()
+        self.dest.mkdir()
+        (self.dest / 'keep').write_text('Existing work')
+        self.export_team(commit, ok=False)
+        self.assertEqual((self.dest / 'keep').read_text(), 'Existing work')
+
+    def test_team_root_rejects_unregistered_source(self):
+        self.make_team()
+        (self.root / 'teams/old-job').mkdir()
+        self.call('check', ok=False)
+
+    def test_roster_alone_selects_copied_executable_bindings(self):
+        self.make_team()
+        adapter = self.team / 'bin/adapter'
+        adapter.write_text('#!/bin/sh\nprintf "%s\\n" "${0##*/}"\n')
+        adapter.chmod(0o755)
+        self.team_metadata['files'].append(adapter.relative_to(self.root).as_posix())
+        self.team_metadata['members'] = {'first': {'worker': 'tiny', 'adapter': 'bin/adapter'}}
+        self.save_team()
+        self.export_team(self.commit_source())
+        binding = self.dest / 'expert/bin/workers/first'
+        self.assertEqual(binding.read_bytes(), adapter.read_bytes())
+        self.assertEqual(subprocess.check_output([str(binding)], text=True).strip(), 'first')
+        self.assertFalse((self.dest / 'expert/bin/workers/second').exists())
+        self.assertFalse((self.dest / 'expert/agents/second').exists())
+        lock = json.loads((self.dest / 'team.lock.json').read_text())
+        self.assertEqual(lock['members']['first']['adapter']['source'], 'teams/site/expert/bin/adapter')
+
+    def test_team_adapter_must_be_approved_executable_source(self):
+        self.make_team()
+        self.team_metadata['members']['first']['adapter'] = '../outside'
+        self.save_team()
+        self.export_team(self.commit_source(), ok=False)
+        self.team_metadata['members']['first']['adapter'] = 'README.md'
+        self.save_team()
+        self.export_team(self.commit_source(), ok=False)
+
     def test_export_uses_commit_and_preserves_modes_and_lock(self):
         original = (self.expert / 'AGENTS.md').read_bytes()
         (self.expert / 'AGENTS.md').write_text('UNCOMMITTED CONTENT')
@@ -64,7 +210,7 @@ class WorkerLibrary(unittest.TestCase):
         self.assertEqual((self.dest / 'expert/AGENTS.md').read_bytes(), original)
         self.assertFalse((self.dest / 'expert/notes.txt').exists())
         self.assertTrue(os.access(self.dest / 'expert/bin/check', os.X_OK))
-        lock = json.loads((self.dest / 'team.lock.json').read_text())
+        lock = json.loads((self.dest / 'worker.lock.json').read_text())
         self.assertEqual(lock['source']['commit'], self.commit)
         self.assertEqual(len(lock['files']), 4)
         self.assertFalse((self.dest / '.git').exists())
