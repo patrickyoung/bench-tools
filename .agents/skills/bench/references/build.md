@@ -42,8 +42,9 @@ Agent runner. Its generated `authoring/expert` must be inspected before use:
 `hire verify` validates structure without executing generated verifier code.
 Follow `docs/BUILD-WITH-AN-LLM.md` and `tools/hire/README.md` for a full brief.
 
-For direct authoring use `hire new expert 'JOB'`, then finish its instructions
-and deliberately rejecting scaffold check. A portable expert needs `AGENTS.md`
+For direct authoring use `hire new expert 'JOB'`, add its required README and
+finish the instructions and deliberately rejecting scaffold check before
+`hire verify`. A portable expert needs `AGENTS.md`
 and executable `bin/check`; additional definition files should earn their place.
 Do not add another provider SDK or an expert-specific runtime.
 

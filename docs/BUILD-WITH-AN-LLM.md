@@ -176,6 +176,8 @@ hire verify authoring/expert
 Inspect what Hire produced. Its structural verification does not execute the
 generated check or establish task quality. For direct authoring, `hire new`
 creates a scaffold whose initial check deliberately rejects unfinished work.
+Add the worker README and finish its instructions and acceptance check before
+using `hire verify`; the scaffold alone is not a completed worker.
 The [support-reply example](../examples/support-reply/README.md) includes
 explicit teaching inputs and a citation check; keep those practice inputs
 separate from a new user's work.
