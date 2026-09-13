@@ -1,0 +1,29 @@
+{
+  "id": "canvas-artist",
+  "description": "Create a compact Canvas/WebGL visual and static fallback.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9",
+    "node": ">=22"
+  },
+  "files": [
+    "workers/canvas-artist/expert/AGENTS.md",
+    "workers/canvas-artist/expert/LICENSE",
+    "workers/canvas-artist/expert/README.md",
+    "workers/canvas-artist/expert/bin/check",
+    "workers/canvas-artist/expert/bin/validate-handoff",
+    "workers/canvas-artist/expert/tools/make-handoff"
+  ]
+}

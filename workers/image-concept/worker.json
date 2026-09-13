@@ -1,0 +1,27 @@
+{
+  "id": "image-concept",
+  "description": "Prepare a checked image concept and generation request for a selected backend.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9"
+  },
+  "files": [
+    "workers/image-concept/expert/AGENTS.md",
+    "workers/image-concept/expert/LICENSE",
+    "workers/image-concept/expert/README.md",
+    "workers/image-concept/expert/bin/check",
+    "workers/image-concept/expert/tools/make-handoff"
+  ]
+}

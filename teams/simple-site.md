@@ -1,6 +1,6 @@
 # Simple site team
 
-Use the exported `page-team` definition at the caller's recorded source commit.
+Use the assembled `page-team` export from `scripts/workers export-team` at the caller's recorded source commit.
 The actual subject, content and expected behavior come from the current brief.
 
 Select Frontend and Reviewer. The frontend owns semantic HTML, responsive

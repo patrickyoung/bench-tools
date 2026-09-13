@@ -1,0 +1,86 @@
+{
+  "id": "page-team",
+  "description": "Build and review a self-contained web page with only the useful specialists.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "5dc71b733e869f7e00a7b830f5e22dd2a9f5f207",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "tend",
+        "weave"
+      ]
+    },
+    "bench-manage": {
+      "repository": "https://github.com/patrickyoung/bench-manage.git",
+      "commit": "347f38dd550aadcba5c8b8890cda6c73f1a5c8a5"
+    },
+    "node": ">=22; browser dependency pinned in expert/package-lock.json",
+    "python": ">=3.9",
+    "optional": "Blender, GIMP console and an image-generation command when requested; select and record exact installed versions in private run configuration"
+  },
+  "files": [
+    "teams/page-team/expert/AGENTS.md",
+    "teams/page-team/expert/GOAL.md",
+    "teams/page-team/expert/LICENSE",
+    "teams/page-team/expert/README.md",
+    "teams/page-team/expert/bin/browser-check.mjs",
+    "teams/page-team/expert/bin/check",
+    "teams/page-team/expert/bin/generate-image",
+    "teams/page-team/expert/bin/make-handoff",
+    "teams/page-team/expert/bin/manager-adapter",
+    "teams/page-team/expert/bin/manager-input",
+    "teams/page-team/expert/bin/materialize-inputs",
+    "teams/page-team/expert/bin/page-team",
+    "teams/page-team/expert/bin/review-page",
+    "teams/page-team/expert/bin/root-check",
+    "teams/page-team/expert/bin/run-worker",
+    "teams/page-team/expert/bin/task-check",
+    "teams/page-team/expert/bin/validate-handoff",
+    "teams/page-team/expert/bin/validate-html",
+    "teams/page-team/expert/bin/worker-adapter",
+    "teams/page-team/expert/config/example.env",
+    "teams/page-team/expert/interfaces/a2a/card.json",
+    "teams/page-team/expert/interfaces/a2a/dispatch",
+    "teams/page-team/expert/interfaces/mcp/dispatch",
+    "teams/page-team/expert/interfaces/mcp/manifest.json",
+    "teams/page-team/expert/package-lock.json",
+    "teams/page-team/expert/package.json"
+  ],
+  "members": {
+    "blender": {
+      "worker": "blender-artist",
+      "adapter": "bin/worker-adapter"
+    },
+    "frontend": {
+      "worker": "frontend",
+      "adapter": "bin/worker-adapter"
+    },
+    "gimp": {
+      "worker": "image-editor",
+      "adapter": "bin/worker-adapter"
+    },
+    "image-generation": {
+      "worker": "image-concept",
+      "adapter": "bin/worker-adapter"
+    },
+    "manager": {
+      "worker": "page-planner"
+    },
+    "review": {
+      "worker": "page-reviewer",
+      "adapter": "bin/worker-adapter"
+    },
+    "visual-artist": {
+      "worker": "visual-artist",
+      "adapter": "bin/worker-adapter"
+    }
+  }
+}

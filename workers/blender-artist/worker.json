@@ -1,0 +1,29 @@
+{
+  "id": "blender-artist",
+  "description": "Create editable Blender assets and web exports.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9",
+    "blender": "Operator-selected Blender command; record the actual version per run"
+  },
+  "files": [
+    "workers/blender-artist/expert/AGENTS.md",
+    "workers/blender-artist/expert/LICENSE",
+    "workers/blender-artist/expert/README.md",
+    "workers/blender-artist/expert/bin/check",
+    "workers/blender-artist/expert/bin/validate-handoff",
+    "workers/blender-artist/expert/tools/make-handoff"
+  ]
+}

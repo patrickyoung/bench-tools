@@ -1,0 +1,26 @@
+{
+  "id": "page-planner",
+  "description": "Plan bounded page work from a Bench Manage snapshot.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "3c645b06d227e9b0bd233d15a44c2aafd5bc9f99",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9"
+  },
+  "files": [
+    "workers/page-planner/expert/AGENTS.md",
+    "workers/page-planner/expert/LICENSE",
+    "workers/page-planner/expert/README.md",
+    "workers/page-planner/expert/bin/check"
+  ]
+}

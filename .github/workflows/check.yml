@@ -162,14 +162,14 @@ jobs:
         with:
           node-version: '22'
       - name: Export exactly the checked commit, without examples or run content
-        run: python3 scripts/workers export page-team "$RUNNER_TEMP/page-team" --ref "$(git rev-parse HEAD)" --allow-experimental
+        run: python3 scripts/workers export-team page-team "$RUNNER_TEMP/page-team" --ref "$(git rev-parse HEAD)" --allow-experimental
       - name: Install pinned browser dependency in the disposable export
         working-directory: ${{ runner.temp }}/page-team/expert
         run: |
           npm ci --ignore-scripts
           npx playwright install --with-deps chromium
-      - name: Exercise the exported worker's browser acceptance boundary
-        run: node workers/page-team/tests/browser.mjs "$RUNNER_TEMP/page-team/expert"
+      - name: Exercise the assembled team's browser acceptance boundary
+        run: node teams/page-team/tests/browser.mjs "$RUNNER_TEMP/page-team/expert"
       - name: Export the independent Visual artist definition
         run: python3 scripts/workers export visual-artist "$RUNNER_TEMP/visual-artist" --ref "$(git rev-parse HEAD)" --allow-experimental
       - name: Check Visual artist contracts against synthetic counterexamples
