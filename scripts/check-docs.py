@@ -27,7 +27,9 @@ def anchors(path):
 
 
 def main():
-    paths = [ROOT / "README.md", ROOT / "scripts/README.md"]
+    paths = [ROOT / "README.md", ROOT / "scripts/README.md", ROOT / "START-HERE.md",
+             ROOT / "AGENTS.md", ROOT / "CLAUDE.md"]
+    paths += sorted((ROOT / ".agents/skills").rglob("*.md"))
     paths += sorted((ROOT / "docs").glob("*.md"))
     paths += sorted((ROOT / "examples").rglob("*.md"))
     paths += sorted((ROOT / "tools").rglob("README.md"))

@@ -36,11 +36,12 @@ type Manifest struct {
 }
 
 type Config struct {
-	Dispatcher []string
-	Stderr     io.Writer
-	Timeout    time.Duration
-	MaxInput   int64
-	MaxOutput  int64
+	Dispatcher  []string
+	AllowLegacy bool
+	Stderr      io.Writer
+	Timeout     time.Duration
+	MaxInput    int64
+	MaxOutput   int64
 }
 
 func LoadManifest(path string) (*Manifest, error) {
@@ -272,7 +273,9 @@ func New(manifest *Manifest, cfg Config) (server *mcp.Server, err error) {
 					return nil, methodNotFound(method)
 				}
 			case "initialize":
-				return nil, methodNotFound(method)
+				if !cfg.AllowLegacy {
+					return nil, methodNotFound(method)
+				}
 			}
 			return next(ctx, method, req)
 		}

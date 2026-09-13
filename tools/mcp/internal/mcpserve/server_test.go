@@ -16,7 +16,45 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/patrickyoung/mcp/internal/mcpclient"
 )
+
+func TestLegacyInitializationRequiresExplicitSelection(t *testing.T) {
+	t.Setenv("GO_WANT_MCPSERVE_HELPER", "1")
+	for _, allow := range []bool{false, true} {
+		t.Run(fmt.Sprintf("allow=%t", allow), func(t *testing.T) {
+			server, err := New(&Manifest{Name: "host-tool", Version: "1", Tools: []*mcp.Tool{{
+				Name: "echo", InputSchema: map[string]any{"type": "object", "additionalProperties": false},
+			}}}, Config{Dispatcher: helperCommand(), Stderr: io.Discard, AllowLegacy: allow})
+			if err != nil {
+				t.Fatal(err)
+			}
+			host := httptest.NewServer(HTTPHandler(server))
+			defer host.Close()
+			endpoint, err := mcpclient.ResolveEndpoint([]string{host.URL})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, lifecycle := range []mcpclient.Lifecycle{mcpclient.ModernLifecycle, mcpclient.LegacyLifecycle} {
+				opts := mcpclient.Options{Lifecycle: lifecycle, Timeout: 5 * time.Second, Stderr: io.Discard}
+				out, err := mcpclient.Request(context.Background(), endpoint, "tools/call", json.RawMessage(`{"name":"echo","arguments":{}}`), opts)
+				if lifecycle == mcpclient.LegacyLifecycle && !allow {
+					if err == nil || !strings.Contains(err.Error(), "initialize") {
+						t.Fatalf("legacy was not refused: %#v, %v", out, err)
+					}
+					continue
+				}
+				if err != nil || out.Code != 0 || !bytes.Contains(out.Raw, []byte(`"name":"echo"`)) {
+					t.Fatalf("call = %#v, %v", out, err)
+				}
+				bad, err := mcpclient.Request(context.Background(), endpoint, "tools/call", json.RawMessage(`{"name":"echo","arguments":{"unexpected":true}}`), opts)
+				if err == nil && bad.Code == 0 {
+					t.Fatalf("invalid input accepted under lifecycle %v: %#v", lifecycle, bad)
+				}
+			}
+		})
+	}
+}
 
 func TestServerDispatchesCoreAndExtensionMethods(t *testing.T) {
 	t.Setenv("GO_WANT_MCPSERVE_HELPER", "1")

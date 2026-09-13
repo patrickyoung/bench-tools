@@ -1,0 +1,10 @@
+{
+  "name": "bench-tools",
+  "version": "0.1.0",
+  "description": "Set up Bench, then build, evaluate, run, and expose reusable Unix workers with the existing tools.",
+  "author": {"name": "Patrick Young"},
+  "homepage": "https://github.com/patrickyoung/bench-tools/blob/main/START-HERE.md",
+  "repository": "https://github.com/patrickyoung/bench-tools",
+  "license": "MIT",
+  "skills": "./.agents/skills/"
+}

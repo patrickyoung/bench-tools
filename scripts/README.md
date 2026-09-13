@@ -22,6 +22,8 @@ scripts/check --component cage --native-cage
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/check-docs.py              # local guide links and anchors
 python3 scripts/check-examples.py --bin-dir .build/bin  # copied starters, local fixtures
+python3 scripts/check-harnesses.py --bin-dir .build/bin # portable skill + real MCP calls
+python3 scripts/check-harnesses.py --host-clis          # optional installed Codex/Claude/Pi discovery
 ```
 
 Builds require Go 1.26+, Python 3.9+, Git, and sh. The test runner selects its
@@ -155,3 +157,19 @@ guides, all tool READMEs, field guides, and selected integration references.
 It does not execute examples or verify remote pages; those need separate
 evidence. Keep setup, expected output, and the scope of each check beside the
 commands a reader will run.
+
+`check-harnesses.py` uses Brief to lint the canonical Bench skill and a relocated
+plugin ZIP, then performs actual MCP discovery and tool calls over stdio. Both
+the modern lifecycle and explicit `mcpserve -allow-legacy` compatibility are
+checked; the default must still refuse legacy initialization. This check runs
+inside public-process integration on Linux and macOS. `make check-harnesses`
+builds its two required components and runs it on its own.
+
+The optional `--host-clis` path also requires installed Codex, Claude Code, and
+Pi. It validates and discovers the extracted Claude plugin, connects Claude to MCP, asks a
+fresh Codex app-server to discover the installed skill and MCP tool, and asks
+a fresh Pi RPC session to discover its installed package. All configuration
+is in temporary homes; no model turn or personal profile change is requested.
+These host checks are separate from CI because those CLIs are optional external
+dependencies. See the [harness verification record](../docs/HARNESS-VERIFICATION.md)
+for observed versions and the limits of that evidence.

@@ -5,7 +5,7 @@ PYTHON ?= python3
 TOOLS ?=
 PREFIX ?= $(HOME)/.local
 
-.PHONY: help build test check check-docs check-examples install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses install uninstall list
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -13,6 +13,7 @@ help:
 	@echo 'make check                 Run the full verification gate'
 	@echo 'make check-docs            Check guide links and heading anchors'
 	@echo 'make check-examples        Build starter tools and run offline examples'
+	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
 	@echo 'make install               Build and install under ~/.local'
 	@echo 'make uninstall             Remove verified installs made here'
 	@echo 'make list                  List components and public commands'
@@ -38,6 +39,10 @@ check-docs:
 check-examples:
 	@$(PYTHON) scripts/build ask brief context cite tend agent hire ply cage
 	@$(PYTHON) scripts/check-examples.py --bin-dir .build/bin
+
+check-harnesses:
+	@$(PYTHON) scripts/build brief mcp
+	@$(PYTHON) scripts/check-harnesses.py --bin-dir .build/bin
 
 install:
 	@$(PYTHON) scripts/install $(TOOLS) --prefix "$(PREFIX)"

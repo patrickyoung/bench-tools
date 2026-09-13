@@ -1,4 +1,10 @@
-# Preserve the programs
+# Use Bench; preserve the programs
+
+When asked to adopt Bench, set a harness up, or build a worker using it, start
+with [START-HERE.md](START-HERE.md) and [.agents/skills/bench/SKILL.md](.agents/skills/bench/SKILL.md).
+Follow the current harness's setup reference, use the existing installer, and
+build the user's solution outside this source checkout. Hire builds; Agent runs.
+The guidance below governs changes to the toolkit itself.
 
 This repository houses independent Unix tools. Read the applicable tool's
 AGENTS.md and design documents before changing it. The root owns source

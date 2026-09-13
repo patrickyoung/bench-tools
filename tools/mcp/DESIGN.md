@@ -17,6 +17,11 @@ connector; Action, not MCP, owns deterministic policy, May, and replay events.
 `mcpserve` publishes declared MCP capabilities while running each behavior as
 one ordinary Unix filter process.
 
+Its explicit `-allow-legacy` option also admits the official SDK's older
+initialize/initialized lifecycle for existing harnesses. The default still
+refuses initialize. This selection does not change the dispatcher, capability
+admission, credentials, or effect handling, and modern requests remain usable.
+
 ## Boundary
 
 MCP remains a wire protocol at the edge. Inside a Unix worker it becomes

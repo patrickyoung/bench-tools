@@ -13,7 +13,7 @@ import (
 	"github.com/patrickyoung/mcp/internal/mcpserve"
 )
 
-const version = "0.3.0"
+const version = "0.3.1"
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -35,6 +35,7 @@ func run(ctx context.Context, argv []string) int {
 	fs := flag.NewFlagSet("mcpserve", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	httpAddr := fs.String("http", "", "serve stateless Streamable HTTP on address")
+	allowLegacy := fs.Bool("allow-legacy", false, "also accept SDK-owned legacy initialization")
 	timeout := fs.Duration("timeout", 0, "per-filter timeout (zero means none)")
 	maxInput := fs.Int64("max-input", 16<<20, "maximum request parameter bytes")
 	maxOutput := fs.Int64("max-output", 64<<20, "maximum filter result bytes")
@@ -55,7 +56,8 @@ func run(ctx context.Context, argv []string) int {
 	}
 	server, err := mcpserve.New(manifest, mcpserve.Config{
 		Dispatcher: rest[2:], Stderr: os.Stderr, Timeout: *timeout,
-		MaxInput: *maxInput, MaxOutput: *maxOutput,
+		AllowLegacy: *allowLegacy,
+		MaxInput:    *maxInput, MaxOutput: *maxOutput,
 	})
 	if err != nil {
 		return fail(err)
@@ -89,10 +91,12 @@ func fail(err error) int {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, `usage:
-  mcpserve [-http ADDR] [-timeout D] MANIFEST -- FILTER [ARG ...]
+  mcpserve [-allow-legacy] [-http ADDR] [-timeout D] MANIFEST -- FILTER [ARG ...]
 
 Serve the descriptors in MANIFEST through MCP. Each non-list capability
 request runs FILTER with the MCP method appended to argv, exact params JSON on
 stdin, result JSON on stdout, diagnostics on stderr, and exit status as the
-outcome. Without -http, MCP itself uses stdin and stdout.`)
+outcome. Without -http, MCP itself uses stdin and stdout. -allow-legacy also
+accepts the SDK's legacy initialize handshake for existing MCP hosts; modern
+requests remain supported and the dispatcher contract is unchanged.`)
 }

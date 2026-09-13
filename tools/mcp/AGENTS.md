@@ -8,8 +8,9 @@ sibling of Bench, Ply, Tend, and Agent; none of those programs know MCP exists.
   diagnostics, and exit status is the outcome.
 - Never retry a request automatically. Once the request write succeeds, a
   missing trustworthy terminal response is exit 125.
-- Modern stateless MCP is the default and only implicit mode. Legacy sessions
-  require a separate, explicit compatibility process.
+- Modern stateless MCP is the default and only implicit mode. Legacy clients
+  require the separate, explicit `mcp-legacy` process. MCPserve accepts the
+  SDK's legacy handshake only when started with `-allow-legacy`.
 - Use the official Go SDK for protocol behavior. Keep Unix process lifetime,
   process groups, byte limits, and effect accounting in this repository.
 - Server stderr remains stderr. Progress and subscriptions use explicit JSONL

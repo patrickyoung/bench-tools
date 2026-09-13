@@ -20,6 +20,11 @@ chosen access are enough to start. macOS is supported too.
 
 ## Start with something useful
 
+**Using Codex, Claude Code, Cowork, Pi, or OpenClaw?** Point it at
+[START-HERE.md](START-HERE.md) and ask it to set itself up with Bench, then build
+your job. Each harness has its own setup instructions and the same portable
+skill for installing, building, evaluating, running, and exposing capabilities.
+
 [**Get your first result →**](docs/GETTING-STARTED.md) Install Ask and turn
 meeting notes into a short update. Then save the method for next time.
 The walkthrough explains every bit of shell syntax it uses.

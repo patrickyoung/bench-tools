@@ -2,6 +2,10 @@
 
 [Start here](GETTING-STARTED.md) · [Tool guide](TOOLS.md) · [Home](../README.md)
 
+For a harness to set itself up, use [the harness entry point](../START-HERE.md).
+It includes each host's skill installation and discovery instructions, followed
+by this same source installer and verification.
+
 Use the shared source installer for the Bench tools toolkit. You need Go 1.26+,
 Python 3.9+, Git, and a Unix shell on macOS, Linux, or WSL. Go may download
 pinned dependencies on the first build. Make is optional.

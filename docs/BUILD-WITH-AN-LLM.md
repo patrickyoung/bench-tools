@@ -1,5 +1,9 @@
 # Build a useful worker with an LLM
 
+Want the harness to install and use Bench itself? Give it
+[START-HERE.md](../START-HERE.md), which routes Codex, Claude Code, Cowork, Pi,
+and OpenClaw through setup, building, evaluation, and repeated use.
+
 Start by describing the job, not by writing another agent loop. Hire already
 builds expert folders. Agent already runs them. A new specialty can often be
 instructions, a skill, source material, and a check.

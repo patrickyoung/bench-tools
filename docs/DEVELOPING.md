@@ -17,6 +17,7 @@ make check                             # harness tests + full component/integrat
 python3 scripts/check --native-cage     # full tool gate plus native confinement proof
 make check-docs                        # entry-guide links and heading anchors
 make check-examples                    # runnable starters against local fixtures
+make check-harnesses                   # portable skill packaging and MCP compatibility
 ```
 
 `make test` uses independent source exports, uncached ordinary Go tests and
@@ -28,11 +29,18 @@ builds the nine starter components and runs copies of the examples in temporary
 directories, checking success and failure behavior without provider credentials.
 
 The documentation check covers root guides, every tool README (including
-nested example READMEs), field guides, and the current integration guides.
+nested example READMEs), field guides, portable skill references, and the current integration guides.
 The example check includes one unchanged support expert used in two workspaces,
 an uncited draft rejected and repaired, and replayable verifier records. Use
 `python3 scripts/check-examples.py --native-cage` after building to exercise
 that expert under the host's real Cage boundary too.
+
+Process integration also checks the portable Bench skill after packaging and
+relocation, and real MCP discovery/calls under modern and explicitly selected
+legacy lifecycles. Run `python3 scripts/check-harnesses.py --host-clis` with
+installed Codex, Claude Code, and Pi to check their native discovery in temporary
+homes. It makes no hosted model calls. The [harness verification record](HARNESS-VERIFICATION.md)
+distinguishes native host evidence from documented setup routes.
 
 Before publishing, also exercise the complete installation lifecycle:
 

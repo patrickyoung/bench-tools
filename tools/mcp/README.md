@@ -217,6 +217,13 @@ listener. Nonlocal deployments need operator-managed TLS and authentication.
 Manifests remain fixed for a process lifetime. Task persistence belongs to the
 dispatcher or a tool such as Tend, not a hidden MCPserve database.
 
+For hosts that still initialize an earlier MCP lifecycle, select
+`mcpserve -allow-legacy MANIFEST -- DISPATCH`. The official SDK owns that
+handshake; modern requests remain supported. The default continues to refuse
+legacy initialization. Test the selected server with `mcp-legacy` before
+registering it in a host that uses that lifecycle. The flag adds no credentials,
+sampling handler, retry policy, or new dispatcher behavior.
+
 ## Outcomes and development
 
 | Exit | Meaning |
