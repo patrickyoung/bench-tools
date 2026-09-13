@@ -1,11 +1,12 @@
 # Agent
 
-**Give a recurring job a home: its instructions, working files, checks, and history.**
+**Run a filesystem expert against a workspace and a goal.**
 
-A one-off prompt ends when the conversation ends. An Agent home keeps a
-standing goal, a procedure, mutable work, and a clear test of success in an
-ordinary directory. You can inspect it, version its definition, run it again,
-and see the evidence from each attempt.
+Build an expert in a folder, choose a workspace, give it a goal, and collect
+its answer and files. The native Go command composes installed Bench tools.
+It adds no model client, action loop, transcript format, registry, or daemon.
+Existing recurring Agent run/check/show interfaces remain supported.
+[Hire](../hire/README.md) is the separate headless builder.
 
 Agent connects [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief),
 [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply), [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask),
@@ -19,7 +20,7 @@ and [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage). Th
 ## Install
 
 From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
-run `python3 scripts/install agent ask brief ply cage hone trail may action` at the repository root. See
+run `python3 scripts/install agent hire ask brief ply cage hone trail may action` at the repository root. See
 [installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
 for prerequisites and PATH setup, or
 [getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
@@ -28,26 +29,11 @@ for a guided first result.
 The [Bench application suite](https://github.com/patrickyoung/bench#install)
 also includes Agent, with its own pinned companion versions.
 
-**Standalone install.** To work from the independent repositories' current
-`main`, you need **Git, a Unix shell, and Go 1.26+**:
-
-```sh
-git clone https://github.com/patrickyoung/agent.git
-cd agent
-mkdir -p "$HOME/.local/bin"
-for tool in ask brief ply cage hone trail may action; do
-  GOBIN="$HOME/.local/bin" go install "github.com/patrickyoung/$tool@main"
-done
-ln -s "$PWD/bin/agent" "$HOME/.local/bin/agent"
-ln -s "$PWD/bin/agent-action-shell" "$HOME/.local/bin/agent-action-shell"
-export PATH="$HOME/.local/bin:$PATH"
-agent version
-cage check
-```
-
-For this standalone route, keep the source checkout in place and the PATH
-setting in your shell startup file. If an Agent command is already installed,
-use that installation instead of replacing its links blindly.
+**Independent source build.** Agent remains its own Go module. From an
+exported `tools/agent` source directory, run `go build -o /your/bin/agent .`
+with Go 1.26+. Keep the installed companion commands on PATH. No sibling
+source tree or shared Go workspace is needed. The runtime contains no builder code or separate action helper. Hire is
+installed independently for authoring.
 
 **After either source installation**, run `cage check`. Linux Cage requires
 Bubblewrap and usable kernel namespaces; macOS uses the system Seatbelt backend.
@@ -62,13 +48,61 @@ export ANTHROPIC_API_KEY='YOUR_API_KEY'
 ask 'Reply with hello.'
 ```
 
+## Reuse an expert across workspaces
+
+```sh
+hire new experts/names 'Normalize a supplied list of names'
+mkdir names-work
+printf '%s\n' pear apple pear banana > names-work/names.txt
+
+cat > experts/names/bin/check <<'SH'
+#!/bin/sh
+set -eu
+test -f sorted.txt || exit 1
+LC_ALL=C sort -u names.txt | cmp -s - sorted.txt
+SH
+chmod +x experts/names/bin/check
+
+agent show -C names-work -evidence names-evidence experts/names
+agent run -C names-work -evidence names-evidence experts/names -- \
+  'Read names.txt and write sorted.txt with sorted, unique names.' > answer.txt
+cat names-work/sorted.txt
+```
+
+`hire new` uses the existing builder to create only reusable
+files. Edit its instructions, memory, and procedures as needed. A portable
+definition requires `AGENTS.md` and executable `bin/check`; the other Markdown
+files and `skills/`, `tools/`, and `agents/` are optional. A second workspace
+can use the same definition unchanged.
+
+With `-C`, explicit goal text replaces the optional standing `GOAL.md`.
+`-goal-file FILE` keeps a goal out of the invocation arguments. Piped stdin
+is evidence; if no explicit or standing goal exists, stdin supplies the goal.
+Private definition and input bodies never appear in companion-program argv.
+
+The existing workspace holds deliverables. Mutable state defaults to
+`WORKSPACE/state`; `-state DIR` selects another location. Controller evidence
+defaults to `~/.agent/KEY`, or `$AGENT_DIR/KEY`, where KEY derives from the
+physical definition and workspace paths. `-evidence DIR` selects it directly.
+These are ordinary directories, with no registry. State may live within work;
+definition and controller evidence must remain outside mutable roots. The
+selected paths are printed on stderr. `trail check names-evidence/runs`
+verifies the Ask sessions through the existing archive tool.
+
+The command reads stdin, writes its answer to stdout, sends progress to stderr,
+and returns Ply's outcome unchanged: 0 accepted, 1 broken, 2 unfinished,
+3 declined, 75 parked, 125 boundary failure, 130 interrupted. Limits such as
+`-turns`, `-cycles`, `-timeout`, and `-compact` pass to Ply. A passing `bin/check`
+pre-check needs no model call. An empty answer on that re-entry is expected;
+the deliverable is already in the workspace.
+
 ## Build your first worker
 
 This small worker turns a list of names into a sorted, deduplicated file.
 There is an exact expected answer, so success is easy to inspect.
 
 ```sh
-agent new names-worker 'Maintain a clean list of names'
+hire new -home names-worker 'Maintain a clean list of names'
 printf '%s\n' pear apple pear banana > names-worker/work/names.txt
 
 cat > names-worker/GOAL.md <<'GOAL'
@@ -153,8 +187,8 @@ The verifier remains outside the action boundary.
 
 ```sh
 agent run -checkpoint daily names-worker
-agent history names-worker
-agent history names-worker check
+hire history names-worker
+hire history names-worker check
 ```
 
 A checkpoint keeps the current Ply/Ask conversation across interruption and
@@ -172,8 +206,8 @@ For recurring work, fill in `HEARTBEAT.md` and supply `bin/wake`:
 `agent tick HOME` runs that process once. Scheduling belongs outside Agent.
 [Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend) can durably submit an exact Agent
 invocation, retain output, and hold uncertain attempts for review.
-[Hire](https://github.com/patrickyoung/bench-hire) adds a web interface for
-assigning tasks, reviewing results, and setting routines.
+The separately pinned legacy Hire web application supplies task review and
+routines. The headless Hire command in this monorepo builds definitions.
 
 ## Give it skills and specialists
 
@@ -184,7 +218,7 @@ catalogue; ambient personal skills are not silently inherited. Programs in
 Create a separate specialist and edit its goal and check before running it:
 
 ```sh
-agent new names-worker/agents/reviewer 'Review one bounded result'
+hire new -home names-worker/agents/reviewer 'Review one bounded result'
 agent check names-worker
 agent specialist names-worker reviewer -- 'Review the supplied evidence.'
 ```
@@ -192,66 +226,38 @@ agent specialist names-worker reviewer -- 'Review the supplied evidence.'
 A specialist gets its own definition, check, state, and history. It does not
 inherit the parent's conversation. Supply actual evidence explicitly; the
 example task text is not permission to inspect arbitrary private context.
-Specialist invocation is an external controller operation, not an escape
-from a parent's network-denied action process.
+Under an explicitly selected ordinary host boundary (`-no-cage`), a parent
+can invoke the same Agent command as a foreground child, pipe explicit input,
+collect stdout, and inspect its exit status. Use `agent run -C WORKSPACE CHILD
+-- GOAL` for portable children or `agent specialist PARENT NAME` for existing
+homes. The child inherits Ply's model, effort, approval gate, and depth count.
+A custom inherited action wrapper cannot be rebound and is refused. Inside
+default Cage, specialist execution belongs to the external controller. A
+failed child never establishes parent completion: the parent's check still
+must accept. Scheduling and parallel composition stay with Unix callers.
 
-## Improve through review
+## Build and maintain experts separately
 
-For a home session that failed and later passed its verifier:
-
-```sh
-agent learn -into house -why HOME SESSION.jsonl
-agent learn -into house -prepare recovery.json HOME SESSION.jsonl
-agent learn -show recovery.json HOME
-agent learn -admit recovery.json HOME
-```
-
-Replace `HOME` and `SESSION.jsonl` with a real home and one of its run files.
-Hone owns the recovery test. Inspection and admission make no model call;
-preparation words a lesson and saves exact bytes for review. Exit 1 can mean
-nothing useful was learned. Source teaching and curated facts are distinct
-from verified-recovery learning.
-
-A worker may also write one proposed root-definition patch under
-`work/proposals/`. `agent proposals HOME PATCH` shows it without applying it.
-`agent amend HOME PATCH` validates it and asks May for exact approval. A parked
-request exits 75; decide its digest at a terminal and retry the same amendment.
-Agent rechecks the hashes, applies it, validates the home, and rolls back on
-failure. Evidence stays under `.agent/amendments/`.
-
-## Keep external effects explicit
-
-```sh
-agent actions HOME
-agent actions HOME ticket.json
-AGENT_ACTION_PATH=/operator/owned/actions \
-  agent act HOME ticket.json SESSION.jsonl
-```
-
-The worker prepares strict proposals under `work/actions/`; the controller
-executes them through Action and May outside Cage. Credentials, connector
-paths, policy, and approval state stay out of the worker's environment.
-Exit 125 means an effect may exist without a trustworthy result: inspect
-before retrying.
+Use [Hire](../hire/README.md) for `new`, model-backed `build`, and existing
+home maintenance. Authoring commands are no longer part of Agent. Hire itself
+runs an expert through this same runner; the generated folder is its handoff.
+Hone, Trail, Action and May retain learning, archive, external-effect and
+approval responsibilities. See [Hire's security boundary](../hire/SECURITY.md).
 
 ## Reference and learning resources
 
-`agent help` lists every command: `agent new`, `agent check`, `agent show`,
-`agent run`, `agent tick`, `agent specialist`, `agent learn`, `agent history`,
-`agent actions`, `agent act`, `agent proposals`, `agent amend`, and `agent version`.
-Run flags include `-m`, `-effort`, `-checkpoint`, `-net`, `-no-cage`, and `-q`.
-
-Run/specialist preserve Ply outcomes: 0 accepted, 1 broken, 2 unfinished.
-Other operations preserve their component's status, including 75 for approval
-pending and 125 for an uncertain effect/boundary. `AGENT_ASK`, `AGENT_PLY`,
-`AGENT_BRIEF`, `AGENT_CAGE`, `AGENT_HONE`, `AGENT_TRAIL`, `AGENT_MAY`, and
-`AGENT_ACTION` select exact dependency executables.
+`agent help` lists `check`, `show`, `run`, `tick`, `specialist` and `version`.
+`AGENT_ASK`, `AGENT_PLY`, `AGENT_BRIEF` and `AGENT_CAGE` select exact runtime
+companions. `HIRE_AGENT` selects Agent for the separate builder.
 
 - [Guided business-process tutorial](https://patrickyoung.github.io/agent/guide.html)
 - [System-builder skills](plugins/bench-system-builder/README.md) for guided design and operation
 - [MCP integration](MCP.md), [design](DESIGN.md), and [security boundary](SECURITY.md)
 - [Evaluation corpus](eval/README.md) for offline behavior checks
 
-Contributors: read [AGENTS.md](AGENTS.md), then run
-`sh -n bin/agent bin/agent-action-shell` and `sh bin/agent_test.sh`.
+Contributors: read [AGENTS.md](AGENTS.md), then run `go test ./...`,
+`go test -race ./...` and `go vet ./...`. The monorepo's
+`scripts/agent-hire_test.sh` preserves the 163 existing runtime/maintenance
+checks across the two public executables. See [runner extraction](RUNNER.md)
+for executable integration and release-boundary details.
 [MIT license](LICENSE).

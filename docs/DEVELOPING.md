@@ -20,7 +20,7 @@ make check-examples                    # runnable starters against local fixture
 ```
 
 `make test` uses independent source exports, uncached ordinary Go tests and
-built-command checks, plus Agent/Draft shell checks. It skips race, the separate
+built-command checks, plus Draft shell checks. It skips race, the separate
 vet pass, supplementary example suites, process integration, and native Cage
 proof. `make check` includes race, vet, supplementary suites, and integration
 with local model fixtures. Neither makes paid model calls. `make check-examples`
@@ -92,8 +92,9 @@ GOWORK=off go test ./...
 /tmp/ply help
 ```
 
-MCP and OAuth use their documented `cmd/` packages. Agent and Draft are shell
-programs with adjacent private assets; keep their directory layouts intact.
+MCP, OAuth, and A2A use their documented `cmd/` packages. Agent and Hire are
+independent native Go commands. Draft is a shell program with adjacent private
+assets; keep its directory layout intact.
 
 To extract one clean **committed** tool without siblings, return to the root:
 

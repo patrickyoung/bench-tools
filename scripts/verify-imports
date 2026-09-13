@@ -16,6 +16,8 @@ def main():
     components = json.loads((root / 'components.json').read_text())['components']
     for component in components:
         name, path, source = component['name'], component['path'], component['source']
+        if source.get('origin') == 'monorepo':
+            raise ValueError(name + ': monorepo-native source has no initial import; use current source checks')
         if git('rev-parse', source['commit'] + '^{tree}') != source['tree']:
             raise ValueError(name + ': source commit/tree mismatch')
         subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor',

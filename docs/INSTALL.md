@@ -28,7 +28,7 @@ ask version
 Add tools when you reach the corresponding workflow: `python3 scripts/install brief`
 for reusable instructions, or `python3 scripts/install ask ply` for checked actions.
 
-Without names, the installer builds and installs all 20 commands:
+Without names, the installer builds and installs all 23 commands:
 
 ```sh
 python3 scripts/install
@@ -72,7 +72,9 @@ Use `python3 scripts/build` for all tools. `make build` is equivalent.
 Selection is by component name. Selecting `mcp` builds `mcp`, `mcp-legacy`,
 `mcpbox`, and `mcpserve`; selecting `ply` builds only `ply`, so also select
 `ask` for its normal model path. `python3 scripts/build --list` shows the full
-mapping. The [tool guide](TOOLS.md) explains runtime companions.
+mapping. Selecting `a2a` builds `a2a` and `a2aserve`; serving also requires
+Tend. Hire builds expert definitions and Agent runs them. The
+[tool guide](TOOLS.md) explains runtime companions.
 
 Programs, private assets, top-level docs, manuals, licenses, and source receipts
 are copied under `PREFIX/lib/bench-tools/TOOL`. Relative links in `PREFIX/bin`

@@ -68,7 +68,9 @@ Exact inventory: [inventory.json](review/inventory.json).
 - The original repositories remain unchanged and available. This new local
   repository has no remote, published release, global installation, or migrated
   user data. There is no claim of having cut over published source ownership.
-- Fifteen Go modules remain independent, plus Agent and Draft as shell tools.
+- The initial import contained fifteen Go modules plus Agent and Draft as shell
+  tools. Agent now has its own native Go module and composes the same public
+  executables; Draft remains a shell tool. No shared module was introduced.
   There is no root `go.mod`, `go.work`, sibling `replace`, shared runtime,
   umbrella command, daemon, synchronized version, or normalized exit contract.
 - Companion tools are optional or required exactly as their own contracts say.
@@ -124,3 +126,31 @@ and process contracts; bring Guide after correcting its setup drift. Review
 Web's May adapter and Clerk's private gate separately. Vouch must retain its
 own credential contract if later included. Pack, Studio, and Manage need their
 recorded design/setup questions answered, not a mass move or a shared runtime.
+
+## Subsequent headless Hire extraction — September 13, 2026
+
+The explicit runner/builder split now lives entirely in the monorepo:
+`tools/agent` runs experts and `tools/hire` builds them. Hire retains its module
+identity and uses Agent as an ordinary public executable. Its builder guidance
+comes from the former Hire platform/evidence/authority prompts, while existing
+home authoring and maintenance moved out of Agent without a second runner.
+This is a selected extraction, not a claim that the entire web application or
+its Git ancestry was imported. The source record identifies that upstream
+baseline; the original web checkout, its data and pinned installs remain
+separate. After this extraction there were 18 components, 17 independent Go modules and 21
+commands. A web-application release cutover requires its old Agent authoring
+call sites to adopt Hire; the headless development build does not do that
+silently or keep authoring aliases inside the runner.
+
+### A2A stays at the network boundary
+
+A2A is a new independently built Go component in the monorepo. It uses the
+official SDK v2.5.0 and supplies a client filter and separate TLS listener.
+The listener composes Tend's public executable for supervision and Agent's
+public executable for expert execution. Hire remains the builder. No sibling
+Go imports, new model loop, orchestration service, or shared runtime are added.
+
+Its manifest source is explicitly monorepo-native, without an invented upstream
+repository or import hash. The optional historical import-baseline proof does
+not apply to this new source; current source boundaries, exports, builds, and
+process contracts do.

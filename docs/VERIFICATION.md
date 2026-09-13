@@ -117,3 +117,53 @@ drift, Web/Clerk's older May contract, and unversioned/coupled experiments.
 A green tool gate does not make those deferred projects a tested suite.
 Publishing, changing public module destinations, updating Bench/Hire pins,
 and adapting their source packagers remain separate migration steps.
+
+## Agent runner / headless Hire builder
+
+`python3 scripts/check agent hire` builds separate native commands from isolated
+component exports and runs each component's Go tests/race/vet. Hire's embedded
+home-maintenance and builder-check assets also receive shell syntax checks.
+Agent contains no builder or shell action helper.
+
+The public-process suite runs the 163 original runtime/maintenance assertions
+against the separate Agent and Hire executables. It exercises Agent -> Brief
+-> Ply -> Ask, checked artifacts and repair, portable definitions across
+workspaces, child context separation, an admitted local MCP server, unfinished
+verdicts, preserved nesting depth, and direct/nested cancellation with replay.
+It also proves Hire builds a definition through Agent and another Agent runs
+the generated expert independently. Builder verification never executes the
+generated verifier with controller authority.
+
+Model transport uses loopback fixtures without user credentials. Native Cage
+enforcement remains explicit: `--native-cage` adds definition-write refusal
+on a supported backend. The ordinary offline suite explicitly uses host actions.
+
+```sh
+python3 scripts/build agent hire
+python3 scripts/check-integration.py --bin-dir .build/bin --agent-only --portable --native-cage
+```
+
+Packaging/install checks exercise 23 commands, relocation, repeated install and
+removal in disposable prefixes. They do not update an existing pinned Hire web
+installation; its old authoring calls need an explicit release migration.
+
+## A2A executable boundary
+
+`tools/a2a` has standalone Go/race/vet checks against the official SDK. Root
+full integration additionally supplies separately built Tend, OAuth, and A2A
+commands to its TLS/ownership/continuation tests. `scripts/check-a2a.py` exercises
+the actual listener and client, graceful and abrupt interruption, persistent
+unknown outcomes, and A2A -> Tend -> Agent -> Ask/Ply with a local model fixture.
+It proves separate workspaces/model contexts, exported checked files, and
+independent Ask replay verification. No live model evaluation or remote
+production deployment is implied.
+
+For focused iteration after building the needed tools:
+
+```sh
+python3 scripts/check a2a
+python3 scripts/check-a2a.py --bin-dir .build/bin
+```
+
+The component's manual gives environment variables for running its companion
+executable cases independently; absent companions produce explicit skips.

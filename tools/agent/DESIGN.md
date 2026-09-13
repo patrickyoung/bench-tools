@@ -13,6 +13,10 @@ own them.
 The complete research and product rationale is in Bench's
 [Filesystem Agents](https://github.com/patrickyoung/bench/blob/main/FILESYSTEM_AGENTS.md).
 
+The separate-workspace contract and native extraction are described in
+[RUNNER.md](RUNNER.md). Existing home layout remains compatible; `-C` binds a
+reusable definition to independently selected work, state, and evidence.
+
 ## Requirements
 
 - [x] An agent is an ordinary directory with human-readable definition,
@@ -108,14 +112,14 @@ The complete research and product rationale is in Bench's
     derived:
       private temporary Agent Skill used only to load bounded home context
 
-The temporary skill is deleted after Ply has loaded it. The resulting exact
+The temporary skill is deleted when the foreground Ply invocation exits. The resulting exact
 system prompt remains in the Ask session, so deleting the transport does not
 delete the evidence.
 
 ## Check
 
 ```sh
-sh -n bin/agent bin/agent-action-shell && sh bin/agent_test.sh
+go test ./... && go test -race ./... && go vet ./...
 sh eval/run.sh  # integration corpus; requires the installed public suite
 ```
 
@@ -125,10 +129,14 @@ sh eval/run.sh  # integration corpus; requires the installed public suite
       AGENTS.md
       DESIGN.md
       README.md
-      bin/
-        agent
-        agent-action-shell
-        agent_test.sh
+      go.mod          independent native command module
+      *.go            validation and public-process composition
+      runner_test.go  native runtime tests
+      eval/            offline home fixtures
+
+Hire is a separate component under `tools/hire`. Its builder uses this runner
+through the public executable. The combined legacy behavioral suite lives at
+`scripts/agent-hire_test.sh`; neither component imports the other's code.
 
 ## Traps
 
@@ -146,5 +154,5 @@ sh eval/run.sh  # integration corpus; requires the installed public suite
   provider. Parallel specialists therefore require an explicitly networked or
   externally orchestrated slice, not a silent widening.
 - Cage does not become the effect policy. The worker can prepare an Action
-  proposal, but `agent act` is a separate controller invocation and scrubs its
+  proposal, but `hire act` is a separate controller invocation and scrubs its
   connector and approval capabilities from model runs.

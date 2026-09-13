@@ -56,11 +56,12 @@ A passing check proves only what those tests cover.
 | Explain, summarize, or transform supplied material | [Ask](tools/ask/README.md) | [Brief](tools/brief/README.md) for a reusable procedure |
 | Let a model edit files or use programs until a check passes | [Ply](tools/ply/README.md) | [Cage](tools/cage/README.md) for write/network limits |
 | Produce a report with traceable sources | [Context](tools/context/README.md) + Ask | [Cite](tools/cite/README.md) to check citation identities |
-| Give a repeatable job a directory of instructions and checks | [Agent](tools/agent/README.md) | [Tend](tools/tend/README.md) for durable queued attempts |
+| Build and run a reusable expert definition | [Hire](tools/hire/README.md) builds; [Agent](tools/agent/README.md) runs | [Tend](tools/tend/README.md) for durable queued attempts |
+| Call or expose an agent on another machine | [A2A](tools/a2a/README.md) | Agent runs local work; Tend supervises its attempt |
 | Control a proposed external change | [Action](tools/action/README.md) | [May](tools/may/README.md) for a recorded human decision |
 | Build a tool with help from an LLM | [The builder guide](docs/BUILD-WITH-AN-LLM.md) | [Draft](tools/draft/README.md) for a structured design workflow |
 
-[The full tool guide](docs/TOOLS.md) covers all **17 components and 20 public
+[The full tool guide](docs/TOOLS.md) covers all **19 components and 23 public
 commands**, including Rules, Hone, Trail, MCP, OAuth, and Weave. Install only
 the components you need; their runtime companions are selected separately.
 
@@ -89,7 +90,7 @@ have [additional prerequisites](docs/DEVELOPING.md#choose-the-right-check).
 From this checkout:
 
 ```sh
-make build                    # all 20 commands in .build/bin
+make build                    # all 23 commands in .build/bin
 make test                     # ordinary checks, no paid model calls
 make check                    # full standalone and process integration checks
 ```

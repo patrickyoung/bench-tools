@@ -28,8 +28,11 @@ When changing `agent`:
   or the user's state;
 - stdout is the answer or requested artifact, stderr is progress, and exit
   status is the outcome;
-- run `sh -n bin/agent bin/agent-action-shell` and
-  `sh bin/agent_test.sh` before reporting success.
+- run `go test ./...`, `go test -race ./...` and `go vet ./...`;
+- Agent is the focused native runner. Authoring and home maintenance belong to
+  the separate Hire command. Do not embed builder code or add legacy authoring
+  aliases to Agent. Their public process contract is tested at the monorepo
+  boundary with `scripts/agent-hire_test.sh` and the integration suite.
 
 Do not add a provider adapter, agent loop, skill parser, scheduler, daemon,
 registry, memory index, task database, sandbox implementation, or approval UI.

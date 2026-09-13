@@ -2,6 +2,27 @@
   "schema": 1,
   "components": [
     {
+      "name": "a2a",
+      "path": "tools/a2a",
+      "module": "github.com/patrickyoung/a2a",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "a2a",
+          "package": "./cmd/a2a"
+        },
+        {
+          "name": "a2aserve",
+          "package": "./cmd/a2aserve"
+        }
+      ]
+    },
+    {
       "name": "action",
       "path": "tools/action",
       "module": "github.com/patrickyoung/action",
@@ -20,7 +41,7 @@
     {
       "name": "agent",
       "path": "tools/agent",
-      "module": null,
+      "module": "github.com/patrickyoung/agent",
       "source": {
         "repository": "https://github.com/patrickyoung/agent.git",
         "commit": "f8e566e20f15f718d5104bc776f5ed2b34d5ff7f",
@@ -29,7 +50,7 @@
       "commands": [
         {
           "name": "agent",
-          "entry": "bin/agent"
+          "package": "."
         }
       ]
     },
@@ -126,6 +147,23 @@
         {
           "name": "draft",
           "entry": "bin/draft"
+        }
+      ]
+    },
+    {
+      "name": "hire",
+      "path": "tools/hire",
+      "module": "github.com/patrickyoung/bench-hire",
+      "source": {
+        "repository": "https://github.com/patrickyoung/bench-hire.git",
+        "commit": "631194190f9690091d0eacb837bf5905c073f7cb",
+        "tree": "33b5ae7c99c4270db4577c57d334d8ca335a3b15",
+        "extraction": "Headless builder; Agent home authoring extracted from tools/agent, builder instructions adapted from Hire. Original web checkout retained separately."
+      },
+      "commands": [
+        {
+          "name": "hire",
+          "package": "."
         }
       ]
     },

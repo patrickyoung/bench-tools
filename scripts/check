@@ -302,10 +302,6 @@ class CheckRun:
                 self.command(name + "-build-" + command["name"],
                              ["go", "build", "-trimpath", "-buildvcs=false", "-o",
                               self.bin / command["name"], command["package"]], source, env)
-        elif name == "agent":
-            # Preserve the public script's existing private companion lookup.
-            for entry in ("agent", "agent-action-shell"):
-                shutil.copy2(source / "bin" / entry, self.bin / entry)
         elif name == "draft":
             for dependency in DRAFT_DEPENDENCIES:
                 self.build(dependency)
@@ -329,6 +325,8 @@ class CheckRun:
             for command in component["commands"]:
                 self.command(name + "-version-" + command["name"],
                              [self.bin / command["name"], "version"], source, env)
+            if name == "hire":
+                self.command("hire-syntax", ["sh", "-n", "builder/home.sh", "expert/bin/check"], source, env)
             if self.quick:
                 return
             if name == "may":
@@ -347,9 +345,6 @@ class CheckRun:
                 self.command("weave-built-smoke", ["python3", "tests/smoke", self.bin / "weave"], source, env)
             if name == "ply":
                 self.check_ply_extras(source, env)
-        elif name == "agent":
-            self.command("agent-syntax", ["sh", "-n", "bin/agent", "bin/agent-action-shell"], source, env)
-            self.command("agent-test", ["sh", "bin/agent_test.sh"], source, env)
         elif name == "draft":
             env = self.composition_env(env)
             self.command("draft-syntax", ["sh", "-n", "bin/draft"], source, env)
@@ -383,8 +378,16 @@ class CheckRun:
         for name in self.components:
             self.build(name)
         env = self.composition_env(self.env)
+        source, isolated = self.export("a2a")
+        a2a_env = self.composition_env(isolated)
+        a2a_env.update(A2A_TEST_TEND=str(self.bin / "tend"),
+                       A2A_TEST_OAUTH=str(self.bin / "oauth"),
+                       A2A_TEST_CLIENT=str(self.bin / "a2a"))
+        self.command("a2a-executable-contracts",
+                     ["go", "test", "-count=1", "-timeout", "90s", "./internal/serve"], source, a2a_env)
         self.command("public-process-integration",
-                     ["python3", self.root / "scripts/check-integration.py", "--bin-dir", self.bin],
+                     ["python3", self.root / "scripts/check-integration.py", "--bin-dir", self.bin]
+                     + (["--native-cage"] if self.native_cage else []),
                      self.root, env)
 
 

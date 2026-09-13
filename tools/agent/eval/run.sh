@@ -2,9 +2,12 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd -P)
-agent=$root/bin/agent
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/agent-eval.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+agent=${AGENT_TEST_EXECUTABLE:-$tmp/agent}
+if [ -z "${AGENT_TEST_EXECUTABLE:-}" ]; then
+    (cd "$root" && go build -o "$agent" .)
+fi
 cp -R "$root/eval/corpus" "$tmp/corpus"
 
 ply_program=${AGENT_PLY:-ply}

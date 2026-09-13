@@ -3,7 +3,7 @@
 From the repository root:
 
 ```sh
-scripts/build                              # all 20 commands under .build/bin
+scripts/build                              # all 23 commands under .build/bin
 scripts/build ask ply                      # only selected components
 scripts/install                           # build and install into ~/.local
 scripts/install --from-build .build --prefix /tmp/bench-preview
@@ -32,7 +32,7 @@ Fixtures use local processes and loopback services, with no paid model calls.
 
 `--quick` retains isolated source exports, before/after boundary guards,
 ordinary uncached Go tests (including Go's built-in vet checks), built command
-versions, and the complete Agent/Draft shell checks. It skips race, the separate
+versions, and Draft's shell checks. It skips race, the separate
 `go vet` pass, May self-check, Cage cross-build/native proof, Ply supplemental
 suites, Weave Python/smoke tests, and public-process integration. It cannot be
 combined with `--native-cage` or `--integration-only`. If a C compiler is absent,
@@ -65,14 +65,15 @@ contents may change through `draft sync`; updates preserve it along with any
 more restrictive permissions from your umask, and uninstall accepts those
 changes. Other assets and executable modes remain
 verified. After updating companions, run `draft sync` and put the packaged skill
-on `BRIEF_PATH` as printed by the installer. Agent's action-shell helper stays
-private beside Agent. The existing manuals and top-level documentation remain
+on `BRIEF_PATH` as printed by the installer. Agent is a native runner; Hire
+owns expert authoring. The existing manuals and top-level documentation remain
 inside each package (for example, `man ~/.local/lib/bench-tools/ask/ask.1`).
 
 `python3 scripts/check-install.py` tests all built commands and their help/version
-interfaces, moves an installation to a path with spaces, exercises Agent
-scaffolding and Draft's reference/template/Brief lookup without a model, repeats
-the installation, and uninstalls while preserving an unrelated file. It uses
+interfaces and moves an installation to a path with spaces. It exercises Hire
+scaffolding, Agent inspection, and Draft's reference/template/Brief lookup
+without a model, then repeats installation and uninstalls while preserving an
+unrelated file. It uses
 a disposable prefix and never installs into your actual home.
 
 Each component is copied into a separate temporary directory without any
@@ -86,7 +87,8 @@ testing a different program than the current leaf build.
 Every Go command is built from that export with `GOWORK=off`, followed by
 uncached ordinary and race tests, vet, and a built version check. Ply's offline
 evaluation, job, and edit suites and Weave's pure Python and built-binary smoke
-checks also run. Agent uses its fake-public-binary shell suite. Draft builds
+checks also run. Agent and Hire have independent Go tests; their preserved
+fake-public-binary shell suite runs in process integration. Draft builds
 its named public dependencies independently, refreshes its generated reference
 only in the scratch copy, then runs its shell suite and Brief lint. Its tracked
 reference is not rewritten or represented as freshly synchronized.

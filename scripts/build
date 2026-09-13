@@ -46,8 +46,6 @@ def copy_payload(source, package, component):
     name = component["name"]
     if not component["module"]:
         entries = [command["entry"] for command in component["commands"]]
-        if name == "agent":
-            entries.append("bin/agent-action-shell")
         for entry in entries:
             target = package / entry
             target.parent.mkdir(parents=True, exist_ok=True)

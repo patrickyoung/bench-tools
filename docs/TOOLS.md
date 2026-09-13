@@ -3,8 +3,8 @@
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **17 components and 20 public commands**. MCP supplies
-four commands; each other component supplies one. [Get started](GETTING-STARTED.md)
+This guide covers all **19 components and 23 public commands**. MCP supplies
+four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
 
@@ -54,16 +54,21 @@ A passing check proves what that check covers: tests must cover the API
 constraint too. Without `-check`, Ply's exit 0 only means the model stopped.
 See [Ply's manual](../tools/ply/ply.1) for limits, checkpoints, and confinement.
 
-**[Agent](../tools/agent/README.md)** gives that work a home. For example, a
+**[Agent](../tools/agent/README.md)** runs that work.
+**[Hire](../tools/hire/README.md)** builds its definition. For example, a
 weekly report needs stable instructions, inputs, a check, and earlier runs:
 
 ```sh
-agent new report-worker 'Maintain the weekly project report'
+hire new -home report-worker 'Maintain the weekly project report'
 agent show report-worker
 ```
 
 This scaffolds files and prints their composition without calling a model.
 Edit `GOAL.md` and `bin/check`, put inputs in `work/`, then use `agent run report-worker`.
+For a reusable expert, `hire new EXPERT` creates just its definition.
+`agent run -C WORKSPACE -evidence EVIDENCE EXPERT -- GOAL` binds it to a separate
+workspace and invokes the same native runner. The definition stays unchanged;
+stdout carries the answer and files carry the deliverables.
 The [first-worker tutorial](../tools/agent/README.md#build-your-first-worker) includes an exact expected result.
 `agent check` validates the home's structure; `bin/check`, run through Ply, judges the task outcome.
 
@@ -298,3 +303,22 @@ access to the service; Action and May separately control a proposed operation.
 To build your next tool, specify its input, output, errors, and a check first.
 Follow [Build with an LLM](BUILD-WITH-AN-LLM.md), try the [recipes](RECIPES.md),
 or read the [comparison with current agent tooling](COMPARISONS.md).
+
+## A2A: remote agents through the same process interfaces
+
+**[A2A](../tools/a2a/README.md)** supplies two independent commands: `a2a`
+reads one protocol request from stdin and prints a result or JSON event stream;
+`a2aserve` exposes one operator-selected command over authenticated HTTPS. The
+listener runs it through Tend with a separate workspace per task. Agent still
+owns expert execution and Hire still owns expert construction.
+
+```sh
+a2a request -cert client.pem -key client.key -ca ca.pem \
+  send https://worker.example/rpc < request.json > result.json
+```
+
+The [manual](../tools/a2a/README.md) covers request shapes, continuation, file
+artifacts, mTLS, and composing the existing OAuth credential tool. Exit 75
+means the task is unfinished; 125 means its outcome is uncertain. A listener
+is a network service, while the client remains a Unix filter. Neither owns
+a model loop, scheduler, remote agent registry, or automatic retry policy.

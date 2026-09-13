@@ -62,19 +62,29 @@ class BuildWorkflowTests(unittest.TestCase):
                                     "module": "example.com/" + name,
                                     "source": {"commit": "original-fixture"},
                                     "commands": [{"name": name, "package": "."}]})
-        for name in ("agent", "draft"):
+        for name in ("agent", "hire", "draft"):
             leaf = self.root / "tools" / name
-            (leaf / "bin").mkdir(parents=True)
-            entries = [name] + (["agent-action-shell"] if name == "agent" else [])
-            for entry in entries:
-                shutil.copy2(ROOT / "tools" / name / "bin" / entry, leaf / "bin" / entry)
+            leaf.mkdir(parents=True)
             for entry in ("README.md", "LICENSE"):
                 shutil.copy2(ROOT / "tools" / name / entry, leaf / entry)
             if name == "draft":
+                (leaf / "bin").mkdir()
+                shutil.copy2(ROOT / "tools/draft/bin/draft", leaf / "bin/draft")
                 shutil.copytree(ROOT / "tools/draft/skills", leaf / "skills")
-            self.components.append({"name": name, "path": "tools/" + name, "module": None,
-                                    "source": {"commit": "original-fixture"},
-                                    "commands": [{"name": name, "entry": "bin/" + name}]})
+                module = None
+            else:
+                for entry in (ROOT / "tools" / name).glob("*.go"):
+                    if not entry.name.endswith("_test.go"):
+                        shutil.copy2(entry, leaf / entry.name)
+                shutil.copy2(ROOT / "tools" / name / "go.mod", leaf / "go.mod")
+                module = "github.com/patrickyoung/" + ("bench-hire" if name == "hire" else name)
+                if name == "hire":
+                    for directory in ("builder", "expert"):
+                        shutil.copytree(ROOT / "tools/hire" / directory, leaf / directory)
+            self.components.append({"name": name, "path": "tools/" + name,
+                                    "module": module, "source": {"commit": "original-fixture"},
+                                    "commands": [{"name": name, "package": "."} if module
+                                                 else {"name": name, "entry": "bin/" + name}]})
         (self.root / "components.json").write_text(json.dumps({"schema": 1, "components": self.components}))
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
         subprocess.run(["git", "add", "."], cwd=self.root, check=True)
@@ -163,24 +173,24 @@ class BuildWorkflowTests(unittest.TestCase):
         self.assertFalse(observed["provider_key"])
         self.assertEqual(subprocess.check_output([str(self.output / "bin/one")], text=True), "original-one")
 
-    def test_shell_payload_remains_usable_after_relocation(self):
-        self.build("agent", "draft")
+    def test_separate_agent_hire_and_draft_remain_usable_after_relocation(self):
+        self.build("agent", "hire", "draft")
         relocated = self.base / "relocated prefix with spaces"
         self.output.rename(relocated)
-        self.assertEqual(sorted(p.name for p in (relocated / "bin").iterdir()), ["agent", "draft"])
+        self.assertEqual(sorted(p.name for p in (relocated / "bin").iterdir()), ["agent", "draft", "hire"])
         home, work = self.base / "home", self.base / "work"
         home.mkdir(); work.mkdir()
         env = {"PATH": str(relocated / "bin") + ":/usr/bin:/bin:/usr/sbin:/sbin",
                "HOME": str(home), "TMPDIR": str(self.base)}
-        for command in (["agent", "version"], ["agent", "new", "worker"],
+        for command in (["agent", "version"], ["hire", "new", "-home", "worker"], ["agent", "check", "worker"],
                         ["draft", "version"], ["draft", "new", "project"]):
             result = subprocess.run(command, cwd=work, env=env, text=True, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        helper = relocated / "tools/agent/bin/agent-action-shell"
-        self.assertTrue(os.access(helper, os.X_OK))
-        result = subprocess.run([str(helper)], cwd=work, env=env, text=True, capture_output=True)
+        native = relocated / "tools/agent/bin/agent"
+        self.assertFalse(native.read_bytes().startswith(b"#!"))
+        result = subprocess.run([str(native), "-c"], cwd=work, env=env, text=True, capture_output=True)
         self.assertEqual(result.returncode, 125)
-        self.assertIn("expected -c SCRIPT", result.stderr)
+        self.assertIn("expects -c SCRIPT", result.stderr)
         self.assertEqual((work / "project/DESIGN.md").read_bytes(),
                          (ROOT / "tools/draft/skills/draft/references/template.md").read_bytes())
         draft = relocated / "tools/draft"
@@ -190,7 +200,7 @@ class BuildWorkflowTests(unittest.TestCase):
                          "skills/draft/references/tools.md"}.issubset(names))
         self.assertEqual(receipt["mutable_paths"], ["skills/draft/references/tools.md"])
         agent_receipt = json.loads((relocated / "tools/agent/package.json").read_text())
-        self.assertIn("bin/agent-action-shell", {entry["path"] for entry in agent_receipt["files"]})
+        self.assertNotIn("bin/agent-action-shell", {entry["path"] for entry in agent_receipt["files"]})
         self.assertEqual(agent_receipt["commands"], ["agent"])
 
     def test_nonempty_unmanaged_output_is_untouched(self):

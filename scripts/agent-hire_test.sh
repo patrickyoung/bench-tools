@@ -1,14 +1,20 @@
 #!/bin/sh
 set -eu
 
-here=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd -P)
-agent=$here/bin/agent
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/agent-test.XXXXXX")
+agent=${AGENT_TEST_EXECUTABLE:?select the native Agent executable}
+builder=${HIRE_TEST_EXECUTABLE:?select the headless Hire executable}
+export HIRE_AGENT=$agent
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/agent-hire-test.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+agent=$(CDPATH= cd -- "$(dirname "$agent")" && pwd -P)/$(basename "$agent")
+action_interpreter=$agent
+expected_version='agent 0.3.0-dev'
 
 fake_bin=$tmp/bin
 capture=$tmp/capture
 mkdir -p "$fake_bin" "$capture"
+fake_bin=$(CDPATH= cd -- "$fake_bin" && pwd -P)
+capture=$(CDPATH= cd -- "$capture" && pwd -P)
 
 cat >"$fake_bin/brief" <<'EOF'
 #!/bin/sh
@@ -186,14 +192,14 @@ assert_not_contains() {
 }
 
 version_output=$($agent version)
-if [ "$version_output" = 'agent 0.2.1' ]; then
+if [ "$version_output" = "$expected_version" ]; then
   ok 'version follows the suite component contract'
 else
   not_ok 'version follows the suite component contract'
 fi
 
 home=$tmp/support-chief
-AGENT_BRIEF="$fake_bin/brief" "$agent" new "$home" 'Own the support queue' >/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" new -home "$home" 'Own the support queue' >/dev/null
 home=$(
   cd -P "$home"
   pwd -P
@@ -234,7 +240,7 @@ assert_contains 'show names skill-selection evidence' "$show" "$home/.agent/sele
 assert_contains 'show names action proposal root' "$show" "$home/work/actions"
 
 child=$home/agents/researcher
-AGENT_BRIEF="$fake_bin/brief" "$agent" new "$child" 'Research one bounded question' >/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" new -home "$child" 'Research one bounded question' >/dev/null
 child_show=$tmp/child-show
 AGENT_BRIEF="$fake_bin/brief" "$agent" show "$home" >"$child_show"
 assert_contains 'show catalogues validated specialist homes' "$child_show" "$child"
@@ -249,7 +255,7 @@ fi
 rm "$bad_child"
 
 bad=$tmp/bad
-AGENT_BRIEF="$fake_bin/brief" "$agent" new "$bad" 'Bad fixture' >/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" new -home "$bad" 'Bad fixture' >/dev/null
 rm "$bad/AGENTS.md"
 ln -s "$home/AGENTS.md" "$bad/AGENTS.md"
 if AGENT_BRIEF="$fake_bin/brief" "$agent" check "$bad" >/dev/null 2>&1; then
@@ -259,7 +265,7 @@ else
 fi
 
 locked=$tmp/locked
-AGENT_BRIEF="$fake_bin/brief" "$agent" new "$locked" 'Locked fixture' >/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" new -home "$locked" 'Locked fixture' >/dev/null
 chmod 500 "$locked/state"
 if AGENT_BRIEF="$fake_bin/brief" "$agent" check "$locked" >/dev/null 2>&1; then
   not_ok 'check refuses unwritable mutable state'
@@ -285,7 +291,7 @@ if AGENT_WORK="$locked/work" \
    AGENT_ACTION_TMP="$locked_action_tmp" \
    AGENT_FIND="$(command -v find)" \
    AGENT_CAGE="$fake_bin/cage" \
-   "$here/bin/agent-action-shell" -c ':' >/dev/null 2>"$hardlink_stderr"; then
+   "$action_interpreter" -c ':' >/dev/null 2>"$hardlink_stderr"; then
   not_ok 'action boundary rechecks hard links'
 else
   status=$?
@@ -324,7 +330,7 @@ if PATH="$home/tools:$PATH" \
    AGENT_FIND="$trusted_find" \
    AGENT_CAGE="$fake_bin/capture-cage" \
    AGENT_TEST_CAPTURE="$capture" \
-   "$here/bin/agent-action-shell" -c ':' >/dev/null 2>&1; then
+   "$action_interpreter" -c ':' >/dev/null 2>&1; then
   ok 'action boundary reaches pinned Cage'
 else
   not_ok 'action boundary reaches pinned Cage'
@@ -345,7 +351,7 @@ if AGENT_WORK="$home/work" \
    AGENT_FIND="$trusted_find" \
    AGENT_CAGE="$fake_bin/capture-cage" \
    AGENT_TEST_CAPTURE="$capture" \
-   "$here/bin/agent-action-shell" -c ':' >/dev/null 2>&1; then
+   "$action_interpreter" -c ':' >/dev/null 2>&1; then
   not_ok 'action boundary refuses replaceable temporary roots'
 else
   status=$?
@@ -482,7 +488,7 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_HONE="$fake_bin/hone" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" learn -into local-skill -m lesson-model -n 2 -N "$home" recovery \
+"$builder" learn -into local-skill -m lesson-model -n 2 -N "$home" recovery \
 >"$learn_stdout" 2>/dev/null
 assert_contains 'learn preserves Hone stdout' "$learn_stdout" 'fixture lesson'
 assert_contains 'learn forwards an explicit destination skill' "$capture/hone-argv" 'local-skill'
@@ -496,14 +502,14 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_HONE="$fake_bin/hone" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" learn -into local-skill -why "$home" recovery >/dev/null 2>/dev/null
+"$builder" learn -into local-skill -why "$home" recovery >/dev/null 2>/dev/null
 assert_contains 'learn forwards model-free evidence review' "$capture/hone-argv" '-why'
 
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_HONE="$fake_bin/hone" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" learn -into local-skill -prepare recovery.json "$home" recovery >/dev/null 2>/dev/null
+"$builder" learn -into local-skill -prepare recovery.json "$home" recovery >/dev/null 2>/dev/null
 learning_proposal=$home/.agent/learning/proposals/recovery.json
 assert_contains 'learn scopes exact proposal preparation' "$capture/hone-argv" "$learning_proposal"
 assert_contains 'learn forwards Hone exact preparation' "$capture/hone-argv" '-prepare'
@@ -513,7 +519,7 @@ chmod 600 "$learning_proposal"
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_HONE="$fake_bin/hone" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" learn -show recovery.json "$home" >/dev/null 2>/dev/null
+"$builder" learn -show recovery.json "$home" >/dev/null 2>/dev/null
 assert_contains 'learn show invokes Hone without a session' "$capture/hone-argv" 'show'
 assert_contains 'learn show reads the scoped proposal' "$capture/hone-argv" "$learning_proposal"
 assert_not_contains 'learn show resolves no Ask program' "$capture/hone-ask" "$fake_bin/ask"
@@ -522,18 +528,18 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_HONE="$fake_bin/hone" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" learn -admit recovery.json "$home" >/dev/null 2>/dev/null
+"$builder" learn -admit recovery.json "$home" >/dev/null 2>/dev/null
 assert_contains 'learn admit invokes Hone on reviewed bytes' "$capture/hone-argv" 'admit'
 assert_contains 'learn admit pins Ask for provenance replay' "$capture/hone-ask" "$fake_bin/ask"
 
 if AGENT_BRIEF="$fake_bin/brief" AGENT_HONE="$fake_bin/hone" AGENT_ASK="$fake_bin/ask" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" learn -prepare recovery.json -into local-skill "$home" recovery >/dev/null 2>&1; then
+   "$builder" learn -prepare recovery.json -into local-skill "$home" recovery >/dev/null 2>&1; then
   not_ok 'learn refuses to overwrite an exact proposal'
 else
   ok 'learn refuses to overwrite an exact proposal'
 fi
 
-if "$agent" learn -show '../outside.json' "$home" >/dev/null 2>&1; then
+if "$builder" learn -show '../outside.json' "$home" >/dev/null 2>&1; then
   not_ok 'learn refuses path-shaped proposal names'
 else
   ok 'learn refuses path-shaped proposal names'
@@ -543,7 +549,7 @@ outside_proposal=$tmp/outside-proposal.json
 printf '%s\n' '{}' >"$outside_proposal"
 ln -s "$outside_proposal" "$home/.agent/learning/proposals/link.json"
 if AGENT_BRIEF="$fake_bin/brief" AGENT_HONE="$fake_bin/hone" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" learn -show link.json "$home" >/dev/null 2>&1; then
+   "$builder" learn -show link.json "$home" >/dev/null 2>&1; then
   not_ok 'learn refuses symlinked proposal artifacts'
 else
   ok 'learn refuses symlinked proposal artifacts'
@@ -551,7 +557,7 @@ fi
 
 ln "$outside_proposal" "$home/.agent/learning/proposals/hard.json"
 if AGENT_BRIEF="$fake_bin/brief" AGENT_HONE="$fake_bin/hone" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" learn -show hard.json "$home" >/dev/null 2>&1; then
+   "$builder" learn -show hard.json "$home" >/dev/null 2>&1; then
   not_ok 'learn refuses multiply-linked proposal artifacts'
 else
   ok 'learn refuses multiply-linked proposal artifacts'
@@ -562,7 +568,7 @@ if AGENT_BRIEF="$fake_bin/brief" \
    AGENT_ASK="$fake_bin/ask" \
    AGENT_TEST_CAPTURE="$capture" \
    AGENT_TEST_HONE_EXIT=1 \
-   "$agent" learn -into local-skill "$home" recovery >/dev/null 2>&1; then
+   "$builder" learn -into local-skill "$home" recovery >/dev/null 2>&1; then
   not_ok 'learn preserves Hone nothing-to-learn status'
 else
   status=$?
@@ -576,13 +582,13 @@ fi
 outside_session=$tmp/outside.jsonl
 printf '%s\n' '{}' >"$outside_session"
 if AGENT_BRIEF="$fake_bin/brief" AGENT_HONE="$fake_bin/hone" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" learn -into local-skill "$home" "$outside_session" >/dev/null 2>&1; then
+   "$builder" learn -into local-skill "$home" "$outside_session" >/dev/null 2>&1; then
   not_ok 'learn refuses sessions outside home evidence'
 else
   ok 'learn refuses sessions outside home evidence'
 fi
 
-if "$agent" learn -into '../outside' "$home" recovery >/dev/null 2>&1; then
+if "$builder" learn -into '../outside' "$home" recovery >/dev/null 2>&1; then
   not_ok 'learn refuses path-shaped skill destinations'
 else
   ok 'learn refuses path-shaped skill destinations'
@@ -592,7 +598,7 @@ history_stdout=$tmp/history-stdout
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_TRAIL="$fake_bin/trail" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" history "$home" >"$history_stdout" 2>/dev/null
+"$builder" history "$home" >"$history_stdout" 2>/dev/null
 assert_contains 'history preserves Trail JSONL stdout' "$history_stdout" 'fixture-history'
 assert_contains 'history defaults to Trail list' "$capture/trail-argv" 'ls'
 assert_contains 'history scopes list to home evidence' "$capture/trail-argv" "$home/.agent/runs"
@@ -600,19 +606,19 @@ assert_contains 'history scopes list to home evidence' "$capture/trail-argv" "$h
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_TRAIL="$fake_bin/trail" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" history "$home" find 'connection reset; $(literal)' >/dev/null 2>/dev/null
+"$builder" history "$home" find 'connection reset; $(literal)' >/dev/null 2>/dev/null
 assert_contains 'history forwards one literal semantic query' "$capture/trail-argv" 'connection reset; $(literal)'
 
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_TRAIL="$fake_bin/trail" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" history "$home" show recovery >/dev/null 2>/dev/null
+"$builder" history "$home" show recovery >/dev/null 2>/dev/null
 assert_contains 'history resolves a session inside home evidence' "$capture/trail-argv" "$recovery"
 
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_TRAIL="$fake_bin/trail" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" history "$home" window -before 2 -after 1 recovery 4 >/dev/null 2>/dev/null
+"$builder" history "$home" window -before 2 -after 1 recovery 4 >/dev/null 2>/dev/null
 assert_contains 'history forwards bounded windows' "$capture/trail-argv" '-before'
 assert_contains 'history window keeps the selected session' "$capture/trail-argv" "$recovery"
 
@@ -620,11 +626,11 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_TRAIL="$fake_bin/trail" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" history "$home" check >/dev/null 2>/dev/null
+"$builder" history "$home" check >/dev/null 2>/dev/null
 assert_contains 'history check delegates replay to exact Ask' "$capture/trail-ask" "$fake_bin/ask"
 
 if AGENT_BRIEF="$fake_bin/brief" AGENT_TRAIL="$fake_bin/trail" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" history "$home" show "$outside_session" >/dev/null 2>&1; then
+   "$builder" history "$home" show "$outside_session" >/dev/null 2>&1; then
   not_ok 'history refuses sessions outside home evidence'
 else
   ok 'history refuses sessions outside home evidence'
@@ -632,7 +638,7 @@ fi
 
 empty_actions=$tmp/empty-actions
 AGENT_BRIEF="$fake_bin/brief" AGENT_ACTION="$fake_bin/action" AGENT_TEST_CAPTURE="$capture" \
-"$agent" actions "$home" >"$empty_actions" 2>/dev/null
+"$builder" actions "$home" >"$empty_actions" 2>/dev/null
 assert_contains 'action review reports an empty catalogue without mutation' "$empty_actions" 'count: 0'
 
 action_proposal=$home/work/actions/publish-ticket.json
@@ -640,7 +646,7 @@ printf '%s\n' '{"version":1,"connector":"publish-ticket","input":{"ticket":42}}'
 rm -f "$capture/action-argv"
 action_review=$tmp/action-review
 AGENT_BRIEF="$fake_bin/brief" AGENT_ACTION="$fake_bin/action" AGENT_TEST_CAPTURE="$capture" \
-"$agent" actions "$home" publish-ticket.json >"$action_review" 2>/dev/null
+"$builder" actions "$home" publish-ticket.json >"$action_review" 2>/dev/null
 assert_contains 'action review exposes the exact proposal bytes' "$action_review" '"connector":"publish-ticket"'
 assert_contains 'action review exposes the stable May job' "$action_review" 'may-job: agent-action-'
 if [ ! -e "$capture/action-argv" ]; then
@@ -657,7 +663,7 @@ AGENT_MAY="$fake_bin/may" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
 AGENT_TEST_ACTION_EXIT=75 \
-"$agent" act -policy "$fake_bin/policy" "$home" publish-ticket.json recovery >/dev/null 2>/dev/null
+"$builder" act -policy "$fake_bin/policy" "$home" publish-ticket.json recovery >/dev/null 2>/dev/null
 act_status=$?
 set -e
 if [ "$act_status" -eq 75 ]; then
@@ -672,14 +678,14 @@ assert_contains 'act selects controller-only connectors' "$capture/action-path" 
 
 if AGENT_BRIEF="$fake_bin/brief" AGENT_ACTION="$fake_bin/action" AGENT_ACTION_PATH="$tmp/controller-actions" \
    AGENT_MAY="$fake_bin/may" AGENT_ASK="$fake_bin/ask" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" act "$home" "$outside_session" recovery >/dev/null 2>&1; then
+   "$builder" act "$home" "$outside_session" recovery >/dev/null 2>&1; then
   not_ok 'act refuses proposals outside work/actions'
 else
   ok 'act refuses proposals outside work/actions'
 fi
 
 empty_proposals=$tmp/empty-proposals
-AGENT_BRIEF="$fake_bin/brief" "$agent" proposals "$home" >"$empty_proposals" 2>/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" proposals "$home" >"$empty_proposals" 2>/dev/null
 assert_contains 'proposal review reports an empty catalogue without mutation' "$empty_proposals" 'count: 0'
 
 proposal=$home/work/proposals/add-evidence-rule.patch
@@ -687,16 +693,16 @@ cat >"$proposal" <<'EOF'
 --- a/AGENTS.md
 +++ b/AGENTS.md
 @@ -6,4 +6,5 @@
- - Keep current progress in state/plan.md; do not rewrite definition files.
- - Put proposed definition changes under work/proposals/ for human review.
- - Put proposed external effects under work/actions/ as strict Action JSON; never invoke a connector directly or claim a proposal happened.
+ - Keep current progress in $AGENT_STATE/plan.md; do not rewrite definition files.
+ - Put proposed definition changes under $AGENT_WORK/proposals/ for human review.
+ - Put proposed external effects under $AGENT_WORK/actions/ as strict Action JSON; never invoke a connector directly or claim a proposal happened.
  - Inspect state on demand instead of loading it wholesale.
 +- Summarize the evidence that changed the plan before taking action.
 EOF
 
 rm -f "$capture/may-action"
 proposal_review=$tmp/proposal-review
-AGENT_BRIEF="$fake_bin/brief" "$agent" proposals "$home" >"$proposal_review" 2>/dev/null
+AGENT_BRIEF="$fake_bin/brief" "$builder" proposals "$home" >"$proposal_review" 2>/dev/null
 assert_contains 'proposal review prints a bounded catalogue' "$proposal_review" 'count: 1'
 assert_contains 'proposal review exposes the exact target' "$proposal_review" 'target: AGENTS.md'
 assert_contains 'proposal review exposes the exact May action' "$proposal_review" 'agent-amend/v1'
@@ -712,7 +718,7 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_MAY="$fake_bin/may" \
 AGENT_TEST_CAPTURE="$capture" \
 AGENT_TEST_MAY_EXIT=75 \
-"$agent" amend "$home" add-evidence-rule.patch >"$tmp/amend-parked" 2>/dev/null
+"$builder" amend "$home" add-evidence-rule.patch >"$tmp/amend-parked" 2>/dev/null
 amend_parked_status=$?
 set -e
 if [ "$amend_parked_status" -eq 75 ]; then
@@ -731,7 +737,7 @@ AGENT_BRIEF="$fake_bin/brief" \
 AGENT_MAY="$fake_bin/may" \
 AGENT_TEST_CAPTURE="$capture" \
 AGENT_TEST_MAY_MUTATE="$proposal" \
-"$agent" amend "$home" add-evidence-rule.patch >/dev/null 2>"$tmp/amend-stale-stderr"
+"$builder" amend "$home" add-evidence-rule.patch >/dev/null 2>"$tmp/amend-stale-stderr"
 amend_stale_status=$?
 set -e
 if [ "$amend_stale_status" -eq 2 ]; then
@@ -745,7 +751,7 @@ cp "$tmp/proposal-before-race" "$proposal"
 AGENT_BRIEF="$fake_bin/brief" \
 AGENT_MAY="$fake_bin/may" \
 AGENT_TEST_CAPTURE="$capture" \
-"$agent" amend "$home" add-evidence-rule.patch >"$tmp/amend-spent" 2>/dev/null
+"$builder" amend "$home" add-evidence-rule.patch >"$tmp/amend-spent" 2>/dev/null
 assert_contains 'approved amendment applies one reviewed root definition patch' "$home/AGENTS.md" 'Summarize the evidence that changed the plan'
 set -- "$home"/.agent/amendments/*.txt
 if [ -f "$1" ]; then
@@ -776,7 +782,7 @@ cat >"$rollback" <<'EOF'
 EOF
 set +e
 AGENT_BRIEF="$fake_bin/brief" AGENT_MAY="$fake_bin/may" AGENT_TEST_CAPTURE="$capture" \
-"$agent" amend "$home" empty-goal.patch >/dev/null 2>"$tmp/amend-rollback-stderr"
+"$builder" amend "$home" empty-goal.patch >/dev/null 2>"$tmp/amend-rollback-stderr"
 rollback_status=$?
 set -e
 if [ "$rollback_status" -eq 2 ]; then
@@ -796,14 +802,14 @@ cat >"$outside_patch" <<'EOF'
 +#!/bin/false
 EOF
 if AGENT_BRIEF="$fake_bin/brief" AGENT_MAY="$fake_bin/may" AGENT_TEST_CAPTURE="$capture" \
-   "$agent" amend "$home" outside.patch >/dev/null 2>&1; then
+   "$builder" amend "$home" outside.patch >/dev/null 2>&1; then
   not_ok 'amend refuses non-root-definition targets'
 else
   ok 'amend refuses non-root-definition targets'
 fi
 
 if AGENT_BRIEF="$fake_bin/brief" AGENT_TRAIL="$fake_bin/trail" AGENT_TEST_CAPTURE="$capture" \
-   AGENT_TEST_TRAIL_EXIT=1 "$agent" history "$home" >/dev/null 2>&1; then
+   AGENT_TEST_TRAIL_EXIT=1 "$builder" history "$home" >/dev/null 2>&1; then
   not_ok 'history preserves Trail negative status'
 else
   status=$?
@@ -933,7 +939,7 @@ printf '%s' 'piped fixture bytes' | \
   ACTION_PATH="$tmp/ambient-actions" \
   BENCH_MAY="$fake_bin/may" \
   PLY_SHELL=/bin/false \
-  PLY_ACTION_SHELL=/bin/false \
+  PLY_ACTION_SHELL=/bin/sh \
   PLY_EFFORT=ambient-effort \
   PLY_CONTRACT_ID=ambient-contract \
   PLY_MAY_JOB=ambient-job \
@@ -955,7 +961,7 @@ assert_contains 'private context is delivered through a skill' "$capture/context
 assert_contains 'local skills are scoped through BRIEF_PATH' "$capture/brief-path" "$home/skills"
 assert_contains 'run evidence is scoped through PLY_DIR' "$capture/ply-dir" "$home/.agent/runs"
 assert_contains 'run pins Ask for Ply model calls' "$capture/ply-ask" "$fake_bin/ask"
-assert_contains 'ambient Ply composition variables are scrubbed' "$capture/composition-env" 'unset|unset|unset|unset|unset|unset|unset'
+assert_contains 'native recursion retains inherited gate and depth' "$capture/composition-env" '/bin/false|/bin/sh|ambient-effort|ambient-contract|ambient-job|7|unset'
 assert_contains 'selector uses run model, effort, and home evidence root' "$capture/brief-runtime" "fixture-model|high|$home/.agent/selections"
 assert_contains 'run provides a private action temporary root' "$capture/action-tmp-env" '/agent-run.'
 if action_tmp_seen=$(cat "$capture/action-tmp-env") && \
@@ -968,7 +974,7 @@ assert_contains 'private controller inputs are absent from Ply env' "$capture/in
 assert_contains 'Ply works in the mutable work root' "$capture/argv" "$home/work"
 assert_contains 'model selection is forwarded' "$capture/argv" 'fixture-model'
 assert_contains 'effort selection is forwarded' "$capture/argv" 'high'
-assert_contains 'confined action shell is forwarded' "$capture/argv" 'agent-action-shell'
+assert_contains 'confined action interpreter is forwarded' "$capture/argv" "$action_interpreter"
 assert_contains 'generic nested Ply delegation is disabled' "$capture/argv" '-no-delegate'
 selected_skill_line=$(grep -n -x -- '-' "$capture/argv" | head -1 | cut -d: -f1)
 context_skill_line=$(grep -n -F -- 'agent-context' "$capture/argv" | head -1 | cut -d: -f1)
@@ -1035,7 +1041,7 @@ AGENT_CAGE="$fake_bin/cage" \
 AGENT_ASK="$fake_bin/ask" \
 AGENT_TEST_CAPTURE="$capture" \
 "$link_bin/agent" run "$home" >/dev/null 2>/dev/null
-assert_contains 'installed symlink resolves private action wrapper' "$capture/argv" "$here/bin/agent-action-shell"
+assert_contains 'installed symlink resolves action interpreter' "$capture/argv" "$action_interpreter"
 
 if AGENT_BRIEF="$fake_bin/brief" \
    AGENT_PLY="$fake_bin/ply" \

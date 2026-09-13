@@ -142,9 +142,9 @@ class CheckPlanTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.sequence = 0
-        self.components = {name: {"name": name, "module": None if name in ("agent", "draft") else name,
+        self.components = {name: {"name": name, "module": None if name == "draft" else name,
                                   "path": "tools/" + name, "commands": [{"name": name, "package": "."}]}
-                           for name in ("agent", "draft", "cite", "may", "cage", "ply", "weave")}
+                           for name in ("agent", "hire", "draft", "cite", "may", "cage", "ply", "weave")}
         (self.root / "components.json").write_text(json.dumps({"components": list(self.components.values())}))
 
     def new_run(self, selected, **options):
@@ -165,14 +165,15 @@ class CheckPlanTests(unittest.TestCase):
         return commands
 
     def test_quick_go_checks_keep_tests_and_built_commands_but_exclude_supplemental_proofs(self):
-        for name in ("cite", "may", "cage", "ply", "weave"):
+        for name in ("agent", "cite", "may", "cage", "ply", "weave"):
             with self.subTest(component=name):
                 commands = self.capture_component_commands(name, quick=True)
                 self.assertEqual(commands, [(name + "-test", ["go", "test", "-count=1", "./..."]),
                                             (name + "-version-" + name, [commands[1][1][0], "version"])])
 
     def test_full_checks_retain_race_vet_and_component_specific_proofs(self):
-        required = {"may": {"may-self-check"}, "cage": {"cage-cross-linux", "cage-cross-windows"},
+        required = {"hire": {"hire-syntax"},
+                    "may": {"may-self-check"}, "cage": {"cage-cross-linux", "cage-cross-windows"},
                     "ply": {"ply-eval-fixtures", "ply-job-tests", "ply-edit-tests"},
                     "weave": {"weave-python-business", "weave-python-protocol", "weave-python-receipts",
                               "weave-python-research_domain", "weave-python-release", "weave-built-smoke"}}
@@ -182,7 +183,7 @@ class CheckPlanTests(unittest.TestCase):
                 self.assertTrue({name + "-test", name + "-race", name + "-vet", *extras} <= labels)
 
     def test_quick_shell_checks_retain_the_complete_existing_suite(self):
-        for name in ("agent", "draft"):
+        for name in ("draft",):
             with self.subTest(component=name):
                 full = [label for label, argv in self.capture_component_commands(name, quick=False)]
                 quick = [label for label, argv in self.capture_component_commands(name, quick=True)]
@@ -192,10 +193,16 @@ class CheckPlanTests(unittest.TestCase):
                     self.assertIn("draft-scratch-sync", quick)
                     self.assertIn("draft-lint", quick)
 
+    def test_quick_hire_keeps_private_asset_syntax_checks(self):
+        commands = dict(self.capture_component_commands("hire", quick=True))
+        self.assertEqual(set(commands), {"hire-test", "hire-version-hire", "hire-syntax"})
+        self.assertEqual(commands["hire-syntax"], ["sh", "-n", "builder/home.sh", "expert/bin/check"])
+
     def test_prerequisites_follow_the_checks_that_will_run(self):
         dependencies = CHECK["verification_dependencies"]
         self.assertEqual(set(dependencies(self.components, ["cite"], quick=True)), {"go", "python3", "git", "sh"})
-        self.assertNotIn("cc", dependencies(self.components, ["agent"]))
+        self.assertIn("cc", dependencies(self.components, ["agent"]))
+        self.assertNotIn("cc", dependencies(self.components, ["agent"], quick=True))
         self.assertIn("perl", dependencies(self.components, ["draft"], quick=True))
         self.assertIn("perl", dependencies(self.components, ["draft"]))
         self.assertNotIn("perl", dependencies(self.components, ["cite"], quick=True))

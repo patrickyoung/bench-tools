@@ -44,10 +44,13 @@ def main():
                         raise RuntimeError(f"empty {option} output from {command['name']}")
         if (prefix / "bin/agent-action-shell").exists():
             raise RuntimeError("private Agent helper was exposed as a public command")
-        helper = prefix / "lib/bench-tools/agent/bin/agent-action-shell"
-        if not helper.is_file() or not os.access(helper, os.X_OK):
-            raise RuntimeError("Agent private helper is missing")
-        run(["agent", "new", work / "agent home"])
+        native = prefix / "bin/agent"
+        if native.read_bytes().startswith(b"#!"):
+            raise RuntimeError("Agent package must contain the native runner")
+        boundary = subprocess.run([native, "-c"], cwd=work, env=env, capture_output=True)
+        if boundary.returncode != 125:
+            raise RuntimeError("Agent's native action interpreter lost its boundary status")
+        run(["hire", "new", "-home", work / "agent home"])
         run(["agent", "check", work / "agent home"])
         run(["agent", "show", work / "agent home"])
         # Draft replaces its generated reference using the caller's umask.
@@ -85,7 +88,7 @@ def main():
             for command in component["commands"]:
                 if os.path.lexists(prefix / "bin" / command["name"]):
                     raise RuntimeError("uninstall left a managed command")
-    print("Install check passed: 20 commands, relocated assets, Draft refresh, repeat install, clean uninstall.")
+    print(f"Install check passed: {sum(len(c['commands']) for c in components)} commands, relocated assets, Draft refresh, repeat install, clean uninstall.")
 
 
 if __name__ == "__main__":
