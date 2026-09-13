@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+import hashlib
+import json
+import os
+import pathlib
+import re
+import stat
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+MAX_JSON = 1024 * 1024
+REQUIRED = {
+    "output/visual-source.js",
+    "output/visual.js",
+    "output/visual.css",
+    "output/fallback.svg",
+    "output/preview.html",
+    "output/visual-notes.md",
+    "output/visual.json",
+}
+TOP = {"schema", "title", "intent", "libraries", "inputs", "encodings", "sensors", "limitations"}
+HEX = re.compile(r"^[0-9a-f]{64}$")
+SENSORS = {"camera", "microphone", "location", "orientation"}
+LIBRARIES = {"p5", "d3"}
+
+def reject(message):
+    print("unfinished: " + message, file=sys.stderr)
+    raise SystemExit(1)
+
+def broken(message):
+    print("broken checker: " + message, file=sys.stderr)
+    raise SystemExit(2)
+
+def read_json(path):
+    try:
+        if path.stat().st_size > MAX_JSON:
+            reject(f"{path.name} exceeds JSON size limit")
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+        reject(f"cannot parse {path.name}: {exc}")
+
+def canonical_relative(value, label, min_parts=1):
+    if not isinstance(value, str) or not value or "\\" in value:
+        reject(f"invalid {label} path")
+    p = pathlib.PurePosixPath(value)
+    if p.is_absolute() or str(p) != value or len(p.parts) < min_parts:
+        reject(f"invalid {label} path")
+    if any(part in ("", ".", "..") for part in p.parts):
+        reject(f"invalid {label} path")
+    return p
+
+def ensure_regular(path, root, label, nonempty=False):
+    try:
+        relative = path.relative_to(root)
+        current = root
+        if stat.S_ISLNK(os.lstat(current).st_mode):
+            reject(f"symlink in {label} path")
+        for part in relative.parts:
+            current = current / part
+            mode = os.lstat(current).st_mode
+            if stat.S_ISLNK(mode):
+                reject(f"symlink in {label} path: {relative.as_posix()}")
+        st = os.lstat(path)
+        if not stat.S_ISREG(st.st_mode):
+            reject(f"{label} is not a regular file: {relative.as_posix()}")
+        if nonempty and st.st_size == 0:
+            reject(f"empty {label}: {relative.as_posix()}")
+        if root == output and st.st_size > 16 * 1024 * 1024:
+            reject(f"output exceeds artifact size limit: {relative.as_posix()}")
+    except FileNotFoundError:
+        reject(f"missing {label}: {path}")
+    except (OSError, ValueError) as exc:
+        reject(f"invalid {label}: {exc}")
+
+def exact_string(obj, key, context):
+    value = obj.get(key)
+    if not isinstance(value, str) or not value.strip():
+        reject(f"{context}.{key} must be a nonempty string")
+    return value
+
+workspace = pathlib.Path.cwd().absolute()
+definition = pathlib.Path(__file__).resolve().parent.parent
+output = workspace / "output"
+ensure_regular(definition / "package.json", definition, "definition package metadata", True)
+
+for rel in sorted(REQUIRED):
+    ensure_regular(workspace / pathlib.Path(*pathlib.PurePosixPath(rel).parts), output, "required output", True)
+
+# Enumerate all output artifacts without following symlink directories.
+delivered = set()
+delivered_bytes = 0
+try:
+    for base, dirs, files in os.walk(output, followlinks=False):
+        base_path = pathlib.Path(base)
+        for name in list(dirs):
+            candidate = base_path / name
+            if candidate.is_symlink():
+                reject(f"symlink under output: {candidate.relative_to(workspace).as_posix()}")
+        for name in files:
+            candidate = base_path / name
+            ensure_regular(candidate, output, "output", True)
+            delivered.add(candidate.relative_to(workspace).as_posix())
+            delivered_bytes += candidate.stat().st_size
+            if len(delivered) > 256 or delivered_bytes > 64 * 1024 * 1024:
+                reject("output exceeds handoff inventory limits")
+except OSError as exc:
+    reject(f"cannot enumerate output: {exc}")
+if not REQUIRED.issubset(delivered):
+    reject("required output inventory is incomplete")
+
+meta = read_json(output / "visual.json")
+if not isinstance(meta, dict) or set(meta) != TOP:
+    reject("visual.json must contain exactly the required top-level fields")
+if meta.get("schema") != "bench.visual/v1":
+    reject("invalid visual.json schema")
+exact_string(meta, "title", "visual")
+exact_string(meta, "intent", "visual")
+
+try:
+    package = json.loads((definition / "package.json").read_text(encoding="utf-8"))
+    dependencies = package["dependencies"]
+except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+    broken(f"cannot read pinned dependencies: {exc}")
+
+libraries = meta.get("libraries")
+if not isinstance(libraries, list) or not libraries:
+    reject("libraries must be a nonempty array")
+seen_libs = set()
+for index, item in enumerate(libraries):
+    if not isinstance(item, dict) or set(item) != {"name", "version"}:
+        reject(f"invalid libraries[{index}] fields")
+    name = exact_string(item, "name", f"libraries[{index}]")
+    version = exact_string(item, "version", f"libraries[{index}]")
+    if name not in LIBRARIES or name in seen_libs:
+        reject(f"unsupported or duplicate library: {name}")
+    if dependencies.get(name) != version:
+        reject(f"library version does not match package.json: {name}")
+    seen_libs.add(name)
+
+inputs = meta.get("inputs")
+if not isinstance(inputs, list):
+    reject("inputs must be an array")
+seen_inputs = set()
+for index, item in enumerate(inputs):
+    if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+        reject(f"invalid inputs[{index}] fields")
+    rel = canonical_relative(item.get("path"), f"inputs[{index}]")
+    rel_text = rel.as_posix()
+    if rel_text in seen_inputs or rel.parts[0] == "output" or rel_text == "handoff.json":
+        reject(f"duplicate or reserved input path: {rel_text}")
+    digest = item.get("sha256")
+    if not isinstance(digest, str) or not HEX.fullmatch(digest):
+        reject(f"invalid input digest: {rel_text}")
+    source = workspace / pathlib.Path(*rel.parts)
+    ensure_regular(source, workspace, "declared input", False)
+    try:
+        hasher = hashlib.sha256()
+        with source.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        actual = hasher.hexdigest()
+    except OSError as exc:
+        reject(f"cannot hash declared input {rel_text}: {exc}")
+    if actual != digest:
+        reject(f"declared input changed: {rel_text}")
+    seen_inputs.add(rel_text)
+
+encodings = meta.get("encodings")
+if not isinstance(encodings, list):
+    reject("encodings must be an array")
+for index, item in enumerate(encodings):
+    if not isinstance(item, dict) or set(item) != {"field", "channel", "meaning"}:
+        reject(f"invalid encodings[{index}] fields")
+    for key in ("field", "channel", "meaning"):
+        exact_string(item, key, f"encodings[{index}]")
+
+sensors = meta.get("sensors")
+if not isinstance(sensors, list):
+    reject("sensors must be an array")
+seen_sensors = set()
+for index, item in enumerate(sensors):
+    if not isinstance(item, dict) or set(item) != {"kind", "purpose", "fallback"}:
+        reject(f"invalid sensors[{index}] fields")
+    kind = exact_string(item, "kind", f"sensors[{index}]")
+    exact_string(item, "purpose", f"sensors[{index}]")
+    exact_string(item, "fallback", f"sensors[{index}]")
+    if kind not in SENSORS or kind in seen_sensors:
+        reject(f"unsupported or duplicate sensor kind: {kind}")
+    seen_sensors.add(kind)
+
+limitations = meta.get("limitations")
+if not isinstance(limitations, list) or any(not isinstance(x, str) for x in limitations):
+    reject("limitations must be an array of strings")
+
+# Parse SVG as XML and reject active/foreign/external constructs.
+svg_path = output / "fallback.svg"
+try:
+    if svg_path.stat().st_size > 16 * 1024 * 1024:
+        reject("fallback.svg exceeds artifact size limit")
+    raw_svg = svg_path.read_text(encoding="utf-8")
+    lowered = raw_svg.lower()
+    if "<!doctype" in lowered or "<!entity" in lowered:
+        reject("fallback.svg must not contain a doctype or entity declaration")
+    if "<?xml-stylesheet" in lowered:
+        reject("fallback.svg must not contain an external stylesheet instruction")
+    root = ET.fromstring(raw_svg)
+except (OSError, UnicodeError, ET.ParseError) as exc:
+    reject(f"fallback.svg is not valid XML: {exc}")
+svg_namespace = "{http://www.w3.org/2000/svg}"
+if root.tag != svg_namespace + "svg":
+    reject("fallback.svg root element must be svg")
+static_elements = {"svg", "g", "defs", "title", "desc", "path", "rect", "circle",
+                   "ellipse", "line", "polyline", "polygon", "text", "tspan",
+                   "linearGradient", "radialGradient", "stop", "clipPath", "mask",
+                   "pattern", "use", "symbol", "marker"}
+for element in root.iter():
+    if not element.tag.startswith(svg_namespace) or element.tag[len(svg_namespace):] not in static_elements:
+        reject(f"fallback requires static SVG geometry, not {element.tag}")
+    for raw_name, value in element.attrib.items():
+        attr = raw_name.split("}")[-1].lower()
+        if attr.startswith("on") or attr in {"style", "base"}:
+            reject(f"forbidden SVG attribute: {attr}; use presentation attributes")
+        if attr in {"href", "src"}:
+            if not re.fullmatch(r"#[A-Za-z_][A-Za-z0-9_.:-]*", value):
+                reject(f"external SVG reference in {attr}")
+        if attr in {"fill", "stroke", "filter", "clip-path", "mask", "marker-start", "marker-mid", "marker-end", "cursor"}:
+            if "\\" in value or "/*" in value:
+                reject("escaped SVG paint values are unsupported")
+            if re.search(r"url\s*\(", value, re.I) and not re.fullmatch(
+                    r"url\(\s*['\"]?#[A-Za-z_][A-Za-z0-9_.:-]*['\"]?\s*\)", value, re.I):
+                reject(f"external or unsupported SVG paint reference in {attr}")
+
+node = os.environ.get("NODE", "node")
+try:
+    probe = subprocess.run([node, "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+except OSError as exc:
+    broken(f"node is unavailable: {exc}")
+if probe.returncode != 0:
+    broken("node cannot run")
+for rel in sorted(x for x in delivered if x.endswith((".js", ".mjs", ".cjs"))):
+    result = subprocess.run([node, "--check", str(workspace / rel)], stdout=subprocess.DEVNULL,
+                            stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        reject(f"JavaScript syntax failed for {rel}: {result.stderr.strip()}")
+
+handoff_path = workspace / "handoff.json"
+ensure_regular(handoff_path, workspace, "handoff", True)
+handoff = read_json(handoff_path)
+handoff_fields = {"schema", "task_id", "specialist", "summary", "files", "provenance", "limitations"}
+if not isinstance(handoff, dict) or set(handoff) != handoff_fields:
+    reject("handoff must contain exactly the page-team.handoff/v1 fields")
+if handoff.get("schema") != "page-team.handoff/v1":
+    reject("invalid handoff schema")
+if not isinstance(handoff.get("task_id"), str) or not handoff["task_id"].strip():
+    reject("handoff task_id must be a nonempty string")
+if handoff.get("specialist") != "visual-artist":
+    reject("handoff specialist must be visual-artist")
+if not isinstance(handoff.get("summary"), str) or not handoff["summary"].strip():
+    reject("handoff summary must be a nonempty string")
+if not isinstance(handoff.get("provenance"), list):
+    reject("handoff provenance must be an array")
+if not isinstance(handoff.get("limitations"), list) or any(
+        not isinstance(item, str) for item in handoff["limitations"]):
+    reject("handoff limitations must be an array of strings")
+manifest = handoff.get("files")
+if not isinstance(manifest, list):
+    reject("handoff files must be an array")
+manifest_paths = []
+for item in manifest:
+    if isinstance(item, dict) and isinstance(item.get("path"), str):
+        manifest_paths.append(item["path"])
+if set(manifest_paths) != delivered or len(manifest_paths) != len(delivered):
+    reject("handoff must cover every output file exactly once")
+
+validator = definition / "bin" / "validate-handoff"
+ensure_regular(validator, definition, "handoff validator", True)
+try:
+    validation = subprocess.run([str(validator), str(handoff_path)], cwd=workspace,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+except OSError as exc:
+    broken(f"cannot run handoff validator: {exc}")
+if validation.returncode == 1:
+    reject("handoff validation failed: " + validation.stderr.strip())
+if validation.returncode != 0:
+    broken("handoff validator failed unexpectedly: " + validation.stderr.strip())
+
+print(f"accepted visual artifact with {len(delivered)} output files")

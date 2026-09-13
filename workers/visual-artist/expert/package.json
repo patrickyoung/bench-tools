@@ -1,0 +1,17 @@
+{
+  "name": "bench-visual-artist",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "p5": "2.3.3",
+    "d3": "7.9.0",
+    "esbuild": "0.28.2"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -6,6 +6,7 @@ briefs, run history, installed dependencies or development files.
 | Worker | Purpose | Authoritative record |
 | --- | --- | --- |
 | [Page team](page-team/expert/README.md) | Build and review one self-contained web page; select only useful specialists | [Status, owner, requirements and approved files](page-team/worker.json) |
+| [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences; add purposeful optional sensor interactions | [Status, owner, requirements and approved files](visual-artist/worker.json) |
 
 From the repository root:
 

@@ -8,6 +8,8 @@ Agent and existing Bench commands execute the resulting expert folder.
   specialists only when the current job benefits from them.
 - [Creative site](creative-site.md): visual and native artwork contributions,
   frontend integration and review, with explicit source handoffs.
+- [Artistic site](artistic-site.md): add the independent p5.js/D3 Visual artist
+  to a page team for expressive data art or interactive visual pieces.
 
 Start from a clean [worker export](../workers/README.md). An unchanged suitable
 team can run directly without calling Hire again. For changes, use `hire build`

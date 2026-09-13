@@ -170,3 +170,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Exercise the exported worker's browser acceptance boundary
         run: node workers/page-team/tests/browser.mjs "$RUNNER_TEMP/page-team/expert"
+      - name: Export the independent Visual artist definition
+        run: python3 scripts/workers export visual-artist "$RUNNER_TEMP/visual-artist" --ref "$(git rev-parse HEAD)" --allow-experimental
+      - name: Check Visual artist contracts against synthetic counterexamples
+        env:
+          VISUAL_ARTIST_EXPERT: ${{ runner.temp }}/visual-artist/expert
+        run: python3 -m unittest discover -s workers/visual-artist/tests -v
