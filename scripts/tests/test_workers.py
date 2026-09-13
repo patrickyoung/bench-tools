@@ -75,6 +75,10 @@ class WorkerLibrary(unittest.TestCase):
         (self.expert / 'leftover.txt').write_text('Synthetic leftover')
         self.call('check', ok=False)
 
+    def test_unregistered_library_directory_rejected(self):
+        (self.root / 'workers/leftover-app').mkdir()
+        self.call('check', ok=False)
+
     def test_committed_undeclared_file_rejected(self):
         (self.expert / 'leftover.txt').write_text('Synthetic leftover')
         self.export(self.commit_source(), ok=False)
@@ -106,6 +110,21 @@ class WorkerLibrary(unittest.TestCase):
     def test_no_floating_revision(self):
         self.export('HEAD', ok=False)
         self.export(self.commit[:8], ok=False)
+
+    def test_export_stays_outside_source(self):
+        self.dest = self.root / 'installed'
+        self.export(ok=False)
+        self.assertFalse(self.dest.exists())
+
+    def test_binary_and_local_configuration_are_not_source(self):
+        (self.expert / 'AGENTS.md').write_bytes(b'\0binary')
+        self.call('check', ok=False)
+        self.export(self.commit_source(), ok=False)
+        (self.expert / 'AGENTS.md').write_text('Synthetic source fixture.\n')
+        (self.expert / '.env.local').write_text('SYNTHETIC_LOCAL=1')
+        self.metadata['files'].append('workers/tiny/expert/.env.local')
+        self.save_metadata()
+        self.export(self.commit_source(), ok=False)
 
     def test_lifecycle(self):
         for state in ('experimental', 'deprecated', 'retired'):
