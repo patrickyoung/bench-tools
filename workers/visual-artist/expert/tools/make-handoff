@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+import hashlib,json,mimetypes,os,pathlib,sys
+if len(sys.argv)<4:
+    raise SystemExit("usage: make-handoff SPECIALIST SUMMARY FILE...")
+root=pathlib.Path.cwd().resolve(); files=[]
+for value in sys.argv[3:]:
+    p=(root/value).resolve()
+    try: p.relative_to(root/"output")
+    except ValueError: raise SystemExit("artifact must be below output/")
+    if not p.is_file() or p.is_symlink(): raise SystemExit("artifact must be a regular non-symlink")
+    b=p.read_bytes()
+    files.append({"path":str(p.relative_to(root)),"bytes":len(b),
+      "sha256":hashlib.sha256(b).hexdigest(),
+      "media_type":mimetypes.guess_type(p.name)[0] or "application/octet-stream",
+      "source":str(p)})
+obj={"schema":"page-team.handoff/v1","task_id":os.environ.get("PAGE_TEAM_TASK_ID","ordinary-agent-run"),
+ "specialist":sys.argv[1],"summary":sys.argv[2],"files":files,
+ "provenance":[],"limitations":[]}
+pathlib.Path("handoff.json").write_text(json.dumps(obj,sort_keys=True,indent=2)+"\n")
