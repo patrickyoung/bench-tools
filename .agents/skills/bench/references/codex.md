@@ -40,3 +40,13 @@ capability only when that connection is part of the requested solution.
 Do not copy Codex login tokens into Ask. Complete the separate Ask model-access
 step when the job needs model execution. A source/plugin installation does not
 grant command, network, or account access to another Codex environment.
+
+## Use Bench for the user's job
+
+Once the needed setup works, follow [library discovery and assembly](library.md)
+first. Find an existing worker or team, export its reviewed source, then use
+[building](build.md) for missing expertise and [operation](operate.md) to run it.
+Leave the `BENCH-SETUP.md` location, source pin, definition path and repeat command
+where this host's next session can find them. Keep current job content separate.
+The host authors and invokes Bench definitions; Agent and the existing team
+commands retain their execution and context boundaries.

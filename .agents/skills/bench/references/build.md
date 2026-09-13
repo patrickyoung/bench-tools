@@ -6,31 +6,30 @@ sample files; ask only when a missing decision changes the result or authority.
 Turn vague quality words into examples, mechanical checks, or an explicit
 review rubric. Do not invent policy or expected facts.
 
-First inspect an existing solution or relevant example. The selected checkout's
-`examples/support-reply` is a complete expert, while `examples/meeting-brief`
-uses a single model request. Keep useful renderers, parsers, and checks when
-adapting a worker; remove duplicate context/loop code by using Agent.
+## Find or assemble first
 
-## Reuse the source library first
+Follow [library discovery](library.md) before writing a new definition. Select
+an existing worker, assembled team or useful source to adapt. An unchanged
+suitable export runs directly. Read `docs/BUILD-WITH-AN-LLM.md` in the selected
+checkout for the human walkthrough; `docs/WORKER-LIBRARY.md` owns packaging.
 
-Read `workers/README.md` and `teams/README.md`. Use `python3 scripts/workers
-list --all` for roles and `list --teams --all` for runnable assemblies. Select
-a full reviewed monorepo commit. Use `export` for one worker or `export-team`
-for a roster and clean member copies in a new authoring directory. The command and
-experimental opt-in are in the catalog. Never copy example showcases, an old
-run or a development checkout into a new team. The export contains the expert
-and its source lock; current job inputs are supplied separately.
+When adapting a team, give Hire the clean assembled authoring directory and
+the desired roster, handoffs and acceptance. Reuse existing worker sources and
+command adapters. Promote changes back to the owning `workers/ID` or `teams/ID`
+entry after evaluation. The original lock still identifies the starting source;
+record later edits separately. Do not promote a whole working directory.
 
-Use an unchanged suitable expert directly. If adaptation is needed, give Hire
-the existing exported expert and a short recipe. Preserve its source lock,
-inspect changes and evaluate them before promoting revised source through Git.
-The large Architect, Writer and Present applications are not library entries.
+For a teaching example only, `examples/support-reply` includes explicit practice
+inputs and a complete expert. Examples are outside the clean source catalog;
+never silently copy their sample content into a user's worker. The large
+Architect, Writer and Present applications remain outside this library.
 
 ## Ask Hire to build a definition
 
 Use a fresh solution directory outside the source checkout. Write `JOB.md`
 with the outcome, input/output filenames and formats, procedure, allowed
-tools, a good case, a rejection case, and the check's limits. Then:
+tools, a good case, a rejection case, and the check's limits. Keep those cases
+and authoring records outside the reusable definition. Then:
 
 ```sh
 mkdir authoring

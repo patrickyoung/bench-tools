@@ -42,3 +42,13 @@ absolute paths and the desired project scope for a real generated capability.
 Claude Code's login and tools are the authoring environment. A Bench worker
 uses Agent and Ask, with its own configured model access. Do not extract Claude
 credentials or replace the worker with a Claude-specific loop to bypass setup.
+
+## Use Bench for the user's job
+
+Once the needed setup works, follow [library discovery and assembly](library.md)
+first. Find an existing worker or team, export its reviewed source, then use
+[building](build.md) for missing expertise and [operation](operate.md) to run it.
+Leave the `BENCH-SETUP.md` location, source pin, definition path and repeat command
+where this host's next session can find them. Keep current job content separate.
+The host authors and invokes Bench definitions; Agent and the existing team
+commands retain their execution and context boundaries.

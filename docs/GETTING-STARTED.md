@@ -2,6 +2,11 @@
 
 [Home](../README.md) · [Recipes](RECIPES.md) · [Full installation guide](INSTALL.md)
 
+For creating and using digital workers or teams, start with the
+[worker walkthrough](BUILD-WITH-AN-LLM.md) or give your harness
+[START-HERE.md](../START-HERE.md). This smaller tutorial establishes the model
+connection and basic command notation used by those workflows.
+
 Turn a few meeting notes into a short team update with Ask. Once that works,
 add Brief to save the method for next time. You do not need to know Bash to
 follow along. Prefer a complete small program? Try a [ready-to-run
@@ -141,9 +146,9 @@ the complete [meeting-brief starter](../examples/meeting-brief/README.md).
 ## What to try next
 
 - **Use your own input:** replace the notes and choose a new conversation file.
-- **Run a reusable expert:** copy the [support-reply folder](../examples/support-reply/README.md)
-  and give Agent a workspace. It adds file actions and a check to this same
-  model connection.
+- **Reuse a worker or team:** inspect the [worker catalog](../workers/README.md)
+  and [team catalog](../teams/README.md), export a reviewed version and supply
+  fresh inputs. The [walkthrough](BUILD-WITH-AN-LLM.md) shows both execution modes.
 - **Build your own worker:** the [LLM builder guide](BUILD-WITH-AN-LLM.md) shows
   Hire producing a reusable definition for Agent. Start with the job and its
   acceptance examples; reuse the existing runner.

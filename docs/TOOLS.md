@@ -1,5 +1,9 @@
 # Choose the tools for your job
 
+For a worker or team job, start with the [worker catalog](../workers/README.md),
+[team catalog](../teams/README.md) and [practical walkthrough](BUILD-WITH-AN-LLM.md).
+This reference explains the lower-level commands used by those definitions.
+
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 

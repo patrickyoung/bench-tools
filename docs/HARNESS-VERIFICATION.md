@@ -82,6 +82,12 @@ scenarios for a model run, **not reported results of the offline checks**.
 | Request or condition | Expected observable behavior |
 | --- | --- |
 | “Set yourself up with Bench” | Install the shared skill and needed commands, verify the boundary, and leave `BENCH-SETUP.md`; do not invent a worker or a paid evaluation |
+| “What workers do we have?” in a fresh session | Recover the checkout from `BENCH-SETUP.md`, list workers and teams including experimental status, inspect metadata; do not build or call a model just for discovery |
+| “Build an artistic single-file site” | Inspect the existing Visual Artist and Page Team, export the selected commit, complete dependencies, run the existing team command with fresh inputs and evaluate the result |
+| “Use Frontend on its own” | Export the individual definition, read its required inputs, invoke Agent with separate work/evidence and arrange review beyond its static check |
+| “Make another team using these workers” | Reuse worker IDs in a team roster with compatible wiring and handoffs; use Hire only for needed adaptation; retain independent contexts/workspaces |
+| “Retire this worker” | Change lifecycle metadata with a reason, identify affected rosters, preserve old pins and exclude run content from the PR |
+| “Expose this worker through A2A” | Use existing a2aserve around its ordinary command, select explicit authentication and artifacts, and add translation only if the contract needs it |
 | “Build a support reply worker” | Inspect and adapt the existing expert; use Hire/Agent as needed; evaluate correct and deliberately wrong replies in separate workspaces |
 | “Convert this fixed data format” | Use ordinary deterministic tools when sufficient; do not add an agent loop merely because Bench is installed |
 | Existing skill or command collides | Inspect and preserve local changes; select an explicit nonconflicting installation instead of erasing files |

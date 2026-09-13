@@ -1,5 +1,9 @@
 # Reusable teams
 
+For finding, building and running definitions, follow the
+[worker/team walkthrough](../docs/BUILD-WITH-AN-LLM.md); harnesses start at
+[START-HERE.md](../START-HERE.md).
+
 A worker defines one role. A team selects workers and supplies their existing
 execution wiring. Both are versioned in this monorepo; a run supplies a new
 brief, workspace and selected inputs.

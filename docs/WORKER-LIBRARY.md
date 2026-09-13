@@ -6,6 +6,10 @@ Keep reusable expertise in the monorepo, review changes through GitHub, and
 export a clean folder at a reviewed commit. Hire builds or adapts definitions;
 Agent runs them. Existing Unix programs arrange execution.
 
+For first use, follow [the worker/team walkthrough](BUILD-WITH-AN-LLM.md).
+Harnesses start at [START-HERE.md](../START-HERE.md). This reference owns source
+layout, assembly, clean exports and lifecycle; the catalogs own discovery.
+
 ## Three separate things
 
 ```text
@@ -86,6 +90,23 @@ Only active entries appear in default listings. `--all` shows every status.
 it does not allow deprecated or retired definitions. All selected members must
 qualify. An old pin retains its historical status: lifecycle metadata does not
 revoke already exported source.
+
+## Locate source and locate a command
+
+Use `workers/README.md` and `scripts/workers list --all` for local definitions;
+use `teams/README.md` and `list --teams --all` for assemblies. Read the selected
+metadata and README to establish its actual contract. Record the checkout's
+absolute path in an external `BENCH-SETUP.md`: an installed skill or binary
+prefix does not contain a separate copy of this catalog. `scripts/workers`
+is a repository utility; it is not an installed runner or remote registry.
+
+A worker is invoked through `agent run` plus its exported definition and work
+folder. A team uses its documented entry command. Both can be exposed by the
+existing [A2A server](../tools/a2a/README.md#expose-an-expert). Text streams need
+configuration; declared file artifacts can be returned too. Add a dispatcher
+only for application-specific translation. A2A card discovery describes an
+explicit remote endpoint, while the source catalog describes reusable local
+code. The roster does not resolve remote endpoints automatically.
 
 ## Approved source only
 
