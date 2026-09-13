@@ -9,4 +9,5 @@ Use these as direct documentation and conceptual pointers, not an ingested corpu
 - [Shirley Wu Studio](https://www.shirleywu.studio/) and [Data Sketches](https://www.datasketch.es/) — expressive, human-centered custom data experiences and a data-to-sketch-to-code practice. Data Sketches is co-created by Shirley Wu and Nadieh Bremer.
 - [p5 reference](https://p5js.org/reference/) and [`createCapture`](https://p5js.org/reference/p5/createCapture/).
 - [D3](https://d3js.org/), [scales](https://d3js.org/d3-scale), and [quadtree](https://d3js.org/d3-quadtree).
+- [esbuild node paths](https://esbuild.github.io/api/#node-paths) — resolve the exported definition's installed packages from a separate run workspace.
 - MDN: [`getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia), [Geolocation](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API), and [Web Audio best practices](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices).
