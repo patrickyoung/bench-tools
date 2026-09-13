@@ -1,0 +1,38 @@
+{
+  "id": "visual-artist",
+  "description": "Create original p5.js and D3 web artwork and artistic data experiences, with optional local sensor interaction.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "27d191fa0528a10fcf42b0ca26a8b8ea04b14bc9",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "node": ">=22; p5, D3, esbuild and optional Playwright pinned in expert/package-lock.json",
+    "python": ">=3.9",
+    "browser": "An operator-selected browser for independent visual and behavior review; sensors tested with mocks unless separately authorized"
+  },
+  "files": [
+    "workers/visual-artist/expert/AGENTS.md",
+    "workers/visual-artist/expert/GOAL.md",
+    "workers/visual-artist/expert/LICENSE",
+    "workers/visual-artist/expert/README.md",
+    "workers/visual-artist/expert/bin/check",
+    "workers/visual-artist/expert/bin/validate-handoff",
+    "workers/visual-artist/expert/package-lock.json",
+    "workers/visual-artist/expert/package.json",
+    "workers/visual-artist/expert/references.md",
+    "workers/visual-artist/expert/skills/artistic-data-mapping/SKILL.md",
+    "workers/visual-artist/expert/skills/optional-sensors/SKILL.md",
+    "workers/visual-artist/expert/skills/p5-d3-craft/SKILL.md",
+    "workers/visual-artist/expert/tools/make-handoff"
+  ]
+}
