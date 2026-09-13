@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+import hashlib, json, os, pathlib, re, stat, sys
+
+MAX_FILE = 16 * 1024 * 1024
+MAX_TOTAL = 64 * 1024 * 1024
+MAX_FILES = 256
+MAX_CONTENT = 1024 * 1024
+SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+def fail(message):
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+
+def clean_path(value):
+    if not isinstance(value, str) or "\\" in value:
+        fail("invalid relative output path")
+    p = pathlib.PurePosixPath(value)
+    if str(p) != value or p.is_absolute() or len(p.parts) < 2 or p.parts[0] != "output":
+        fail("invalid relative output path")
+    if any(x in ("", ".", "..") for x in p.parts):
+        fail("invalid relative output path")
+    return p
+
+def no_symlinks(path, stop, require_regular=False):
+    try:
+        path.relative_to(stop)
+        current = stop
+        if current.exists() and stat.S_ISLNK(os.lstat(current).st_mode):
+            fail("symlink in path")
+        for part in path.relative_to(stop).parts:
+            current = current / part
+            try:
+                mode = os.lstat(current).st_mode
+            except FileNotFoundError:
+                continue
+            if stat.S_ISLNK(mode):
+                fail("symlink in path")
+        if require_regular and not stat.S_ISREG(os.lstat(path).st_mode):
+            fail("source is not a regular file")
+    except (OSError, ValueError) as e:
+        fail("invalid filesystem path: " + str(e))
+
+try:
+    raw_packet = sys.stdin.buffer.read(16 * 1024 * 1024 + 1)
+    if len(raw_packet) > 16 * 1024 * 1024:
+        fail("dependency packet exceeds input limit")
+    packet = json.loads(raw_packet)
+except Exception as e:
+    fail("invalid dependency packet: " + str(e))
+if not isinstance(packet, dict) or not isinstance(packet.get("dependencies"), list):
+    fail("invalid dependency packet")
+cwd = pathlib.Path.cwd().absolute()
+try:
+    run = cwd.parents[2]
+except IndexError:
+    fail("invalid job work directory")
+plans, total, destinations = [], 0, set()
+for dep in packet["dependencies"]:
+    if not isinstance(dep, dict) or not {"id", "job", "sha256", "content"} <= set(dep):
+        fail("invalid dependency record")
+    dep_id, job = dep["id"], dep["job"]
+    if not isinstance(dep_id, str) or not dep_id or not isinstance(job, str) or not SAFE.fullmatch(job):
+        fail("invalid dependency identity")
+    content = dep["content"]
+    if not isinstance(content, str):
+        fail("dependency content is not text")
+    raw = content.encode("utf-8")
+    if len(raw) > MAX_CONTENT:
+        fail("dependency handoff exceeds input limit")
+    digest = dep["sha256"]
+    if not isinstance(digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+        fail("invalid dependency digest")
+    if "sha256:" + hashlib.sha256(raw).hexdigest() != digest:
+        fail("dependency digest mismatch")
+    try:
+        man = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        fail("dependency is not a handoff manifest: " + str(e))
+    if not isinstance(man, dict) or man.get("schema") != "page-team.handoff/v1":
+        fail("invalid handoff schema")
+    if man.get("task_id") != dep_id:
+        fail("handoff task binding mismatch")
+    if not isinstance(man.get("specialist"), str) or not SAFE.fullmatch(man["specialist"]):
+        fail("invalid specialist")
+    files = man.get("files")
+    if not isinstance(files, list) or not files or len(files) > MAX_FILES:
+        fail("invalid handoff files")
+    seen = set()
+    dep_root = run / "jobs" / job / "work"
+    output_root = dep_root / "output"
+    for item in files:
+        if not isinstance(item, dict) or set(item) != {"path", "bytes", "sha256", "media_type", "source"}:
+            fail("invalid file manifest fields")
+        rel = clean_path(item["path"])
+        if str(rel) in seen:
+            fail("duplicate output path")
+        seen.add(str(rel))
+        size = item["bytes"]
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0 or size > MAX_FILE:
+            fail("invalid file size")
+        total += size
+        if total > MAX_TOTAL:
+            fail("dependencies exceed total size limit")
+        fdigest = item["sha256"]
+        if not isinstance(fdigest, str) or not re.fullmatch(r"[0-9a-f]{64}", fdigest):
+            fail("invalid file digest")
+        if not isinstance(item["media_type"], str) or not item["media_type"]:
+            fail("invalid media type")
+        source = dep_root / pathlib.Path(*rel.parts)
+        if not isinstance(item["source"], str) or not pathlib.PurePath(item["source"]).is_absolute() or pathlib.Path(item["source"]) != source:
+            fail("dependency source mismatch")
+        no_symlinks(source, run, True)
+        try:
+            with source.open('rb') as stream:
+                data = stream.read(size + 1)
+        except OSError as e:
+            fail("cannot read dependency source: " + str(e))
+        if len(data) != size or hashlib.sha256(data).hexdigest() != fdigest:
+            fail("dependency size/digest mismatch")
+        target = cwd / "inputs" / job / pathlib.Path(*rel.parts)
+        if target in destinations:
+            fail("duplicate destination")
+        destinations.add(target)
+        no_symlinks(target, cwd)
+        plans.append((target, data))
+for target, data in plans:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    no_symlinks(target, cwd)
+    try:
+        with target.open("xb") as stream:
+            stream.write(data)
+    except FileExistsError:
+        fail("destination already exists")
+    except OSError as e:
+        fail("cannot write destination: " + str(e))
+print(json.dumps({"materialized": len(packet["dependencies"])}))

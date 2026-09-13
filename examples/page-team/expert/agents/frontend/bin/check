@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+test -s output/index.html || { echo "missing index.html"; exit 1; }
+"${PAGE_TEAM_ROOT:-$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)}/bin/validate-html" output/index.html
+test -s handoff.json || { echo "missing handoff"; exit 1; }

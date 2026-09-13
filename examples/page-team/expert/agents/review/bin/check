@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import json,pathlib
+try: x=json.loads(pathlib.Path("output/review.json").read_text())
+except Exception as e: print("invalid review JSON",e); raise SystemExit(1)
+if x.get("verdict") not in ("pass","revise"): print("missing verdict"); raise SystemExit(1)
+for k in ["structural","functional","visual","responsive","accessibility","provenance","limitations"]:
+ if k not in x or not isinstance(x[k],list): print("output/review.json requires a top-level array named",k,"(not nested under findings)"); raise SystemExit(1)
+if not pathlib.Path("output/review.md").is_file() or not pathlib.Path("handoff.json").is_file(): print("missing report/handoff"); raise SystemExit(1)
+print("review covers required dimensions and states limitations")

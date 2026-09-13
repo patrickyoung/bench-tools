@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+import os,pathlib,subprocess
+p=pathlib.Path('output/edited.txt')
+expected='The player shows composure under pressure. Further live observation is needed.'
+if not p.is_file() or p.read_text().strip()!=expected: raise SystemExit(1)
+raise SystemExit(subprocess.run([os.environ['PAGE_TEAM_ROOT']+'/bin/validate-handoff','handoff.json']).returncode)

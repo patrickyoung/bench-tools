@@ -11,6 +11,7 @@ through their public process interfaces.
 | [Meeting brief](meeting-brief/README.md) | Ask + Brief | A reusable procedure, a Markdown brief, and a conversation record |
 | [Evidence answer](evidence-answer/README.md) | Context + Ask + Cite | An answer checked against saved citation identities |
 | [Signup audit](signup-audit/README.md) | Tend | An offline report and a durable record of its execution |
+| [Page team](page-team/README.md) | Agent + existing Bench Manage + Tend + Weave; MCP/A2A edges | Experimental creative team, checked artifact handoffs and a single HTML result |
 
 From the checkout root, install only the components an example needs:
 
@@ -30,7 +31,11 @@ two one-call writers replace their final output only on success. Tend retains
 the audit's stdout as an attempt artifact. These are different output contracts;
 each walkthrough shows exactly where to pick up the result.
 
-For an offline developer check of all four, using actual binaries and a local
+The page team is the advanced assembly example. It has separate native creative
+and browser prerequisites and uses the existing Bench Manage application. Read
+its evaluation before running a paid creative case.
+
+For an offline developer check of the starters and page-team contracts, using actual binaries and a local
 model-protocol fixture:
 
 ```sh

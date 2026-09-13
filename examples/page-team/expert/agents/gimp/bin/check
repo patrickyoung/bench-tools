@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+import pathlib
+for n in ["composite.xcf","finish.py","finish-notes.md"]:
+ p=pathlib.Path("output")/n
+ if not p.is_file() or p.stat().st_size<16: print("missing/short",p); raise SystemExit(1)
+b=pathlib.Path("output/composite.xcf").read_bytes()
+if not b.startswith(b"gimp xcf "): print("invalid XCF signature"); raise SystemExit(1)
+exports=list(pathlib.Path("output").glob("composite.webp"))+list(pathlib.Path("output").glob("composite.png"))
+if len(exports)!=1 or exports[0].stat().st_size<32: print("missing optimized export"); raise SystemExit(1)
+if not pathlib.Path("output/originals").is_dir() or not any(x.is_file() for x in pathlib.Path("output/originals").iterdir()): print("originals not preserved"); raise SystemExit(1)
+if not pathlib.Path("handoff.json").is_file(): print("missing handoff"); raise SystemExit(1)
+print("editable XCF, production script, preserved originals and export present")

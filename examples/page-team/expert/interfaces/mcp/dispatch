@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+import json,os,pathlib,re,subprocess,sys
+root=pathlib.Path(__file__).resolve().parents[2]
+if sys.argv[1:]!=["tools/call"]:
+ print(json.dumps({"code":-32601,"message":"method not implemented"})); raise SystemExit(1)
+try:
+ raw=sys.stdin.buffer.read(128*1024+1)
+ if len(raw)>128*1024: raise ValueError('request too large')
+ p=json.loads(raw)
+ if not isinstance(p,dict): raise ValueError('invalid request')
+except (ValueError,TypeError):
+ print(json.dumps({"code":-32602,"message":"invalid tool request"})); raise SystemExit(1)
+if p.get("name")!="build_page":
+ print(json.dumps({"code":-32602,"message":"unknown tool"})); raise SystemExit(1)
+a=p.get("arguments",{})
+if not isinstance(a,dict):
+ print(json.dumps({"code":-32602,"message":"invalid build arguments"})); raise SystemExit(1)
+rid=a.get("run_id","")
+if not isinstance(rid,str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}",rid):
+ print(json.dumps({"code":-32602,"message":"invalid run_id"})); raise SystemExit(1)
+if not isinstance(a.get("brief"),str) or not 1<=len(a['brief'])<=65536 or set(a)!={'brief','run_id'}:
+ print(json.dumps({"code":-32602,"message":"invalid build arguments"})); raise SystemExit(1)
+base=pathlib.Path(os.environ["PAGE_TEAM_MCP_RUN_ROOT"]).resolve(); base.mkdir(parents=True,exist_ok=True)
+env=os.environ.copy(); env["PAGE_TEAM_RUN"]=str(base/rid)
+r=subprocess.run([str(root/"bin/page-team")],input=a.get("brief",""),text=True,capture_output=True,env=env)
+sys.stderr.write(r.stderr)
+if r.returncode:
+ print(json.dumps({"content":[{"type":"text","text":"page build unfinished; inspect operator run evidence"}],"isError":True,"structuredContent":{"run_id":rid,"exit":r.returncode}})); raise SystemExit(0)
+print(json.dumps({"content":[{"type":"text","text":r.stdout}],"structuredContent":{"run_id":rid,"media_type":"text/html"}}))

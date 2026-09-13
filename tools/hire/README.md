@@ -96,9 +96,29 @@ definition and replace the deliberately unfinished `bin/check`. `hire new
 
 `hire verify EXPERT` checks the folder through `agent check`, requires a
 bounded nonempty README, and rejects runtime directories inside the definition.
+Agent also checks nested specialist definitions and their Brief procedures.
 It does **not** execute generated checks or claim that structural readiness
 proves the worker's quality. Inspect its check and exercise its positive and
 negative examples before relying on its verdict.
+
+## Assemble a team when the job needs one
+
+The embedded builder includes an `assembling-experts` skill. Give Hire the
+outcome, available capabilities, requested interfaces, and acceptance cases.
+It can assemble a manager and independently reusable specialists under
+`expert/agents/`, with explicit artifact handoffs and checks. The result is
+still an ordinary expert definition; Hire does not manage its later runs.
+
+Agent runs the experts, Weave selects ready work, and Tend retains attempts.
+Use an existing external controller when child execution cannot occur inside
+the manager's action boundary. MCPserve and A2Aserve provide the requested
+protocol edges. A valid assembly needs real evaluation of its contributions
+and integrated result; structural verification does not establish quality.
+
+The monorepo's [page-team example](https://github.com/patrickyoung/bench-tools/tree/main/examples/page-team)
+contains a manager, graphics/frontend/review specialists, executable contract
+tests, MCP/A2A adapters, and an evaluated single-file EPL scouting showcase.
+Its evaluation records the operator repairs as well as successful runs.
 
 ## Existing home maintenance
 

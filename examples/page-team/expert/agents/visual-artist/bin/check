@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+for f in output/visual.js output/visual.css output/fallback.svg output/visual-notes.md handoff.json; do
+  test -s "$f" || { echo "missing $f"; exit 1; }
+done
+node --check output/visual.js
+exec "${PAGE_TEAM_ROOT:-$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)}/bin/validate-handoff" handoff.json

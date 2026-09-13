@@ -1,0 +1,58 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+RUN=${PAGE_TEAM_RUN:?set PAGE_TEAM_RUN to a new or existing controller run directory}
+MANAGE=${BENCH_MANAGE:?configure BENCH_MANAGE}
+AGENT=${AGENT:?configure AGENT}; export AGENT
+[ $# -eq 0 ] || { echo "page-team: brief belongs on stdin; select the run with PAGE_TEAM_RUN" >&2; exit 2; }
+brief=$(cat)
+if [ -f "$RUN/manifest.json" ]; then
+  if [ -n "$brief" ]; then
+    printf '%s' "$brief" | python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); incoming=sys.stdin.read(); sys.exit(0 if incoming==m["goal"] else "page-team: an existing run cannot accept a different brief")' "$RUN/manifest.json"
+  fi
+  result=$("$MANAGE" resume "$RUN") || exit $?
+else
+  mkdir -p "$RUN"
+  "$AGENT" check -C "$RUN" -evidence "$RUN/../.page-team-validation" "$ROOT" >&2
+  [ -n "$brief" ] || { echo "page-team: brief on stdin is required for a new run" >&2; exit 2; }
+  set -- -pass-env AGENT
+  for name in AGENT_ASK PRESENT_ASK PRESENT_IMAGE_CODEX_MODEL PAGE_TEAM_IMAGEGEN BLENDER GIMP_CONSOLE PAGE_TEAM_BROWSER_CHECK PAGE_TEAM_BROWSER; do
+    eval "value=\${$name-}"
+    [ -z "$value" ] || set -- "$@" -pass-env "$name"
+  done
+  # All executable identities and limits are pinned by Bench Manage at admission.
+  result=$(printf '%s' "$brief" | "$MANAGE" run -C "$RUN" \
+    -manager "$ROOT/bin/manager-adapter" -workers "$ROOT/bin/workers" \
+    -task-check "$ROOT/bin/task-check" -check "$ROOT/bin/root-check" \
+    -m "${PAGE_TEAM_MODEL:-${ASK_MODEL:-}}" \
+    -effort "${PAGE_TEAM_EFFORT:-medium}" \
+    -j "${PAGE_TEAM_JOBS:-3}" -attempts "${PAGE_TEAM_ATTEMPTS:-16}" \
+    -decisions "${PAGE_TEAM_DECISIONS:-10}" -turns "${PAGE_TEAM_TURNS:-80}" \
+    -reserve-attempts 3 -reserve-turns 12 -task-turns 12 \
+    -task-seconds "${PAGE_TEAM_TASK_SECONDS:-10m}" \
+    -manager-seconds "${PAGE_TEAM_MANAGER_SECONDS:-3m}" \
+    -check-seconds "${PAGE_TEAM_CHECK_SECONDS:-2m}" \
+    -deadline "${PAGE_TEAM_DEADLINE:-1h}" "$@") || exit $?
+fi
+printf '%s' "$result" > "$RUN/accepted-manifest.json"
+python3 - "$RUN" <<'PY'
+import hashlib,json,pathlib,re,subprocess,sys
+run=pathlib.Path(sys.argv[1]).resolve()
+m=json.loads((run/"accepted-manifest.json").read_text())
+xs=[x for x in m["files"] if x["path"]=="output/index.html"]
+if len(xs)!=1: raise SystemExit("accepted result does not bind one HTML file")
+f=xs[0]; src=pathlib.Path(f["source"])
+try: parts=src.relative_to(run).parts
+except ValueError: raise SystemExit("accepted HTML source escapes run")
+if len(parts)!=5 or parts[0]!="jobs" or not re.fullmatch(r"bench-manage-[0-9]+",parts[1]) or parts[2:]!=("work","output","index.html"):
+ raise SystemExit("accepted HTML source is not an exact job output")
+current=run
+for part in parts:
+ current=current/part
+ if current.is_symlink(): raise SystemExit("accepted HTML traverses a symlink")
+if not src.is_file() or src.stat().st_size>16*1024*1024: raise SystemExit("accepted HTML is not a bounded regular file")
+b=src.read_bytes()
+if len(b)!=f["bytes"] or hashlib.sha256(b).hexdigest()!=f["sha256"]: raise SystemExit("accepted HTML changed")
+(run/"result.html").write_bytes(b)
+sys.stdout.buffer.write(b)
+PY

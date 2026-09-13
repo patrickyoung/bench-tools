@@ -1,0 +1,96 @@
+{
+  "date": "2026-09-13",
+  "result": {
+    "file": "index.html",
+    "bytes": 3729149,
+    "sha256": "66a4e8c8bee1caa4dc89c9fee8b2761b2fb3f3ea4a950c01a9a8a1867f52b4c4",
+    "filter_exit": 0
+  },
+  "case": "EPL scouting showcase with explicitly illustrative data",
+  "native_production_run": "epl-04",
+  "accepted_continuation": "epl-06",
+  "provenance": "Native Blender, image generation and GIMP outputs were checked in the production run, revalidated, and reused in the continuation; no new generation is claimed for the reused image.",
+  "browser": {
+    "html_sha256": "66a4e8c8bee1caa4dc89c9fee8b2761b2fb3f3ea4a950c01a9a8a1867f52b4c4",
+    "passed": true,
+    "visible_asset_sha256": [
+      "16ef06c435dded0c2fef72a426a935982f0b28c4d5674d23c098d427ea472f6d",
+      "033a5a63335c5c813066f105b4e71a7059ab792f8e96ffb0364b76ca8b970ff1",
+      "37304708712b3476ff33fef1c7bad7df5e3edb882abac1e33ca743e3df12f4c1",
+      "5dd2bb5ab3a318497a8651cd75f250636dfb9f45f2a0fc397734ea36041c656f"
+    ],
+    "failures": [],
+    "scenarios": [
+      {
+        "name": "desktop",
+        "passed": true
+      },
+      {
+        "name": "mobile",
+        "passed": true
+      },
+      {
+        "name": "narrow",
+        "passed": true
+      },
+      {
+        "name": "tablet",
+        "passed": true
+      },
+      {
+        "name": "reduced",
+        "passed": true
+      },
+      {
+        "name": "fallback",
+        "passed": true
+      }
+    ],
+    "browser": "152.0.7977.84"
+  },
+  "visual_review": {
+    "verdict": "pass",
+    "findings": [
+      "Desktop and mobile layouts are coherent and professional, with no visible clipping, collisions, overflow, or missing creative assets.",
+      "The repaired \u201cPURPOSEFUL CRAFT\u201d eyebrow uses a dark green on the warm paper panel and is visibly readable; chartreuse is appropriately retained on dark surfaces.",
+      "The sample-data boundary is prominent near the first scouting interface, and player signals are repeatedly labelled illustrative, avoiding misleading real-world claims.",
+      "Hierarchy is strong across the atmospheric hero, compact player index, comparison state, and editorial visual-system section. The responsive player rows remain usable on mobile without becoming a wall of identical cards.",
+      "Supplied browser results pass desktop, mobile, narrow, tablet, reduced-motion, and unavailable-context fallback scenarios with no reported failures."
+    ],
+    "limitations": [
+      "Static screenshots cannot prove keyboard navigation, visible focus in every state, screen-reader semantics, search/filter correctness, profile dialog content, comparison calculations, shortlist persistence, or control state updates.",
+      "Screenshots cannot prove that the HTML works fully offline, contains no runtime network dependencies, or correctly handles WebGL failure and reduced motion; those points rely on the supplied passing browser results.",
+      "Screenshots cannot verify source-master provenance, specialist handoffs, production evidence, file packaging, or whether the required Blender, GIMP, and image-generation workflows were performed as documented."
+    ]
+  },
+  "review_report_verdict": "pass",
+  "controller_allowance": {
+    "manager": {
+      "limit": 14,
+      "remaining": 10,
+      "reserved": 0,
+      "settled": 4
+    },
+    "root": {
+      "limit": 3,
+      "remaining": 2,
+      "reserved": 0,
+      "settled": 1
+    },
+    "worker": {
+      "limit": 18,
+      "remaining": 9,
+      "reserved": 0,
+      "settled": 9
+    },
+    "worker_turns": {
+      "allocated": 78,
+      "limit": 180,
+      "meaning": "reserved per-attempt limits, not measured or billable tokens",
+      "remaining": 102
+    }
+  },
+  "mcp_exact_artifact": true,
+  "a2a_fresh_fixture_and_mtls": true,
+  "full_fresh_linux_install_tested": false
+}

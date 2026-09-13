@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+: "${A2A_WORKSPACE:?a2aserve must supply A2A_WORKSPACE}"
+export PAGE_TEAM_RUN="$A2A_WORKSPACE/controller"
+exec "$ROOT/bin/page-team"

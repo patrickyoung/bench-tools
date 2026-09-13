@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+test -s output/index.html || { echo "missing output/index.html"; exit 1; }
+exec "$ROOT/bin/validate-html" output/index.html

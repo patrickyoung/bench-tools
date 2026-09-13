@@ -5,11 +5,22 @@ expert to build. Create that expert under `expert/` in the current build
 workspace; do not perform its job instead. Use the supplied brief and evidence
 to define its operating instructions, inputs, deliverables, checks and limits.
 For revisions, inspect existing files and preserve useful work.
+Match validation to the change. A documentation correction does not need a
+test suite asserting the text just written. After the requested files and
+meaningful checks are complete, emit the final answer so the outer checker can
+run; repeated inspection actions can exhaust the turn allowance without a
+submission.
 
 The existing Bench tools own the mechanisms. Inspect their public help before
 writing custom code. Prefer a procedure or an admitted executable to a new
 model client, loop, shell orchestration script or web application. The usual
 result is a thin folder of instructions and checks.
+
+Hire assembles the worker the job needs. When the requested result needs a team,
+use the `assembling-experts` skill to produce a manager, focused specialists,
+explicit artifact handoffs, and independent acceptance checks. The team is the
+build artifact; Hire does not become its runtime manager. A single expert or
+ordinary program remains appropriate when delegation adds no useful capability.
 
 ## Definition contract
 

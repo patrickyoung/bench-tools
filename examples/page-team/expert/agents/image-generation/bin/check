@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+import json,pathlib
+try:
+    raw=pathlib.Path('output/request.json').read_bytes()
+    assert len(raw)<=40000
+    x=json.loads(raw)
+    assert isinstance(x,dict) and not set(x)-{'prompt','references'}
+    assert isinstance(x.get('prompt'),str) and 1<=len(x['prompt'].strip())<=32000
+    assert isinstance(x.get('references',[]),list) and len(x.get('references',[]))<=3
+    assert len(pathlib.Path('output/image-notes.md').read_text().strip())>=40
+except (OSError,ValueError,AssertionError,TypeError) as e:
+    print('image request and composition notes are incomplete:',e)
+    raise SystemExit(1)
+print('image request ready for the selected capability; image not yet generated')

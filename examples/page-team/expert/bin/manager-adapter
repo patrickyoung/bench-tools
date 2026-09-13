@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+cat > snapshot.json
+"$ROOT/bin/manager-input" < snapshot.json > manager-input.json
+export PAGE_TEAM_ROOT="$ROOT"
+CONTROL=$(dirname "${BENCH_MANAGE_SESSION:?missing controller session}")
+exec "${AGENT:?configure AGENT}" run -m "$BENCH_MANAGE_MODEL" -effort "${BENCH_MANAGE_EFFORT:-medium}" \
+ -turns 6 -cycles 3 -C "$PWD" -state "$PWD/agent-state" -evidence "$CONTROL/agent-evidence" \
+ "$ROOT/agents/manager" -- "The planning packet is supplied on stdin. Only verbose command diagnostics are shortened; the original is saved as snapshot.json. All planning facts and the original snapshot_sha256 are present. Prefer returning the next valid proposal immediately as raw JSON. If input was spooled, verify its stated file digest and read that actual packet in one read-only action, then propose. Do not explore unrelated files or write a proposal file. Copy snapshot_sha256 exactly; the checker validates against the original." < manager-input.json

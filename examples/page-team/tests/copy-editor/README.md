@@ -1,0 +1,1 @@
+Run this definition through Agent with a supplied note. It emits output/edited.txt and a hash-bound handoff. The fixture check rejects changed meaning or a missing artifact.

@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+import json,pathlib,re,sys
+def bad(x): print(x); raise SystemExit(1)
+try: packet=json.load(open("snapshot.json")); s=packet["snapshot"]; p=json.loads(sys.stdin.buffer.read(1024*1024+1))
+except Exception as e: bad("missing/invalid snapshot or proposal: "+str(e))
+keys={"snapshot_sha256","action","reason","tasks","supersede","result"}
+if set(p)!=keys: bad("proposal fields do not match Bench Manage")
+if p["snapshot_sha256"]!=packet["snapshot_sha256"]: bad("stale snapshot digest")
+if p["action"] not in ("plan","finish","blocked") or not p["reason"].strip(): bad("invalid action/reason")
+if not isinstance(p["tasks"],list) or not isinstance(p["supersede"],list) or not isinstance(p["result"],str): bad("invalid proposal collections")
+if p["action"]!="plan" and (p["tasks"] or p["supersede"]): bad("only a plan may change assignments")
+workers=set(s["workers"]); criteria=set(s["criteria"])
+for t in p["tasks"]:
+ if set(t)!={"id","needs","input"}: bad("invalid task")
+ i=t["input"]
+ if set(i)!={"goal","criteria","worker","kind","output","data","turns","seconds"}: bad("invalid task input")
+ if i["worker"] not in workers or not set(i["criteria"])<=criteria: bad("unknown binding")
+ if i["kind"] not in ("work","integrate") or not 1<=i["turns"]<=12: bad("invalid bounds")
+print("proposal is snapshot-bound and uses admitted workers")

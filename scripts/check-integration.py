@@ -467,6 +467,8 @@ chmod 700 expert/bin/check
 '''
 
     def respond(request):
+        if "You are choosing which skill" in request.get("instructions", ""):
+            return "none"  # This simple sorting fixture does not need a team.
         if revising:
             revision_turns.append(request)
             return "```ply\nprintf '\\nDocumented revision.\\n' >> expert/README.md\n```" if len(revision_turns) == 1 else "Expert documentation revised."
@@ -492,6 +494,17 @@ chmod 700 expert/bin/check
         invoke([bins / "hire", "verify", definition], cwd=work, env=fixture_env)
         require(not marker.exists(), "Hire verify executed generated code with controller authority")
         check.write_bytes(before)
+        # Agent already recursively validates definitions. Hire must use that
+        # public behavior rather than implement another tree validator.
+        specialist = definition / "agents" / "reviewer"
+        (specialist / "bin").mkdir(parents=True)
+        (specialist / "AGENTS.md").write_text("Review one explicitly supplied result.\n")
+        invoke([bins / "hire", "verify", definition], cwd=work, env=fixture_env, code=1)
+        child_check = specialist / "bin/check"
+        child_check.write_text("#!/bin/sh\ntouch " + shlex.quote(str(marker)) + "\nexit 0\n")
+        child_check.chmod(0o700)
+        invoke([bins / "hire", "verify", definition], cwd=work, env=fixture_env)
+        require(not marker.exists(), "Hire verify executed a nested specialist's check")
         snapshot = {p.relative_to(definition): p.read_bytes() for p in definition.rglob("*") if p.is_file()}
         (run_work / "names.txt").write_bytes(b"pear\napple\npear\n")
         result = invoke([agent, "run", "-C", run_work, "-evidence", work / "hired expert evidence",

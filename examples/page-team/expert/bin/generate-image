@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""One fixed image capability, after the request-writing Agent has exited."""
+import json, os, pathlib, subprocess, sys
+
+work = pathlib.Path.cwd()
+root = pathlib.Path(__file__).resolve().parents[1]
+control = pathlib.Path(os.environ['BENCH_MANAGE_SESSION']).parent
+def reject(message):
+    print(message, file=sys.stderr)
+    raise SystemExit(1)
+def regular(path, base):
+    current = base
+    for name in path.relative_to(base).parts:
+        current = current / name
+        if current.is_symlink(): reject('image path traverses a symlink')
+    if not path.is_file(): reject('image input must be a regular file')
+
+request = work/'output/request.json'
+regular(request, work)
+with request.open('rb') as stream: raw = stream.read(40001)
+if len(raw) > 40000: reject('image request exceeds limit')
+obj = json.loads(raw)
+if not isinstance(obj, dict) or set(obj) - {'prompt','references'}: reject('invalid image request fields')
+prompt = obj.get('prompt')
+if not isinstance(prompt, str) or not prompt.strip() or len(prompt)>32000: reject('invalid image prompt')
+refs = obj.get('references', [])
+if not isinstance(refs,list) or len(refs)>3: reject('invalid image references')
+references=[]
+for value in refs:
+    if not isinstance(value,str): reject('invalid reference path')
+    rel=pathlib.PurePosixPath(value)
+    if str(rel)!=value or rel.is_absolute() or len(rel.parts)<2 or rel.parts[0]!='inputs' or '..' in rel.parts:
+        reject('references must be clean relative inputs paths')
+    source=work/pathlib.Path(*rel.parts)
+    regular(source,work)
+    if source.stat().st_size>16*1024*1024: reject('image reference exceeds limit')
+    references.append(str(source))
+backend=os.environ.get('PAGE_TEAM_IMAGEGEN')
+if not backend or not os.path.isabs(backend) or not os.access(backend,os.X_OK): reject('configure PAGE_TEAM_IMAGEGEN as an absolute executable')
+# The caller owns capability execution and its deadline. A fresh controller
+# directory prevents model-created paths from redirecting the backend's writes.
+cap=control/'image-capability'
+cap.mkdir(mode=0o700)
+generated=cap/'generated.png'
+payload=json.dumps({'prompt':prompt,'output':str(generated),'references':references}).encode()
+(cap/'request.json').write_bytes(payload)
+with (cap/'stdout').open('wb') as out, (cap/'stderr').open('wb') as err:
+    result=subprocess.run([backend],input=payload,stdout=out,stderr=err,cwd=cap)
+(cap/'exit.json').write_text(json.dumps({'exit':result.returncode}))
+if result.returncode:
+    print('image capability failed; inspect controller image-capability/stderr',file=sys.stderr)
+    raise SystemExit(result.returncode if result.returncode>0 else 1)
+regular(generated,cap)
+if not 1024<=generated.stat().st_size<=16*1024*1024: reject('image capability returned an invalid image size')
+with generated.open('rb') as stream:
+    if stream.read(8)!=b'\x89PNG\r\n\x1a\n': reject('image capability did not return PNG')
+with (cap/'stdout').open('rb') as stream: provenance_raw=stream.read(1024*1024+1)
+if len(provenance_raw)>1024*1024: reject('image provenance exceeds limit')
+provenance=json.loads(provenance_raw)
+if not isinstance(provenance,dict) or not provenance: reject('image capability did not retain provenance')
+out=work/'output'
+if out.is_symlink() or not out.is_dir(): reject('output directory is invalid')
+for name,data in [('generated.png',generated.read_bytes()),('prompt.txt',prompt.encode()),('provenance.json',provenance_raw)]:
+    with (out/name).open('xb') as stream: stream.write(data)
+subprocess.run([str(root/'bin/make-handoff'),'image-generation','Generated image from the retained request',
+               'output/request.json','output/prompt.txt','output/generated.png','output/provenance.json','output/image-notes.md'],check=True)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run copied starters against real commands and a loopback model fixture."""
 import argparse
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -249,6 +250,46 @@ def check_support(bins, scratch, env, server, native_cage):
           + (", native Cage" if native_cage else "; host boundary selected for this offline fixture"), flush=True)
 
 
+def check_page_worker_feedback(bins, scratch, env):
+    """Use the existing wire fixture to exercise the real worker's repair loop."""
+    spec = importlib.util.spec_from_file_location("bench_integration_fixture", ROOT / "scripts/check-integration.py")
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    bundle = scratch / "page-feedback-expert"
+    shutil.copytree(ROOT / "examples/page-team/expert", bundle,
+                    ignore=shutil.ignore_patterns("node_modules", "__pycache__"))
+    shutil.copytree(ROOT / "examples/page-team/tests/copy-editor", bundle / "agents/copy-editor")
+    job = scratch / "page-feedback/jobs/bench-manage-000001"
+    work, control = job / "work", job / "control"
+    work.mkdir(parents=True)
+    control.mkdir()
+    expected = "The player shows composure under pressure. Further live observation is needed."
+    def action(text):
+        return "```ply\nmkdir -p output\nprintf '%s\\n' '" + text + "' > output/edited.txt\nmake-handoff copy-editor 'Feedback fixture' output/edited.txt\n```"
+    replies = [action("WRONG"), "First candidate.", action(expected), "Corrected and checked."]
+    turns = []
+    def respond(request):
+        turns.append(request)
+        return replies[min(len(turns), len(replies)) - 1]
+    selected = dict(env, AGENT=str(bins / "agent"), PAGE_TEAM_SPECIALIST="copy-editor",
+                    BENCH_MANAGE_MODEL="openai/fixture", BENCH_MANAGE_EFFORT="medium",
+                    BENCH_MANAGE_TURNS="6", BENCH_MANAGE_SESSION=str(control / "session.jsonl"))
+    packet = {"task": {"id": "copy-repair", "input": {"worker": "copy-editor", "goal": "Preserve uncertainty"}},
+              "dependencies": []}
+    with fixture.model_fixture(selected, respond) as (fixture_env, calls):
+        result = invoke([bundle / "bin/run-worker"], work, fixture_env, data=json.dumps(packet).encode())
+        manifest = json.loads(result.stdout)
+        require(manifest["task_id"] == "copy-repair" and len(turns) == 4,
+                "page worker failed to preserve Agent's rejected-candidate correction loop")
+        require((work / "output/edited.txt").read_text().strip() == expected, "page worker accepted the wrong text")
+    session = next((control / "agent-evidence/runs").glob("*.jsonl"))
+    replay = invoke([bins / "ask", "replay", "-check", "-json", session], work, env)
+    verdicts = [e["data"]["body"].get("outcome") for e in map(json.loads, replay.stdout.splitlines())
+                if e["type"] == "note" and e["data"].get("kind") == "ply.verifier/v2"]
+    require("rejected" in verdicts and "accepted" in verdicts, "page worker lost rejection/acceptance evidence")
+    print("ok page-team worker: real Agent/Ply/Ask, rejected candidate, correction within one task, native Cage", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bin-dir", type=Path, default=ROOT / ".build" / "bin")
@@ -278,6 +319,15 @@ def main():
                 check_evidence(bins, scratch, env, server)
                 check_signup(bins, scratch, env)
                 check_support(bins, scratch, env, server, args.native_cage)
+                invoke([sys.executable, ROOT / "examples/page-team/tests/contracts.py"], scratch, env)
+                page_work = scratch / "page-team-work"
+                page_work.mkdir()
+                invoke([bins / "agent", "check", "-C", page_work,
+                        "-evidence", scratch / "page-team-evidence",
+                        ROOT / "examples/page-team/expert"], scratch, env)
+                print("ok page-team: nested definition structure and offline artifact/protocol contracts", flush=True)
+                if args.native_cage:
+                    check_page_worker_feedback(bins, scratch, env)
                 require(all(path == "/v1/responses" for path, _ in server.calls),
                         "fixture received an unexpected request path")
             finally:

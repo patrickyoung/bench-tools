@@ -1,0 +1,11 @@
+{
+  "name": "Single-file page team",
+  "description": "Builds a checked self-contained HTML page and retains source/evaluation evidence.",
+  "version": "1.0.0",
+  "skills": [{
+    "id": "build-single-file-page",
+    "name": "Build single-file page",
+    "description": "Turn a bounded brief into one distributable HTML artifact.",
+    "tags": ["html", "frontend", "creative", "accessibility"]
+  }]
+}

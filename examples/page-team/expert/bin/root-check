@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+import hashlib,json,pathlib,re,subprocess,sys
+root=pathlib.Path(__file__).resolve().parents[1]
+work=pathlib.Path.cwd(); run=work.parents[2]
+def reject(message): print(message); raise SystemExit(1)
+try:
+    packet=json.loads(sys.stdin.buffer.read(1024*1024*16+1))
+    original=packet['input']; snapshot=original['snapshot']; deps=original['dependencies']
+    candidate=packet['candidate']; final=json.loads(candidate)
+    if len(deps)!=1 or deps[0]['content']!=candidate: reject('final candidate is not the exact accepted integration')
+    dep=deps[0]
+    tasks={t['id']:t for t in snapshot['tasks']}
+    task=tasks[dep['id']]
+    if task['state']!='accepted' or task['input']['kind']!='integrate' or task['input']['worker']!='frontend': reject('final task is not an accepted frontend integration')
+    if final['specialist']!='frontend' or [f['path'] for f in final['files']].count('output/index.html')!=1: reject('final manifest must name one output/index.html')
+    r=subprocess.run([str(root/'bin/materialize-inputs')],input=json.dumps({'dependencies':deps}).encode(),capture_output=True)
+    if r.returncode: reject('final artifact validation failed: '+r.stderr.decode(errors='replace'))
+    html=work/'inputs'/dep['job']/'output/index.html'
+    data=html.read_bytes(); digest=hashlib.sha256(data).hexdigest()
+    r=subprocess.run([str(root/'bin/validate-html'),str(html)],capture_output=True)
+    if r.returncode: reject(r.stdout.decode(errors='replace')+r.stderr.decode(errors='replace'))
+    ancestors=set(); pending=list(task['needs'])
+    while pending:
+        ident=pending.pop()
+        if ident in ancestors: continue
+        ancestors.add(ident); pending.extend(tasks[ident]['needs'])
+    reviews=[]
+    for ident in ancestors:
+        t=tasks[ident]
+        if t['input']['worker']=='review' and t['state']=='accepted':
+            if not re.fullmatch(r'bench-manage-[0-9]+',t['job']): reject('invalid review job binding')
+            path=run/'jobs'/t['job']/'control/review/receipt.json'
+            if path.is_symlink() or not path.is_file(): continue
+            receipt=json.loads(path.read_text())
+            manifest=json.loads(t['candidate'])
+            reports=[f for f in manifest['files'] if f['path']=='output/review.json']
+            report_path=run/'jobs'/t['job']/'work/output/review.json'
+            if len(reports)!=1 or report_path.is_symlink() or not report_path.is_file(): continue
+            with report_path.open('rb') as stream: report_raw=stream.read(1024*1024+1)
+            if len(report_raw)!=reports[0]['bytes'] or hashlib.sha256(report_raw).hexdigest()!=reports[0]['sha256']: continue
+            if json.loads(report_raw).get('verdict')!='pass': continue
+            if receipt['html_sha256']==digest and receipt['goal_sha256']==hashlib.sha256(snapshot['goal'].encode()).hexdigest() and receipt['browser_passed'] and receipt['visual_passed']:
+                reviews.append(receipt)
+    if not reviews: reject('final HTML has no passing browser and visual review for this exact hash and original brief; review changed pages before final copying')
+    if 'epl' in snapshot['goal'].lower():
+        visible=set(reviews[0]['browser'].get('visible_asset_sha256',[]))
+        for role,names in [('blender',{'output/preview.png'}),('image-generation',{'output/generated.png'}),('gimp',{'output/composite.png','output/composite.webp'})]:
+            expected=set()
+            for ident in ancestors:
+                t=tasks[ident]
+                if t['input']['worker']==role and t['state']=='accepted':
+                    m=json.loads(t['candidate'])
+                    expected.update(f['sha256'] for f in m['files'] if f['path'] in names)
+            if not expected or not expected.intersection(visible): reject(role+' has no checked image visibly used in the final page')
+except (KeyError,ValueError,OSError,TypeError) as e: reject('invalid final integration: '+str(e))
+print('accepted exact reviewed HTML, original-brief browser journeys, visual review and required creative assets')

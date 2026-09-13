@@ -1,0 +1,2 @@
+#!/bin/sh
+PAGE_TEAM_SPECIALIST='visual-artist' exec "$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)/bin/run-worker"

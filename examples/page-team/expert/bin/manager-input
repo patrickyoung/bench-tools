@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Shorten repeated command diagnostics, preserving planning facts and handles."""
+import json,sys
+p=json.load(sys.stdin)
+for task in p['snapshot'].get('tasks',[]):
+    diagnostic=task.get('diagnostic','')
+    if isinstance(diagnostic,str) and diagnostic:
+        if task.get('state')=='accepted':
+            task['diagnostic']='Accepted. Full command trace is retained in snapshot.json.'
+        elif len(diagnostic)>2000:
+            task['diagnostic']='[Earlier command trace retained in snapshot.json]\n'+diagnostic[-2000:]
+p['presentation']='Only command diagnostics are shortened. snapshot_sha256 binds the original snapshot.json, not this display. All task inputs, states, dependencies, candidates, receipts and allowances are unchanged.'
+json.dump(p,sys.stdout,separators=(',',':'))
+print()

@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+NAME=${PAGE_TEAM_SPECIALIST:?specialist binding missing}
+cat > packet.json
+"$ROOT/bin/materialize-inputs" < packet.json >/dev/null
+export PAGE_TEAM_ROOT="$ROOT"
+export PAGE_TEAM_TASK_ID=$(python3 -c 'import json;print(json.load(open("packet.json"))["task"]["id"])')
+if [ "$NAME" = review ]; then
+  "$ROOT/bin/review-page" >&2
+fi
+AGENT_BIN=${AGENT:?configure AGENT}
+CONTROL=$(dirname "${BENCH_MANAGE_SESSION:?missing controller session}")
+"$AGENT_BIN" run -m "$BENCH_MANAGE_MODEL" -effort "${BENCH_MANAGE_EFFORT:-medium}" \
+  -turns "${BENCH_MANAGE_TURNS:?missing admitted turn limit}" -cycles 3 \
+  -C "$PWD" -state "$PWD/agent-state" -evidence "$CONTROL/agent-evidence" \
+  "$ROOT/agents/$NAME" -- "Complete the admitted assignment in packet.json using only its brief, evidence, and materialized inputs. This is a fresh workspace; no previous failed task files are carried over. Produce the required output files and handoff.json, then emit a final answer promptly so Agent runs the checker. A shell action alone is not a final submission. Avoid optional file dumps and duplicate artifacts." \
+  < packet.json >&2
+if [ "$NAME" = image-generation ]; then
+  "$ROOT/bin/generate-image"
+fi
+cat handoff.json
