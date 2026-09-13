@@ -173,3 +173,14 @@ is in temporary homes; no model turn or personal profile change is requested.
 These host checks are separate from CI because those CLIs are optional external
 dependencies. See the [harness verification record](../docs/HARNESS-VERIFICATION.md)
 for observed versions and the limits of that evidence.
+
+## Worker source library
+
+`python3 scripts/workers list --all` reads catalog metadata; `check` inspects
+source and approved export inventories. `export ID DEST --ref FULL_COMMIT`
+uses Git to write only committed, explicitly approved source into a new folder
+with `team.lock.json`. Experimental entries need `--allow-experimental`;
+deprecated and retired entries cannot be exported at that selected revision.
+This is a repository utility, not an installed Bench command or runtime. See
+[the library guide](../docs/WORKER-LIBRARY.md) for content exclusions, source
+pins, authoring, checks and lifecycle policy.

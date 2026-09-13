@@ -124,6 +124,7 @@ the components you need; their runtime companions are selected separately.
 | [Compare with modern agent tooling](docs/COMPARISONS.md) | Where coding agents, SDKs, workflows, MCP, and Bench fit in 2026 |
 | [Installation](docs/INSTALL.md) | Whole toolkit, selected tools, updates, and removal |
 | [Source and releases](docs/RELEASES.md) | Which installation to use and how to pin a reproducible toolset |
+| [Worker library](docs/WORKER-LIBRARY.md) | Keep reusable expertise in Git, assemble clean teams, and manage updates and retirement |
 
 You do not need all the pieces for every task. A fixed transformation may need
 no model; a summary may need only Ask. Add a loop when the next step depends on

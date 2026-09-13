@@ -11,6 +11,20 @@ First inspect an existing solution or relevant example. The selected checkout's
 uses a single model request. Keep useful renderers, parsers, and checks when
 adapting a worker; remove duplicate context/loop code by using Agent.
 
+## Reuse the source library first
+
+Read `workers/README.md` and `teams/README.md`. Use `python3 scripts/workers
+list --all` to inspect status, then select a full reviewed source commit and
+export approved files into a new authoring directory. The exact command and
+experimental opt-in are in the catalog. Never copy example showcases, an old
+run or a development checkout into a new team. The export contains the expert
+and its source lock; current job inputs are supplied separately.
+
+Use an unchanged suitable expert directly. If adaptation is needed, give Hire
+the existing exported expert and a short recipe. Preserve its source lock,
+inspect changes and evaluate them before promoting revised source through Git.
+The large Architect, Writer and Present applications are not library entries.
+
 ## Ask Hire to build a definition
 
 Use a fresh solution directory outside the source checkout. Write `JOB.md`

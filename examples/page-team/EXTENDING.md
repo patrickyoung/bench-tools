@@ -14,7 +14,7 @@ them to the planning manager. The same worker adapter starts the new expert
 through Agent, validates its handoff and materializes only accepted inputs.
 No runner, scheduler, registry or server change is needed.
 
-For a concrete extension test, copy `tests/copy-editor` into the copied expert's
+For a concrete extension test, copy `workers/page-team/tests/copy-editor` into the copied expert's
 `agents/` directory and create that binding. This deliberately narrow fixture
 corrects one spelling error while preserving an uncertainty statement. It is
 a proof of extension mechanics, not a general copy-editing evaluation.
@@ -27,10 +27,10 @@ They are deterministic test programs, not replacements for the page manager.
 export EXTENSION_BUNDLE=/absolute/path/to/page-team/expert
 printf '%s\n' 'Exercise the copy-editor extension and preserve uncertainty.' |
   "$BENCH_MANAGE" run -C /absolute/path/to/runs/extension-001 \
-  -manager /absolute/path/to/page-team/tests/extension-manager \
+  -manager /path/to/bench-tools/workers/page-team/tests/extension-manager \
   -workers "$EXTENSION_BUNDLE/bin/workers" \
   -task-check "$EXTENSION_BUNDLE/bin/task-check" \
-  -check /absolute/path/to/page-team/tests/extension-check \
+  -check /path/to/bench-tools/workers/page-team/tests/extension-check \
   -m "$PAGE_TEAM_MODEL" -turns 60 -attempts 12 -decisions 8 \
   -reserve-attempts 2 -reserve-turns 6 -task-seconds 3m -deadline 10m \
   -pass-env AGENT -pass-env EXTENSION_BUNDLE

@@ -256,9 +256,9 @@ def check_page_worker_feedback(bins, scratch, env):
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
     bundle = scratch / "page-feedback-expert"
-    shutil.copytree(ROOT / "examples/page-team/expert", bundle,
+    shutil.copytree(ROOT / "workers/page-team/expert", bundle,
                     ignore=shutil.ignore_patterns("node_modules", "__pycache__"))
-    shutil.copytree(ROOT / "examples/page-team/tests/copy-editor", bundle / "agents/copy-editor")
+    shutil.copytree(ROOT / "workers/page-team/tests/copy-editor", bundle / "agents/copy-editor")
     job = scratch / "page-feedback/jobs/bench-manage-000001"
     work, control = job / "work", job / "control"
     work.mkdir(parents=True)
@@ -319,12 +319,12 @@ def main():
                 check_evidence(bins, scratch, env, server)
                 check_signup(bins, scratch, env)
                 check_support(bins, scratch, env, server, args.native_cage)
-                invoke([sys.executable, ROOT / "examples/page-team/tests/contracts.py"], scratch, env)
+                invoke([sys.executable, ROOT / "workers/page-team/tests/contracts.py"], scratch, env)
                 page_work = scratch / "page-team-work"
                 page_work.mkdir()
                 invoke([bins / "agent", "check", "-C", page_work,
                         "-evidence", scratch / "page-team-evidence",
-                        ROOT / "examples/page-team/expert"], scratch, env)
+                        ROOT / "workers/page-team/expert"], scratch, env)
                 print("ok page-team: nested definition structure and offline artifact/protocol contracts", flush=True)
                 if args.native_cage:
                     check_page_worker_feedback(bins, scratch, env)

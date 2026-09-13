@@ -6,7 +6,7 @@ builds definitions; Agent runs the manager and every specialist. The local
 filter accepts a brief and emits accepted HTML. MCPserve and A2Aserve expose
 that same filter when a caller needs those interfaces.
 
-Start with [the observed evaluation](expert/EVALUATION.md). The EPL showcase,
+Start with [the observed evaluation](EVALUATION.md). The EPL showcase,
 small complete build, protocol tests and extension case have passed. The full
 showcase reused checked artwork after iterative repairs; the evaluation records
 those failures and limits. This remains an experimental example.
@@ -24,8 +24,13 @@ From the monorepo root, install the existing components:
 ```sh
 python3 scripts/install agent hire ask brief ply cage tend weave mcp a2a
 export PATH="$HOME/.local/bin:$PATH"
-cp -R examples/page-team /absolute/path/to/page-team
+python3 scripts/workers export page-team /absolute/path/to/page-team \
+  --ref FULL_COMMIT --allow-experimental
 ```
+
+`FULL_COMMIT` is the complete reviewed source commit from `git rev-parse HEAD`.
+The export includes only the curated definition and its lock, never this
+example’s brief, demo or recordings. Supply those inputs separately.
 
 Install [Bench Manage](https://github.com/patrickyoung/bench-manage) separately.
 This example was exercised with commit
@@ -35,7 +40,7 @@ Select the installed monorepo binaries instead of rebuilding sibling checkouts
 using its older setup recipe. Keep the application and expert copy unchanged
 while a run is admitted.
 
-Set the absolute executable paths in [config/example.env](expert/config/example.env),
+Set the absolute executable paths in [config/example.env](../../workers/page-team/expert/config/example.env),
 export them, and configure [Ask](../../tools/ask/README.md) for your model.
 Credentials stay in the operator's provider setup. A harness login by itself
 does not configure Ask. Optional existing credential wrappers can be selected
@@ -43,7 +48,7 @@ through `AGENT_ASK`; no wrapper is copied into this expert.
 
 The creative case additionally needs Blender, GIMP 3's console and an existing
 image-generation executable with the JSON contract in the
-[worker setup](expert/README.md). The observed native setup used Blender 5.2.1
+[worker setup](../../workers/page-team/expert/README.md). The observed native setup used Blender 5.2.1
 and GIMP 3.2.6 on macOS. Linux setup must supply those executables and a working
 Cage backend; this evaluation does not claim a fresh Linux-host installation.
 Python 3.9+ and Node 22+ must be on the selected process PATH.
@@ -63,8 +68,9 @@ Linux may require Playwright's documented browser system dependencies.
 
 ```sh
 export PAGE_TEAM_RUN=/absolute/path/to/runs/scouting-001
+export PAGE_TEAM_BROWSER_CHECK=/path/to/bench-tools/examples/page-team/tests/showcase-checks.mjs
 /absolute/path/to/page-team/expert/bin/page-team \
-  < /absolute/path/to/page-team/briefs/epl-showcase.md > scouting.html
+  < /path/to/bench-tools/examples/page-team/briefs/epl-showcase.md > scouting.html
 ```
 
 Only exit 0 makes stdout an accepted page. Progress goes to stderr. The run
@@ -72,7 +78,7 @@ retains the backlog, independent workspaces and contexts, native masters,
 production inputs, image provenance, screenshots and review evidence.
 `PAGE_TEAM_RUN/result.html` is the accepted artifact. Resume an existing run
 with empty stdin; a changed brief requires a new run. See the
-[worker manual](expert/README.md) for limits, confinement and subprocess use.
+[worker manual](../../workers/page-team/expert/README.md) for limits, confinement and subprocess use.
 
 The [EPL brief](briefs/epl-showcase.md) uses explicitly illustrative scouting
 data. It is a showcase, not a source of real recruitment recommendations.
@@ -104,8 +110,8 @@ the page filter invokes the existing controller and Agent to run it.
 The deterministic tests call no model or native art tools:
 
 ```sh
-python3 /absolute/path/to/page-team/tests/contracts.py
-node /absolute/path/to/page-team/tests/browser.mjs
+python3 workers/page-team/tests/contracts.py /absolute/path/to/page-team/expert
+node workers/page-team/tests/browser.mjs /absolute/path/to/page-team/expert
 ```
 
 They reject malformed handoffs, changed hashes, broken review bindings, failed
@@ -117,10 +123,11 @@ For a small live end-to-end test before a creative run, use a fresh run and the
 supplied brief generator. This calls the configured model and screenshot judge:
 
 ```sh
+unset PAGE_TEAM_BROWSER_CHECK
 export PAGE_TEAM_RUN=/absolute/path/to/runs/smoke-001
-python3 /absolute/path/to/page-team/tests/smoke-brief.py |
+python3 workers/page-team/tests/smoke-brief.py |
   /absolute/path/to/page-team/expert/bin/page-team > fixture.html
-cmp fixture.html /absolute/path/to/page-team/tests/browser-fixture.html
+cmp fixture.html workers/page-team/tests/browser-fixture.html
 ```
 
 Use [the interface runbook](INTERFACES.md) for MCP, API and A2A. Use

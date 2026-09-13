@@ -42,15 +42,16 @@ try:
             if receipt['html_sha256']==digest and receipt['goal_sha256']==hashlib.sha256(snapshot['goal'].encode()).hexdigest() and receipt['browser_passed'] and receipt['visual_passed']:
                 reviews.append(receipt)
     if not reviews: reject('final HTML has no passing browser and visual review for this exact hash and original brief; review changed pages before final copying')
-    if 'epl' in snapshot['goal'].lower():
-        visible=set(reviews[0]['browser'].get('visible_asset_sha256',[]))
-        for role,names in [('blender',{'output/preview.png'}),('image-generation',{'output/generated.png'}),('gimp',{'output/composite.png','output/composite.webp'})]:
-            expected=set()
-            for ident in ancestors:
-                t=tasks[ident]
-                if t['input']['worker']==role and t['state']=='accepted':
-                    m=json.loads(t['candidate'])
-                    expected.update(f['sha256'] for f in m['files'] if f['path'] in names)
-            if not expected or not expected.intersection(visible): reject(role+' has no checked image visibly used in the final page')
+    # Every accepted creative contribution must be visibly integrated, in any domain.
+    visible=set(reviews[0]['browser'].get('visible_asset_sha256',[]))
+    for role,names in [('blender',{'output/preview.png'}),('image-generation',{'output/generated.png'}),('gimp',{'output/composite.png','output/composite.webp'})]:
+        if not any(tasks[i]['input']['worker']==role and tasks[i]['state']=='accepted' for i in ancestors): continue
+        expected=set()
+        for ident in ancestors:
+            t=tasks[ident]
+            if t['input']['worker']==role and t['state']=='accepted':
+                m=json.loads(t['candidate'])
+                expected.update(f['sha256'] for f in m['files'] if f['path'] in names)
+        if not expected or not expected.intersection(visible): reject(role+' has no checked image visibly used in the final page')
 except (KeyError,ValueError,OSError,TypeError) as e: reject('invalid final integration: '+str(e))
 print('accepted exact reviewed HTML, original-brief browser journeys, visual review and required creative assets')

@@ -8,9 +8,8 @@ Provide keyboard-operable interactions with visible focus, correct controls and
 ARIA, fluid layouts without 320px overflow, useful empty/fallback states,
 Canvas/WebGL fallback, and `prefers-reduced-motion` disabling nonessential
 motion. Catch initialization errors without hiding them from diagnostics.
-For EPL/player work visibly state that unsourced player names, ratings and
-metrics are illustrative, not current facts. For other briefs use their own
-domain. Preserve any editable source as additional output files. Run the child
+Visibly label unsourced names, ratings and metrics as illustrative. Use only
+the domain and current input supplied for this assignment. Preserve any editable source as additional output files. Run the child
 check, then `make-handoff frontend SUMMARY output/index.html ...`.
 
 Read relevant text instructions and metadata, not binary files or whole base64

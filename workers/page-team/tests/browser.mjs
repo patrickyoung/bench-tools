@@ -15,10 +15,13 @@ const cases=[['valid',fixture,0],
  ['motion',fixture.replace("if(!matchMedia('(prefers-reduced-motion:reduce)').matches)",'if(true)'),1],
  ['network',fixture.replace('</main>','<img src="https://example.invalid/forbidden.png" alt="Forbidden fixture"></main>'),1]];
 try{
+ const external=path.join(root,'extra-checks.mjs');
+ fs.writeFileSync(external,"export default async function(page){if(await page.locator('#absent').count()===0)throw Error('external acceptance rejected')}\n");
+ cases.push(['external',fixture,1]);
  for(const [name,html,expected] of cases){
   const file=path.join(root,name+'.html'), out=path.join(root,name);
   fs.writeFileSync(file,html);
-  const result=spawnSync(process.execPath,[path.join(expert,'bin/browser-check.mjs'),file,out],{encoding:'utf8',timeout:90000});
+  const result=spawnSync(process.execPath,[path.join(expert,'bin/browser-check.mjs'),file,out,...(name==='external'?['--checks',external]:[])],{encoding:'utf8',timeout:90000});
   assert.equal(result.status,expected,result.stderr||result.error?.message);
   const report=JSON.parse(fs.readFileSync(path.join(out,'browser.json'),'utf8'));
   assert.equal(report.passed,expected===0);

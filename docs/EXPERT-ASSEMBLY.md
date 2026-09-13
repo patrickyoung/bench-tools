@@ -89,7 +89,7 @@ observed checks must support the authority claims made by the final worker.
 ## Requirement audit
 
 The [page-team example](../examples/page-team/README.md) and its
-[evaluation](../examples/page-team/expert/EVALUATION.md) retain the exact result,
+[evaluation](../examples/page-team/EVALUATION.md) retain the exact result,
 commands, observed failures and limitations. The local execution roots remain
 outside the monorepo; the public example contains reusable source, fixtures,
 the accepted demonstration, an actual interaction GIF and sanitized results.
