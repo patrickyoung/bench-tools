@@ -24,8 +24,15 @@ built-command checks, plus Draft shell checks. It skips race, the separate
 vet pass, supplementary example suites, process integration, and native Cage
 proof. `make check` includes race, vet, supplementary suites, and integration
 with local model fixtures. Neither makes paid model calls. `make check-examples`
-builds the five starter components and runs copies of the examples in temporary
+builds the nine starter components and runs copies of the examples in temporary
 directories, checking success and failure behavior without provider credentials.
+
+The documentation check covers root guides, every tool README (including
+nested example READMEs), field guides, and the current integration guides.
+The example check includes one unchanged support expert used in two workspaces,
+an uncited draft rejected and repaired, and replayable verifier records. Use
+`python3 scripts/check-examples.py --native-cage` after building to exercise
+that expert under the host's real Cage boundary too.
 
 Before publishing, also exercise the complete installation lifecycle:
 

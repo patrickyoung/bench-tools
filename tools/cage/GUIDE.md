@@ -1,5 +1,9 @@
 # Using Cage
 
+First run [the write-and-reject demonstration](README.md#see-what-is-writable)
+and `cage check` on the host that will execute the work. Then choose the
+smallest set of writable directories the actual job needs.
+
 Cage is the boundary around one process tree. Put it around the ordinary
 program whose effects you want to constrain:
 
@@ -17,22 +21,29 @@ the model needs. `ply -cage` instead leaves Ply, Ask, May, Brief, and the
 verifier outside while wrapping each exact model-authored action after May
 approval. That action-only composition is usually the useful agent boundary.
 
+Agent already selects an action boundary for an expert's work and state
+directories. You normally do not need another wrapper around `agent run`.
+Its model connection and trusted verifier stay outside that boundary; its
+definition stays outside the allowed action write roots.
+
 ## Choose writes explicitly
 
 The common case needs no write flags:
 
 ```sh
 cd project
-cage -- go test ./...
+GOCACHE="$PWD/.cache/go-build" cage -- go test ./...
 ```
 
 The current directory and temporary directory are writable. Other paths are
-readable but not writable.
+readable but not writable. This places Go's writable build cache in the
+workspace too. Fetch required modules beforehand or use already available
+dependencies; the default child has no host network access.
 
 For an inspection job, make the workspace read-only:
 
 ```sh
-cage -ro -- sh -c 'find . -type f -maxdepth 2 -print'
+cage -ro -- sh -c 'find . -type f -print'
 ```
 
 For a build with distinct source and output roots:
@@ -85,10 +96,10 @@ with a network namespace, proxy, firewall, or container that owns that job.
 if cage -- make check; then
     echo passed
 else
-    status=$?
-    case $status in
+    cage_status=$?
+    case $cage_status in
     125) echo 'Cage could not establish confinement' >&2 ;;
-    *)   echo "the child returned $status" >&2 ;;
+    *)   echo "the child returned $cage_status" >&2 ;;
     esac
 fi
 ```

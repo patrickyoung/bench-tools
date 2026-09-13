@@ -12,14 +12,15 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | --- | --- |
 | Explain, summarize, classify, or draft text | **Ask** |
 | Edit files or run programs until a check passes | **Ply** |
-| Give a standing job its own instructions, files, and history | **Agent** |
+| Run a reusable expert in a workspace | **Agent** |
+| Build the expert's instructions, skills, and check | **Hire** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
 
 Stdout is the usable output stream; stderr carries diagnostics; the exit status
 is the numeric outcome. [How it works](HOW-IT-WORKS.md) explains these interfaces.
 
-## Ask, Ply, and Agent: answer, work, or standing job?
+## Ask, Ply, Agent, and Hire: answer, work, run, or build?
 
 **[Ask](../tools/ask/README.md)** takes instructions plus supplied material and
 prints the model's answer. Use it to draft a release note from a change list:
@@ -55,8 +56,21 @@ constraint too. Without `-check`, Ply's exit 0 only means the model stopped.
 See [Ply's manual](../tools/ply/ply.1) for limits, checkpoints, and confinement.
 
 **[Agent](../tools/agent/README.md)** runs that work.
-**[Hire](../tools/hire/README.md)** builds its definition. For example, a
-weekly report needs stable instructions, inputs, a check, and earlier runs:
+**[Hire](../tools/hire/README.md)** builds its definition. A support-reply
+expert can be a folder containing instructions, a skill, policy records, and
+`bin/check`. Run the same folder in a fresh workspace for each customer:
+
+```sh
+agent run -C customer-work -evidence customer-records support-expert -- \
+  'Draft reply.md from question.txt and the supplied policy.' > run-summary.txt
+```
+
+The [support-reply starter](../examples/support-reply/README.md) supplies the
+complete folder, input, and check. [Hire's tutorial](../tools/hire/README.md)
+shows how to build another expert from a job description. No custom wrapper
+or new agent loop is needed.
+
+For a standing job with its workspace and goal kept in a home:
 
 ```sh
 hire new -home report-worker 'Maintain the weekly project report'
@@ -72,8 +86,9 @@ stdout carries the answer and files carry the deliverables.
 The [first-worker tutorial](../tools/agent/README.md#build-your-first-worker) includes an exact expected result.
 `agent check` validates the home's structure; `bin/check`, run through Ply, judges the task outcome.
 
-Agent keeps definition files, writable `work/` and `state/`, and controller
-evidence under `.agent/` separate. Cage confines worker writes and disables
+In a standing home, Agent keeps definition files, writable `work/` and `state/`,
+and controller evidence under `.agent/` separate. Portable experts bind those
+roles to separately selected directories. Cage confines worker writes and disables
 worker networking by default; host reads remain unrestricted. `agent tick`
 runs a wake probe once. An external scheduler decides when to invoke it.
 
@@ -300,10 +315,6 @@ on descriptor 3: a dedicated input channel, separate from normal stdin. Child
 output and status pass through; OAuth does not retry it. A credential identifies
 access to the service; Action and May separately control a proposed operation.
 
-To build your next tool, specify its input, output, errors, and a check first.
-Follow [Build with an LLM](BUILD-WITH-AN-LLM.md), try the [recipes](RECIPES.md),
-or read the [comparison with current agent tooling](COMPARISONS.md).
-
 ## A2A: remote agents through the same process interfaces
 
 **[A2A](../tools/a2a/README.md)** supplies two independent commands: `a2a`
@@ -322,3 +333,8 @@ artifacts, mTLS, and composing the existing OAuth credential tool. Exit 75
 means the task is unfinished; 125 means its outcome is uncertain. A listener
 is a network service, while the client remains a Unix filter. Neither owns
 a model loop, scheduler, remote agent registry, or automatic retry policy.
+
+Start with an existing command or expert folder. When the task needs a new
+procedure, specify its inputs, output, and check before building it with Hire.
+Follow [Build with an LLM](BUILD-WITH-AN-LLM.md), try the [recipes](RECIPES.md),
+or read the [comparison with current agent tooling](COMPARISONS.md).

@@ -1,8 +1,13 @@
-# Guide
+# Carry evidence from source to answer
 
 Context is the external-evidence seam in Bench. It is intentionally narrower
 than a context platform: one catalogue, one connector invocation, one record
 contract, and ordinary filters.
+
+For a first run with no account, use the [local-record tutorial](README.md#first-make-a-small-evidence-file).
+The source examples below run from Context's source directory:
+`cd tools/context` from the monorepo root. Install Context first; model-writing
+examples also need configured Ask and Cite.
 
 ## A first source
 
@@ -24,6 +29,7 @@ caller.
 The bundled Wikipedia connector is a complete network-backed example:
 
 ```sh
+mkdir -p ~/.context/connectors
 install -m 755 .context/connectors/wikipedia ~/.context/connectors/wikipedia
 WIKIPEDIA_USER_AGENT='my-context/1.0 (https://example.com/contact)' \
   context query wikipedia 'Unix filter design'
@@ -55,10 +61,14 @@ visible decision.
 
 Query each source independently, then merge the records:
 
+Here `glean` and `genie` stand for connectors you have installed, and `q` is
+the question you want both to answer. Context does not bundle those services.
+
 ```sh
-context query glean "$q" > /tmp/glean.jsonl
-context query genie "$q" > /tmp/genie.jsonl
-cat /tmp/glean.jsonl /tmp/genie.jsonl | context merge > /tmp/evidence.jsonl
+sources=$(mktemp -d)
+context query glean "$q" > "$sources/glean.jsonl" &&
+context query genie "$q" > "$sources/genie.jsonl" &&
+cat "$sources/glean.jsonl" "$sources/genie.jsonl" | context merge > "$sources/evidence.jsonl"
 ```
 
 The separate commands make policy visible: a script can require both, accept
@@ -80,12 +90,13 @@ not contain provider transport code; that belongs in the connector.
 Ask reasons over records:
 
 ```sh
-context query handbook "$q" > evidence.jsonl
+q='What is the incident channel?'
+context query handbook "$q" > evidence.jsonl &&
 ask "Question: $q
 
 Answer from these records. Cite every factual claim as an exact
-[ref](citation.url) Markdown link." < evidence.jsonl |
-  cite evidence.jsonl
+[ref](citation.url) Markdown link." < evidence.jsonl > candidate.md &&
+  cite evidence.jsonl < candidate.md
 ```
 
 The question is deliberately present twice: Context needs it for retrieval and
@@ -125,6 +136,13 @@ per provider: it sees `context`, while the operator controls the connector
 catalogue. Ask still owns model events, Brief the procedure, Ply the loop and
 verifier, and Trail the read-only history. Context adds evidence provenance; it
 does not replace any of them.
+
+[Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) builds
+the reusable definition for that Agent. The
+[support-reply example](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+keeps a reviewed policy snapshot in the expert folder and uses a fresh
+workspace per customer. It shows evidence reuse without adding a retrieval
+platform or another worker loop.
 
 ## When not to use Context
 

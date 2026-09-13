@@ -2,7 +2,8 @@
 
 **Find the useful part of a past model run without digging through log files.**
 
-Trail lists, searches, and inspects [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask)
+“We solved this timeout last week. What finally worked?” Trail lists, searches,
+and inspects [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask)
 session archives. You can find an old error, read the events around it, follow
 a recorded compaction, or ask Ask to verify the history. Trail is read-only:
 it never modifies a session or builds a second database.
@@ -109,8 +110,10 @@ Verification runs `ask replay -check FILE` once per archive member. Ask owns
 that verdict. Replay consistency does not prove an answer is correct or a
 job passed its business check.
 
-[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) exposes the same functionality
-as `agent history HOME`. [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) records
+[Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) exposes the same functionality
+for recurring homes as `hire history HOME`. For a portable Agent invocation,
+point Trail at the `runs/` directory under the selected `-evidence` root.
+[Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) records
 its work in Ask sessions, so actions and verifier evidence can be inspected
 without learning another log format. [Hone](https://github.com/patrickyoung/bench-tools/tree/main/tools/hone)
 uses qualifying checked recoveries from that history to propose lessons.

@@ -1,8 +1,13 @@
 # The ply field guide
 
-What it is good at, what it is not, the recipes, and the things that
-will bite you. `README.md` is the pitch and `ply.1` is the reference; this
-is what you learn in the first week.
+Start with [one checked task](README.md#your-first-checked-task), then use
+this guide to choose the inputs, tools, verifier, and continuation behavior.
+Examples assume Ply and configured Ask are on PATH; optional commands such
+as Go, Terraform, jq, and project-specific checkers must be installed separately.
+
+For a recurring specialty, [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire)
+builds an expert folder and [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent)
+runs it through Ply. Use that path before writing a custom worker wrapper.
 
 ## What it is good at
 
@@ -101,7 +106,7 @@ Sessions are safe under concurrency; your working directory is not. Fan out
 with `-C`, one directory per worker:
 
 ```
-ls -d ./services/*/ | xargs -P4 -I{} ply -sh -C {} -check 'make test' "fix the build"
+printf '%s\0' ./services/*/ | xargs -0 -P4 -I{} ply -sh -C '{}' -check 'make test' "fix the build"
 ```
 
 Four `ply`s in one tree will interleave their edits and each will be
@@ -163,7 +168,10 @@ The toolbox is a directory. That is the entire format.
 
 ```
 mkdir -p tools
-ln -s $(which git rg sed jq curl) tools/
+for program in git rg sed jq curl; do
+  resolved=$(command -v "$program") || exit 2
+  ln -s "$resolved" "tools/$program"
+done
 ply -t tools "find every TODO older than a year and list them by author"
 ```
 
@@ -205,9 +213,8 @@ and it is executable. Run it once yourself.
 
 ### Change a file without rewriting it
 
-Most of the time a model writing a file should just write it: `cat > x
-<<'EOF'` is a shell builtin and a redirect, and for a file it is producing
-whole there is nothing better. The case that needs a program is three
+For a new file, a quoted here-document such as `cat > x <<'EOF'` supplies
+literal bytes to the ordinary `cat` program through shell redirection. The case that needs a program is three
 lines in the middle of nine hundred, where `>` is not an option and `sed`
 means escaping regex metacharacters out of the code being edited — which
 models get wrong, and get wrong silently.
@@ -346,12 +353,18 @@ The Wrangler check validates a dry run; it does not deploy the worker.
 
 ### Sub-agents, without a sub-agent feature
 
-Every command gets `$PLY`. So a specialist is a file:
+For a specialist with its own definition, skills, memory, and check, use
+[Agent specialists](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent#give-it-skills-and-specialists).
+Each child gets its own context and explicitly supplied evidence. The parent
+still checks its final result. Default Cage requires controller-mediated
+specialist execution; direct child model calls need the selected host boundary.
+
+For a smaller custom command, every Ply action gets `$PLY`:
 
 ```sh
 #!/bin/sh
 # review one file for concurrency bugs and print findings
-exec $PLY -t "$(dirname "$0")" -q "review $1 for data races and lock-order inversions"
+exec "$PLY" -t "$(dirname "$0")" -q "review $1 for data races and lock-order inversions"
 ```
 
 Drop that in the toolbox and the outer model can hire it, or you can:
@@ -374,7 +387,7 @@ Put it in a file and it stops being anonymous:
 ```sh
 #!/bin/sh
 # make the Go tests in this tree pass, and prove it
-exec ${PLY:-ply} -sh -check 'go test ./...' -cycles 5 -timeout 2m \
+exec "${PLY:-ply}" -sh -check 'go test ./...' -cycles 5 -timeout 2m \
      "make the tests pass" "$@"
 ```
 
@@ -392,107 +405,63 @@ is this example as a real file, with the details written down.
 
 [cap]: contrib/capability
 
-The reason to bother is that the alternative is worse in a specific way.
-Retyped invocations drift: yesterday's had `-cycles 5` and today's has
-`-cycles 20`, and nobody can tell which run was which afterwards, because
-the flags are not in the log. A file cannot drift without a diff.
+A versioned command makes recurring choices reviewable: the check, limits,
+and tool selection change in a diff. When the wrapper starts accumulating
+private instructions, skills, state paths, and specialist setup, move that
+definition into an Agent expert folder and reuse its runner.
 
 ### Fan out, then merge
 
-`xargs -P` fans out. The merge is `ask`, because `ask` is a program:
+Use Ask directly for independent reviews of supplied text; file edits do not
+need to be part of that job. Its [parallel recipe](https://github.com/patrickyoung/bench-tools/blob/main/tools/ask/GUIDE.md#run-independent-work-in-parallel)
+retains each process handle, checks failures, and collects output in input
+order. For workers that edit, give each its own workspace or Git worktree.
+
+Send checked findings to a merger, not entire private conversations. For
+example, after separately successful reviewers have written these files:
 
 ```sh
-ls *.go | xargs -P4 -I{} sh -c 'ply -q -t tools "review {}" > {}.review'
-
-cat *.review | ask "Reconcile these reviews into one list of findings,
-    most severe first. Drop anything only one reviewer raised."
+cat operations-review.md controls-review.md > reviews.txt &&
+ask 'Reconcile these findings. Preserve a supported concern even when only
+one reviewer raised it; explain disagreements and missing evidence.' < reviews.txt
 ```
 
-Two things worth copying from how `hone` does this. Send **what proved
-something**, not the transcripts — the findings are the evidence, and the
-typescripts would cost the window and invite a summary grounded in unrelated
-steps. Plain Ask starts the merge in a fresh conversation. Use a new `-f`
-filename if you want to name that conversation; reusing it continues it.
-
-`xargs` returns 123 if any invocation failed, and which one is not in that
-number. If you need to know, have each write its own exit status next to its
-output and read them afterwards; a fan-out that hides its failures is
-answering a different question than the one you asked.
+Agreement is not a substitute for evidence. A lone reviewer may have noticed
+the important defect. Each child gets a fresh context unless the caller
+explicitly selects a continuing session; collecting results does not merge
+those histories automatically.
 
 ### MCP
 
-`ply` does not speak MCP and is not going to. An MCP server is a tool
-cabinet and an edge adapter is the key — the same answer `mu` gives, for the
-same reason: the protocol lives at the edge, not in the loop.
+Ply consumes programs. The [MCP component](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp)
+provides the protocol client and capability compiler. Provision an inspected
+server into a folder before starting a worker:
 
-The standalone [`mcp`](https://github.com/patrickyoung/mcp) project can
-discover a server and produce a reviewed capability directory. Provision that
-directory before Ply starts, then grant it exactly like any handwritten
-toolbox:
-
-```
-$ ply tools -t tools
-  create_issue  File a bug on the corporate tracker
-  list_issues   List matching issues
-$ ply -t tools "file the bug I described"
+```sh
+mcpbox make service.mcp -- /absolute/path/to/reviewed-server
+mcpbox show service.mcp
+mcpbox admit service.mcp tools lookup_policy
+printf '%s\n' '{"query":"export policy"}' | ./service.mcp/tools/lookup_policy
 ```
 
-The model gets only the programs admitted to `tools`: not the protocol
-client, not the server catalogue, and not an unapproved `delete_project`.
-Once a remote capability is a program, it is not a special kind of thing any
-more.
+This example requires a server with a `lookup_policy` tool accepting that
+argument object. The [local hello walkthrough](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp#make-your-first-request)
+includes a real server you can try without an account.
 
-Writing wrappers by hand is optional. An external capability compiler can
-turn a protocol catalogue into a reviewed directory before Ply starts:
+Generated tools accept JSON on stdin and return the MCP result object. They
+do not turn arbitrary schemas into positional shell arguments. The folder
+pins the reviewed endpoint and capability descriptor; a changed descriptor
+is refused. Use it as a Ply toolbox only after selecting the intended grants.
 
-```
-$ ply tools -t tools
-  echo     Echoes back the input string -- {"message": string}
-  get-sum  Returns the sum of two numbers -- {"a": number, "b": number}
-  ...
-$ tools/get-sum 17 25
-The sum of 17 and 25 is 42.
-```
+For a capability that changes an external system, admit it under `actions/`
+and invoke it through Action's policy and approval boundary. Admitting it
+under `tools/` permits direct invocation. An MCP annotation is not approval,
+and a directory on PATH is not filesystem confinement.
 
-The arguments are positional, in schema order, and typed from the schema —
-`get-sum 17 banana` says `b must be a number, not 'banana'` and exits 2. The
-JSON form still works for anything awkward:
-`get-sum '{"a":17,"b":25}'`.
-
-That interface is the contract Ply consumes. The directory is the allowlist;
-the compiler, protocol, endpoint, and admission workflow remain outside Ply.
-
-And the catalogue earns its keep hardest here, because an MCP description is
-written to be injected into a model's context whole, so it is routinely a
-page long. [Context7][context7] spends **2,435 bytes** describing two tools
-— one of them a 2 kB essay on how to choose a library. As a `ply` toolbox
-that is **347 bytes**:
-
-```
-$ ply tools -t tools
-  query-docs          Retrieves and queries up-to-date documentation and code exam...
-  resolve-library-id  Resolves a package/product name to a Context7-compatible lib...
-```
-
-Seven times smaller, and nothing is lost: the essay is still there, one
-`query-docs -h` away, for the model that has already decided to call it.
-This is `brief`'s argument about skills, arriving unchanged for tools —
-which is not a coincidence, because it was never an argument about prose.
-
-[context7]: https://github.com/upstash/context7
-
-Three properties belong to the capability producer, not Ply:
-
-- A wrapper must remain runnable when its directory is the whole `PATH`, so it
-  resolves its own runtime dependencies rather than exposing them to Ply.
-- A complete peer or application error must become a dependable nonzero exit;
-  an uncertain remote effect must remain distinguishable from a clean failure.
-- Admission must survive regeneration and bind the reviewed contract, rather
-  than trusting a name or a server's own safety annotation.
-
-The standalone [`mcp`](https://github.com/patrickyoung/mcp) project provides
-one such edge. Ply has no MCP code or provisioning command and no runtime
-dependency on that project; it consumes only the resulting Unix programs.
+Ply retains its usual command/observation/check loop. MCPbox discovers and
+admits; the generated program calls the selected MCP client; OAuth can provide
+credentials. Each program keeps its own stream and exit contract, including
+an uncertain remote effect that must not be retried automatically.
 
 ### As a filter, mid-pipe
 
@@ -594,14 +563,21 @@ also stops a model that keeps emitting commands and never reaches the
 check. Use `-turns 0` only when the caller supplies some other whole-run
 bound.
 
-If you want a bound across invocations, you own it, and you already have the
-tools:
+If a caller deliberately permits up to three attempts at this local repair,
+it can continue only a known unfinished run. Other outcomes stop the caller:
 
 ```sh
-for i in 1 2 3; do
-    ply -sh -checkpoint run.current -check 'go test ./...' "make the tests pass" && break
+for attempt in 1 2 3; do
+    run_status=0
+    ply -sh -checkpoint run.current -check 'go test ./...' \
+      "make the tests pass" || run_status=$?
+    [ "$run_status" -eq 2 ] || break
 done
+(exit "$run_status")
 ```
+
+This is an explicit retry policy for this repair. Never treat approval waits,
+broken checks, cancellation, or an uncertain effect as another budget request.
 
 ### What is in flight
 
@@ -613,9 +589,9 @@ finished. In an ordinary shell, keep the actual child handle:
 ```sh
 ply -sh -checkpoint run.current -check './check-result' 'finish the task' &
 worker=$!
-status=0
-wait "$worker" || status=$?
-printf 'Ply exited %s\n' "$status"
+worker_status=0
+wait "$worker" || worker_status=$?
+printf 'Ply exited %s\n' "$worker_status"
 ```
 
 A verifier receipt records the check's result. Replay verifies retained
@@ -647,12 +623,11 @@ says so on stderr:
 ply: context compacted into ~/.ply/sessions/20260802-002839-86d69eae.jsonl
 ```
 
-Your original `-f` path still names the full one. Resuming from it will
-overflow again immediately and compact again. Resume from the path `ply`
-last named — or drop `-f` and let a fresh conversation do the work, which
-the pre-check makes correct and merely more expensive. This is the one place
-the "conversation is an optimization" rule costs you something real, and it
-is better to know it than to discover it at three in the morning.
+Your original `-f` path still names the full session. Resume from the new
+path that Ply reports, or use `-checkpoint` so the current path is retained
+for you. A fresh conversation is appropriate only when the goal, files, and
+explicit evidence are enough to reconstruct the work. It does not recover
+unrecorded decisions or resolve uncertain external effects.
 
 A supervising program that already owns locking may use the lower-level
 control file instead:
@@ -696,46 +671,18 @@ to repeat an uncertain effect.
 
 ## Putting the boundary in the operating system
 
-`SECURITY.md` says the toolbox aims the model and does not contain it, and
-that the boundary is the process — its user, its container, its `chroot`.
-That is true and it is not much help on its own, so here is the help.
+A toolbox helps the model find intended programs. An OS boundary constrains
+what those programs can do. For an expert folder, Agent already uses Cage to
+grant workspace/state writes and deny worker networking by default, while
+keeping Ask and the verifier outside the action boundary. Host reads remain
+available.
 
-The reason to bother is not only safety. A run you have genuinely bounded is
-a run you can leave alone, and `-sh` inside a container you are willing to
-throw away is a freer agent than `-t` on your laptop:
-
-```sh
-podman run --rm -it \
-    -v "$PWD:/work:Z" -w /work \
-    --network=none \
-    -e ANTHROPIC_API_KEY \
-    ply-box ply -sh -check 'go test ./...' "make the tests pass"
-```
-
-Four things are doing work there:
-
-- **`-v "$PWD:/work"`** is the blast radius. The model can write what you
-  mounted and nothing else, whatever it manages to run.
-- **`--network=none`** for a run that has no business reaching out. Drop it
-  when the goal needs the network, and know that you dropped it.
-- **`-e ANTHROPIC_API_KEY`** passes one variable rather than your
-  environment. `ply` hands commands whatever it was started with, so an
-  agent-authored command can read any key that is in there. In a container
-  you get to choose, and the choice is a flag rather than a discipline.
-- **`--rm`** so the answer to "what did it leave behind" is "nothing outside
-  `/work`".
-
-For a run that should not even keep what it wrote, mount a copy:
-
-```sh
-git worktree add /tmp/try HEAD
-podman run --rm -v /tmp/try:/work:Z -w /work ply-box ply -sh ... && \
-    git -C /tmp/try diff        # inspect, then decide
-```
-
-None of this makes `-t` a sandbox, and none of it should be described that
-way. It puts the boundary where `SECURITY.md` says it belongs, and it is
-about ten lines of shell.
+A container is another caller-selected boundary when you need a distinct
+filesystem or account environment. Supply its image, mounts, credentials,
+limits, and networking deliberately. Wrapping the entire Ply process in a
+network-disabled container also blocks Ask from reaching a hosted model;
+confining only actions solves a different problem. Neither a container nor a
+folder name proves that a check covers the task.
 
 For a local action-only boundary, compose the existing May and Cage programs:
 
@@ -763,10 +710,9 @@ where filesystem effects may already exist.
 
 ### Proposing an effect instead of having it
 
-Sometimes what you want is not containment but a look before the change
-lands. `ply` has nothing for this, and does not need anything: commands
-inherit the environment, so a variable you set reaches every tool without
-`ply` knowing it exists.
+A tool may offer a preview convention before applying an edit. Commands
+inherit the environment, so a variable can request that behavior without a
+new feature in Ply. This is separate from May approval and OS confinement.
 
 [`contrib/edit`][edit] honours `PLY_PROPOSE`:
 
@@ -852,17 +798,17 @@ tool, the model called the same `ask` judge three times of its own accord
 before it was willing to stop, and `ply` ran it twice more — once before the
 first turn, and once at the end.
 
-That is worth knowing for two reasons. It converges faster than the cycle
-loop alone, so a good check pays for itself twice. And your check will run
-more often than `-cycles` suggests, so if it is slow, expensive, or has side
-effects, either make it cheap or keep its program out of the toolbox.
+A model may call an available check while working, so it can run more often
+than the candidate-cycle count suggests. Keep checks cheap and free of
+external effects where possible. A toolbox controls discovery, not execution
+authority; excluding a name does not prevent an absolute-path call.
 
 ## Tuning, continued
 
-The single highest-leverage tuning knob is the check's failure output. It is
-the only feedback the loop has that nobody wrote by hand, and a check that
-prints `FAIL` teaches the model nothing that a check printing
-`want: 3, got: 2 (ring_test.go:41)` does not teach it in one turn.
+Improve the check's failure output before increasing the budget.
+`want: 3, got: 2 (ring_test.go:41)` names the discrepancy and its location;
+`FAIL` merely repeats that something is wrong. Specific observed feedback
+gives the next turn a concrete problem to solve.
 
 ## The cheapest possible sanity check
 

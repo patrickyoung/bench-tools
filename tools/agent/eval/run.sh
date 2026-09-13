@@ -47,21 +47,20 @@ done_home=$tmp/corpus/done
 show_metrics done "$done_home"
 AGENT_BRIEF=brief "$agent" check "$done_home" >/dev/null 2>"$tmp/done.check.stderr"
 rm -f "$model_marker"
-ASK=$fake_ask AGENT_EVAL_MODEL_MARKER=$model_marker AGENT_BRIEF=brief AGENT_PLY="$ply_program" AGENT_CAGE=cage \
+AGENT_ASK=$fake_ask AGENT_EVAL_MODEL_MARKER=$model_marker AGENT_BRIEF=brief AGENT_PLY="$ply_program" AGENT_CAGE=cage \
 	"$agent" run "$done_home" >/dev/null 2>"$tmp/done.run.stderr"
 [ ! -e "$model_marker" ] || {
 	printf 'agent eval: already-done re-entry called Ask\n' >&2
 	exit 1
 }
-AGENT_BRIEF=brief AGENT_TRAIL=trail AGENT_ASK=ask \
-	"$agent" history "$done_home" check >/dev/null 2>"$tmp/done.history.stderr"
+ASK=ask trail check "$done_home/.agent/runs" >/dev/null 2>"$tmp/done.history.stderr"
 printf '0\t0\t0\t0\n'
 
 quiet_home=$tmp/corpus/quiet-watch
 show_metrics quiet-watch "$quiet_home"
 AGENT_BRIEF=brief "$agent" check "$quiet_home" >/dev/null 2>"$tmp/quiet.check.stderr"
 rm -f "$model_marker"
-ASK=$fake_ask AGENT_EVAL_MODEL_MARKER=$model_marker AGENT_PLY=$tmp/missing-ply \
+AGENT_ASK=$fake_ask AGENT_EVAL_MODEL_MARKER=$model_marker AGENT_PLY=$tmp/missing-ply \
 	"$agent" tick "$quiet_home" >/dev/null 2>"$tmp/quiet.tick.stderr"
 [ ! -e "$model_marker" ] || {
 	printf 'agent eval: quiet tick called Ask\n' >&2

@@ -7,16 +7,67 @@ the installed Agent command. That expert writes instructions, skills, memory,
 optional specialists and an executable acceptance check into a reusable folder.
 Agent remains the only runtime; Hire adds no provider client or goal loop.
 
-```sh
-mkdir authoring names-work
-hire build -C authoring -evidence authoring-evidence -- \
-  'Build an expert that sorts and deduplicates names from names.txt into sorted.txt.'
+The useful output is a specialty you can inspect and reuse. A support expert
+needs a policy and a writing method; a report expert may need a renderer and
+a check. Both can use the same runner. Keep their specialist knowledge in
+files and their deterministic work in ordinary programs.
 
-agent show -C names-work authoring/expert
-printf '%s\n' pear apple pear banana > names-work/names.txt
-agent run -C names-work -evidence names-evidence authoring/expert -- \
-  'Normalize the supplied names.'
+## Install
+
+From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools)
+root, with Go 1.26+, Python 3.9+, Git, and a Unix shell:
+
+```sh
+python3 scripts/install hire agent ask brief ply cage
+export PATH="$HOME/.local/bin:$PATH"
+hire version
+cage check
 ```
+
+[Configure Ask](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md#2-connect-a-model)
+before model-backed building. `hire new` works without a model; `hire build`
+uses your provider account. The source installer is Python; Hire and Agent
+are native Go commands with no Python runtime requirement.
+
+## Describe the job, then inspect the folder
+
+Use a fresh practice directory:
+
+```sh
+mkdir authoring customer-work
+hire build -C authoring -evidence authoring-evidence -- \
+  'Build a support expert that reads question.txt and policy.txt, writes
+reply.md, and flags questions the policy does not answer. Keep the reply
+under 200 words. Include a reusable writing skill, an executable check,
+and examples showing both an acceptable reply and a plausible wrong one.
+Explain which requirements the check proves and which need human review.'
+
+hire verify authoring/expert
+agent show -C customer-work authoring/expert
+```
+
+Inspect `authoring/expert/README.md`, the instructions and skill, and especially
+`bin/check`. Hire verifies structure without executing generated checker code.
+An instruction that says “be accurate” is not an accuracy test.
+
+Now use a fictional customer case:
+
+```sh
+printf '%s\n' 'Can I export before closing? How long does it take?' > customer-work/question.txt
+printf '%s\n' 'Owners can export CSV while their subscription is active. Exports are unavailable after closure. Export duration is not specified.' > customer-work/policy.txt
+agent run -C customer-work -evidence customer-evidence authoring/expert -- \
+  'Draft reply.md for this customer.' > run-summary.txt
+cat customer-work/reply.md
+```
+
+The reply should explain export timing and acknowledge the missing duration.
+Review it against the policy. A different question gets a fresh workspace,
+while the expert definition stays reusable. The complete
+[support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+is a ready-made alternative with exact citation checking; use it to learn the
+folder layout before generating your own.
+
+## Inputs, outputs, and limits
 
 Use the usual Ask model configuration or pass `-m`. A private job description
 can come from `-goal-file FILE` or stdin. Additional piped input is evidence
@@ -39,7 +90,7 @@ explicit caller selections with the same meaning as in Agent.
 hire new experts/reviewer 'Review a supplied result against its requirements'
 ```
 
-This uses the extracted Agent scaffolder, without running a model. Edit the
+This creates a definition without running a model. Edit the
 definition and replace the deliberately unfinished `bin/check`. `hire new
 -home HOME` retains the old recurring-home layout for existing workflows.
 
@@ -67,8 +118,8 @@ existing home-maintenance implementation are retained here; the builder expert
 adapts Hire's platform, evidence and authority guidance into Markdown. The old
 web router, worker store and expert-team loops are not included.
 
-From the monorepo, use `python3 scripts/build agent hire` and the existing
-installer. `HIRE_AGENT` selects the exact runtime executable. Keep the other
+For a local build without installing, use `python3 scripts/build agent hire`.
+`HIRE_AGENT` selects the exact runtime executable. Keep the other
 installed Bench commands on PATH. There is no required web application.
 
 This is a new development interface, not an update to existing pinned Hire

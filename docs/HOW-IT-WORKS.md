@@ -14,6 +14,19 @@ is an execution problem. Each calls for a different remedy.
 
 ## A program has more than one output
 
+The worker's “ID, badge, and computer” correspond to actual boundaries:
+
+| Part | What supplies it | What it does not supply |
+| --- | --- | --- |
+| ID | The Unix account that runs the process | A persona file does not create an OS identity |
+| Badge | Service credentials, operator policy, and selected OS permissions | A skill or discovered tool does not grant access |
+| Computer | A workspace, installed programs, and a host that enforces the chosen boundary | A directory alone is not confinement |
+| Know-how | Expert instructions, Brief skills, curated memory, and a model | A convincing answer does not prove the job is done |
+
+These commands do not create a Unix account or provision a machine. The
+operator supplies them. Agent then binds an expert definition to a workspace
+and runs its job using the existing commands.
+
 Most Bench commands use the operating system's three standard streams:
 
 ```text
@@ -43,7 +56,8 @@ result = subprocess.run(
 
 This fragment assumes `import subprocess` and a string named `ticket_text`.
 Inspect `result.returncode` before using `result.stdout`; diagnostics are in
-`result.stderr`. The [builder guide](BUILD-WITH-AN-LLM.md) gives a complete example.
+`result.stderr`. The [meeting-brief starter](../examples/meeting-brief/README.md)
+gives a complete example of a caller that preserves the last good output.
 Passing arguments as a list also keeps ticket text from becoming shell code.
 
 Files make useful handoff points: save retrieved tickets once, review them,
@@ -79,6 +93,28 @@ owner for ticket 42” gives the model a specific problem to fix.
 A check accepts with status 0, rejects with 1, and stops the loop as broken
 with other statuses. A turn limit bounds how many times the model can respond.
 Neither a turn limit nor a timeout proves that the result is good.
+
+## An expert folder is the builder's output and the runner's input
+
+**Hire builds. Agent runs.** Hire's builder is itself an expert executed by
+Agent. It produces Markdown, skills, optional tools and specialists, and an
+executable `bin/check`. Agent binds that definition to the caller's workspace
+and passes the work to Brief, Ply, Ask, and Cage.
+
+```text
+Job description → Hire → expert folder
+                            + workspace + goal → Agent → files and final report
+```
+
+The definition can stay the same while each customer case gets a new workspace,
+state directory, and run archive. A specialist is another Agent invocation
+with its own context. It receives explicitly supplied input, not the parent's
+conversation. A shared filesystem can still expose shared files; context
+separation is not read isolation.
+
+Try the [support-reply expert](../examples/support-reply/README.md) to see the
+whole path. Its citation checker is ordinary code; its writing method is a
+skill. Neither needs to duplicate the action loop.
 
 ## Instructions, evidence, and authority answer different questions
 
@@ -129,8 +165,8 @@ An Ask session is a conversation record. A Ply checkpoint identifies the
 current session to resume, including after compaction. Neither can tell you
 whether an unacknowledged external request took effect.
 
-**Agent** gives a recurring job a home: its goal, instructions, toolbox,
-working files, check, and history. **Tend** queues and records attempts to run
+**Agent** runs the expert in a separate workspace or a recurring home.
+**Tend** queues and records attempts to run
 an ordinary command. A scheduler or caller must invoke `tend work`; Tend does
 one durable transition per invocation and exits. A queue alone does not keep
 a worker process running.
@@ -164,7 +200,13 @@ when the next action depends on observed results. Add Agent when the job needs
 a maintained home, Tend when attempts must be durable, and Weave when readiness
 depends on other tasks. Keep deterministic work in ordinary programs.
 
-The cost of this approach is that you own the connecting code and its checks.
-An integrated coding assistant or workflow framework may provide more of that
-application for you. The [comparison guide](COMPARISONS.md) explains that choice
-using current tools and concrete examples.
+Use **MCP** when the missing capability is a service tool and **A2A** when the
+worker itself lives on another machine. MCPbox can make reviewed capabilities
+available as programs. A2A's client is a filter; its listener is a service
+managed by the OS and uses Tend to supervise the local command. Neither needs
+another goal loop inside Agent.
+
+The common worker path already has a runner and builder. You still own its
+job definition, permissions, check quality, and any application-specific
+adapters. The [comparison guide](COMPARISONS.md) explains where that tradeoff
+fits alongside integrated assistants and application frameworks.

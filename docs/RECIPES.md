@@ -5,16 +5,18 @@ these directories to a scratch location and follow its README:
 
 | Starter | Result | Model needed? |
 | --- | --- | --- |
+| [Support reply](../examples/support-reply/README.md) | A reusable expert folder, a cited draft, and separate workspaces for each customer | Yes |
 | [Meeting brief](../examples/meeting-brief/README.md) | A reusable procedure, draft, and fresh conversation record | Yes |
 | [Evidence answer](../examples/evidence-answer/README.md) | A saved answer checked against exact source identities | Yes |
 | [Signup audit](../examples/signup-audit/README.md) | A duplicate report with a durable execution record | No |
 
-The starters include their input and connecting code. The first two preserve
+The starters include their inputs. Support reply uses the existing Agent
+runner; meeting brief and evidence answer include small callers that preserve
 the previous final output on failure. The walkthroughs below show the same
 process boundaries one step at a time.
 
 Start with [Getting started](GETTING-STARTED.md) for model setup and terminal
-basics. These recipes use six components. From the **checkout root**, install
+basics. Recipes 1–4 use six components. From the **checkout root**, install
 them and update PATH (see [Installation](INSTALL.md) for other prefixes):
 
 ```sh
@@ -23,7 +25,8 @@ export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Recipes 1–3 include model calls and require a configured Ask; their setup and
-checks are local. Recipe 4 is entirely offline. Use a **fresh practice directory**
+checks are local. Recipe 4 is entirely offline. Recipe 5 links a complete expert
+starter with its own installation steps and model setup. Use a **fresh practice directory**
 for each recipe. Each supplies its own sample input.
 
 The samples are fictional. Model answers will vary; inspect the resulting
@@ -271,5 +274,18 @@ happened exactly once. An attempt whose outcome is unknown needs inspection
 before retrying. Ask's conversation file and Tend's queue remain separate
 records with different jobs.
 
-Next: [build your own tool with an LLM](BUILD-WITH-AN-LLM.md),
+## 5. Give the recurring job an expert folder
+
+When the job needs a stable method plus file actions and correction turns,
+reuse Agent. Follow the [support-reply starter](../examples/support-reply/README.md)
+for a complete run: one expert answers two different questions in separate
+workspaces, and Cite rejects invented references.
+
+The folder holds the procedure, source records, and check. Agent supplies the
+runtime; Hire can build the next folder. Add Tend only when attempts need a
+durable queue. Add [A2A](../tools/a2a/README.md#try-the-boundary-locally-without-a-model)
+when the caller and worker live on different machines. Its local echo tutorial
+lets you try the process boundary without a model or credentials.
+
+Next: [build your own expert with an LLM](BUILD-WITH-AN-LLM.md),
 [choose components](TOOLS.md), or [compare the approach](COMPARISONS.md).

@@ -1,5 +1,9 @@
 # Rules guide
 
+Use Rules when a worker moves from one part of a repository to another and
+needs the instructions that apply there. The [first example](README.md#see-it-work-in-a-minute)
+creates a disposable repository so you can see the exact root-to-leaf result.
+
 ## See what applies
 
 From anywhere inside a Git repository:
@@ -27,15 +31,9 @@ does not create an alternate instruction hierarchy.
 
 ## Compose a prompt explicitly
 
-`rules` does not install its output anywhere. Use the shell at the point where
-the composition should be visible:
-
-```sh
-ASK_SYSTEM="$(ask system; rules)" \
-  ply -sh -check 'go test ./...' 'fix it'
-```
-
-The command substitution captures stdout only. The root, each source path,
+`rules` does not install its output anywhere. The caller loads it at the point
+where the composition should be visible. Command substitution captures stdout
+only. The root, each source path,
 each byte count, and the final total stay visible on stderr. This separation
 also makes ordinary inspection straightforward:
 
@@ -44,8 +42,7 @@ rules | less
 rules > /tmp/project-instructions.md
 ```
 
-The compact form is useful at an interactive prompt, where stderr is visible.
-For a script, make failure propagation explicit:
+Check both instruction reads before starting the worker:
 
 ```sh
 system=$(ask system) &&
@@ -59,6 +56,10 @@ then runs the following command even when a command substitution in that
 assignment returned nonzero. Separate assignments joined with `&&` ensure
 that exit 1 or 2 from Rules prevents the agent from starting without the
 repository instructions.
+
+The same rule applies when constructing instructions for a reusable expert:
+load only the intended repository scope and keep its authority separate from
+the expert definition. An `AGENTS.md` file is guidance, not a permission grant.
 
 If two adjacent files would share a line because the earlier file lacks a
 final newline, Rules inserts one newline between them. Otherwise file bytes are

@@ -2,7 +2,9 @@
 
 **Log in once, refresh when needed, and hand a credential to one command.**
 
-OAuth connects an ordinary Unix program to an OAuth-protected resource. It
+A worker's job description says what it should do. A service credential says
+which identity is asking for access. OAuth connects an ordinary Unix program
+to an OAuth-protected resource. It
 handles login and refresh, then gives the selected child one Authorization
 header on file descriptor 3. The child keeps its normal stdin and stdout;
 access tokens do not need to appear in command arguments or environment variables.
@@ -131,6 +133,19 @@ resource identity; endpoints remain validated before storage and use.
 
 ## Connect to Ask or your own program
 
+The same credential handoff works for a remote agent with
+[A2A](https://github.com/patrickyoung/bench-tools/tree/main/tools/a2a). After
+creating a `reports` profile for the worker's protected resource:
+
+```sh
+oauth with reports -- a2a request -header-fd 3 \
+  send https://YOUR_WORKER/rpc < request.json > result.json
+```
+
+Use A2A's documented request shape and check the child's status: an accepted
+but unfinished task returns 75. OAuth handles authentication; it does not
+decide that the remote task is complete or retry the request.
+
 [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask) accepts the same header boundary:
 
 ```sh
@@ -148,7 +163,7 @@ and requested scopes. Protocol clients still own where they send the header.
 
 For comparison, [Vouch](https://github.com/patrickyoung/vouch) also supports
 imported CLI credentials, static keys, and browser-session references. OAuth
-supplies the explicit OAuth lifecycle and descriptor transfer used by Ask/MCP;
+supplies the explicit OAuth lifecycle and descriptor transfer used by Ask, MCP, and A2A;
 neither tool supplies permission to perform a particular external action.
 [Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action) and
 [May](https://github.com/patrickyoung/bench-tools/tree/main/tools/may) provide that separate boundary.

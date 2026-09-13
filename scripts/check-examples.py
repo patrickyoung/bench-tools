@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = ("ask", "brief", "context", "cite", "tend")
+REQUIRED = ("ask", "brief", "context", "cite", "tend", "agent", "hire", "ply", "cage")
 
 
 def require(condition, message):
@@ -43,7 +43,7 @@ class Fixture(BaseHTTPRequestHandler):
             self.send_response(400)
             self.send_header("Content-Type", "application/json")
         else:
-            answer = self.server.answer
+            answer = self.server.answer(request) if callable(self.server.answer) else self.server.answer
             response = {"id": "resp_fixture", "object": "response", "status": "in_progress",
                         "model": "fixture", "output": []}
             events = [
@@ -172,15 +172,93 @@ def check_signup(bins, scratch, env):
     print("ok signup-audit: real Tend, durable result, stable IDs, conflict and retry recovery", flush=True)
 
 
+def check_support(bins, scratch, env, server, native_cage):
+    root = starter("support-reply", scratch)
+    expert = root / "expert"
+    original = {p.relative_to(expert): p.read_bytes() for p in expert.rglob("*") if p.is_file()}
+    invoke([bins / "hire", "verify", expert], root, env)
+    records = [json.loads(line) for line in (expert / "sources.jsonl").read_text().splitlines()]
+    answer = "\n".join(row["content"]["text"] + f" [{row['ref']}]({row['citation']['url']})"
+                       for row in records) + "\nThe policy does not specify how long the export takes.\n"
+    boundary = [] if native_cage else ["-no-cage"]
+    first_question = (root / "question.txt").read_text().strip()
+    for name in ("customer-work", "next-customer"):
+        work = root / name
+        work.mkdir()
+        question = first_question if name == "customer-work" else "Who is allowed to export our data?"
+        (work / "question.txt").write_text(question + "\n")
+        evidence = root / (name + "-records")
+        invoke([expert / "bin/check"], work, env, code=1)
+        turns = []
+
+        def respond(request):
+            if "You are choosing which skill" in request.get("instructions", ""):
+                return "support-reply"
+            turns.append(request)
+            replies = ["```ply\ncat question.txt \"$AGENT_HOME/sources.jsonl\"\nprintf '%s\\n' 'An uncited reply.' > reply.md\n```",
+                       "First candidate.",
+                       "```ply\ncat > reply.md <<'REPLY'\n" + answer + "REPLY\n```",
+                       "Drafted reply.md. Export duration is not specified."]
+            require(len(turns) <= len(replies), "support expert did not accept the repaired citation")
+            return replies[len(turns) - 1]
+
+        server.answer = respond
+        command = [bins / "agent", "run", *boundary, "-C", work, "-evidence", evidence,
+                   "-turns", "8", expert, "--", "Draft reply.md for the customer using the supplied policy."]
+        if name == "next-customer":
+            command[2:2] = ["-checkpoint", name]
+            queue_env = dict(env, TEND_ROOT=str(root / "queue"),
+                             TEND_PASS="ASK_MODEL OPENAI_API_KEY OPENAI_BASE_URL")
+            invoke([bins / "tend", "submit", "-id", name, "-C", work, "--", *command],
+                   root, queue_env, data=b"")
+            invoke([bins / "tend", "work"], root, queue_env)
+            job = json.loads(invoke([bins / "tend", "show", name], root, queue_env).stdout)
+            require(job["status"] == "done", "Tend did not retain the successful Agent outcome")
+            report = (root / "queue/jobs" / name / "attempts/001.out").read_bytes()
+            invoke([bins / "tend", "check"], root, queue_env)
+            require((evidence / "checkpoints" / (name + ".current")).is_file(),
+                    "Agent did not retain its checkpoint")
+        else:
+            report = invoke(command, root, env, data=b"").stdout
+        require(report == b"Drafted reply.md. Export duration is not specified.\n",
+                "support expert mixed its report with diagnostics")
+        require((work / "reply.md").read_text() == answer, "support expert lost the checked reply")
+        require(len(turns) == 4, "support expert did not exercise rejection and repair")
+        require(question in json.dumps(turns[1]), "workspace question never reached the expert")
+        if name == "next-customer":
+            require(first_question not in json.dumps(turns), "second workspace inherited the first question")
+        instructions = turns[0].get("instructions", "")
+        require("Support reply expert" in instructions and "Identify each question" in instructions,
+                "support expert lost its definition or selected Brief skill")
+        sessions = list((evidence / "runs").glob("*.jsonl"))
+        require(len(sessions) == 1, "support expert has no unique execution session")
+        replay = invoke([bins / "ask", "replay", "-check", "-json", sessions[0]], root, env)
+        verdicts = [event["data"]["body"].get("outcome")
+                    for event in map(json.loads, replay.stdout.splitlines())
+                    if event["type"] == "note" and event["data"].get("kind") == "ply.verifier/v2"]
+        require("rejected" in verdicts and "accepted" in verdicts, "support expert lost verifier evidence")
+        before = len(server.calls)
+        require(not invoke(command, root, env, data=b"").stdout, "pre-check invented a report")
+        require(len(server.calls) == before, "accepted support reply called the model on re-entry")
+    invalid = invoke([bins / "cite", expert / "sources.jsonl"], root, env, code=1,
+                     data=b"[ctx:demo:invented](https://example.com/policies/exports)\n")
+    require(not invalid.stdout, "invalid support citation leaked output")
+    require(original == {p.relative_to(expert): p.read_bytes() for p in expert.rglob("*") if p.is_file()},
+            "running support expert changed its reusable definition")
+    print("ok support-reply: one expert, distinct inputs/contexts, real Agent/Brief/Ask/Ply/Cite, Tend checkpoint, rejection/repair and replay"
+          + (", native Cage" if native_cage else "; host boundary selected for this offline fixture"), flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bin-dir", type=Path, default=ROOT / ".build" / "bin")
+    parser.add_argument("--native-cage", action="store_true", help="run the expert with its default Cage boundary")
     args = parser.parse_args()
     bins = args.bin_dir.resolve()
     try:
         for name in REQUIRED:
             require((bins / name).is_file() and os.access(bins / name, os.X_OK),
-                    f"Missing {bins / name}; run python3 scripts/build ask brief context cite tend")
+                    f"Missing {bins / name}; run python3 scripts/build {' '.join(REQUIRED)}")
         with tempfile.TemporaryDirectory(prefix="bench-examples-") as temporary:
             scratch = Path(temporary)
             (scratch / "home").mkdir()
@@ -199,6 +277,7 @@ def main():
                 check_meeting(bins, scratch, env, server)
                 check_evidence(bins, scratch, env, server)
                 check_signup(bins, scratch, env)
+                check_support(bins, scratch, env, server, args.native_cage)
                 require(all(path == "/v1/responses" for path, _ in server.calls),
                         "fixture received an unexpected request path")
             finally:

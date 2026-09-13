@@ -90,6 +90,18 @@ def gone(pid, timeout=5):
     raise RuntimeError(f"Worker {pid} survived its cancellation/deadline")
 
 
+def echo_tutorial(bins, work, env):
+    with listener(bins, work, env, work / "echo state", ["/bin/cat"]) as (_, url):
+        params = {"message": {"messageId": "echo-001", "role": "ROLE_USER",
+                              "parts": [{"text": "Hello from another process"}]}}
+        task = call(bins, work, env, url, "send", params)
+        require(task["status"]["state"] == "TASK_STATE_COMPLETED", "Echo tutorial did not complete")
+        require(any(part.get("text", "").strip() == "Hello from another process"
+                    for artifact in task["artifacts"] for part in artifact["parts"]),
+                "Echo tutorial did not preserve the supplied text")
+    print("ok A2A local echo tutorial: request -> ordinary process -> completed text artifact", flush=True)
+
+
 def lifecycle(bins, work, env):
     sleeper = work / "sleeper"
     sleeper.write_text("#!/bin/sh\nprintf '%s' \"$$\" > pid\nprintf 'started\\n' >> attempts\nexec sleep 60\n")
@@ -152,7 +164,7 @@ def main():
         work=Path(temp).resolve();home=work/"home";home.mkdir()
         env={"HOME":str(home),"TMPDIR":str(work),"PATH":str(bins)+os.pathsep+os.defpath,"LANG":"C","LC_ALL":"C",
              "XDG_CONFIG_HOME":str(home/"config"),"XDG_STATE_HOME":str(home/"state")}
-        lifecycle(bins,work,env);agent_composition(bins,work,env)
+        echo_tutorial(bins,work,env);lifecycle(bins,work,env);agent_composition(bins,work,env)
 
 if __name__=="__main__":
     try:

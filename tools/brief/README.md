@@ -2,6 +2,10 @@
 
 **Give an agent the right procedure, without loading your whole library.**
 
+Your release note should explain what changed for the reader. That method can
+live in one file and travel between an interactive assistant, a script, and
+an expert folder.
+
 Brief finds, reads, and checks Agent Skills: folders containing a `SKILL.md`
 with a name, description, and Markdown instructions. Use it to share house
 rules, repeat a reliable method, or keep a growing skill collection usable.
@@ -88,6 +92,12 @@ $procedure" ask 'Write this release note.' < changes.txt
 
 The shell checks both reads before calling Ask. Your file is the input, the
 skill is the method, and Ask supplies the wording.
+
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent)
+already uses Brief to validate and select an expert's skills. Put this same
+skill under `EXPERT/skills/release-notes/`; the
+[support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+shows a complete folder. You do not need a new skill loader for each worker.
 
 For work that needs file edits or repeated checks, use
 [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply):

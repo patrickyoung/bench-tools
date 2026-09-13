@@ -192,14 +192,15 @@ correctness of the effect.
 under `work/actions/`. The operator reviews and executes them separately:
 
 ```sh
-agent actions HOME
-agent actions HOME ticket.json
+hire actions HOME
+hire actions HOME ticket.json
 AGENT_ACTION_PATH=/operator/owned/actions \
-  agent act HOME ticket.json SESSION
+  hire act HOME ticket.json SESSION
 ```
 
 Replace the home, proposal, session, and connector path with real values.
-Agent calls Action outside the worker's Cage boundary. Action, May, policy,
+Hire calls Action outside the worker's Cage boundary. For a portable expert,
+use Action directly with the selected proposal and session. Action, May, policy,
 credentials, and controller evidence must stay outside worker-writable roots.
 [Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) supplies the complementary
 read side: retrieve evidence first, propose an effect afterwards.

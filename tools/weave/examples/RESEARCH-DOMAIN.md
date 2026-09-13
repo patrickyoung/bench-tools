@@ -1,5 +1,9 @@
 # Invoice research domain
 
+Start with the [research walkthrough](RESEARCH.md) to run a complete comparison.
+This reference explains the ordinary program that scores its candidates. A
+model proposes a policy; the same fixed evaluator measures every proposal.
+
 `research_domain.py` is a new, deterministic synthetic benchmark for comparing
 bounded parameter search, one agent, and a small adaptive team. It supplies a
 shared candidate contract and evaluator. It does not schedule work, optimize,

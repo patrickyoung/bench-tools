@@ -2,6 +2,7 @@
 
 **Put an ordinary command on a durable local queue, then see exactly what happened.**
 
+A report should not disappear because the terminal that submitted it closed.
 Tend saves a job's input, runs its exact command, and records the attempt and
 output. It can wait for a signal or a timer and continue later. If a process
 may have started but its outcome is unknown, Tend stops for an explicit decision
@@ -51,6 +52,16 @@ The submitted text becomes `/bin/cat`'s stdin. `show` displays the job state;
 and `tend check` should verify its database and output bindings. The worker's
 stdout is retained as an attempt artifact, not printed as `tend work` output.
 
+Read this first attempt's actual result:
+
+```sh
+cat "$TEND_ROOT/jobs/$id/attempts/001.out"
+```
+
+It should be `Hello from a durable job`. Submission returns an ID, the worker
+records an attempt, and the artifact holds the answer: three different outputs
+for three different callers.
+
 Each attempt stores separate `NNN.out` and `NNN.err` files. Tend records their
 digests and sizes, so later inspection can detect changed evidence.
 
@@ -65,11 +76,11 @@ For a simple foreground worker loop in a shell:
 ```sh
 while :; do
   tend work
-  status=$?
-  case "$status" in
+  work_status=$?
+  case "$work_status" in
     0) ;;                 # performed a transition; look again
     1) sleep 1 ;;         # idle
-    *) exit "$status" ;;  # controller failure or interruption
+    *) exit "$work_status" ;;  # controller failure or interruption
   esac
 done
 ```
@@ -149,8 +160,12 @@ until the launcher is gone and partial output is sealed.
   it after a human decision. See [may-approval](examples/may-approval/README.md).
 - [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply): keep a checked model task's
   command, input, output, and execution outcome durable.
-- [Hire](https://github.com/patrickyoung/bench-hire): use a web interface that
-  submits worker tasks through Tend and surfaces results for review.
+- [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire): build
+  the expert folder before submitting its Agent invocation. Hire is the
+  headless builder; it does not own the queue.
+- [A2A](https://github.com/patrickyoung/bench-tools/tree/main/tools/a2a): expose
+  an admitted command to remote callers. A2Aserve uses Tend for each local
+  attempt and retains remote task identity separately.
 
 Tend owns execution facts. Ask still owns model conversations; a checkpoint
 preserves context without resolving uncertain effects.

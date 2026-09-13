@@ -7,6 +7,10 @@ something changed, and a check finally passed. Hone reads that evidence from
 an Ask session, asks a model to word the lesson, and can save it as an ordinary
 Brief skill.
 
+For example, a repair run might discover that a CSV reader drops a final row
+without a newline. A lesson can name that case and the check that exposed it.
+“Be more careful with files” would not help the next worker nearly as much.
+
 **Hone learns from recoveries.** A run that never failed offers no recovery to
 study. A run that never passed offers no verified resolution. Either can
 produce exit 1: there is nothing to learn, and nothing is written.
@@ -154,7 +158,8 @@ representative work. Hone does not silently consolidate or rewrite it.
 | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | Actions, checks, and sealed verifier receipts |
 | Hone | Identify qualifying recoveries and word an explicit lesson |
 | [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) | Find, read, and lint the resulting skill |
-| [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Scope learning to a particular worker home |
+| [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) | `hire learn` prepares reviewed learning for a recurring home |
+| [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Run the expert using its explicitly selected skills and curated memory |
 | [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) | Search the source history |
 
 Hone owns no memory database, index, scheduler, or automatic learning hook.

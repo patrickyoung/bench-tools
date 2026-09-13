@@ -141,8 +141,12 @@ the complete [meeting-brief starter](../examples/meeting-brief/README.md).
 ## What to try next
 
 - **Use your own input:** replace the notes and choose a new conversation file.
-- **Make a small tool:** the [LLM builder guide](BUILD-WITH-AN-LLM.md) shows a
-  Python command with explicit success and failure behavior.
+- **Run a reusable expert:** copy the [support-reply folder](../examples/support-reply/README.md)
+  and give Agent a workspace. It adds file actions and a check to this same
+  model connection.
+- **Build your own worker:** the [LLM builder guide](BUILD-WITH-AN-LLM.md) shows
+  Hire producing a reusable definition for Agent. Start with the job and its
+  acceptance examples; reuse the existing runner.
 - **Let the model edit files:** install Ply from the checkout root with
   `python3 scripts/install ply`, then try the [checked repair recipe](RECIPES.md#3-fix-a-small-tool-and-make-done-executable).
   Ply adds actions and a stopping check; Ask alone produces an answer.

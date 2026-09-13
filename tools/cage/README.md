@@ -2,6 +2,9 @@
 
 **Run one command with explicit write access and networking off by default.**
 
+An expert may need to write a report without being able to rewrite its own
+instructions. Cage makes that distinction an operating-system rule.
+
 Cage uses the host operating system to constrain a child process. Give it a
 workspace, run the command, and keep the same stdin, stdout, stderr, and child
 exit status. There is no image to build or daemon to start.
@@ -105,6 +108,12 @@ the model connection to work while action networking is denied.
 [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) uses Cage by default for its
 worker actions, granting its work and state directories. [Draft](https://github.com/patrickyoung/bench-tools/tree/main/tools/draft)
 can freeze an admitted check outside the builder's write roots.
+
+The [support-reply example](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+uses this default: the reply belongs in the writable workspace, while the
+policy and checker live in the expert definition. The model request runs
+outside the action Cage, so disabling action networking does not prevent Ask
+from talking to its configured provider.
 
 Keep controller records, approval state, and trusted check definitions outside
 writable roots. If a verifier executes worker-modified code outside Cage, that

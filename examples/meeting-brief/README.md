@@ -1,5 +1,9 @@
 # Meeting notes to a reusable brief
 
+The meeting moved the pilot, assigned two actions, and left support coverage
+unassigned. A useful brief keeps those details visible instead of smoothing
+them into a vague “next steps” paragraph.
+
 This starter uses Brief to read a checked procedure and Ask to write one draft.
 It preserves an existing output if the model call fails or returns no text.
 
@@ -36,3 +40,8 @@ The procedure guides wording; the wrapper checks command success and nonempty
 output, not factual accuracy. Its 90-second Ask timeout bounds the direct
 process; Ask may retry provider failures internally. Sessions contain the
 notes and answer. The programs do not execute model-written commands.
+
+This is enough for a one-call draft. The small caller owns fresh filenames and
+output replacement; Brief owns the procedure and Ask the model request. If
+the job needs files edited or a rejected result corrected, use the
+[expert-folder starter](../support-reply/README.md) to reuse Agent's runner.

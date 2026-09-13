@@ -1,16 +1,22 @@
 # Bench tools
 
-**Small programs for building tools that use language models.**
+**Give a digital worker a job, a workspace, and a way to check its work.**
 
-Turn support tickets into a digest. Give a model a failing test and let it work
-until the test passes. Keep the evidence behind a report. Make a useful one-off
-task into a job you can run again.
+Turn a customer's question into a reply grounded in your policy. Give a model
+a failing test and let it repair the code. Save the method in an expert folder
+and use it again tomorrow, with different inputs.
 
-Bench tools gives you the pieces: a model connection, reusable instructions,
-an action loop, checks, records, and durable jobs. Use one program on its own
-or connect several through files and ordinary process input/output. You can
-write the connecting code in Python, a shell script, or with your coding agent.
-There is no required server or shared runtime.
+Bench tools is a collection of focused Unix programs. **Hire builds an expert
+folder; Agent runs it.** Ask connects to the model, Ply drives the action/check
+loop, and the other commands supply skills, evidence, permissions, records,
+and durable execution. They cooperate through files, streams, and exit status.
+The shell and operating system still arrange the work.
+
+Think of a worker with an **ID, a badge, and a computer**. Its Unix account is
+the ID. Credentials and operator-selected permissions determine its access.
+Its workspace is the desk where it leaves the result. Markdown teaches the
+job; it cannot issue the badge. A Linux box, a suitable model, and deliberately
+chosen access are enough to start. macOS is supported too.
 
 ## Start with something useful
 
@@ -49,6 +55,41 @@ allows commands with your user permissions; `-turns 8` bounds model turns.
 Ply runs the tests first, works if they fail, and tests a proposed result again.
 A passing check proves only what those tests cover.
 
+## Make the job reusable
+
+You should not need to write another agent runtime for each specialty. Give
+Hire a job description, inspect the folder it builds, then give Agent that
+folder and a workspace:
+
+```sh
+python3 scripts/install hire agent ask brief ply cage
+mkdir authoring customer-work
+hire build -C authoring -evidence authoring-records -- \
+  'Build a support expert that reads question.txt and policy.txt, writes
+reply.md, and flags anything the policy does not answer. Include a check
+and examples of a good reply and a reply that should be rejected.'
+```
+
+The artifact is `authoring/expert`. Review its instructions and generated
+check, then put your `question.txt` and `policy.txt` in `customer-work/`:
+
+```sh
+agent show -C customer-work authoring/expert
+agent run -C customer-work -evidence customer-records authoring/expert -- \
+  'Draft the reply from the supplied policy.' > run-summary.txt
+cat customer-work/reply.md
+```
+
+These commands use your configured model. Hire checks the generated folder's
+structure; you still need to evaluate whether its check tests the right thing.
+Agent uses Cage to limit worker writes and deny worker networking by default;
+host reads remain available. Use a fresh workspace for each new case so an old
+accepted result cannot satisfy the new job's pre-check.
+
+Want a complete example before asking a model to build one? The
+[support-reply starter](examples/support-reply/README.md) includes an expert,
+sample policy, question, and a citation check. Copy it and run Agent directly.
+
 ## Choose by the job
 
 | I want to… | Start with | Add when needed |
@@ -71,10 +112,10 @@ the components you need; their runtime companions are selected separately.
 | --- | --- |
 | [Getting started](docs/GETTING-STARTED.md) | A first result, provider setup, and basic terminal notation |
 | [Recipes](docs/RECIPES.md) | Small, concrete workflows with inputs and checks |
-| [Runnable starters](examples/README.md) | Copy a complete meeting brief, evidence answer, or durable job and run it |
+| [Runnable starters](examples/README.md) | Run an expert folder, a small text filter, or an ordinary durable job |
 | [How it works](docs/HOW-IT-WORKS.md) | What a model, loop, verifier, and durable job each contribute |
 | [Choose your tools](docs/TOOLS.md) | Each tool's role, boundaries, and detailed reference |
-| [Build with an LLM](docs/BUILD-WITH-AN-LLM.md) | A prompt and workflow for making your own useful tool |
+| [Build with an LLM](docs/BUILD-WITH-AN-LLM.md) | Build an expert with Hire; write code only for the parts that need it |
 | [Compare with modern agent tooling](docs/COMPARISONS.md) | Where coding agents, SDKs, workflows, MCP, and Bench fit in 2026 |
 | [Installation](docs/INSTALL.md) | Whole toolkit, selected tools, updates, and removal |
 | [Source and releases](docs/RELEASES.md) | Which installation to use and how to pin a reproducible toolset |

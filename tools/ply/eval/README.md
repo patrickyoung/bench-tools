@@ -8,11 +8,17 @@ driver. No paid calls run during the self-test.
 The [2026-09-09 verbosity comparison](reports/2026-09-09-verbosity.md) records
 the completed Ply/Pi task comparison, source findings, and its limitations.
 
-Run the deterministic harness checks from the Ply checkout:
+Start with the deterministic harness checks. From the Bench monorepo root:
 
 ```sh
+cd tools/ply
 python3 -m unittest discover -s eval -p 'test_*.py' -v
 ```
+
+In a standalone Ply checkout, omit `cd tools/ply`. Python 3 is required; this
+first command needs neither provider credentials nor a hosted model. The live
+task trials below answer a separate question: how well the chosen models and
+drivers handle the supplied cases under the recorded limits.
 
 The checks exercise repeated pairing, equal initial file digests, isolated
 state, correct and false success claims, unknown cost, invalid driver output,

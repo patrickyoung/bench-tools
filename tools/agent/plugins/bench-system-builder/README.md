@@ -1,5 +1,13 @@
 # Bench System Builder
 
+**This is the versioned guide for the separately pinned Bench suite 0.13.0
+and Agent 0.2.1.** Its command runbook is intentionally preserved for that
+release. For this monorepo's native split—Hire builds; Agent runs—start with
+the [current builder guide](https://github.com/patrickyoung/bench-tools/blob/main/docs/BUILD-WITH-AN-LLM.md)
+and [support expert](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply).
+Do not apply this plugin's legacy `agent new/act/history` commands to the new
+runner. Updating a pinned plugin requires its own compatibility review.
+
 Three inspectable Agent Skills for building, operating, and stewarding governed
 Bench systems from Claude Code or Claude Cowork. The package contains Markdown
 instructions, references, templates, evaluation cases, and explicit helpers for

@@ -4,6 +4,10 @@ This starter runs an ordinary Python program through Tend. It counts exact
 duplicate signup lines and retains the input, attempt, and output locally.
 No model or account is needed.
 
+Counting duplicate addresses is a fixed rule. Keeping its execution durable
+is a separate job. This example lets Tend do that second job without turning
+the first one into an AI task.
+
 From the checkout root:
 
 ```sh
@@ -46,3 +50,8 @@ starter never decides whether to retry uncertain work.
 Each `tend work` performs one transition. A scheduler supplies repetition for
 recurring work. Tend records execution facts; it cannot promise exactly-once
 effects on an external service. This worker only computes a report.
+
+The same queue can run `agent run` when interpretation is needed. Build its
+expert with Hire and use [Tend's Agent guide](../../tools/tend/examples/agent-checkpoint/README.md)
+to pass the model configuration and keep conversation checkpoints separate
+from execution records.

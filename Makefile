@@ -36,7 +36,7 @@ check-docs:
 	@$(PYTHON) scripts/check-docs.py
 
 check-examples:
-	@$(PYTHON) scripts/build ask brief context cite tend
+	@$(PYTHON) scripts/build ask brief context cite tend agent hire ply cage
 	@$(PYTHON) scripts/check-examples.py --bin-dir .build/bin
 
 install:

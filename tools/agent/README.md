@@ -8,6 +8,12 @@ It adds no model client, action loop, transcript format, registry, or daemon.
 Existing recurring Agent run/check/show interfaces remain supported.
 [Hire](../hire/README.md) is the separate headless builder.
 
+A support expert can answer today's customer and tomorrow's customer using
+the same policy and procedure. Each case gets its own workspace and records.
+The [support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+includes the whole expert, a question, source records, and a citation check.
+Copy the folder and run it; there is no specialty-specific runtime to build.
+
 Agent connects [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief),
 [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply), [Ask](https://github.com/patrickyoung/bench-tools/tree/main/tools/ask),
 and [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage). The goal lives in Markdown;
@@ -15,12 +21,12 @@ and [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage). Th
 
 [Install](#install) · [First worker](#build-your-first-worker) ·
 [Recurring work](#run-again-or-wake-only-when-needed) ·
-[Visual guide](https://patrickyoung.github.io/agent/)
+[Builder/runner guide](RUNNER.md)
 
 ## Install
 
 From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
-run `python3 scripts/install agent hire ask brief ply cage hone trail may action` at the repository root. See
+run `python3 scripts/install agent hire ask brief ply cage` at the repository root. See
 [installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
 for prerequisites and PATH setup, or
 [getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
@@ -34,6 +40,11 @@ exported `tools/agent` source directory, run `go build -o /your/bin/agent .`
 with Go 1.26+. Keep the installed companion commands on PATH. No sibling
 source tree or shared Go workspace is needed. The runtime contains no builder code or separate action helper. Hire is
 installed independently for authoring.
+
+Hone, Trail, May, and Action are optional additions for learning, archive
+inspection, human decisions, and external operations. Install them when using
+those sections below. Building from one monorepo commit keeps companion
+versions coordinated without coupling their source modules.
 
 **After either source installation**, run `cage check`. Linux Cage requires
 Bubblewrap and usable kernel namespaces; macOS uses the system Seatbelt backend.
@@ -49,6 +60,10 @@ ask 'Reply with hello.'
 ```
 
 ## Reuse an expert across workspaces
+
+The [support-reply walkthrough](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+is the practical first run. This smaller sorting exercise makes the file and
+check mechanics easy to inspect; sorting alone does not need a model.
 
 ```sh
 hire new experts/names 'Normalize a supplied list of names'
@@ -95,6 +110,10 @@ and returns Ply's outcome unchanged: 0 accepted, 1 broken, 2 unfinished,
 `-turns`, `-cycles`, `-timeout`, and `-compact` pass to Ply. A passing `bin/check`
 pre-check needs no model call. An empty answer on that re-entry is expected;
 the deliverable is already in the workspace.
+
+That pre-check only knows the condition you wrote. Use a fresh workspace for
+a new case, or make the check bind its result to the current input. An old
+nonempty report must not stand in for work on a different question.
 
 ## Build your first worker
 
@@ -250,7 +269,7 @@ approval responsibilities. See [Hire's security boundary](../hire/SECURITY.md).
 `AGENT_ASK`, `AGENT_PLY`, `AGENT_BRIEF` and `AGENT_CAGE` select exact runtime
 companions. `HIRE_AGENT` selects Agent for the separate builder.
 
-- [Guided business-process tutorial](https://patrickyoung.github.io/agent/guide.html)
+- [Build a worker with an LLM](https://github.com/patrickyoung/bench-tools/blob/main/docs/BUILD-WITH-AN-LLM.md)
 - [System-builder skills](plugins/bench-system-builder/README.md) for guided design and operation
 - [MCP integration](MCP.md), [design](DESIGN.md), and [security boundary](SECURITY.md)
 - [Evaluation corpus](eval/README.md) for offline behavior checks

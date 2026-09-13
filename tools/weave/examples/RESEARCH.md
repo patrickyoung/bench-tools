@@ -104,7 +104,21 @@ report-only prompt path, not by claiming that the dataset is secret.
 
 ## Running it
 
-From a Weave source checkout, install the pinned public Ask, Ply and Tend
+Use the tools already built in the Bench monorepo. From its root:
+
+```sh
+python3 scripts/build ask ply tend weave
+export WEAVE="$PWD/.build/bin/weave" TEND="$PWD/.build/bin/tend"
+export ASK="$PWD/.build/bin/ask" PLY="$PWD/.build/bin/ply"
+cd tools/weave
+```
+
+The commands below run from that Weave directory. They record the selected
+executable hashes, so a trial using this checkout is distinguishable from one
+using earlier pinned builds. Keep the resulting records with any comparison.
+
+For a standalone Weave checkout or reproduction with the pinned public tools,
+install the pinned Ask, Ply and Tend
 revisions and build Weave, then run the offline checks. Go 1.26 or later, Git,
 Python 3.9 or later on Unix, and network access for bootstrap are required.
 Sibling checkouts are unnecessary:

@@ -30,7 +30,11 @@ def main():
     paths = [ROOT / "README.md", ROOT / "scripts/README.md"]
     paths += sorted((ROOT / "docs").glob("*.md"))
     paths += sorted((ROOT / "examples").rglob("*.md"))
-    paths += sorted((ROOT / "tools").glob("*/README.md"))
+    paths += sorted((ROOT / "tools").rglob("README.md"))
+    paths += sorted((ROOT / "tools").glob("*/GUIDE.md"))
+    paths += [ROOT / "tools/agent/MCP.md", ROOT / "tools/agent/RUNNER.md",
+              ROOT / "tools/context/CONNECTORS.md", ROOT / "tools/ply/contrib/jobs.md",
+              ROOT / "tools/weave/examples/RESEARCH.md", ROOT / "tools/weave/examples/RESEARCH-DOMAIN.md"]
     errors, checked = [], 0
     for path in paths:
         text = re.sub(r"(`+).*?\1", "", prose(path.read_text()), flags=re.DOTALL)

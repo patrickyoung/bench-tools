@@ -1,6 +1,9 @@
 # The hone field guide
 
-What it is good at, what it is not, and the things that will bite you.
+Use a failure that was actually corrected to improve the next run's procedure.
+Start with [inspect, prepare, review, and admit](README.md#review-the-exact-lesson-before-saving)
+if this is your first lesson. These recipes assume Ask and Brief are installed,
+a model is configured for wording, and the named source sessions exist.
 
 ## What you actually get
 
@@ -73,10 +76,10 @@ $ hone -why run.jsonl
 ```
 
 Do this the first few times. What you are checking is whether the stumbles
-are *real* — a genuine wrong turn — or exploration noise like a `sed` on a
-file that did not exist yet. Noise is fine; the model is asked to discard
-it, and mostly does. But if every stumble in a session is noise, a lesson
-drawn from it will be noise dressed as guidance.
+describe a mistake worth avoiding, or exploration noise like a `sed` on a
+file that did not exist yet. The model is asked to discard noise, but review
+the wording yourself. A passed verifier establishes the recovery; it does
+not establish that every failed command deserves a lasting instruction.
 
 `-N` goes one step further: it calls a model to preview the lesson without
 changing a skill. That wording call still creates an Ask session under
@@ -131,7 +134,8 @@ $ hone -into house ~/.ply/sessions/20260801-230441-4c8100cf68ff97f5.jsonl
 
 ## Recipes
 
-**The loop, as a shell function.** Work a goal, then learn from it:
+**A caller that deliberately saves lessons directly.** Work a goal, then learn
+from it. Use prepare/show/admit instead when each change needs review:
 
 ```sh
 work() (
@@ -225,17 +229,14 @@ the exact call that worded it, including the evidence it was given. If a
 lesson looks wrong, inspect both records and the underlying work. Replay
 checks retained-record consistency; it does not prove that the lesson is true.
 
-## What it is not
+## Keep different kinds of memory separate
 
-It is not a memory of your conversations. It will not remember your name,
-your preferences, or what you said last Tuesday — that is a different
-product with a different failure mode (staleness), and there are vendors
-selling it.
+An Ask session records a conversation. `ask compact` writes an attributed
+handoff to continue it. An expert's `MEMORY.md` holds curated facts. Hone
+proposes procedural lessons supported by checked recovery evidence.
 
-It is not automatic. There is no hook and no watcher, and there will not be
-one. What a system learns silently, it learns wrongly in exactly the cases
-you would most want to catch.
-
-It is not a summarizer. `ask compact` writes a handoff note for a
-conversation that filled its window; `hone` writes a claim about how work
-is done in a place. If you want the former, the verb already exists.
+For a recurring Agent home, `hire learn` offers the controller workflow.
+For a portable expert, select the source session and destination skill
+explicitly. Agent reads the resulting definition on a later run; it does not
+silently rewrite its instructions after every conversation. Review and test a
+lesson before promoting it into a reusable worker's method.

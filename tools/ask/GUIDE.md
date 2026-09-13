@@ -12,6 +12,11 @@ collect data  ->  ask  ->  inspect or act
 This separation explains the interface. `ask` has no filesystem tools and
 runs no commands. If the model needs a fact, put that fact in the message.
 
+Start with [provider setup and one answer](README.md#get-your-first-answer).
+This guide covers caller decisions: sessions, files, error handling, and
+structured output. If your job needs file editing and correction turns,
+reuse Ply or an Agent expert instead of building another loop here.
+
 ## Choose the conversation first
 
 A plain `ask` starts a new conversation. Continuing is explicit.
@@ -326,8 +331,8 @@ become model context:
 
 ```sh
 go test ./... >/tmp/test.out 2>&1
-status=$?
-ask note -s test "exit $status"
+test_status=$?
+ask note -s test "exit $test_status"
 ```
 
 A note has no model call and is not folded. `-s` is required so the record
@@ -338,7 +343,10 @@ says who wrote it.
 Print the built-in value with `ask system`:
 
 ```sh
-ask -S "$(ask system; cat project-style.md)" 'Draft the release note.'
+system=$(ask system) &&
+style=$(cat project-style.md) &&
+ASK_SYSTEM="$system
+$style" ask 'Draft the release note.'
 ask -S '' 'Answer with no system prompt.'
 ```
 

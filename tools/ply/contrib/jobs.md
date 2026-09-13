@@ -6,6 +6,12 @@ Python 3 program on `PATH`; Ply gains no scheduler, task format, or daemon.
 The supervisor exists only for its one command. It survives the `job start`
 process and the foreground Ply action returning.
 
+Use it when a worker should start a long local check and inspect the same
+execution later. Use [Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend)
+when the caller needs a durable queue, recorded attempts, or signal/timer
+waits. Neither requires a second model loop. Agent experts can use the same
+ordinary programs when their selected execution boundary permits them.
+
 The program uses the Python standard library and POSIX process/socket APIs.
 On macOS, `/bin/ps` distinguishes a zombie-only process group from a live
 group when the kernel returns `EPERM` while cleaning up a finished command.
@@ -62,7 +68,11 @@ external `-check` still decides whether the larger task is done.
 
 Use the program directly, or link it and its interpreter into a toolbox:
 
+Run these from Ply's source directory (`cd tools/ply` from the monorepo root).
+Create a fresh toolbox first:
+
 ```sh
+mkdir tools
 ln -s "$PWD/contrib/job" tools/job
 ln -s "$(command -v python3)" tools/python3
 ```

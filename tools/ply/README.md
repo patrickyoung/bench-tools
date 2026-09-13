@@ -14,6 +14,12 @@ ply -sh -check 'go test ./...' 'Fix the failing tests.'
 The final answer is stdout. Commands and their results are stderr. With a
 check, exit 0 means the check passed. Without one, it means the model stopped.
 
+Use Ply directly for a task in an existing project. When the same job needs
+its own instructions, skills, and reusable check, let
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent)
+compose Ply for you. [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire)
+builds that expert folder. The loop does not need to be rewritten for each job.
+
 [Install](#install) · [First checked task](#your-first-checked-task) ·
 [Skills and history](#add-a-procedure-and-keep-the-evidence) · [Field guide](GUIDE.md)
 
@@ -53,7 +59,10 @@ account. It stores no credentials itself.
 
 ## Your first checked task
 
-Use a fresh directory so the input and expected result are easy to see:
+This tiny task makes the loop observable; ordinary `sort -u` is sufficient
+when sorting is the whole job. The [repair recipe](https://github.com/patrickyoung/bench-tools/blob/main/docs/RECIPES.md#3-fix-a-small-tool-and-make-done-executable)
+and [support expert](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+show where diagnosis or interpretation earns the model call.
 
 ```sh
 mkdir ply-demo
@@ -272,8 +281,9 @@ operator's responsibility; see the [manual](ply.1).
 
 - [MCP](https://github.com/patrickyoung/bench-tools/tree/main/tools/mcp) can expose reviewed remote
   capabilities as ordinary executable files for a toolbox.
-- [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) adds a standing goal, skills,
-  separate work/state directories, checks, and history in one home folder.
+- [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) runs
+  an expert folder in a selected workspace, or a recurring home. It supplies
+  instructions, skills, state paths, and the check to this same Ply loop.
 - [Bench](https://github.com/patrickyoung/bench) adds a terminal interface for
   negotiating an outcome and following the work.
 - [contrib/edit](contrib/edit) provides exact text replacement and patch input.

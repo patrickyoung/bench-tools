@@ -4,6 +4,11 @@ Trail is most useful as a narrow adapter between Ask's append-only session
 files and ordinary command-line tools. It prints records instead of a table so
 scripts do not have to scrape a display format.
 
+Use it to answer a specific question about retained work: which run hit the
+timeout, what did the model try next, and did a check accept the result? The
+[first archive walkthrough](README.md#explore-your-first-archive) supplies
+setup. Recipes with `jq` require it separately; Trail itself does not.
+
 ## Choose an archive
 
 Set a default once:
@@ -15,6 +20,11 @@ export ASK_DIR="$HOME/.ask/sessions"
 Every archive command also accepts a directory explicitly. An absent default
 archive is an empty archive; an explicitly named absent directory is an error.
 Trail ignores directories, symlinks, and files without a `.jsonl` suffix.
+
+After the [support-reply expert](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply),
+run `trail ls customer-records/runs` from the copied starter directory.
+That is Agent's selected evidence archive. For a recurring home, the matching
+controller convenience command is `hire history HOME`; Agent remains the runner.
 
 ## Inspect and search
 

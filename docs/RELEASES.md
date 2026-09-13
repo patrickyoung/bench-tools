@@ -14,7 +14,8 @@ integration checks can change in one commit.
 | Build scripts, workers, or applications with these tools | Clone this repository and use `python3 scripts/install`, selecting the components you need |
 | Work on a single independent program | Build its `tools/NAME` directory, or use the standalone repository instructions in its README |
 | Use the Bench interactive application | Follow the [Bench application installer](https://github.com/patrickyoung/bench#install), which selects its own pinned suite |
-| Use Hire | Follow [Hire's installation](https://github.com/patrickyoung/bench-hire), which maintains its own suite pins |
+| Build expert folders with headless Hire | Install `hire agent ask brief ply cage` from this monorepo; see [Hire](../tools/hire/README.md) |
+| Maintain an existing Hire web installation | Keep its separately pinned suite until its call sites are migrated; see [the split boundary](../tools/agent/RUNNER.md#adoption-and-release-boundary) |
 
 The shared installer builds all selected tools from one checkout. Each keeps
 its public command name, module path, version, license, and runtime contract.
@@ -58,7 +59,7 @@ dependency lock or a toolkit version number.
 ## Publication boundaries
 
 This public repository provides source installation. Publishing it does not
-replace the Bench or Hire application releases, change their pins, or redirect
+replace the Bench or legacy Hire application releases, change their pins, or redirect
 existing `go install github.com/patrickyoung/TOOL@...` module paths. Those routes
 continue to use their independent repositories. Changes here are not
 automatically mirrored back to them.

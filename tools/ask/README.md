@@ -6,6 +6,10 @@ Explain a build failure, review a diff, read a chart, or turn an alert into
 validated JSON. Ask handles the model connection and keeps a replayable
 conversation. Your existing programs supply the data and use the result.
 
+Start with one answer. If the job later needs commands and correction turns,
+Ply can call this same Ask. Agent adds an expert folder around that work. A
+simple summary still needs only Ask.
+
 ```sh
 git diff | ask 'Review this patch for bugs.'
 ask -a chart.png 'Explain the trend in three sentences.'
@@ -158,6 +162,8 @@ bytes are retained in the session, so treat archives as sensitive material.
 | Retrieve external evidence | [Context](https://github.com/patrickyoung/bench-tools/tree/main/tools/context) | Pipe normalized records into Ask as data |
 | Check citation identities | [Cite](https://github.com/patrickyoung/bench-tools/tree/main/tools/cite) | Validate an answer against the same evidence file |
 | Execute commands until a check passes | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | Run Ask inside an explicit action/check loop |
+| Run a reusable expert | [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Supply an expert folder and workspace; it reuses Ask and Ply |
+| Build the expert's definition | [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) | Write the folder by running its builder through Agent |
 | Search past conversations | [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) | Browse Ask's existing JSONL archives |
 | Use a terminal workspace | [Bench](https://github.com/patrickyoung/bench) | Review tasks and run the same public tools interactively |
 
@@ -223,40 +229,7 @@ inconsistency; it does not establish factual truth, remote signer identity, or
 protect against removal of a valid suffix. `-json` requests raw events even
 when a provider turn fails; ordinary answer mode withholds incomplete output.
 
-## Troubleshooting and outcomes
-
-| Symptom or status | What to do |
-| --- | --- |
-| `ask: command not found` | Add the installation directory to PATH |
-| Provider/model error | Check the model ID, matching credential, and endpoint |
-| `-c` cannot find `current` | Start with plain `ask` or name the intended file with `-f` |
-| Exit 0 | The invocation completed successfully; this is not a factual correctness check |
-| Exit 1 | Usage, provider, output, validation, or other operational failure |
-| Exit 2 | The model context window is full; start fresh or compact |
-| Exit 130 | Interrupted |
-
-`-q` hides progress, not errors. An output-token limit is exit 1, not context
-capacity exit 2. Always check the exit status when saving or processing output.
-
-## Reference and development
-
-```text
-ask [flags] [message ...]
-ask replay [flags] [session]
-ask compact [flags] [session]
-ask context [flags] [session]
-ask append -s SOURCE [flags] [text]
-ask note -s SOURCE [flags] [text]
-ask system
-ask version
-ask help
-```
-
-[GUIDE.md](GUIDE.md) has shell recipes; [ask.1](ask.1) is the full reference.
-Contributors should read [AGENTS.md](AGENTS.md) and run `go test ./...`; add
-`go test -race ./...` for log or stream changes. Report security issues using
-[SECURITY.md](SECURITY.md). [MIT license](LICENSE).
-
+## Record observations and manage context
 
 Programs that observe an action before stopping can record the result as a
 message without requesting another model turn:
@@ -292,3 +265,37 @@ Compaction retains an inspectable, attributed handoff with the active goal,
 constraints, recent observations, unresolved effects, and pending job handles.
 Repeated compaction still requires evaluating the chosen summarizer's quality;
 Ask does not silently enable a provider-native replacement.
+
+## Troubleshooting and outcomes
+
+| Symptom or status | What to do |
+| --- | --- |
+| `ask: command not found` | Add the installation directory to PATH |
+| Provider/model error | Check the model ID, matching credential, and endpoint |
+| `-c` cannot find `current` | Start with plain `ask` or name the intended file with `-f` |
+| Exit 0 | The invocation completed successfully; this is not a factual correctness check |
+| Exit 1 | Usage, provider, output, validation, or other operational failure |
+| Exit 2 | The model context window is full; start fresh or compact |
+| Exit 130 | Interrupted |
+
+`-q` hides progress, not errors. An output-token limit is exit 1, not context
+capacity exit 2. Always check the exit status when saving or processing output.
+
+## Reference and development
+
+```text
+ask [flags] [message ...]
+ask replay [flags] [session]
+ask compact [flags] [session]
+ask context [flags] [session]
+ask append -s SOURCE [flags] [text]
+ask note -s SOURCE [flags] [text]
+ask system
+ask version
+ask help
+```
+
+[GUIDE.md](GUIDE.md) has shell recipes; [ask.1](ask.1) is the full reference.
+Contributors should read [AGENTS.md](AGENTS.md) and run `go test ./...`; add
+`go test -race ./...` for log or stream changes. Report security issues using
+[SECURITY.md](SECURITY.md). [MIT license](LICENSE).

@@ -1,476 +1,226 @@
-# The field guide
+# The Brief field guide
 
-What `brief` is good at, what it is not, and the recipes — measured against
-a real machine with nine skills installed and a real `ask` account.
+A procedure should be reusable wherever the work happens. Brief makes finding
+and reading it ordinary commands: select a name, read the body, and pass the
+instructions to the program that will do the job.
 
----
+Start with [installation and your first skill](README.md#make-your-first-skill).
+This guide assumes Brief is on PATH. Examples that call Ask need a configured
+model; finding, reading, and linting normally work offline.
 
-## 1. The idea, in one paragraph
+## Save the method, not a past answer
 
-A skill is procedural knowledge someone wrote down: a directory with a
-`SKILL.md` in it. An agent is supposed to load the right one at the right
-moment and no others. Every product that supports skills builds that
-selection into itself, which means the knowledge is only usable inside that
-product. `brief` takes the other route: it makes the catalogue a filter, so
-selecting a skill is a shell command and using one is a pipe. What you get
-back is portable — the same `brief cat` output is a system prompt for `ask`,
-an `--append-system-prompt` for Claude Code, or a paste into anything else.
+A release-note skill should say how to explain a change, what to preserve,
+and when to omit a section. Last week's release note is evidence or an
+example, not the procedure itself.
 
-## 2. What it is good at
+An Agent Skill is a directory containing `SKILL.md`, with a name, description,
+and Markdown body. References and scripts can live beside it. Brief reads
+those files; it never executes a bundled script. A model with command access,
+such as Agent through Ply, can follow a procedure that needs tools. Ask alone
+can only reason over the material its caller supplies.
 
-- **Turning a task into the right instructions, cheaply.** Nine skills are
-  3.7 KB as a catalogue and 88 KB as instructions. Choosing reads the small
-  number.
-- **Composing.** `brief cat a b` concatenates two skills. `ask system` then
-  a skill is a system prompt with both. Nothing here is a plugin format.
-- **Telling you when a skill is broken.** `brief lint` finds the failures
-  that are otherwise silent: a name that does not match its directory, a
-  `references/` file the instructions promise and nobody shipped.
-- **Being scriptable.** Names on stdout, one per line. `xargs`, `cut`,
-  `while read` — all of it works, because there is nothing else on stdout.
+## Bring the catalogue you already have
 
-## 3. What it is not
-
-- **Not an agent.** It never runs a script from `scripts/`, and never will.
-  If a skill says "run `scripts/extract.py`", something with tools has to
-  do that. `ask` has no tools. See §8.
-- **Not a package manager.** There is no `brief install`. A skill is a
-  directory; `git clone` it where `$BRIEF_PATH` looks. See §3.5.
-- **Not smart by default.** `brief find` matches words. It is right about
-  most of what people type and honest about the rest — it prints nothing
-  rather than guessing. `-ask` is the flag for the rest.
-
-## 3.5. Bringing in your own skills
-
-There are three ways, and none of them involve `brief` owning anything.
-
-**Write one.** `brief new` scaffolds a skill that already passes
-`lint -strict`; put it anywhere on the path.
-
-```
-$ brief new -d ~/.brief/skills house-style
-~/.brief/skills/house-style/SKILL.md
-$ brief ls | grep house-style
-house-style	House style. Use when a task involves house-style, or when …
-```
-
-Edit the description first. It is the only part selection ever sees (§9).
-
-**Clone somebody else's.** A published catalogue is a directory of
-directories, so it goes on the path as one element:
-
-```
-$ git clone https://github.com/anthropics/skills ~/src/anthropic-skills
-$ export BRIEF_PATH=~/src/anthropic-skills/skills:$BRIEF_PATH
-$ brief ls | wc -l
-17
-```
-
-Those seventeen were never written with `brief` in mind, and nothing was
-modified to make them work. Ranking picked the right skill for eleven of
-twelve realistic tasks; the twelfth ("write an announcement for the team")
-missed because `internal-comms` never says the word "announcement" — which
-is a description to fix, or a `-ask` away.
-
-`brief lint` had opinions about them too, including one hard error: a
-description of 1068 characters, past the specification's cap of 1024. That
-is the kind of thing nothing else tells you, because a loader that rejects
-it does so quietly.
-
-**Point at what you already have.** If you use Claude Code, you are done —
-`.claude/skills` and `~/.claude/skills` are on the default path. `brief` is
-a reader; it does not need skills to be installed anywhere in particular,
-and `brief cat ./draft` works on a directory you are still writing.
-
-### Order matters
-
-`$BRIEF_PATH` is searched left to right and the first match wins, so put the
-catalogue you trust most on the left and your own overrides further left
-still. `brief path -a <name>` shows what is shadowing what (§11).
-
-## 4. The pair
-
-You brief the agent, then you ask it. The whole integration is that `brief`
-prints text and `ask -S` takes text.
+The default search order is project `.claude/skills`, personal
+`~/.claude/skills`, then `~/.brief/skills`. For another layout, select it:
 
 ```sh
-ask -S "$(ask system; brief cat pdf-processing)" "pull the tables from q3.pdf"
+export BRIEF_PATH="$PWD/skills:$HOME/shared-skills"
+brief ls
+brief path -a release-notes
 ```
 
-`ask system` first, then the skill. `ask -S` *replaces* the default system
-prompt, and the default is what makes `ask` a filter — answer and stop, no
-preamble, take the most useful reading rather than asking a question. A
-skill is a procedure, not a personality; you want both.
+The first matching name wins. `path -a` shows shadowed copies, which is useful
+when an edit seems to have no effect. `BRIEF_PATH` replaces the defaults;
+include each location you intend to search.
 
-### The function you actually want
+You can write a skill, copy a reviewed folder, or check out a catalogue with
+Git. Brief has no `install` verb or package registry. Inspect imported skills
+with `brief lint -strict PATH` before relying on them. Lint is a format check,
+not a judgment that a script or instruction should receive authority.
+
+A direct path is useful while authoring:
 
 ```sh
-skilled() {
-  local s
-  s=$(brief find -ask -q "$*") || { ask "$@"; return; }
-  ask -S "$(ask system; brief cat "$s")" "$@"
-}
+brief new -d ./skills release-notes
+brief cat ./skills/release-notes
+brief lint -strict ./skills/release-notes
 ```
 
-```
-$ git diff --cached | skilled "write a commit message"
-```
+Edit the scaffold using the [first-skill example](README.md#make-your-first-skill)
+before expecting it to express your team's method.
 
-The `||` is the whole design in one character: `brief find` exits 1 when
-nothing fits, and "nothing fits" means *ask the model normally*, not *fail*.
-A skill loaded for a task it does not suit is worse than no skill.
-
-Each call starts a fresh Ask conversation by default. To continue the
-current conversation with a selected skill, add `-c`:
+## Choose cheaply, load deliberately
 
 ```sh
-skilled() {
-  local s
-  s=$(brief find -ask -q "$*") || { ask -c "$@"; return; }
-  ask -c -S "$(ask system; brief cat "$s")" "$@"
-}
+brief find 'release notes'
+brief find -v -n 3 'announce what shipped'
+brief cat release-notes
 ```
 
-`brief find -ask` never has this problem: it runs in a session of its own
-(§6), so choosing a skill is never a turn in your conversation.
+Offline matching ranks task words against names and descriptions. `-v` explains
+its choices on stderr; stdout still contains names only. No match is exit 1.
+It is an expected result, not a broken selector.
 
-### It works with more than one
+A description that says only “communications” may miss “release announcement.”
+Use the words people use for the job. When vocabulary is too different, choose
+with a model explicitly:
 
 ```sh
-ask -S "$(ask system; brief cat house-style commit-message)" "..."
+brief find -ask 'explain the latest improvements to our customers'
 ```
 
-`cat` is `cat`. Order matters only as much as it does in any prompt.
+That call sends the catalogue's names and descriptions plus the task to Ask.
+It does not disclose every skill body. Brief validates the returned name and
+records the selection in its own Ask session. A model call can cost money and
+its duration depends on the provider, model, and request.
 
-## 5. Choosing: the two mechanisms, and when each fails
+`BRIEF_MODEL` and `BRIEF_EFFORT` set the selection policy; unset values keep
+Ask's defaults. Select a model available to your account and test whether it
+chooses correctly on your tasks before optimizing for price or latency.
 
-```
-$ brief find "durable object websocket chat room"
-durable-objects
-```
+## Put one procedure into one model request
 
-Five of those run in 18 ms total. No network, no key, no account. The
-ranking weights each word by how rare it is across the installed
-catalogue, gives a skill's own name triple weight, takes both sides down to
-a crude root so a task saying "chart" finds a description saying
-"charting", **discards any word most of the catalogue uses** rather than
-scoring it low, and **refuses a match that explains only one word of a
-longer question** — "a refund on an opened box" will otherwise find a slide
-skill that says "opened" about a file. `-v` shows the work:
-
-```
-$ brief find -v -n 3 "review my worker for bad practices"
-brief: workers-best-practices     5.86  review practice
-brief: durable-objects            3.09  review practice
-brief: wrangler                   1.39  practice
-workers-best-practices
-durable-objects
-wrangler
-```
-
-Here is where it fails, and it is worth seeing:
-
-```
-$ brief find "make my website load faster"
-$ echo $?
-1
-```
-
-Nothing. The skill that fits is `web-perf`, whose description reads
-"Analyzes web performance… Core Web Vitals (LCP, INP, CLS)". It shares no
-distinctive word with the task. A model closes that gap in about a second:
-
-```
-$ brief find -ask "make my website load faster"
-brief: web-perf · ask replay -check ~/.brief/find/20260801-205940-a0b7e2fa.jsonl
-web-perf
-```
-
-**Use words in a loop, a model at a prompt.** Or both, which is the honest
-default for a script that runs often:
+With the release-notes skill installed and Ask configured:
 
 ```sh
-s=$(brief find "$task") || s=$(brief find -ask -q "$task")
+printf '%s\n' 'Added CSV export. Fixed duplicate notifications.' > changes.txt
+system=$(ask system) &&
+procedure=$(brief cat release-notes) &&
+ASK_SYSTEM="$system
+$procedure" ask 'Write the release note.' < changes.txt
 ```
 
-Free when it can be, paid when it has to be.
+The two reads must succeed before Ask starts. The newline inside the quoted
+assignment separates the default prompt from the procedure. The change list
+remains input data. Use `brief cat house-style release-notes` to combine two
+installed procedures in that explicit order.
 
-### Which model chooses
-
-`-ask` inherits `$ASK_MODEL`. Selection is a classification task and does
-not want your best model:
+For a frequently used shell function, distinguish “no skill” from “the
+selector broke”:
 
 ```sh
-export BRIEF_MODEL=anthropic/claude-haiku-4-5-20251001
-export BRIEF_EFFORT=low
+skilled() (
+  task=$1
+  if selected=$(brief find "$task" < /dev/null); then
+    system=$(ask system) || exit "$?"
+    procedure=$(brief cat "$selected") || exit "$?"
+    ASK_SYSTEM="$system
+$procedure" ask "$task"
+  else
+    skill_status=$?
+    case "$skill_status" in
+      1) ask "$task" ;;
+      *) exit "$skill_status" ;;
+    esac
+  fi
+)
+
+skilled 'Write release notes.' < changes.txt
 ```
 
-Both values are passed literally to Ask; unset values keep Ask's defaults.
+This starts a fresh Ask conversation. It falls back to plain Ask only for
+Brief's exit 1; unreadable skills or a broken dependency must not silently
+remove the procedure. Selection reads no task evidence from stdin, leaving it
+for the writer. Use a named `ask -f SESSION` deliberately when continuity is
+part of the job; do not make unrelated requests share one conversation.
 
-`$ASK` points at the binary, so a wrapper that pins anything at all works
-too.
+## Let the existing runner apply a tool-using skill
 
-## 6. Every choice is replayable
-
-`-ask` never touches the conversation you are having. It runs `ask -f`
-into a fresh, uniquely named session of `brief`'s own, and says which one:
-
-```
-$ brief find -ask "the input is a patch that needs a message"
-brief: commit-message · ask replay -check ~/.brief/find/20260801-211412-e5f11f65.jsonl
-commit-message
-
-$ ask replay -check ~/.brief/find/20260801-211412-e5f11f65.jsonl
-ok: 20260801-211412-e5f11f65.jsonl replays exactly (5 events)
-```
-
-That matters more than it looks. Skill selection is a decision made on your
-behalf that changes what an agent does next, and it is normally invisible.
-Here it is a file: which catalogue was offered, which name came back, what
-it cost. Months later `ask replay` will still render it, and `-check` will
-still prove it was not edited.
-
-Those files accumulate, one small JSONL per `-ask`. `rm -rf ~/.brief/find`
-whenever you like; nothing depends on them.
-
-## 7. A worked example, start to finish
+A procedure that says “read the source, edit the file, run the check” needs an
+action loop. Give it to Ply:
 
 ```sh
-$ cat ~/.brief/skills/commit-message/SKILL.md
----
-name: commit-message
-description: Writes a git commit message from a diff. Use when a change needs
-  a message, or when the input is a patch or a diff.
----
-
-# Commit messages
-
-Read the diff. Write the message and nothing else.
-
-## Rules
-
-- A subject line in the imperative mood, under 50 characters, no full stop.
-- Then a blank line, then one paragraph on why, only if the why is not obvious.
-- Never describe the diff line by line. Say what changed and what it is for.
+ply -sh -s release-notes -turns 8 -check 'test -s RELEASE.md' \
+  'Read changes.txt and write RELEASE.md using the release-notes procedure.'
 ```
+
+The named skill must exist. `-sh` grants ordinary shell execution. This small
+check only proves a nonempty file exists; content quality needs review or a
+stronger check. Ply records which skill it loaded and whether a candidate
+passed the verifier.
+
+For a reusable specialist, put the skill at
+`EXPERT/skills/release-notes/SKILL.md`. Agent already uses Brief for validation
+and selection. [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire)
+can build the folder, and
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) runs
+it against each workspace. The
+[support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+shows this composition with actual inputs and a citation check.
+
+## Keep references available without loading everything
 
 ```sh
-$ git show HEAD --stat | ask -q -S "$(ask system; brief cat commit-message)" \
-    "write the commit message"
-Remove links to the private mu repository
-
-Avoid directing README readers to inaccessible 404 pages.
+brief ls release-notes
+brief cat release-notes/references/example.md
 ```
 
-Under 50 characters, imperative, blank line, one paragraph of why. The
-rules came from a file on disk that anybody on the team can edit, and the
-model never saw the other eight skills.
+The second command requires that resource to exist. It loads just the named
+file. A skill can tell an agent when a reference is needed; Brief does not
+follow every link and inject its contents into every request.
 
-## 7.5. Does it actually change the answer?
+For Ask, the caller must supply needed resources itself, just as it supplies
+the input document. For Agent, the worker can use its tools to read them.
+This distinction matters for a PDF procedure with an extraction script:
+loading the skill does not give Ask a filesystem or execute that script.
 
-Three A/B runs against skills from `anthropics/skills` — nothing written
-for `brief` or for `ask`, nothing modified. Same model, fresh conversations
-on both sides, identical question; the only difference is `brief cat X` in
-the system prompt. These historical runs used Ask's former `-n` flag; the
-equivalent commands below use the current fresh-session default.
+## Inspect a selection and improve the description
 
-**A reference skill.** `brand-guidelines`, 2.2 KB:
-
-```
-$ ask -q -S "$(ask system)" \
-    'CSS custom properties for the brand palette. Hex values only.'
-  --brand-primary: #2563EB;      <- invented, a generic Tailwind palette
-  --brand-accent:  #F59E0B;
-
-$ ask -q -S "$(ask system; brief cat brand-guidelines)" \
-    'CSS custom properties for the brand palette. Hex values only.'
-  --color-orange:  #d97757;      <- the actual brand values
-  --color-blue:    #6a9bcc;
-```
-
-**A large reference skill.** `claude-api`, 72 KB, asked which model is
-cheapest for high-volume classification and what it costs:
-
-| | answer |
-| --- | --- |
-| plain `ask` | `claude-3-haiku-20240307` — $0.25 / M input |
-| with the skill | `claude-haiku-4-5` — $1.00 / M input |
-
-The first is a two-year-old model at a price that no longer applies. The
-second matches the skill's own table exactly. That one cost 18k input
-tokens, and `brief lint` will tell you why: the body is roughly 17,605
-tokens against the specification's 5,000, all of it loaded the moment the
-skill is chosen. Worth it for that question; not worth it in a loop.
-
-**A tool-choreography skill.** `pdf`, 8 KB, asked to extract tables:
-
-```
-I can't access report.pdf from the current input. To extract all tables:
-
-import pdfplumber
-import pandas as pd
-...
-```
-
-Correct, and useless as an answer — because `ask` has no filesystem. It
-degraded into a program rather than a result, which is the next section.
-
-The pattern: **knowledge, reference and judgement skills work outright.
-Skills that choreograph tools give you the program instead of the answer.**
-
-## 8. Skills assume tools. `ask` has none.
-
-This is the one real seam in the pair, and it is better to know it now.
-
-Many published skills are written for an agent with a filesystem and a
-shell: "run `scripts/extract.py`", "read `references/FORMS.md` first". `ask`
-has no tools, so those instructions describe things it cannot do.
-
-Three ways through it, in order of how often you will want them:
-
-**Inline the level-three file yourself.** This is what an agent's tool call
-would have fetched anyway, and it is one more `cat`:
+`brief find -ask` prints a replay command on stderr. Run it against the exact
+session it names, or inspect the default selection archive with Trail:
 
 ```sh
-ask -S "$(ask system; brief cat pdf-processing pdf-processing/references/FORMS.md)" \
-    "which fields does this form have?" -a scan.pdf
+trail ls "$HOME/.brief/find"
+trail check "$HOME/.brief/find"
 ```
 
-**Prefer knowledge skills for `ask`.** House style, a review checklist, an
-output format, a domain glossary — procedures whose whole content is
-judgement. They work perfectly, because the judgement is the deliverable.
+Install Trail and Ask for this inspection. `BRIEF_DIR` can select another
+archive root. Replay checks retained-record consistency, not whether the
+choice was appropriate. Keep selection records when you need to explain why
+a procedure was chosen; removing them removes that evidence.
 
-**Give the skill to something with tools.** `brief` prints text; anything
-that accepts a system prompt accepts it:
-
-```sh
-claude --append-system-prompt "$(brief cat turnstile-spin)" -p "add a captcha"
-codex exec "$(brief cat wrangler)
-
-Now deploy the worker."
-```
-
-That is the payoff for `brief` not being an agent: the same catalogue serves
-`ask`, Claude Code, and whatever you use next year.
-
-## 9. Writing a skill that actually gets chosen
-
-Selection runs on the description. Everything else in the file is invisible
-until after the choice is made — which means **the description is the
-skill**, as far as being found is concerned.
-
-- **Say what and when.** "Extracts tables from PDFs" is what. "Use when a
-  task involves a PDF, a scan, or a form" is when. `brief lint` warns when
-  the second half is missing, because it is the half selection runs on.
-- **Write the words a user would use, not the words you would.** A user
-  says "my page is slow", not "Core Web Vitals". Put both in.
-- **Do not pad.** Every agent loads every description at startup, for every
-  installed skill, forever. `brief lint` warns past 600 characters for that
-  reason, and the specification caps it at 1024.
-- **Test it.** This is the part nobody does, and `brief` makes it one line:
+Try the phrases you actually expect:
 
 ```sh
-for t in "my page is slow" "why is the site sluggish" "improve LCP"; do
-  printf '%-28s %s\n' "$t" "$(brief find "$t" || echo MISS)"
+for task in 'release notes' 'announce what shipped' 'customer update'; do
+  printf '%s\n' "$task" >&2
+  brief find -v "$task"
 done
 ```
 
-If your own skill misses the phrasings you expect, fix the description, not
-the ranking.
+Inspect misses rather than treating every nonzero result as a crash. A useful
+description names both the work and the circumstances in which it applies.
+Avoid stuffing unrelated keywords into it: that makes the skill easier to
+find for the wrong task.
 
-## 10. Keeping a catalogue honest
-
-```
-$ brief lint
-~/.claude/skills/cloudflare/SKILL.md:4: warning: unknown field "references"; …
-~/.claude/skills/cloudflare/SKILL.md:11: warning: 320 file(s) in references/ …
-~/.claude/skills/durable-objects/SKILL.md:5: warning: 3 file(s) in references/ …
-~/.claude/skills/turnstile-spin/SKILL.md:4: warning: unknown field "references"; …
-~/.claude/skills/turnstile-spin/SKILL.md:12: warning: 6 file(s) in references/ …
-~/.claude/skills/wrangler/SKILL.md:5: warning: the body is 919 lines (the
-  specification asks for under 500); move detail into references/
-brief: 9 skill(s), 0 error(s), 6 warning(s)
-```
-
-(Lines are one per finding and unwrapped; they are shortened here to fit
-the page.)
-
-Those are real findings against real published skills. The middle one is
-the interesting kind: 320 reference files that no instruction in `SKILL.md`
-names. Progressive disclosure means an agent opens a file when the
-instructions tell it to. Nothing tells it to.
-
-In CI, one line:
-
-```yaml
-- run: brief lint -strict .claude/skills
-```
-
-In a pre-commit hook, the same line with `-q`, because the exit status is
-the whole message.
-
-Errors — things that will actually break — are worth knowing by sight:
-
-| finding | what happens without lint |
-| --- | --- |
-| name is not the directory name | the skill silently never loads |
-| duplicate key | YAML keeps the first; your edit did nothing |
-| description over 1024 characters | rejected by a conforming loader |
-| `references/GONE.md` is not there | fails only when the skill is used |
-| empty body | the skill loads and says nothing |
-
-## 11. Three things that will bite you
-
-**Shadowing is silent.** `$BRIEF_PATH` is `$PATH`: `.claude/skills` in the
-project shadows `~/.claude/skills`. A skill you edited in your home
-directory and cannot see any effect from is the classic symptom.
-
-```
-$ brief path -a cloudflare
-/Users/you/work/api/.claude/skills/cloudflare
-/Users/you/.claude/skills/cloudflare
-```
-
-**`brief find` says nothing rather than guessing, so unguarded substitution
-runs the wrong command.** `$(brief find "$t")` can be empty, and
-`brief cat ""` is an error, and `ask -S "" ...` is a raw model with no
-system prompt at all. Always guard:
+## Keep the catalogue usable
 
 ```sh
-s=$(brief find -ask "$t") || { echo "no skill" >&2; exit 1; }
+brief lint
+brief lint -strict
+brief lint -q ./skills/release-notes
 ```
 
-`xargs` also does the right thing here: given no input it runs nothing,
-which is exactly the behaviour you want and the reason `brief find` prints
-nothing rather than a diagnostic when the answer is no.
+Errors cover invalid structure such as mismatched names, duplicate metadata
+keys, missing referenced files, and an empty body. Warnings draw attention to
+issues such as overly long instructions. `-strict` makes warnings fail too.
+The manual describes the exact supported fields and limits.
 
-**`-ask` costs a call and about a second.** Over a hundred tasks that is a
-hundred calls and two minutes of wall clock. Rank first, fall back second
-(§5), and remember that `brief ls` is only read once — if you are looping,
-hoist the catalogue and choose in one batch:
+Keep the main procedure short enough to use. Put occasional detail in named
+references. Add an example where the procedure should apply and one where it
+should not. After a checked recovery, Hone can propose a small, traceable
+lesson; review it before making it part of future instructions.
 
-```sh
-brief ls | ask -q "For each task below, name the one skill that fits or none.
-One line per task, in order, name only.
+## Outcomes
 
-$(cat tasks.txt)"
-```
-
-That is one call for a hundred tasks. `brief find -ask` is the careful
-version for one task; the shell is right there for the other shape.
-
----
-
-## Appendix: the exit codes, again
-
-| | |
+| Exit | Meaning |
 | --- | --- |
-| 0 | yes — found, listed, clean |
-| 1 | no — nothing matched, or lint had something to say |
-| 2 | error — bad usage, unreadable skill, `ask` failed |
+| 0 | A result, match, or clean check |
+| 1 | No match, or lint findings |
+| 2 | Bad usage, unreadable input, or a failed dependency |
 
-`ask` uses 1 for error and 2 for a full context window. `brief` uses `grep`'s
-convention instead, because "no skill fits" is an answer and has to be
-distinguishable from "something is broken". The one place they meet is
-`skilled()` in §4: `brief find` returning 1 falls back to a plain `ask`, and
-returning 2 should not.
+Brief uses a different contract from Ask, whose exit 2 means full context.
+Check the status of the program you actually invoked. See the [README](README.md)
+for setup and [brief.1](brief.1) for the complete command reference.

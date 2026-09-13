@@ -2,7 +2,9 @@
 
 **Read the repository instructions that apply exactly where you are working.**
 
-Rules gathers `AGENTS.md` and `CLAUDE.md` from a project's root down to a target
+A repository may have one rule for every change and another for its public
+API. A worker editing that API needs both. Rules gathers `AGENTS.md` and
+`CLAUDE.md` from a project's root down to a target
 directory. It prints the complete instructions in a predictable order, so you
 can inspect them yourself or explicitly give them to an agent.
 
@@ -110,6 +112,12 @@ unsafe symlinks, and special files are refused without a partial prompt.
 
 Rules connects to nothing automatically. You choose when its output is used,
 and it never grants file access, network access, or approval.
+
+An expert definition describes the worker's job; repository rules describe
+the project it is visiting. Keep both visible when you compose the prompt.
+In the Bench monorepo, Rules discovers the real root and the selected tool's
+local instructions. Source co-location does not merge the tools' runtimes or
+justify inventing nested Git roots.
 
 ## Troubleshooting and reference
 

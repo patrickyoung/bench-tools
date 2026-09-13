@@ -9,6 +9,11 @@ The worker calls May with Tend's stable job ID. May's exit status is the whole
 interface: `0` spends an approval and continues, `3` declines, `75` parks, and
 anything else fails closed.
 
+Run from Tend's source directory (`cd tools/tend` from the monorepo root),
+with standalone May installed. This worker only records the approved words;
+it does not publish a release. May uses the current operator's approval state
+and requires a real terminal decision.
+
 ```sh
 go build -o ./tend .
 

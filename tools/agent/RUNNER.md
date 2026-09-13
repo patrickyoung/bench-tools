@@ -1,5 +1,10 @@
 # Agent runs; Hire builds
 
+For a complete first run, use the
+[support-reply expert](https://github.com/patrickyoung/bench-tools/blob/main/examples/support-reply/README.md).
+It turns a question and supplied policy into a checked draft. This document
+explains the boundaries that let the same folder serve a second workspace.
+
 Two native executables in the Bench tools monorepo, with independent modules:
 
 - `hire new EXPERT` scaffolds a reusable definition without a model.

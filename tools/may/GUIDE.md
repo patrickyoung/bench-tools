@@ -1,5 +1,11 @@
 # May guide
 
+Start with the [harmless print example](README.md#try-an-approval-at-your-terminal).
+The examples below assume an operator-installed `publish-release` program;
+they illustrate its approval boundary, not a bundled release service. Resolve
+the actual May binary with `command -v may` and use that absolute path in a
+deployed controller instead of assuming `/usr/local/bin/may` is your installation.
+
 ## Attended use
 
 Pipe the exact human-readable action to May:
@@ -80,6 +86,12 @@ move between directories but audit lines are never edited. Back up or inspect
 the directory with normal file tools.
 
 ## Put the boundary in the right process
+
+For a worker that proposes a structured external change, reuse
+[Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action).
+It binds the connector request, invokes policy and May, releases approved
+input, and records the outcome. A new expert does not need to implement that
+sequence inside its prompt or its own approval script.
 
 `may` is not a model toolbox program. A connector that can publish, send, buy,
 delete, or otherwise cross an irreversible edge invokes an absolute May path

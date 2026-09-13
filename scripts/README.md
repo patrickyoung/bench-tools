@@ -1,5 +1,9 @@
 # Build, install, and verification
 
+These scripts maintain the monorepo. They build independent programs, check
+their public interfaces together, and install selected packages. Digital
+workers run through Agent; the build harness is not their runtime.
+
 From the repository root:
 
 ```sh
@@ -138,3 +142,16 @@ tests, public-process integration, and native Cage proof in explicit jobs.
 The entry-guide link check runs before the matrix. After building packages,
 the runnable starters are copied into temporary directories and exercised
 against actual commands and local model fixtures, including failure paths.
+
+`check-examples.py` covers four starters: meeting brief, evidence answer,
+signup audit, and the support-reply expert folder. It needs Ask, Brief, Context,
+Cite, Tend, Agent, Hire, Ply, and Cage. The support case checks two independent
+workspaces, unchanged expert bytes, rejected/corrected citations, replay, and
+zero-model re-entry. `--native-cage` retains Agent's default boundary instead
+of the host boundary explicitly selected for the portable fixture.
+
+`check-docs.py` follows local destinations and heading anchors across root
+guides, all tool READMEs, field guides, and selected integration references.
+It does not execute examples or verify remote pages; those need separate
+evidence. Keep setup, expected output, and the scope of each check beside the
+commands a reader will run.

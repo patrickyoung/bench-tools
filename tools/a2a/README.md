@@ -1,5 +1,9 @@
 # A2A: agents across a network boundary
 
+Your report expert runs on a Linux server; its caller lives on a laptop or in
+another service. They can exchange a job and a result without sharing a model
+runtime, filesystem, or programming language.
+
 `a2a` is a Unix filter for calling an agent on another machine. It reads one
 A2A request from stdin, writes JSON to stdout, and gives the outcome through
 its exit status. `a2aserve` exposes one operator-selected executable over A2A.
@@ -38,6 +42,35 @@ go install ./cmd/a2a ./cmd/a2aserve
 
 Install Tend separately before using `a2aserve`, or select its absolute path
 with `-tend`. There is no installation-time daemon or credential setup.
+
+## Try the boundary locally, without a model
+
+From a fresh directory, save a small agent card:
+
+```sh
+cat > card.json <<'JSON'
+{"name":"Echo worker","description":"Returns the supplied text.","version":"1.0.0","skills":[{"id":"echo","name":"Echo","description":"Return input text","tags":["demo"]}]}
+JSON
+a2aserve -dev-loopback -listen 127.0.0.1:8080 -state echo-state \
+  card.json -- /bin/cat
+```
+
+Leave that terminal running. In a second terminal with `a2a` on PATH:
+
+```sh
+printf '%s\n' '{"message":{"messageId":"echo-001","role":"ROLE_USER","parts":[{"text":"Hello from another process"}]}}' |
+  a2a request -http-loopback send http://127.0.0.1:8080/rpc
+```
+
+Expect a completed task whose text artifact contains `Hello from another
+process`. The response is a protocol object, not bare text. The worker's
+stderr and execution evidence stay with Tend. Stop the listener with Ctrl+C.
+Use another port if 8080 is occupied.
+
+Both loopback flags are explicit: this demonstration uses no authentication
+and accepts only a local connection. It proves the request → ordinary process
+→ result path without a model. To serve a real expert, replace `/bin/cat`
+with the Agent invocation below and configure authenticated TLS.
 
 ## First request
 
@@ -150,11 +183,16 @@ Then start the listener with literal arguments:
 a2aserve -listen 0.0.0.0:8443 -public-url https://worker.example:8443 \
   -state /srv/report-service -auth /srv/auth.json \
   -tls-cert /srv/server.pem -tls-key /srv/server.key \
+  -pass-env ASK_MODEL -pass-env ANTHROPIC_API_KEY \
   -artifact report.md /srv/card.json -- \
   agent run -C . -state ../state -evidence ../control /srv/experts/report
 ```
 
 The expert directory must include Agent's valid definition and `bin/check`.
+This example assumes an Anthropic model already configured in the listener's
+environment; select the credential/routing variable names for your provider.
+Only their names appear in the command. Model configuration must reach the
+worker explicitly; the remote caller's authentication is a separate identity.
 If it has no fixed goal, Agent uses the incoming text as the goal. A fixed
 `GOAL.md` instead makes incoming text evidence for that goal. The configured
 command is invoked directly through Tend, without shell evaluation. A remote

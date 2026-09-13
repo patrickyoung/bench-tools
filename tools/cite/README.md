@@ -2,7 +2,8 @@
 
 **Catch invented or mismatched citation links before an answer leaves your pipeline.**
 
-Cite compares a Markdown answer with the Context evidence that was supplied
+An answer can look well sourced while linking to a record that never existed.
+Cite catches that specific mistake. It compares a Markdown answer with the Context evidence that was supplied
 to its author. Every `ctx:` reference must be an exact `[ref](citation.url)`
 link from that evidence. On success, the answer passes through unchanged.
 On rejection, stdout stays empty and stderr explains what to fix.
@@ -109,6 +110,12 @@ no execution or filesystem isolation.
 
 A direct `ask | cite` pipeline is also possible, but Cite does not write the
 Ask log. Use Ply when you need the check result recorded with the run.
+
+For a reusable worker, the
+[support-reply expert](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+puts Cite in `bin/check`. Agent runs that check through Ply and returns a
+rejection to the model. The policy records live in the expert definition,
+outside the default action write boundary; the draft lives in the workspace.
 
 ## Understand the boundary
 

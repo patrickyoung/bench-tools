@@ -1,6 +1,10 @@
 # Weave
 
-Read a finite task graph and observed outcomes. Print the work that is ready.
+**Read a finite task graph and observed outcomes. Print the work that is ready.**
+
+Gather the policy first; then two reviewers can examine it independently.
+Weave answers “which step can start now?” from the dependencies and outcomes
+you supply. Running the reviewers is a separate job.
 
 ```sh
 weave tasks.jsonl < observations.jsonl > ready.jsonl
@@ -55,6 +59,21 @@ The first prints the baseline task. The second prints two independent reviews.
 These are complete original task records, ready for another program to consume.
 The example observation is fabricated demonstration data, not an authenticated
 business outcome. No model, Python, Tend or Ask is needed to run these commands.
+
+## Add execution only when you need it
+
+Use Weave alone to inspect readiness or feed an existing scheduler. To execute
+ready work locally, a caller can submit the selected task to
+[Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend). That
+command can be an ordinary program or
+[Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent)
+running a Hire-built expert. Give independent writers separate workspaces.
+
+The caller must turn checked execution results into the next observation
+snapshot. Weave validates the task binding and observation structure; it does
+not inspect a reviewer's report or authenticate a model's success claim.
+Start with the small quickstart before adopting the larger experimental
+drivers below. A dependency graph need not become another agent runtime.
 
 ## Stream contract
 

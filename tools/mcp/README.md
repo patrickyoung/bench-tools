@@ -2,7 +2,8 @@
 
 **Use an MCP service from your shell—or expose your own programs as an MCP service.**
 
-This repository connects MCP to the tools you already use. Send JSON on stdin,
+An issue tracker may offer an MCP tool while your worker knows how to run
+programs. This component connects those two interfaces. Send JSON on stdin,
 get the result on stdout, and branch on the exit status. You can also turn
 reviewed capabilities into executable files that an agent can use through PATH.
 
@@ -113,6 +114,11 @@ flowchart LR
 [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) can use admitted programs as a
 toolbox. They need no MCP implementation of their own. MCPbox is provisioning;
 generated programs invoke the selected MCP client directly.
+
+Build the expert with [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire),
+then provision its reviewed capabilities as programs. This keeps protocol
+discovery and admission outside the expert's instructions: knowing that a
+service exists does not grant a worker access to it.
 
 ## Keep effectful tools behind Action
 

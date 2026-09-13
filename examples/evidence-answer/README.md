@@ -1,5 +1,9 @@
 # Answer from saved evidence
 
+A customer asks whether they can export before leaving. The evidence answers
+that question but leaves timing unspecified. The draft should preserve both
+what is known and what is missing.
+
 This starter passes fictional policy records through Context, gives the
 normalized evidence to Ask as input data, and checks the answer with Cite.
 The example URLs identify sample sources; the starter does not fetch them.
@@ -39,3 +43,8 @@ Cite requires at least one exact citation and rejects malformed or unknown
 sources support the prose and whether important facts are missing. The
 90-second timeout applies to the direct Ask process, and Ask may retry
 transient provider failures within its invocation.
+
+Here the caller makes one attempt and preserves a rejected candidate. The
+[support-reply expert](../support-reply/README.md) uses the same policy and Cite
+inside Agent's existing correction loop. Choose the one-call filter for a
+simple draft, or the expert folder when the job needs that repeated work.

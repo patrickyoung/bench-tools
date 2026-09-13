@@ -15,6 +15,13 @@ Draft is a shell program that composes Ask, Brief, Ply, and Hone. The useful
 part is the agreement it keeps explicit: what should happen, what should not,
 and what command decides whether the work is done.
 
+Need a new expert in an existing workflow? Start with
+[Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire), which
+builds folders for Agent to run. Use Draft when the missing piece is a program
+with a new contract—for example, a report renderer or a source connector.
+The [worker builder guide](https://github.com/patrickyoung/bench-tools/blob/main/docs/BUILD-WITH-AN-LLM.md)
+shows how to reuse the runner while keeping those useful programs small.
+
 ## Install
 
 From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
@@ -165,7 +172,8 @@ than handing a writable `bin/check` the final say.
 | Apply a written method | [Brief](https://github.com/patrickyoung/bench-tools/tree/main/tools/brief) |
 | Iterate until an executable check passes | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) |
 | Learn from a verified recovery | [Hone](https://github.com/patrickyoung/bench-tools/tree/main/tools/hone) |
-| Give recurring work a persistent home | [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) |
+| Build a reusable expert folder | [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) |
+| Run that expert in a chosen workspace | [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) |
 | Work through the design/build flow interactively | [Bench](https://github.com/patrickyoung/bench) |
 
 Most systems contain plenty of work that does not need model judgment. Draft's

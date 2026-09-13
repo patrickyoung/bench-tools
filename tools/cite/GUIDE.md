@@ -1,7 +1,12 @@
-# Guide
+# Build a cited-answer pipeline
 
 Cite is an identity filter with a condition: a candidate reaches stdout only
 when its Context references are exact.
+
+Start with the [offline citation example](README.md#check-your-first-citation)
+to see an accepted and a rejected answer. The recipes below assume Ask, Ply,
+Context, and Cite are installed, Ask has a model, and the named source connectors
+are configured. `glean` is an example connector you supply, not a built-in.
 
 ## Ask once
 
@@ -15,14 +20,15 @@ context query wikipedia "$q" > evidence.jsonl || exit
 ask -q "Question: $q
 
 Use only the supplied records. Cite factual claims with exact Markdown
-[ref](citation.url) links copied from those records." < evidence.jsonl |
-  cite evidence.jsonl
+[ref](citation.url) links copied from those records." < evidence.jsonl > candidate.md &&
+  cite evidence.jsonl < candidate.md
 ```
 
 Ask records the complete evidence and candidate in its append-only session.
 Cite writes no history of its own. If Cite rejects the output, Ask's session is
 still available for review with `ask replay`; the answer simply never reaches
-normal stdout through this pipeline.
+normal stdout through this sequence. Saving the candidate and checking Ask's
+status prevents an upstream failure from being hidden by the last command.
 
 ## Let Ply correct a rejection
 
@@ -50,11 +56,11 @@ toolbox when retrieval happened before the run.
 ## Aggregate first
 
 ```sh
-context query glean "$q" > glean.jsonl
-context query wikipedia "$q" > wikipedia.jsonl
-cat glean.jsonl wikipedia.jsonl | context merge > evidence.jsonl
-ask "Question: $q; answer with exact cited links." < evidence.jsonl |
-  cite evidence.jsonl
+context query glean "$q" > glean.jsonl &&
+context query wikipedia "$q" > wikipedia.jsonl &&
+cat glean.jsonl wikipedia.jsonl | context merge > evidence.jsonl &&
+ask "Question: $q; answer with exact cited links." < evidence.jsonl > candidate.md &&
+  cite evidence.jsonl < candidate.md
 ```
 
 Cite treats all sources alike. The Context ref is the identity and
@@ -85,6 +91,13 @@ Keeping that judgment outside Cite preserves the value of its deterministic
 answer.
 
 ## Limits
+
+For a complete reusable worker, the
+[support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+puts Cite in an expert's `bin/check` and leaves execution to Agent. That check
+reads policy records from the definition outside the default action write
+roots. The examples above use ordinary shell authority; an instruction not
+to edit evidence is not filesystem protection.
 
 Evidence is limited to 32 MiB, one evidence record to 8 MiB, and the candidate
 to 4 MiB. Excess is an error naming the limit. Cite never truncates either

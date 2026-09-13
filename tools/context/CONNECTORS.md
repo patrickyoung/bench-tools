@@ -1,5 +1,10 @@
 # Connector contract
 
+Write a connector when a source needs its own retrieval or normalization
+logic. If a file can simply be piped to Ask, use the file. The
+[handbook walkthrough](GUIDE.md#a-first-source) shows this contract running
+locally before you connect a service.
+
 A Context connector is an executable file whose filename is its source name.
 Names use lowercase letters, digits, `.`, `_`, and `-`; the first character is
 a letter or digit. The executable may use any language, library, service, or

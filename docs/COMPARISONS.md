@@ -5,7 +5,7 @@ you want help doing work now. Use an agent SDK when you are building an agent
 into an application. Use Bench tools when you want reusable programs whose
 inputs, checks, permissions, and results you can inspect separately.
 
-Official product documentation checked **2026-09-09**. The recommendations
+Official product documentation checked **2026-09-13**. The recommendations
 below are engineering judgments based on those sources and this checkout's
 documented contracts; they are not performance benchmarks.
 
@@ -13,7 +13,7 @@ documented contracts; they are not performance benchmarks.
 | --- | --- | --- |
 | “Help me fix this bug and review the patch.” | Codex or Claude Code | Task instructions, permissions, and review of the result |
 | “Add an agent to our customer-facing application.” | OpenAI Agents SDK or LangGraph | Application code, storage, deployment, and tool behavior |
-| “Turn this recurring task into a command I can rerun.” | Ask, Ply, then Agent as needed | The command's inputs, execution boundary, and success check |
+| “Turn this recurring task into a command I can rerun.” | Ask for one answer; Hire and Agent for a reusable expert | The command's inputs, execution boundary, and success check |
 | “Keep business work progressing across failures and long waits.” | A durable workflow runtime; Tend for a local process queue | Recovery rules, operating the workers, and handling duplicate effects |
 
 These choices can be combined. A coding assistant can build a Bench command.
@@ -39,8 +39,10 @@ Bench exposes smaller units. [Ask](../tools/ask/README.md) handles a model
 request and its conversation record. It cannot run a command or read a file
 just because the prompt names it. [Ply](../tools/ply/README.md) adds the loop:
 ask the model, execute a command, return its output, and check the candidate.
-[Agent](../tools/agent/README.md) packages recurring work into a directory
-with a goal, procedure, workspace, and executable success check.
+[Hire](../tools/hire/README.md) builds a reusable expert folder containing
+instructions, procedures, and an executable check. [Agent](../tools/agent/README.md)
+runs that folder in a selected workspace. A standing home can keep a recurring
+goal, workspace, and history together.
 
 Choose this separation when the result should become something another
 program can use repeatedly: a release-note generator, a log triager, or a
@@ -54,7 +56,12 @@ The OpenAI Agents SDK supplies an agent loop, tools, handoffs between
 specialists, sessions, tracing, guardrails, and resumable approval flows in
 Python or TypeScript. Your application supplies deployment, tool
 implementations, storage choices, and approval decisions.
-Source: [OpenAI Agents SDK](https://developers.openai.com/api/docs/guides/agents).
+Source: [OpenAI Agents SDK](https://developers.openai.com/api/docs/guides/agents/sdk).
+
+OpenAI also offers an Agents API with a managed Codex harness and saved
+execution state. That is another placement decision: whether your application
+owns the agent runner or calls a managed one.
+Source: [OpenAI agent building options](https://developers.openai.com/api/docs/guides/agents).
 
 LangGraph lets application code combine predetermined steps with model-driven
 steps in a graph. Its checkpointers save a thread's graph state, while stores
@@ -80,7 +87,7 @@ It neither runs those tasks nor verifies the underlying business evidence.
 A controller verifies outcomes and arranges execution, perhaps through Tend.
 Weave alone is not a replacement for LangGraph's orchestration runtime.
 
-## MCP connects tools; skills explain procedures
+## MCP connects tools; A2A connects agents; skills explain procedures
 
 MCP standardizes connections between AI applications and external tools, data,
 and prompts. Agent Skills package procedural instructions in a folder with a
@@ -105,6 +112,17 @@ Use the host assistant's own MCP and skill support when you want the capability
 in that assistant. Use Brief or MCP wrappers when your own scripts and workers
 also need it. Check host-specific skill fields and server protocol support;
 sharing a format does not make every extension interchangeable.
+
+A2A addresses a different connection: an independently operated agent on
+another machine or framework. It defines exchanges between agents without
+requiring them to share their internal tools or memory.
+Source: [A2A introduction](https://a2a-protocol.org/latest/).
+
+Bench's [A2A commands](../tools/a2a/README.md) preserve that boundary. The
+`a2a` client reads a request and prints a result; `a2aserve` exposes one
+operator-selected command through Tend. The service owns the network
+connection, while the selected Agent process owns expert execution. Start
+with the local echo tutorial before configuring authenticated remote access.
 
 ## Durability: distinguish remembering from safely repeating
 
@@ -158,16 +176,16 @@ rewrite its checker can weaken the meaning of “passed.”
   saved log into Ask. A model request is enough; no worker queue is needed.
 - **“Every Friday, draft release notes from our change list.”** Start with a
   Brief skill and Ask. Add Ply when the work needs tool calls and a check;
-  use Agent when the recurring job needs its own home. Your scheduler supplies
+  use Hire to build a reusable expert and Agent to run it. Your scheduler supplies
   Friday's trigger. Keep publication a separately controlled step.
 - **“Build a support agent inside our web app.”** Start with an SDK or graph
   runtime, especially if the application's language and storage already fit.
   Reuse a Bench executable where it gives you a useful, testable boundary.
-- **“I know the task, but not shell scripting.”** Ask your coding assistant:
-  “Read the relevant Bench manuals. Build a command that takes this sample
-  input and produces this expected output. Explain every file and exit status.
-  Include a check that rejects this deliberately wrong example.” Then run and
-  inspect those examples before expanding the task.
+- **“I know the task, but not shell scripting.”** Follow the
+  [Hire walkthrough](../tools/hire/README.md). Describe the job, give sample
+  inputs and expected outputs, and include a deliberately wrong result the
+  check must reject. Inspect the generated files and try those examples with
+  Agent before expanding the job.
 
 Start at the [first-result walkthrough](GETTING-STARTED.md) or follow one
 tool's linked tutorial. Add the next component when a concrete need appears.

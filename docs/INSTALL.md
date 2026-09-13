@@ -28,6 +28,17 @@ ask version
 Add tools when you reach the corresponding workflow: `python3 scripts/install brief`
 for reusable instructions, or `python3 scripts/install ask ply` for checked actions.
 
+For building and running reusable experts:
+
+```sh
+python3 scripts/install hire agent ask brief ply cage
+cage check
+```
+
+Hire builds the definition; Agent runs it with those companions. Add `cite`
+for the [support-reply starter](../examples/support-reply/README.md). Python
+runs the source installer, not Hire or Agent: both commands are native Go.
+
 Without names, the installer builds and installs all 23 commands:
 
 ```sh
@@ -142,6 +153,6 @@ files; separately created sessions and worker data remain yours to manage.
 
 Component READMEs also document independent repository installation. Stay with
 this shared installer when following the toolkit guides. The Bench application
-and Hire maintain their own pinned suites; [source and release guidance](RELEASES.md)
+and the legacy Hire web application maintain their own pinned suites; [source and release guidance](RELEASES.md)
 explains how those distributions relate to this repository.
 For package verification and installer details, see the [runner reference](../scripts/README.md).

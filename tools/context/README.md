@@ -2,7 +2,8 @@
 
 **Give an answer its sources. Keep those sources usable all the way through the pipeline.**
 
-Context retrieves evidence through small executable connectors and gives the
+Before answering “can this customer export their data?”, save the policy the
+answer will rely on. Context retrieves evidence through executable connectors and gives the
 results a common shape: content, source identity, retrieval time, and a citation.
 A document can stay a document; a table can stay a table. Your model receives
 the evidence, and a later reader can see where it came from.
@@ -13,6 +14,8 @@ context query wikipedia 'How does a ring buffer work?' > evidence.jsonl
 
 You choose the source. Context retrieves and validates; it does not answer the
 question or decide which source is authoritative.
+The Wikipedia command above requires the connector installed below; the
+first example needs only Context and a local file.
 
 ## Install
 
@@ -181,6 +184,12 @@ procedure; Ask supplies reasoning; Cite checks citation identities; Ply owns
 iteration; [Trail](https://github.com/patrickyoung/bench-tools/tree/main/tools/trail) browses the resulting
 Ask history. Retrieved content remains **data**, not instructions to insert
 into a system prompt or skill.
+
+For a repeatable support job, keep reviewed policy records beside an expert's
+instructions and use Agent to run it in each customer's workspace. The
+[support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
+does this with normalized Context records and Cite. Updating source evidence
+and changing the worker's instructions remain explicit, separate choices.
 
 ## Outcomes and reference
 

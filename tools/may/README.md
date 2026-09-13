@@ -2,7 +2,8 @@
 
 **Ask a person before one exact action proceeds.**
 
-May is a small approval gate for shell programs. It displays the proposed
+Drafting a customer reply and sending it are different decisions. May is a
+small approval gate for shell programs. It displays the proposed
 action and returns an exit status your program can branch on. With a job name,
 it can park the request for later and consume a single-use approval when the
 same job asks for the same action again.
@@ -90,7 +91,7 @@ flowchart LR
 | --- | --- |
 | [Action](https://github.com/patrickyoung/bench-tools/tree/main/tools/action) | Reviews one exact connector request before release |
 | [Ply](https://github.com/patrickyoung/bench-tools/tree/main/tools/ply) | `-may-job JOB` gates each model-authored shell action |
-| [Agent](https://github.com/patrickyoung/bench-tools/tree/main/tools/agent) | Reviews definition amendments and external-effect proposals |
+| [Hire](https://github.com/patrickyoung/bench-tools/tree/main/tools/hire) | Reviews definition amendments and external-effect proposals from a recurring Agent home |
 | [Tend](https://github.com/patrickyoung/bench-tools/tree/main/tools/tend) | Keeps a process durably waiting while a person decides |
 | [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage) | Supplies a separate write/network execution boundary |
 
