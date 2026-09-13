@@ -9,8 +9,8 @@ ARIA, fluid layouts without 320px overflow, useful empty/fallback states,
 Canvas/WebGL fallback, and `prefers-reduced-motion` disabling nonessential
 motion. Catch initialization errors without hiding them from diagnostics.
 Visibly label unsourced names, ratings and metrics as illustrative. Use only
-the domain and current input supplied for this assignment. Preserve any editable source as additional output files. Run your
-check, then `make-handoff frontend SUMMARY output/index.html ...`.
+the domain and current input supplied for this assignment. Preserve any editable source as additional output files. Create `make-handoff frontend SUMMARY output/index.html ...`, then run your
+check. Recreate the handoff after any output change.
 
 Read relevant text instructions and metadata, not binary files or whole base64
 HTML dumps into the conversation. Embed raster bytes through a local file

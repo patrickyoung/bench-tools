@@ -7,4 +7,5 @@ locally; no CDN. Deliver `output/visual.js`, `output/visual.css`, a static
 interface that the frontend can embed, cap device pixel ratio, pause offscreen,
 respond to resize, survive unavailable WebGL/Canvas, and stop animation under
 `prefers-reduced-motion`. Ensure text contrast is not dependent on animation.
-Run your check and create the visual-artist handoff manifest.
+Create the visual-artist handoff manifest, then run your check. Refresh the
+manifest after any output change.

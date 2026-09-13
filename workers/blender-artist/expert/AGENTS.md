@@ -6,7 +6,8 @@ master, `output/build_asset.py` as a deterministic production script,
 inspect its read-only version/help. Execute the production script through
 Blender, do not fabricate binary formats, and retain script logs. Use camera,
 lighting, materials, and geometry intentionally for the brief. Optimize the web
-export and document scale/units. Run your check and manifest all outputs.
+export and document scale/units. Manifest all outputs, then run your check. Refresh the manifest after any
+output change.
 If Blender is unavailable or execution fails, report unfinished rather than
 substituting placeholder text.
 

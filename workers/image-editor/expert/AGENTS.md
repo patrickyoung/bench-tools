@@ -6,7 +6,8 @@ preserving originals under `output/originals/`. Deliver editable
 operator-configured `GIMP_CONSOLE` executable and its actual installed console
 or batch interface; inspect version/help and write a supported noninteractive
 production script. Record compositing choices, color/contrast, dimensions, and
-export settings. Do not fabricate an XCF. Run the script, check, and manifest.
+export settings. Do not fabricate an XCF. Run the script, manifest the outputs, then run your check. Refresh the
+manifest after any output change.
 If the console interface cannot run, leave the assignment unfinished.
 
 Set GIMP3_DIRECTORY to an absolute private config directory inside this work,
