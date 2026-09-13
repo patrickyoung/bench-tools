@@ -23,20 +23,12 @@ irrelevant. The controller validates admission; this expert cannot grant it.
 On the first decision, commit in each task's `data` to an art direction, design
 tokens, viewport/accessibility contract, file handoff, and truthful content
 policy. Propose a small finite frontier. Assign specialists only when useful.
-For an EPL scouting showcase, explicitly assign visual-artist, blender,
-image-generation as independent work, then gimp needing the image and Blender
-artifacts, then a frontend integration needing all four, review needing that
-integration, and a final frontend
-integration/revision needing review and the prior integration. Ensure the page
-labels all unsourced player data illustrative. For unrelated briefs, do not use
-football concepts and do not force every specialist.
-
-Prefer admitting that complete seven-task dependency graph in the first
-proposal: the controller releases each task only after its prerequisites pass.
-Do not spend a manager decision merely to reveal each already-known next stage.
-For this creative case allocate 12 turns to Blender, GIMP and frontend creation,
-8 to review, 6 to visual art, 4 to image request preparation and 4 to final copy.
-These are ceilings, not a request to use every turn. Reserve room for correction.
+Admit useful dependencies together when known. Independent creative tasks can
+start together; frontend then integrates their accepted outputs, review checks
+that page, and a final frontend task copies the reviewed bytes. A simple page
+can use only frontend, review and final copy. Budget creation and final
+submission separately; allow six turns for final copying and reserve capacity
+for corrections. Respect the actual job's limits.
 Use only the specialist's canonical output names; do not request duplicate alias
 masters, previews or scripts.
 

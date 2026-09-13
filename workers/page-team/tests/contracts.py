@@ -88,6 +88,23 @@ def root_cases(base):
     case('review expert requests changes', revised)
     case('review report changed after acceptance')
 
+    # The preceding mutation deliberately changed the report on disk. Restore
+    # the accepted report before testing a different acceptance boundary.
+    (jobs[1] / 'work/output/review.json').write_bytes(b'{"verdict":"pass"}')
+
+    def creative(p, r, visible):
+        job = base / 'jobs/bench-manage-000005'
+        (job / 'work').mkdir(parents=True, exist_ok=True)
+        content = handoff(job / 'work', 'art', 'blender', {'output/preview.png': b'synthetic image identity'})
+        p['input']['snapshot']['tasks'].append({'id': 'art', 'job': job.name,
+            'state': 'accepted', 'candidate': content, 'needs': [],
+            'input': {'kind': 'work', 'worker': 'blender'}})
+        p['input']['snapshot']['tasks'][0]['needs'] = ['art']
+        digest = hashlib.sha256(b'synthetic image identity').hexdigest()
+        r['browser'] = {'visible_asset_sha256': [digest] if visible else []}
+    case('creative input must be visible in any domain', lambda p,r: creative(p,r,False))
+    case('creative input visibly bound in any domain', lambda p,r: creative(p,r,True), expected=0)
+
 
 def image_cases(base):
     base.mkdir()

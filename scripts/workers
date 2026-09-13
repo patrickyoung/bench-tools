@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Inspect and export committed worker source. No model calls or job execution."""
+import argparse
+import hashlib
+import io
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+from urllib.parse import urlsplit
+
+ROOT = Path(__file__).resolve().parents[1]
+STATES = {'experimental', 'active', 'deprecated', 'retired'}
+FORBIDDEN = {'.git', '.env', '.agent', '.checks', '.build', 'node_modules',
+             '__pycache__', 'work', 'state', 'runs', 'sessions', 'output',
+             'outputs', 'demo', 'recordings', 'evidence', 'retained', 'tmp',
+             'cache', 'dist', 'var', '.DS_Store'}
+DENIED_SUFFIXES = {'.gif', '.png', '.jpg', '.jpeg', '.webp', '.mp4', '.pdf',
+                   '.pptx', '.docx', '.html', '.jsonl', '.log', '.pyc', '.bak',
+                   '.blend', '.xcf', '.zip', '.tar', '.gz'}
+
+
+def git(*args):
+    return subprocess.check_output(['git', '-C', str(ROOT), *args], stderr=subprocess.PIPE)
+
+
+def relative(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9_./-]+', value):
+        raise ValueError('path must be a simple relative source path')
+    p = PurePosixPath(value)
+    if p.is_absolute() or any(x in ('', '.', '..') for x in value.split('/')):
+        raise ValueError('path escapes or is not canonical: ' + value)
+    return value
+
+
+def source_file(name):
+    relative(name)
+    p = ROOT
+    for part in PurePosixPath(name).parts:
+        p = p / part
+        if p.is_symlink():
+            raise ValueError('symlink is not worker source: ' + name)
+    if not p.is_file():
+        raise ValueError('missing regular source file: ' + name)
+    return p
+
+
+def load_worker(name, read):
+    if not re.fullmatch(r'[a-z][a-z0-9-]*', name):
+        raise ValueError('invalid worker ID')
+    base = 'workers/' + name + '/'
+    value = json.loads(read(base + 'worker.json'))
+    allowed = {'id', 'description', 'owner', 'status', 'files', 'requires', 'reason', 'successor'}
+    if not isinstance(value, dict) or set(value) - allowed:
+        raise ValueError('unknown worker metadata fields')
+    if value.get('id') != name or value.get('status') not in STATES:
+        raise ValueError('invalid worker identity or status')
+    for field in ('description', 'owner'):
+        if not isinstance(value.get(field), str) or not value[field].strip():
+            raise ValueError('missing ' + field)
+    if value['status'] in ('deprecated', 'retired') and not value.get('reason'):
+        raise ValueError('lifecycle change needs a reason')
+    successor = value.get('successor')
+    if successor is not None and (not isinstance(successor, str) or
+            not re.fullmatch(r'[a-z][a-z0-9-]*', successor) or successor == name):
+        raise ValueError('invalid successor')
+    files = value.get('files')
+    if not isinstance(files, list) or not files or len(files) > 1000:
+        raise ValueError('files must be a bounded explicit list')
+    for file in files:
+        relative(file)
+        if not file.startswith(base + 'expert/'):
+            raise ValueError('export must stay in this worker expert: ' + file)
+        p = PurePosixPath(file)
+        if set(p.parts) & FORBIDDEN or p.suffix.lower() in DENIED_SUFFIXES or p.name.startswith('.env'):
+            raise ValueError('runtime/content file is forbidden: ' + file)
+        if p.name.upper() in {'EVALUATION.MD', 'RUNBOOK.MD', 'HANDOFF.JSON'}:
+            raise ValueError('run/development record is forbidden: ' + file)
+    if len(set(files)) != len(files):
+        raise ValueError('duplicate export path')
+    for file in ('AGENTS.md', 'README.md', 'LICENSE', 'bin/check'):
+        if base + 'expert/' + file not in files:
+            raise ValueError('missing required export: ' + file)
+    requires = value.get('requires')
+    if not isinstance(requires, dict) or not requires:
+        raise ValueError('requires must document source/tool requirements')
+    return value
+
+
+def inspect_current():
+    records = []
+    for entry in (ROOT / 'workers').iterdir():
+        if entry.is_symlink() or (entry.name != 'README.md' and
+                (not entry.is_dir() or not (entry / 'worker.json').is_file())):
+            raise ValueError('unregistered library entry: ' + entry.name)
+    for path in sorted((ROOT / 'workers').glob('*/worker.json')):
+        value = load_worker(path.parent.name, lambda f: source_file(f).read_bytes())
+        # Inspect ignored and untracked files too. Only explicit synthetic tests
+        # and worker metadata belong beside the definition.
+        expected = set(value['files'])
+        actual = set()
+        for directory, dirs, files in os.walk(path.parent, followlinks=False):
+            for entry in dirs + files:
+                item = Path(directory) / entry
+                if item.is_symlink() or entry in FORBIDDEN:
+                    raise ValueError('forbidden library entry: ' + str(item.relative_to(ROOT)))
+            for entry in files:
+                item = Path(directory) / entry
+                rel = item.relative_to(ROOT).as_posix()
+                if item == path or 'tests' == item.relative_to(path.parent).parts[0]:
+                    continue
+                actual.add(rel)
+        if actual != expected:
+            raise ValueError('export inventory mismatch: ' + str(sorted(actual ^ expected)))
+        for file in expected:
+            p = source_file(file)
+            if p.stat().st_size > 1024 * 1024:
+                raise ValueError('oversized source file: ' + file)
+            data = p.read_bytes()
+            data.decode('utf-8')
+            if b'\0' in data:
+                raise ValueError('binary source is not supported: ' + file)
+            if re.search(rb'data:[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]{4,}|[A-Za-z0-9+/]{2048,}', data):
+                raise ValueError('embedded binary/content payload: ' + file)
+            if file.endswith('/bin/check') and not os.access(p, os.X_OK):
+                raise ValueError('check must be executable: ' + file)
+        records.append(value)
+    if not records:
+        raise ValueError('no workers found')
+    return records
+
+
+def export_worker(args):
+    # A full immutable identity is mandatory; never silently select main/HEAD.
+    if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', args.ref):
+        raise ValueError('--ref requires a full commit ID')
+    commit = git('rev-parse', '--verify', args.ref + '^{commit}').decode().strip()
+    value = load_worker(args.worker, lambda f: git('show', commit + ':' + f))
+    if value['status'] != 'active' and not (value['status'] == 'experimental' and args.allow_experimental):
+        raise ValueError('worker is ' + value['status'] + '; select an active worker')
+    remote = git('remote', 'get-url', 'origin').decode().strip()
+    parsed = urlsplit(remote)
+    if parsed.scheme in ('http', 'https') and (parsed.username or parsed.password or parsed.query or parsed.fragment):
+        raise ValueError('source remote must not contain credentials or runtime parameters')
+    if not (remote.startswith('https://') or remote.startswith('git@')):
+        raise ValueError('source remote must be a GitHub-style HTTPS or SSH URL')
+    prefix = 'workers/' + args.worker + '/expert/'
+    # Verify Git tree modes before archive: symlinks/submodules are never followed.
+    tree = git('ls-tree', '-r', '-z', commit, '--', prefix)
+    modes = {}
+    for row in tree.split(b'\0'):
+        if row:
+            details, name = row.split(b'\t', 1)
+            modes[name.decode()] = details.split()[0].decode()
+    if set(modes) != set(value['files']):
+        raise ValueError('committed expert contains missing or undeclared files')
+    if any(mode not in ('100644', '100755') for mode in modes.values()):
+        raise ValueError('committed expert contains a symlink or non-regular entry')
+    if modes.get(prefix + 'bin/check') != '100755':
+        raise ValueError('committed check is not executable')
+    # Parse archive explicitly; do not use extractall or honor archive paths.
+    archive = git('archive', '--format=tar', commit, '--', *value['files'])
+    contents = {}
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        for member in tar:
+            if member.isdir():
+                continue
+            if not member.isfile() or member.name not in value['files'] or member.name in contents:
+                raise ValueError('unexpected archive entry: ' + member.name)
+            if member.size > 1024 * 1024:
+                raise ValueError('oversized archived source: ' + member.name)
+            data = tar.extractfile(member).read()
+            data.decode('utf-8')
+            if b'\0' in data:
+                raise ValueError('binary source is not supported: ' + member.name)
+            if re.search(rb'data:[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]{4,}|[A-Za-z0-9+/]{2048,}', data):
+                raise ValueError('embedded binary/content payload: ' + member.name)
+            if data != git('show', commit + ':' + member.name):
+                raise ValueError('archive changed committed bytes: ' + member.name)
+            contents[member.name] = data
+    if set(contents) != set(value['files']):
+        raise ValueError('archive omitted declared files (check Git attributes)')
+    dest = Path(args.destination).absolute()
+    physical = dest.resolve()
+    if physical == ROOT.resolve() or ROOT.resolve() in physical.parents:
+        raise ValueError('export destination must be outside the source checkout')
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    # mkdir refuses even an existing empty folder or dangling symlink.
+    dest.mkdir()
+    try:
+        files = {}
+        for source, data in sorted(contents.items()):
+            relative_path = source[len(prefix):]
+            target = dest / 'expert' / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            target.chmod(0o755 if modes[source] == '100755' else 0o644)
+            files['expert/' + relative_path] = {'sha256': hashlib.sha256(data).hexdigest(),
+                                              'mode': modes[source]}
+        lock = {'schema': 'bench.worker-lock/v1', 'worker': args.worker,
+                'source': {'repository': remote, 'commit': commit, 'path': prefix.rstrip('/')},
+                'status_at_source': value['status'], 'requires': value['requires'],
+                'files': files, 'adaptations': []}
+        (dest / 'team.lock.json').write_text(json.dumps(lock, indent=2) + '\n')
+    except BaseException:
+        shutil.rmtree(dest)
+        raise
+    print(json.dumps({'worker': args.worker, 'directory': str(dest), 'commit': commit,
+                      'files': len(files)}))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='command', required=True)
+    listing = sub.add_parser('list', help='read the local catalog; defaults to active workers')
+    listing.add_argument('--all', action='store_true')
+    sub.add_parser('check', help='validate current source and explicit export inventories')
+    export = sub.add_parser('export', help='export approved source from a full commit into a new folder')
+    export.add_argument('worker')
+    export.add_argument('destination')
+    export.add_argument('--ref', required=True)
+    export.add_argument('--allow-experimental', action='store_true')
+    args = parser.parse_args()
+    try:
+        if args.command == 'export':
+            export_worker(args)
+        else:
+            values = inspect_current()
+            if args.command == 'check':
+                print(f'worker library: {len(values)} clean source inventories')
+            else:
+                for value in values:
+                    if args.all or value['status'] == 'active':
+                        print(json.dumps({k: value[k] for k in ('id', 'description', 'owner', 'status')}))
+        return 0
+    except (ValueError, OSError, UnicodeError, subprocess.CalledProcessError, tarfile.TarError) as error:
+        print('workers: ' + str(error), file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

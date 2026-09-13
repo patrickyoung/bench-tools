@@ -3,7 +3,7 @@
 import hashlib
 from pathlib import Path
 path = Path(__file__).resolve().with_name('browser-fixture.html')
-print(f'''Build a checked copy of the supplied non-football contract fixture.
+print(f'''Build a checked copy of the supplied synthetic contract fixture.
 This is a controlled test of composition, not a creative design assignment.
 Use frontend, review and final frontend copy only. Admit the complete graph.
 Give each task eight turns, including its final answer after writing files.

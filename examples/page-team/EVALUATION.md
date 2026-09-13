@@ -3,8 +3,8 @@
 The EPL showcase completed through the real CLI and root check. Its accepted
 single-file HTML is 3,729,149 bytes, with SHA-256
 `66a4e8c8bee1caa4dc89c9fee8b2761b2fb3f3ea4a950c01a9a8a1867f52b4c4`.
-See [the page](../demo/index.html), [actual interaction recording](../demo/scouting.gif)
-and [sanitized evaluation record](../demo/evaluation.json).
+See [the page](demo/index.html), [actual interaction recording](demo/scouting.gif)
+and [sanitized evaluation record](demo/evaluation.json).
 
 This is an evaluated experimental assembly, not a promise that an arbitrary
 brief will succeed. Hire produced the initial draft and focused revisions;

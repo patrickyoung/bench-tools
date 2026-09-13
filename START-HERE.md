@@ -55,6 +55,7 @@ versions, repeatable checks, and setup routes that still need a live host test.
 
 ## What is already here
 
+- [A clean worker catalog](workers/README.md) and [team recipes](teams/README.md), with pinned source exports.
 - [A complete expert](examples/support-reply/README.md), reusable across workspaces.
 - [A builder walkthrough](docs/BUILD-WITH-AN-LLM.md) using Hire and Agent.
 - [All 19 components and 23 commands](docs/TOOLS.md), with their own manuals.

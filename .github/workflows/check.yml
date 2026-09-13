@@ -23,6 +23,7 @@ jobs:
           cache: false
       - run: python3 scripts/check-boundaries.py
       - run: python3 scripts/check-docs.py
+      - run: python3 scripts/workers check
       - run: python3 -m unittest discover -s scripts/tests -v
       - id: matrix
         run: echo "components=$(python3 scripts/check --list)" >> "$GITHUB_OUTPUT"
@@ -148,3 +149,24 @@ jobs:
         run: python3 scripts/check-install.py
       - name: Run starter examples with local model fixtures
         run: python3 scripts/check-examples.py --bin-dir .build/bin
+
+  worker-browser:
+    needs: boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Export exactly the checked commit, without examples or run content
+        run: python3 scripts/workers export page-team "$RUNNER_TEMP/page-team" --ref "$(git rev-parse HEAD)" --allow-experimental
+      - name: Install pinned browser dependency in the disposable export
+        working-directory: ${{ runner.temp }}/page-team/expert
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Exercise the exported worker's browser acceptance boundary
+        run: node workers/page-team/tests/browser.mjs "$RUNNER_TEMP/page-team/expert"

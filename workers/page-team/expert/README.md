@@ -1,9 +1,6 @@
 # Single-file page team
 
-A reusable team assembled through Hire and subsequent operator repair. The
-initial Hire draft and a focused handoff revision were incomplete; operator
-review repaired additional adapters. The complete definition now passes
-structural verification, but Hire did not author every final byte.
+Build a self-contained page from a new brief, using only the needed roles.
 
 Agent runs the manager and specialists in separate contexts. Existing Bench
 Manage, Tend, and Weave own planning admission, execution, dependencies, and
@@ -89,13 +86,14 @@ discovers executable worker names, so no new registry or runner is needed.
 Define explicit handoffs and use distinct work and control roots. A real
 copy-editor extension has run without changes to the core adapters.
 
-Read `EVALUATION.md` before relying on creative quality. Monorepo regressions
-cover root review binding, handoff rejection, image-capability failures,
-malformed MCP arguments, browser boundary behavior, and interaction failures.
-Structural verification and fixtures do not prove an arbitrary page acceptable.
+Run the library's synthetic contract and browser tests against an exported
+copy. Structural verification and fixtures do not prove an arbitrary page
+acceptable. Evaluate each new product against its actual requirements.
 
-The manager input adapter shortens successful command traces while preserving
-every task input, state, dependency, candidate, receipt and allowance. The
-authoritative digest still binds the complete retained snapshot, not its display
-projection. A 112 KB retained snapshot was reduced to 55 KB; a real manager
-returned a checked correction plan in one model response.
+The default browser review uses the page's declared interaction journeys.
+An operator may select an external acceptance module through
+`PAGE_TEAM_BROWSER_CHECK`: an absolute path to a trusted JavaScript module
+whose default export is an async function taking a Playwright Page. This code
+runs in the controller, outside Agent's action boundary. Keep its source fixed
+for an admitted run and record its digest with that run's configuration. It is
+never discovered from a prompt or fetched by the worker.
