@@ -169,6 +169,13 @@ jobs:
           PRODUCT_OWNER_EXPERT: ${{ runner.temp }}/product-owner/expert
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s workers/product-owner/tests -v
+      - name: Export the committed Enterprise Architect without tests or run content
+        run: python3 scripts/workers export enterprise-architect "$RUNNER_TEMP/enterprise-architect" --ref "$(git rev-parse HEAD)" --allow-experimental
+      - name: Check Enterprise Architect contracts with synthetic cases and no model
+        env:
+          ENTERPRISE_ARCHITECT_EXPERT: ${{ runner.temp }}/enterprise-architect/expert
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s workers/enterprise-architect/tests -v
 
   worker-browser:
     needs: boundaries

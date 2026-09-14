@@ -42,7 +42,9 @@ alone is incomplete. Human recipe documents describe useful ways to use it.
 
 The [page team roster](../teams/page-team/team.json) now selects the independent
 p5.js/D3 Visual artist. The original smaller Canvas artist remains available
-separately. Architect, Writer and Present are outside this library. Historical
+separately. The older large Architect, Writer and Present applications are outside
+this library. The portable Enterprise Architect is an independent thin worker.
+Historical
 showcases and their evaluation material stay under `examples/`.
 
 ## Select and export

@@ -1,0 +1,43 @@
+{
+  "id": "enterprise-architect",
+  "description": "Guide platform strategy, application portfolio lifecycle, reusable capabilities and outcome-led investments; specify standards and transition gates for delivery teams.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "62e504bd6a9a91a79fccea42d7d7b152cf896eae",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9 standard library on Linux or macOS",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "review": "Human review of architecture judgment and artifact semantics; the check validates the current bound package only"
+  },
+  "files": [
+    "workers/enterprise-architect/expert/AGENTS.md",
+    "workers/enterprise-architect/expert/CONTRACT.md",
+    "workers/enterprise-architect/expert/LICENSE",
+    "workers/enterprise-architect/expert/PROFILE.md",
+    "workers/enterprise-architect/expert/README.md",
+    "workers/enterprise-architect/expert/SPECIALIZE.md",
+    "workers/enterprise-architect/expert/bin/check",
+    "workers/enterprise-architect/expert/references.md",
+    "workers/enterprise-architect/expert/skills/api-ecosystem/SKILL.md",
+    "workers/enterprise-architect/expert/skills/architecture-storytelling/SKILL.md",
+    "workers/enterprise-architect/expert/skills/business-outcomes/SKILL.md",
+    "workers/enterprise-architect/expert/skills/cloud-edge/SKILL.md",
+    "workers/enterprise-architect/expert/skills/collaborative-governance/SKILL.md",
+    "workers/enterprise-architect/expert/skills/data-ai/SKILL.md",
+    "workers/enterprise-architect/expert/skills/finops/SKILL.md",
+    "workers/enterprise-architect/expert/skills/product-capabilities/SKILL.md",
+    "workers/enterprise-architect/expert/skills/security-design/SKILL.md",
+    "workers/enterprise-architect/expert/skills/value-stream-flow/SKILL.md"
+  ]
+}
