@@ -9,7 +9,7 @@ job record, and a job record does not replace model context.
 
 First run the [support-reply starter](https://github.com/patrickyoung/bench-tools/tree/main/examples/support-reply)
 or build a suitable expert with Hire. Install Tend plus Agent's companions
-(`agent ask brief ply cage`, and `cite` for that starter). Configure Ask in
+(`agent ask brief ply cage record`, and `cite` for that starter). Configure Ask in
 the operator environment.
 
 The following assumes an Anthropic model. `TEND_PASS` contains environment

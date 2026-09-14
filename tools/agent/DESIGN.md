@@ -156,3 +156,17 @@ through the public executable. The combined legacy behavioral suite lives at
 - Cage does not become the effect policy. The worker can prepare an Action
   proposal, but `hire act` is a separate controller invocation and scrubs its
   connector and approval capabilities from model runs.
+
+## Default Agent recording
+
+Agent enables Ply's `-record-dir` seam for every action/check run. Record
+captures full separate streams outside the action interpreter and Cage;
+Ply keeps its presentation cap and original interpreter identity. Each
+invocation has a sealed Ask index linking attempts, process receipts,
+conversation sessions and nested invocation parents. Selected inputs are
+snapshotted before work; outputs and used conversations before completion.
+Recording errors stop with 125. Harness instructions route normal work
+through Agent and teach explicit Record wrappers for direct Unix commands.
+Compaction summaries are snapshotted through Ask's public JSON handoff.
+Keep linked child evidence roots with the parent run.
+Quiet heartbeat wakes still stop before Ply without creating a recording.

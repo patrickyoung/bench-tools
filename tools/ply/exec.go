@@ -48,6 +48,7 @@ type Result struct {
 	ConfinementMayHaveRun bool
 	ConfinementDetail     string
 	Timeout               time.Duration
+	RecordingFailed       bool
 }
 
 // commands consumes at most one action from a reply. Optional prose may lead
@@ -126,13 +127,15 @@ func fenceBody(lines []string, start int, fence string) (body string, end int, c
 
 // Runner holds what every command shares.
 type Runner struct {
-	Dir     string
-	Path    string        // PATH the command runs with
-	Shell   string        // resolved command interpreter; called with -c
-	Timeout time.Duration // per command
-	Cap     int           // bytes of output kept per command
-	Env     []string      // extra NAME=VALUE, after the inherited environment
-	Cage    *cageLauncher // model actions only; Checker always clears it
+	Dir        string
+	Path       string        // PATH the command runs with
+	Shell      string        // resolved command interpreter; called with -c
+	Timeout    time.Duration // per command
+	Cap        int           // bytes of output kept per command
+	Env        []string      // extra NAME=VALUE, after the inherited environment
+	Cage       *cageLauncher // model actions only; Checker always clears it
+	Recording  *recording
+	RecordRole string
 }
 
 // Run executes one block as a shell script. Its stdin is the null device —
@@ -172,15 +175,34 @@ func (r Runner) run(ctx context.Context, script string, stdin io.Reader) Result 
 		}
 		argv = r.Cage.argv(r.Shell, script)
 	}
+	file := ""
+	if r.Recording != nil {
+		var err error
+		file, argv, err = r.Recording.begin(r.RecordRole, argv)
+		if err != nil {
+			return Result{Cmd: script, Code: 125, Output: err.Error(), RecordingFailed: true}
+		}
+	}
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = r.Dir
 	cmd.Stdin = stdin
 	cmd.Stdout, cmd.Stderr = out, out // os/exec serializes writes to one writer
 	cmd.Env = append(append(os.Environ(), "PATH="+r.Path), r.Env...)
+	if r.Recording != nil {
+		cmd.Env = append(cmd.Env, "PLY_RECORD="+r.Recording.Bin,
+			"PLY_RECORD_DIR="+r.Recording.Root, "PLY_RECORD_PARENT="+file)
+	}
 	res := Result{Cmd: script, Timeout: r.Timeout}
 	err := runCommand(ctx, cmd)
 	res.Output, res.Elided, res.Total = out.String()
 	res.Interrupted = errors.Is(ctx.Err(), context.Canceled)
+	if r.Recording != nil {
+		if err := r.Recording.complete(file); err != nil {
+			res.Code, res.RecordingFailed = 125, true
+			res.Output += "\n" + err.Error()
+			return res
+		}
+	}
 	if r.Cage != nil {
 		if digestErr := r.Cage.checkDigest(); digestErr != nil {
 			res.Code, res.StartError, res.ConfinementFailed = cageBoundaryExit, true, true

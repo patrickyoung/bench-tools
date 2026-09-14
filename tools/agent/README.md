@@ -26,7 +26,7 @@ and [Cage](https://github.com/patrickyoung/bench-tools/tree/main/tools/cage). Th
 ## Install
 
 From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools),
-run `python3 scripts/install agent hire ask brief ply cage` at the repository root. See
+run `python3 scripts/install agent hire ask brief ply cage record` at the repository root. See
 [installation and updates](https://github.com/patrickyoung/bench-tools/blob/main/docs/INSTALL.md)
 for prerequisites and PATH setup, or
 [getting started](https://github.com/patrickyoung/bench-tools/blob/main/docs/GETTING-STARTED.md)
@@ -266,7 +266,7 @@ approval responsibilities. See [Hire's security boundary](../hire/SECURITY.md).
 ## Reference and learning resources
 
 `agent help` lists `check`, `show`, `run`, `tick`, `specialist` and `version`.
-`AGENT_ASK`, `AGENT_PLY`, `AGENT_BRIEF` and `AGENT_CAGE` select exact runtime
+`AGENT_ASK`, `AGENT_PLY`, `AGENT_BRIEF`, `AGENT_CAGE` and `AGENT_RECORD` select exact runtime
 companions. `HIRE_AGENT` selects Agent for the separate builder.
 
 - [Build a worker with an LLM](https://github.com/patrickyoung/bench-tools/blob/main/docs/BUILD-WITH-AN-LLM.md)
@@ -280,3 +280,40 @@ Contributors: read [AGENTS.md](AGENTS.md), then run `go test ./...`,
 checks across the two public executables. See [runner extraction](RUNNER.md)
 for executable integration and release-boundary details.
 [MIT license](LICENSE).
+
+## Automatic execution recording
+
+Agent requires Record and a Ply with `process_recording: ply.recording/v1`.
+Every run enables full action and verifier recording through Ply, outside
+the selected action interpreter and Cage. No model instruction is needed.
+Ask still owns all session files and seals; every component remains an
+independently installed executable. Missing Record or incomplete recording
+stops with 125. Older Ply versions are refused before execution.
+
+The selected evidence root contains `recordings/run.*/index.jsonl`, an Ask
+session linking attempted processes, completed recordings, conversation
+sessions, and nested invocations. `inputs.jsonl` snapshots the private compiled
+context, invocation goal and checker before work. Each action/verifier has
+its own `session.jsonl` with full separate streams, before Ply's presentation
+cap. `outputs.jsonl` snapshots selected output files and the conversation
+sessions used during this invocation, preserving their bytes across resume.
+Compaction summaries are included in the conversation snapshots. Nested
+agents retain their own evidence roots; keep those roots with the parent
+when collecting a complete run.
+
+Select task files explicitly; paths are relative to the workspace:
+
+```sh
+agent run -C WORKSPACE -evidence RECORDS \
+  -record-input source.json -record-output result.json EXPERT -- 'The job'
+record replay -f RECORDS/recordings/run.ID/action.ID/session.jsonl -stream stdout
+ask replay -check RECORDS/recordings/run.ID/index.jsonl
+```
+
+Replace IDs with the paths reported in the retained index. `record check`
+verifies a complete process receipt; `ask replay -check` checks the index's
+seals. A sealed index prefix alone is not a completed invocation: inspect its
+terminal record and all referenced receipts. Replay never reruns actions.
+Selected missing outputs are incomplete evidence, even on an unfinished run.
+This is stream and selected-file capture, not a filesystem or network snapshot.
+A quiet heartbeat that stops at `bin/wake` still creates no Ply run.

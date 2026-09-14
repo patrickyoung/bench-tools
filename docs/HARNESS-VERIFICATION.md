@@ -160,3 +160,17 @@ scenarios for a model run, **not reported results of the offline checks**.
 Retain the prompt, host/model versions, selected source, actions, output, and
 independent verdict for each model evaluation. Report observed failures as well
 as successes; do not treat these expected behaviors as measured outcomes.
+
+## Automatic recording in the current source
+
+The shared Bench skill now installs Record with Agent and tells harnesses to
+use Agent's default action/check recording. It teaches explicit file selection,
+retention and offline replay, and standalone Record wrappers for commands
+executed directly by a host. This updates source instructions; it does not
+claim existing copied skills or installed binaries have been upgraded.
+
+`python3 scripts/check-record-agent.py --bin-dir BIN` verifies the actual
+Agent/Ply/Ask/Record composition, including full streams beyond presentation
+caps, zero-model pre-checks, artifact snapshots, checkpoint continuation,
+compaction summaries and recording failures. The required root gate runs it.
+Native host discovery results above remain the dated observations listed.

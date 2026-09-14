@@ -8,6 +8,11 @@ results a common shape: content, source identity, retrieval time, and a citation
 A document can stay a document; a table can stay a table. Your model receives
 the evidence, and a later reader can see where it came from.
 
+The [portable envelope](ENVELOPE.md) also works at an MCP boundary. The
+[offline document-and-table example](examples/unix-evidence/README.md) shows
+two connectors, MCP transport, a task checker, and Cite composed as separate
+Unix programs.
+
 ```sh
 context query wikipedia 'How does a ring buffer work?' > evidence.jsonl
 ```

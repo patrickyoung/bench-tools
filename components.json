@@ -260,6 +260,23 @@
       ]
     },
     {
+      "name": "record",
+      "path": "tools/record",
+      "module": "github.com/patrickyoung/record",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "record",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "rules",
       "path": "tools/rules",
       "module": "github.com/patrickyoung/rules",

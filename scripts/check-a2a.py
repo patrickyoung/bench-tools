@@ -164,6 +164,7 @@ def main():
         work=Path(temp).resolve();home=work/"home";home.mkdir()
         env={"HOME":str(home),"TMPDIR":str(work),"PATH":str(bins)+os.pathsep+os.defpath,"LANG":"C","LC_ALL":"C",
              "XDG_CONFIG_HOME":str(home/"config"),"XDG_STATE_HOME":str(home/"state")}
+        env.update({k:os.environ[k] for k in ("BENCH_REPLAY_RECORD_DIR","BENCH_REPLAY_BIN_DIR") if k in os.environ})
         echo_tutorial(bins,work,env);lifecycle(bins,work,env);agent_composition(bins,work,env)
 
 if __name__=="__main__":

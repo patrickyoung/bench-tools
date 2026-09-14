@@ -4,7 +4,7 @@
 
 **Use [patrickyoung/bench-tools](https://github.com/patrickyoung/bench-tools)
 for the shared toolkit source and installer.** This repository maintains the
-19 components together, so documentation, command compatibility fixes, and
+20 components together, so documentation, command compatibility fixes, and
 integration checks can change in one commit.
 
 ## Choose an installation
@@ -14,7 +14,7 @@ integration checks can change in one commit.
 | Build scripts, workers, or applications with these tools | Clone this repository and use `python3 scripts/install`, selecting the components you need |
 | Work on a single independent program | Build its `tools/NAME` directory, or use the standalone repository instructions in its README |
 | Use the Bench interactive application | Follow the [Bench application installer](https://github.com/patrickyoung/bench#install), which selects its own pinned suite |
-| Build expert folders with headless Hire | Install `hire agent ask brief ply cage` from this monorepo; see [Hire](../tools/hire/README.md) |
+| Build expert folders with headless Hire | Install `hire agent ask brief ply cage record` from this monorepo; see [Hire](../tools/hire/README.md) |
 | Maintain an existing Hire web installation | Keep its separately pinned suite until its call sites are migrated; see [the split boundary](../tools/agent/RUNNER.md#adoption-and-release-boundary) |
 
 The shared installer builds all selected tools from one checkout. Each keeps

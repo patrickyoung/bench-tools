@@ -40,8 +40,8 @@ the model stops it receives the candidate report. Exit 0 accepts, 1 rejects
 and sends its output back, and any other status means the verifier broke.
 Interpreter startup failure or output beyond -cap is broken too: verifier
 evidence is never silently truncated.
-A passing pre-check costs no model turn or session. Without -check, exit 0
-means only that the model stopped. The check is yours, not the model's, so it
+A passing pre-check costs no model turn or conversation session. Without
+-check, exit 0 means only that the model stopped. The check is yours, so it
 runs with your PATH and the toolbox merely first on it.
 
 pipes: the answer is stdout, the typescript is stderr (2>/dev/null hides
@@ -86,18 +86,22 @@ flags:
   -session-out file  atomically write the current session path here
   -checkpoint file  lock and resume one durable current-session pointer
   -contract-id digest  bind verifier receipts to an admitted intent contract
+  -record-dir dir  full streams and selected files outside the work tree
+  -record path   Record executable (default record; $PLY_RECORD)
+  -record-input file  snapshot input before work; repeatable
+  -record-output file  snapshot output after work; repeatable
   -q            no typescript on stderr
 
 env: PLY_TOOLS (-t) · PLY_SHELL (-shell) · PLY_ACTION_SHELL (-action-shell)
      · PLY_EFFORT (-effort) · PLY_VERBOSITY (-verbosity) · PLY_DIR
      (sessions, default ~/.ply/sessions) · ASK (the ask binary) · BRIEF
      (the brief binary) · MAY (the may binary) · CAGE (the cage binary)
-     · PLY_MAY_JOB · NO_COLOR
+     · PLY_MAY_JOB · PLY_RECORD_DIR · PLY_RECORD_PARENT · NO_COLOR
      Models and keys belong to ask. Ask also appends observed results,
      compacts context, and verifies sessions. Commands inherit $PLY (this
      binary) and $PLY_DEPTH (the nesting count). A sub-agent is
      a program, not a feature.
 exit: 0 done · 1 error (including broken verifier) · 2 not done — rejected,
       bound, protocol, or context · 3 approval declined · 75 approval required
-      · 125 confinement failed · 130 interrupted
+      · 125 confinement or recording failed · 130 interrupted
 `

@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 23 commands under .build/bin
+scripts/build                              # all 24 commands under .build/bin
 scripts/build ask ply                      # only selected components
 scripts/install                           # build and install into ~/.local
 scripts/install --from-build .build --prefix /tmp/bench-preview
@@ -187,3 +187,15 @@ deprecated and retired entries cannot be exported at that selected revision.
 This is a repository utility, not an installed Bench command or runtime. See
 [the library guide](../docs/WORKER-LIBRARY.md) for content exclusions, source
 pins, authoring, checks and lifecycle policy.
+
+Replay verification includes the required Record/Ask executable contract and
+Record/Ply interpreter fixture. See [the replay scope](../docs/REPLAY.md) for
+the recording boundary and explicit artifact/session selection. The required
+inventory stage records and replays all public commands, and fails when a new
+command has no mapped meaningful case.
+
+`check-record-agent.py --bin-dir BIN` is the required default Agent recording
+contract: real process capture, selected files, pre-checks, checkpoint snapshots,
+compaction handoffs and failure before execution/continuation. It uses loopback
+model fixtures and isolated state. `check-integration.py --agent-only --portable`
+also checks linked nested recordings and cancellation through actual binaries.

@@ -29,11 +29,12 @@ import (
 	"github.com/patrickyoung/ask/internal/provider"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 const usageText = `ask — put a question through a language model, get the answer on stdout
 
   ask [flags] [message ...]       ask; -a attaches files, stdin composes
+  ask init -f file               create a sealed session without a model call
   ask replay [flags] [session]    re-render a session (-check verifies replay)
   ask compact [flags] [session]   continue a full conversation in a fresh one
   ask note -s src [flags] [text]  record text or sealed structured JSON
@@ -88,6 +89,7 @@ flags:
   -json         emit this invocation's raw events instead of the answer
   -q            no progress on stderr; errors still print
 compact only:
+  -json          emit source, summary and continuation paths as JSON
   -at n         compact at estimated token count n (0: unconditional)
                 Below n, print the existing absolute path; no model call.
                 Uses provider usage plus pending message byte allowance.
@@ -101,6 +103,10 @@ compact only:
                 summarizer's own session named in the header. The source
                 is never touched. stdout is the new session's path.
                 Without a session argument, current must be available.
+init only:
+  -f file       new session file (required; refuses existing files)
+                Prints its absolute path. No model call, no stdin read,
+                and no change to current. Later calls select their model.
 replay only:
   -d dir        conversation directory ($ASK_DIR)
   -check        verify the replay invariant before producing output
@@ -113,7 +119,8 @@ note only:
   -q            no progress on stderr; errors still print
   -k kind       structured record kind; requires -json and -seal
   -json body    note JSON ("-" reads stdin); requires -k and -seal
-  -seal         durably seal the structured note; requires -k and -json
+  -jsonl -      stream {kind,body} lines; sealed seq acknowledgements on stdout
+  -seal         durably seal notes; requires -k and -json, or -jsonl
 append only:
   -s source     program writing the message (required, one word)
   -f file       existing session (default: current; must be available)
@@ -150,6 +157,8 @@ func main() {
 func run(args []string) int {
 	if len(args) > 0 {
 		switch args[0] {
+		case "init":
+			return cmdInit(args[1:])
 		case "replay":
 			return cmdReplay(args[1:])
 		case "system":
@@ -188,7 +197,7 @@ func run(args []string) int {
 }
 
 // verbs is ask's command set, named once for the typo guard.
-var verbs = []string{"replay", "compact", "note", "append", "context", "system", "version", "help"}
+var verbs = []string{"init", "replay", "compact", "note", "append", "context", "system", "version", "help"}
 var retiredVerbs = []string{"login", "logout", "auth"}
 
 // nearVerb returns the command a bare first word was probably meant to be,

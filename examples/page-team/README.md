@@ -22,7 +22,7 @@ and shortlist interactions.
 From the monorepo root, install the existing components:
 
 ```sh
-python3 scripts/install agent hire ask brief ply cage tend weave mcp a2a
+python3 scripts/install agent hire ask brief ply cage record tend weave mcp a2a
 export PATH="$HOME/.local/bin:$PATH"
 python3 scripts/workers export-team page-team /absolute/path/to/page-team \
   --ref FULL_COMMIT --allow-experimental

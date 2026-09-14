@@ -11,6 +11,43 @@ import (
 	"github.com/patrickyoung/ask/internal/provider"
 )
 
+func TestCompactJSONNamesVerifiedArtifactsAndNoop(t *testing.T) {
+	dir, _, requests := fake(t, 200, answerWire)
+	if code, _, e := exec(t, "", "the original question"); code != 0 {
+		t.Fatal(code, e)
+	}
+	source := filepath.Join(dir, sessions(t, dir)[0])
+	var handoff struct{ Source, Summary, Session string }
+	count := len(*requests)
+	code, out, diagnostic := exec(t, "", "compact", "-json", "-at", "1000000", source)
+	if code != 0 || json.Unmarshal([]byte(out), &handoff) != nil {
+		t.Fatal(code, out, diagnostic)
+	}
+	if handoff.Source != source || handoff.Session != source || handoff.Summary != "" || len(*requests) != count {
+		t.Fatalf("below-threshold JSON changed work: %+v", handoff)
+	}
+	code, out, diagnostic = exec(t, "", "compact", "-json", source)
+	if code != 0 || json.Unmarshal([]byte(out), &handoff) != nil {
+		t.Fatal(code, out, diagnostic)
+	}
+	if handoff.Source != source || handoff.Summary == "" || handoff.Session == source || handoff.Summary == handoff.Session {
+		t.Fatalf("invalid compaction handoff: %+v", handoff)
+	}
+	for _, path := range []string{handoff.Source, handoff.Summary, handoff.Session} {
+		if code, _, diagnostic := exec(t, "", "replay", "-check", path); code != 0 {
+			t.Fatal(path, diagnostic)
+		}
+	}
+	rows, err := event.ReadFile(handoff.Session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, err := event.As[event.Header](rows[0])
+	if err != nil || header.Summary+".jsonl" != filepath.Base(handoff.Summary) {
+		t.Fatal("summary path disagrees with Ask provenance", err)
+	}
+}
+
 // TestCompactLeavesThreeSessionsThatAllReplay is the whole contract: the
 // source is untouched, the note was written somewhere inspectable, and the
 // conversation continues from it. If any of the three stopped replaying,

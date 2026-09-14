@@ -385,8 +385,19 @@ class CheckRun:
                        A2A_TEST_CLIENT=str(self.bin / "a2a"))
         self.command("a2a-executable-contracts",
                      ["go", "test", "-count=1", "-timeout", "90s", "./internal/serve"], source, a2a_env)
-        self.command("public-process-integration",
-                     ["python3", self.root / "scripts/check-integration.py", "--bin-dir", self.bin]
+        source, isolated = self.export("record")
+        record_env = self.composition_env(isolated)
+        record_env["RECORD_TEST_ASK"] = str(self.bin / "ask")
+        self.command("record-executable-contracts",
+                     ["python3", self.root / "scripts/check-record-contract.py", "--source", source, "--ask", self.bin / "ask"],
+                     source, record_env)
+        self.command("record-ply-interpreter-contract",
+                     ["python3", self.root / "scripts/check-record-ply.py", "--bin-dir", self.bin], self.root, env)
+        self.command("record-agent-default-contract",
+                     ["python3", self.root / "scripts/check-record-agent.py", "--bin-dir", self.bin], self.root, env)
+        self.command("replay-inventory-integration",
+                     ["python3", self.root / "scripts/check-replay-inventory.py", "--bin-dir", self.bin,
+                      "--output", self.directory / "replay"]
                      + (["--native-cage"] if self.native_cage else []),
                      self.root, env)
 

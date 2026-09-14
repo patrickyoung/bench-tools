@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Deterministic consumer for the fictional, machine-readable demo policy."""
+
+import json
+import sys
+
+
+def main():
+    raw = sys.stdin.buffer.read((32 << 20) + 1)
+    if len(raw) > 32 << 20:
+        raise ValueError("evidence exceeds 32 MiB")
+    rows = [json.loads(line) for line in raw.splitlines()]
+    if len(rows) != 2 or {row["source"] for row in rows} != {"policy", "entitlements"}:
+        raise ValueError("expected policy and entitlement evidence")
+    policy = next(row for row in rows if row["source"] == "policy")
+    entitlement = next(row for row in rows if row["source"] == "entitlements")
+    if policy["type"] != "document" or policy["content"]["required_entitlement"] != "export_enabled":
+        raise ValueError("unsupported fixture policy")
+    table = entitlement["content"]
+    if entitlement["type"] != "table" or table["columns"] != [
+        {"name": "customer_id", "type": "string"},
+        {"name": "export_enabled", "type": "boolean"},
+    ]:
+        raise ValueError("unsupported table schema")
+    if len(table["rows"]) != 1 or len(table["rows"][0]) != 2:
+        raise ValueError("expected exactly one customer row")
+    customer, enabled = table["rows"][0]
+    if customer != "demo-customer" or not isinstance(enabled, bool):
+        raise ValueError("wrong customer or untyped entitlement")
+    policy_link = "[{}]({})".format(policy["ref"], policy["citation"]["url"])
+    table_link = "[{}]({})".format(entitlement["ref"], entitlement["citation"]["url"])
+    print("{} In this fictional example, export requires export_enabled. {} "
+          "Demo-customer has export_enabled={}. {}".format(
+              "Yes." if enabled else "No.", policy_link, str(enabled).lower(), table_link))
+    return 0
+
+
+try:
+    raise SystemExit(main())
+except (ValueError, KeyError, TypeError, IndexError) as exc:
+    print("answer: " + str(exc), file=sys.stderr)
+    raise SystemExit(2)

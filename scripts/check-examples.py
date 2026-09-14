@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = ("ask", "brief", "context", "cite", "tend", "agent", "hire", "ply", "cage")
+REQUIRED = ("ask", "brief", "context", "cite", "tend", "agent", "hire", "ply", "cage", "record")
 
 
 def require(condition, message):

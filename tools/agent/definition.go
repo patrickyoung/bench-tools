@@ -80,7 +80,7 @@ func openDefinition(path string, o options) (*definition, error) {
 				return nil, err
 			}
 		}
-		for _, name := range []string{"work/proposals", "work/actions", ".agent/amendments", ".agent/learning/proposals", ".agent/checkpoints", ".agent/selections"} {
+		for _, name := range []string{"work/proposals", "work/actions", ".agent/amendments", ".agent/learning/proposals", ".agent/checkpoints", ".agent/selections", ".agent/recordings"} {
 			path := filepath.Join(home, name)
 			if _, err := os.Lstat(path); !os.IsNotExist(err) {
 				if err := writable(path); err != nil {
@@ -217,7 +217,7 @@ func openDefinition(path string, o options) (*definition, error) {
 
 func (d *definition) runtimeDirectories() []string {
 	return []string{d.State, filepath.Join(d.State, "kv"), d.Control,
-		filepath.Join(d.Control, "runs"), filepath.Join(d.Control, "selections"), filepath.Join(d.Control, "checkpoints")}
+		filepath.Join(d.Control, "runs"), filepath.Join(d.Control, "selections"), filepath.Join(d.Control, "checkpoints"), filepath.Join(d.Control, "recordings")}
 }
 
 func (d *definition) validateProcedures() error {

@@ -16,7 +16,7 @@ through their public process interfaces.
 From the checkout root, install only the components an example needs:
 
 ```sh
-python3 scripts/install agent hire ask brief ply cage cite
+python3 scripts/install agent hire ask brief ply cage record cite
 export PATH="$HOME/.local/bin:$PATH"
 ```
 

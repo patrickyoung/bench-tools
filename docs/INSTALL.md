@@ -35,7 +35,7 @@ for reusable instructions, or `python3 scripts/install ask ply` for checked acti
 For building and running reusable experts:
 
 ```sh
-python3 scripts/install hire agent ask brief ply cage
+python3 scripts/install hire agent ask brief ply cage record
 cage check
 ```
 
@@ -43,7 +43,7 @@ Hire builds the definition; Agent runs it with those companions. Add `cite`
 for the [support-reply starter](../examples/support-reply/README.md). Python
 runs the source installer, not Hire or Agent: both commands are native Go.
 
-Without names, the installer builds and installs all 23 commands:
+Without names, the installer builds and installs all 24 commands:
 
 ```sh
 python3 scripts/install

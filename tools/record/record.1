@@ -1,0 +1,71 @@
+.TH RECORD 1 "2026-09-14" "record 0.1.0"
+.SH NAME
+record \- retain and replay an observed Unix process boundary
+.SH SYNOPSIS
+.B record run -f SESSION
+[flags] -- COMMAND [ARG ...]
+.br
+.B record replay -f SESSION
+[-stream NAME | -json]
+.br
+.B record check -f SESSION
+.br
+.B record help
+.br
+.B record version
+.SH DESCRIPTION
+Run records one literal invocation as sealed Ask notes in a new session.
+Replay verifies the complete snapshot before emitting retained stdout and
+stderr. It never executes the recorded command or contacts its services.
+Ask 0.3 or later is required. Filesystem and network effects outside selected
+observations are not implied by a process receipt.
+.SH OPTIONS
+.TP
+.B -f FILE
+Explicit session. Run refuses an existing destination.
+.TP
+.B -ask COMMAND
+Ask executable, default ask.
+.TP
+.B -input FILE
+Snapshot a regular file before execution. Repeatable.
+.TP
+.B -output FILE
+Snapshot a regular file after execution. Repeatable.
+.TP
+.B -session FILE
+Retain and verify a child Ask session after execution. Repeatable.
+.TP
+.B -pass-fd N
+Pass a private inherited descriptor without reading it. Repeatable.
+.TP
+.B -label TEXT
+Explicit non-secret context. Repeatable.
+.TP
+.B -timeout D
+Optional execution limit, such as 30s. Default unlimited.
+.TP
+.B -stream NAME
+Replay extracts stdin, stdout, stderr, or artifact:N to stdout.
+.TP
+.B -json
+Replay emits the verified invocation and terminal receipt as JSON.
+.SH EXIT STATUS
+Run and replay preserve the child status. Signals use 128 plus signal.
+Recorder errors and incomplete evidence return 125. Extraction, JSON, and
+check return 0 after verification. Completion of capture is not business
+success or resolution of uncertain external effects.
+.SH SECURITY
+Environment values and private descriptor contents are not captured.
+Credentials explicitly placed in argv, streams, labels, or snapshots will
+be recorded. Use private descriptor handoffs instead. A recording is a
+self-contained sensitive file. Seals are integrity commitments, not signatures.
+.SH SEE ALSO
+ask(1), trail(1)
+
+.TP
+.BI -grace " duration"
+After forwarding an interrupt, terminate the child process group after this
+grace period (default 1s), even if its leader exits first. A supervisor should
+allow a longer cleanup period for Record itself. Normal exits do not kill
+intentionally detached work.

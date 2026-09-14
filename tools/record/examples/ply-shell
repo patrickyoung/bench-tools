@@ -1,0 +1,11 @@
+#!/bin/sh
+# Select RECORD_DIR outside the model-writable workspace. Every invocation
+# gets a separate Ask session; the child never competes for the recorder log.
+set -eu
+: "${RECORD_DIR:?set RECORD_DIR to an existing recording directory}"
+: "${RECORD_BIN:=record}"
+: "${RECORD_ASK:=ask}"
+umask 077
+destination=$(mktemp -d "$RECORD_DIR/invocation.XXXXXXXX") || exit 125
+exec "$RECORD_BIN" run -ask "$RECORD_ASK" -f "$destination/session.jsonl" \
+  -label component=ply -- /bin/sh "$@"

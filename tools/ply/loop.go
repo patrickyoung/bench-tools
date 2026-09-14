@@ -205,6 +205,10 @@ turnLoop:
 				}
 				actions++
 				r := l.Runner.Run(ctx, c)
+				if r.RecordingFailed {
+					l.View.Result(r)
+					return last, fmt.Errorf("%w: %s", ErrRecording, r.Output)
+				}
 				if l.ActionBoundary != nil {
 					if digestErr := l.ActionBoundary.checkDigest(); digestErr != nil {
 						detail := digestErr.Error() + "; action effects may exist"
@@ -289,6 +293,10 @@ turnLoop:
 		// checks can ignore stdin; a question check can judge the exact report
 		// that would otherwise be printed to stdout.
 		r := l.Checker.RunInput(ctx, l.Check, reply)
+		if r.RecordingFailed {
+			l.View.Check(r)
+			return "", fmt.Errorf("%w: %s", ErrRecording, r.Output)
+		}
 		l.View.Check(r)
 		if err := l.recordVerifier(ctx, "candidate", reply, r); err != nil {
 			return reply, err

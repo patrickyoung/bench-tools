@@ -10,6 +10,7 @@ agent=$(CDPATH= cd -- "$(dirname "$agent")" && pwd -P)/$(basename "$agent")
 action_interpreter=$agent
 expected_version='agent 0.3.0-dev'
 
+export AGENT_RECORD=/usr/bin/true
 fake_bin=$tmp/bin
 capture=$tmp/capture
 mkdir -p "$fake_bin" "$capture"
@@ -103,7 +104,7 @@ cat >"$fake_bin/ply" <<'EOF'
 #!/bin/sh
 set -eu
 if [ "${1:-}" = capabilities ]; then
-  printf '%s\n' '{"schema":"ply.capabilities/v1","version":"fixture","features":{"action_boundary_receipt":"ply.action-boundary/v1","content_addressed_stdin":true,"goal_file":true,"no_delegate":true}}'
+  printf '%s\n' '{"schema":"ply.capabilities/v1","version":"fixture","features":{"action_boundary_receipt":"ply.action-boundary/v1","content_addressed_stdin":true,"goal_file":true,"no_delegate":true,"process_recording":"ply.recording/v1"}}'
   exit 0
 fi
 : "${AGENT_TEST_CAPTURE:?}"
@@ -977,7 +978,7 @@ assert_contains 'effort selection is forwarded' "$capture/argv" 'high'
 assert_contains 'confined action interpreter is forwarded' "$capture/argv" "$action_interpreter"
 assert_contains 'generic nested Ply delegation is disabled' "$capture/argv" '-no-delegate'
 selected_skill_line=$(grep -n -x -- '-' "$capture/argv" | head -1 | cut -d: -f1)
-context_skill_line=$(grep -n -F -- 'agent-context' "$capture/argv" | head -1 | cut -d: -f1)
+context_skill_line=$(awk 'previous == "-s" && /agent-context/ { print NR; exit } { previous = $0 }' "$capture/argv")
 if [ -n "$selected_skill_line" ] && [ -n "$context_skill_line" ] && [ "$selected_skill_line" -lt "$context_skill_line" ]; then
   ok 'governing context is composed after the selected skill'
 else

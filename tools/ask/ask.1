@@ -1,10 +1,14 @@
-.TH ASK 1 "2026-08-29" "ask 0.2.0" "General Commands Manual"
+.TH ASK 1 "2026-09-14" "ask 0.3.0" "General Commands Manual"
 .SH NAME
 ask \- put a question through a language model
 .SH SYNOPSIS
 .B ask
 .RI [ flags ]
 .RI [ message ...]
+.br
+.B ask init
+.B \-f
+.I file
 .br
 .B ask replay
 .RI [ flags ]
@@ -144,6 +148,15 @@ names one, so
 .BR cp (1)
 is fork.
 .TP
+.B ask init \fR\-f \fIfile\fR
+Create a new session without a model call. The named file must not exist.
+The header has no selected model or system prompt and is durably sealed
+before its absolute path is printed to standard output. Stdin is not read,
+and the current conversation pointer is not changed.
+Use note or append to record deterministic work. Select a model with
+.B \-m
+or ASK_MODEL when adding a first model turn to this session.
+.TP
 .B ask append \fR\-s \fIsource\fR [\fIflags\fR] [\fItext ...\fR]
 Append an attributed user message without calling a model. Text comes from
 arguments or standard input and must be UTF-8 (16 MB maximum). The existing
@@ -203,6 +216,18 @@ structured note is immediately sealed, and the seal digest. The seal detects
 later edits; it is not a cryptographic identity signature.
 Because the digest lives in the same append-only file, it is not external
 proof that the file was never truncated to an earlier valid sealed prefix.
+.IP
+For a finite sequence of records, use
+.B \-jsonl \- \-seal
+without
+.B \-k
+or
+.BR \-json .
+Each stdin line is an object with exactly a one-word kind and a JSON body.
+Each sealed record produces a JSON object containing its seq on stdout,
+after both fsyncs. The writer lock is held until EOF or failure. Invalid
+input stops the stream; already acknowledged records remain sealed. Each
+line has the same 16 MB limit as a single note. Empty streams fail.
 .TP
 .B ask system
 Print the built\-in system prompt on stdout. The prompt is a value, not a
@@ -813,3 +838,8 @@ Switching providers mid\-conversation is allowed and degrades gracefully:
 each adapter replays its own opaque reasoning state and ignores another's.
 The text of the conversation always survives; the thinking behind it may
 not.
+
+.PP
+With ask compact, -json emits an object containing absolute source, summary
+and session paths. Below the -at threshold, summary is empty and session
+is unchanged. The default output remains one continuation path.

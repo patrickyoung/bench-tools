@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ type Log struct {
 	err    error // first write/sync failure; no later append may follow a torn write
 	closed bool
 	events []Event
+	prefix hash.Hash
 }
 
 // Create starts a new session under a minted id in dir.
@@ -151,6 +153,17 @@ func (l *Log) appendLocked(t Type, data any) (Event, error) {
 	if l.err != nil {
 		return Event{}, l.err
 	}
+	if l.prefix == nil {
+		l.prefix = sha256.New()
+		for _, prior := range l.events {
+			line, err := json.Marshal(prior)
+			if err != nil {
+				return Event{}, err
+			}
+			l.prefix.Write(line)
+			l.prefix.Write([]byte{'\n'})
+		}
+	}
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return Event{}, fmt.Errorf("marshal %s: %w", t, err)
@@ -165,6 +178,8 @@ func (l *Log) appendLocked(t Type, data any) (Event, error) {
 		return Event{}, l.err
 	}
 	l.seq = e.Seq
+	l.prefix.Write(line)
+	l.prefix.Write([]byte{'\n'})
 	l.events = append(l.events, e)
 	if l.obs != nil {
 		l.obs(e)
@@ -186,10 +201,7 @@ func (l *Log) AppendSealed(t Type, data any) (Event, error) {
 	if err := l.syncLocked(); err != nil {
 		return Event{}, fmt.Errorf("sync record in %s: %w", l.path, err)
 	}
-	digest, err := PrefixDigest(l.events)
-	if err != nil {
-		return Event{}, err
-	}
+	digest := fmt.Sprintf("sha256:%x", l.prefix.Sum(nil))
 	if _, err := l.appendLocked(Seal, SealData{Through: record.Seq, SHA256: digest}); err != nil {
 		return Event{}, err
 	}

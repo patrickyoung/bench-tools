@@ -18,13 +18,14 @@ import (
 func cmdNote(args []string) (code int) {
 	fs := flag.NewFlagSet("note", flag.ContinueOnError)
 	var (
-		dir      = fs.String("d", askDir(), "conversation directory")
-		file     = fs.String("f", "", "session file (default: the current conversation)")
-		source   = fs.String("s", "", "the program recording it (required)")
-		quiet    = fs.Bool("q", false, "no progress on stderr; errors still print")
-		kind     = fs.String("k", "", "structured record kind (requires -json and -seal)")
-		jsonBody = fs.String("json", "", "structured record JSON body")
-		seal     = fs.Bool("seal", false, "fsync the structured record with a replay-verifiable prefix seal")
+		dir       = fs.String("d", askDir(), "conversation directory")
+		file      = fs.String("f", "", "session file (default: the current conversation)")
+		source    = fs.String("s", "", "the program recording it (required)")
+		quiet     = fs.Bool("q", false, "no progress on stderr; errors still print")
+		kind      = fs.String("k", "", "structured record kind (requires -json and -seal)")
+		jsonBody  = fs.String("json", "", "structured record JSON body")
+		jsonLines = fs.String("jsonl", "", "stream {kind,body} JSON lines from -; acknowledge each sealed seq")
+		seal      = fs.Bool("seal", false, "fsync the structured record with a replay-verifiable prefix seal")
 	)
 	usage(fs, "ask note -s source [flags] [text ...]")
 	if err := fs.Parse(args); err != nil {
@@ -37,6 +38,12 @@ func cmdNote(args []string) (code int) {
 		return fail(fmt.Errorf("-s %q: a source is one word, the name of the program recording it", *source))
 	}
 
+	if *jsonLines != "" {
+		if *jsonLines != "-" || !*seal || *kind != "" || *jsonBody != "" || fs.NArg() != 0 {
+			return fail(errors.New("streaming notes require -jsonl - and -seal, without -k, -json, or text"))
+		}
+		return streamNotes(*file, *dir, *source)
+	}
 	structured := *kind != "" || *jsonBody != "" || *seal
 	var text string
 	var body json.RawMessage

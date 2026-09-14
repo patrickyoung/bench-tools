@@ -12,6 +12,9 @@ When changing `agent`:
   model choice, or completion;
 - completion remains `bin/check`'s exit status through Ply;
 - load Agent Skills only through Brief and keep private context out of argv;
+- enable Record through Ply for runs; retain full action/check streams and
+  explicitly selected files outside mutable authority, and stop on recording
+  failure before claiming completion;
 - keep Ask sessions authoritative; do not add another transcript or parse
   Ask's event format;
 - keep external effects proposal-shaped inside `work/actions/`; only the
