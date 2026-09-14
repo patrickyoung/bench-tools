@@ -102,7 +102,12 @@ worker's design; it is not a default deliverable or runtime skill.
 6. Build the closed manifest exactly as specified in `CONTRACT.md`, after all
    other artifacts are final. Its `inputs` and `artifacts` lists are complete
    and sorted; it does not list itself.
-7. Run this definition's absolute `bin/check` path from the workspace. Correct structural failures without
+7. Independently recalculate numerical claims and check that their written
+   derivations agree with the numbers. Review diagram text fit and label/shape
+   overlap; shorten labels and simplify the layout when uncertain. Inspect a
+   render when a permitted renderer is available, and do not claim visual
+   inspection when it was unavailable.
+   Run this definition's absolute `bin/check` path from the workspace. Correct structural failures without
    manufacturing business facts.
 
 When missing data blocks responsible advice, use `status: needs-input`. Produce
