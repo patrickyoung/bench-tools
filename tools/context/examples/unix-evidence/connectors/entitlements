@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Adapt a local fixture MCP table tool through the standalone MCP client."""
+
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ("describe", "query"):
+        print("usage: entitlements describe|query", file=sys.stderr)
+        return 2
+    if sys.argv[1] == "describe":
+        print(json.dumps({"kind": "source", "version": 1,
+                          "name": "entitlements",
+                          "description": "Fictional customer entitlements over MCP",
+                          "types": ["table"]}))
+        return 0
+    query = sys.stdin.read()
+    # This fixture recognizes one customer; it is not a natural-language router.
+    if "demo-customer" not in query:
+        return 1
+    root = Path(__file__).resolve().parent.parent
+    request = {"name": "lookup_entitlements",
+               "arguments": {"customer_id": "demo-customer"}}
+    response = subprocess.run(
+        ["mcp", "request", "tools/call", "--", "mcpserve",
+         str(root / "server/manifest.json"), "--", str(root / "server/dispatch")],
+        input=json.dumps(request).encode(), stdout=subprocess.PIPE, check=False)
+    if response.returncode:
+        # Context connectors report upstream failures as 2; never retry them.
+        raise ValueError("MCP request exited " + str(response.returncode))
+    result = json.loads(response.stdout)
+    if result.get("isError", False) is not False:
+        raise ValueError("MCP tool reported an error")
+    if result.get("resultType", "complete") != "complete":
+        raise ValueError("MCP result is unfinished")
+    payload = result["structuredContent"]
+    table = payload["table"]
+    if not isinstance(table["rows"], list):
+        raise ValueError("table rows must be an array")
+    if not table["rows"]:
+        # Empty but truncated data cannot establish a clean no-result outcome.
+        if payload["truncated"] is not False:
+            raise ValueError("empty MCP table is truncated or completeness is unknown")
+        return 1
+    print(json.dumps({
+        "kind": "context", "version": 1, "source": "entitlements",
+        "type": "table", "id": payload["result_id"],
+        "title": "Demo customer export entitlement",
+        "retrieved_at": datetime.now(timezone.utc).isoformat(),
+        "content": table,
+        "citation": payload["citation"],
+        "origin": payload["origin"],
+        "execution": payload["execution"],
+        "coverage": {"scope": "this executed query",
+                     "truncated": payload["truncated"]},
+    }))
+    return 0
+
+
+try:
+    raise SystemExit(main())
+except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+    print("entitlements: " + str(exc), file=sys.stderr)
+    raise SystemExit(2)

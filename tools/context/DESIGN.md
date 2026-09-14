@@ -63,6 +63,11 @@ connector; Glean may implement another; a Genie connector may return tables.
 Context makes their results composable without pretending their capabilities
 are identical.
 
+The [portable envelope](ENVELOPE.md) is documented independently of its
+transport. MCP adapters remain ordinary executables at the edge; task checks
+remain separate filters. The [offline example](examples/unix-evidence/README.md)
+demonstrates both boundaries without adding protocol or policy to the core.
+
 If repeated usage proves that explicit multi-source scripts are too awkward, a
 small fan-out program can be added beside Context. Evidence should precede that
 addition. It should not turn `query` into a broker whose selection, retries,

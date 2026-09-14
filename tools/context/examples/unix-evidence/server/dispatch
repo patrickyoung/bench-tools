@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+"""A fixture service: ordinary params JSON in, ordinary MCP result JSON out."""
+
+import json
+import sys
+
+
+def main():
+    if sys.argv[1:] != ["tools/call"]:
+        print(json.dumps({"code": -32601, "message": "unsupported method"}))
+        return 1
+    params = json.load(sys.stdin)
+    if params.get("name") != "lookup_entitlements":
+        print(json.dumps({"code": -32602, "message": "unknown tool"}))
+        return 1
+    customer = params.get("arguments", {}).get("customer_id")
+    if not isinstance(customer, str):
+        print(json.dumps({"code": -32602, "message": "customer_id is required"}))
+        return 1
+    payload = {
+        "result_id": "demo/entitlements/demo-customer@1",
+        "table": {
+            "columns": [{"name": "customer_id", "type": "string"},
+                        {"name": "export_enabled", "type": "boolean"}],
+            "rows": [[customer, True]] if customer == "demo-customer" else [],
+        },
+        "execution": {
+            "query": "SELECT customer_id, export_enabled FROM entitlements WHERE customer_id = :customer_id",
+            "parameters": {"customer_id": customer},
+            "engine": "fixture; no database executed",
+        },
+        "origin": {"instance": "demo", "revision": "1"},
+        "citation": {"locator": "demo/entitlements/demo-customer@1",
+                     "url": "https://example.com/demo/entitlements/demo-customer?revision=1"},
+        "truncated": False,
+    }
+    print(json.dumps({"content": [{"type": "text", "text": json.dumps(payload)}],
+                      "structuredContent": payload}))
+    return 0
+
+
+try:
+    raise SystemExit(main())
+except (ValueError, TypeError, AttributeError) as exc:
+    print("fixture dispatch: " + str(exc), file=sys.stderr)
+    raise SystemExit(2)

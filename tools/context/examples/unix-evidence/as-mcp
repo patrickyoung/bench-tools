@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""Package validated evidence as a tool result; mcpserve owns the protocol."""
+
+import json
+import subprocess
+import sys
+
+
+def main():
+    raw = sys.stdin.buffer.read((32 << 20) + 1)
+    result = subprocess.run(["context", "check"], input=raw,
+                            stdout=subprocess.PIPE, check=False)
+    if result.returncode:
+        return result.returncode if result.returncode in (1, 2) else 2
+    # Retain record JSON verbatim, including numbers beyond float precision.
+    structured = b'{"records":[' + b",".join(raw.splitlines()) + b"]}"
+    text = json.dumps(structured.decode("utf-8"), ensure_ascii=False).encode("utf-8")
+    sys.stdout.buffer.write(
+        b'{"content":[{"type":"text","text":' + text + b'}],'
+        b'"structuredContent":' + structured + b','
+        b'"_meta":{"io.github.patrickyoung/context":{"version":1}}}\n')
+    return 0
+
+
+try:
+    raise SystemExit(main())
+except (OSError, ValueError) as exc:
+    print("as-mcp: " + str(exc), file=sys.stderr)
+    raise SystemExit(2)

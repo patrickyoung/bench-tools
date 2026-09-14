@@ -1,0 +1,16 @@
+{
+  "name": "context-table-fixture",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "lookup_entitlements",
+      "description": "Return a fictional customer's entitlement table.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"customer_id": {"type": "string"}},
+        "required": ["customer_id"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -12,6 +12,11 @@ vendor SDK.
 
 Context calls exactly two operations.
 
+[ENVELOPE.md](ENVELOPE.md) describes the normalized stream, reference
+derivation, and optional MCP binding. The
+[offline composition](examples/unix-evidence/README.md) includes a document
+adapter and a table adapter over a local fixture MCP service.
+
 ## `describe`
 
 ```text

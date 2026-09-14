@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Run and check the offline composition using installed public executables."""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("usage: run NEW_OUTPUT_DIRECTORY", file=sys.stderr)
+        return 2
+    root = Path(__file__).resolve().parent
+    output = Path(sys.argv[1]).resolve()
+    output.mkdir(mode=0o700)  # Existing results are never overwritten.
+    env = dict(os.environ, CONTEXT_PATH=str(root / "connectors"))
+
+    def invoke(argv, data=b"", expected=0):
+        result = subprocess.run([str(arg) for arg in argv], input=data,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                env=env, timeout=30, check=False)
+        if result.returncode != expected:
+            raise ValueError("{} exited {}: {}".format(
+                argv[0], result.returncode, result.stderr.decode("utf-8", "replace")))
+        if expected and result.stdout:
+            raise ValueError("rejected operation leaked stdout: " + str(argv[0]))
+        return result.stdout
+
+    query = b"Can demo-customer export its data?\n"
+    (output / "query.txt").write_bytes(query)
+    documents = invoke(["context", "query", "policy"], query)
+    tables = invoke(["context", "query", "entitlements"], query)
+    (output / "policy.jsonl").write_bytes(documents)
+    (output / "entitlements.jsonl").write_bytes(tables)
+    merged = invoke(["context", "merge"], documents + tables)
+    checked = invoke([root / "check-evidence"], merged)
+    if checked != merged:
+        raise ValueError("task checker changed evidence bytes")
+    (output / "evidence.jsonl").write_bytes(checked)
+    records = [json.loads(line) for line in checked.splitlines()]
+    if any(row["retrieval"]["query"] != query.decode() for row in records):
+        raise ValueError("caller query was not preserved exactly")
+    candidate = invoke([root / "answer"], checked)
+    accepted = invoke(["cite", output / "evidence.jsonl"], candidate)
+    if candidate != accepted:
+        raise ValueError("Cite changed accepted candidate bytes")
+    (output / "answer.md").write_bytes(accepted)
+    wrapped = invoke([root / "as-mcp"], checked)
+    result = json.loads(wrapped)
+    if result["structuredContent"]["records"] != records or json.loads(result["content"][0]["text"]) != result["structuredContent"]:
+        raise ValueError("MCP binding lost evidence or has inconsistent representations")
+    (output / "tool-result.json").write_bytes(wrapped)
+
+    # The binding must preserve provider numbers without a float round-trip.
+    number = b"0.123456789012345678901234567890"
+    precise = checked.replace(b'"content":', b'"provider_number":' + number + b',"content":', 1)
+    precise_result = invoke([root / "as-mcp"], precise)
+    if b'"provider_number":' + number not in precise_result:
+        raise ValueError("MCP binding rounded provider data")
+
+    # The same consumer must use the table value, rather than always answer yes.
+    disabled = json.loads(tables)
+    disabled["content"]["rows"][0][1] = False
+    disabled_evidence = documents + json.dumps(disabled).encode() + b"\n"
+    disabled_answer = invoke([root / "answer"], invoke([root / "check-evidence"], disabled_evidence))
+    if not disabled_answer.startswith(b"No."):
+        raise ValueError("consumer ignored the entitlement value")
+
+    # A conforming envelope can still fail the task's evidence policy.
+    for missing in (True, None):
+        changed = json.loads(tables)
+        changed["coverage"]["truncated"] = missing
+        partial = documents + json.dumps(changed).encode() + b"\n"
+        invoke(["context", "check"], partial)
+        invoke([root / "check-evidence"], partial, expected=1)
+    invoke([root / "check-evidence"], tables, expected=1)
+    invoke(["context", "query", "policy"], b"unrelated", expected=1)
+    invoke(["context", "query", "entitlements"], b"another customer", expected=1)
+    invoke(["cite", output / "evidence.jsonl"],
+           b"Invented. [ctx:policy:invented](https://example.com/wrong)\n", expected=1)
+    invoke([root / "as-mcp"], checked + b"not json\n", expected=2)
+    print("Checked offline Unix composition; results: " + str(output))
+    return 0
+
+
+try:
+    raise SystemExit(main())
+except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
+    print("unix-evidence: " + str(exc), file=sys.stderr)
+    raise SystemExit(2)

@@ -9,6 +9,11 @@ The source examples below run from Context's source directory:
 `cd tools/context` from the monorepo root. Install Context first; model-writing
 examples also need configured Ask and Cite.
 
+For a complete offline composition with document and table evidence, a local
+MCP service, and a separate task checker, run the
+[Unix evidence example](examples/unix-evidence/README.md). It uses public
+executables and the existing version 1 envelope.
+
 ## A first source
 
 Copy the example into a project-local connector directory:
