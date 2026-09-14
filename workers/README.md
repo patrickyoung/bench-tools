@@ -10,6 +10,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 
 | Worker | Purpose |
 | --- | --- |
+| [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |
@@ -18,6 +19,10 @@ selected by a team. Status, owner, requirements and approved files live in its
 | [Image concept](image-concept/expert/README.md) | Prepare a checked image request and composition notes for a separately selected generator. |
 | [Page planner](page-planner/expert/README.md) | Propose bounded tasks against an explicitly supplied Bench Manage snapshot. |
 | [Page reviewer](page-reviewer/expert/README.md) | Assess supplied page observations and produce a structured review with limitations. |
+
+The [Product Owner design brief](../docs/PRODUCT-OWNER-DESIGN.md) uses SIPOC to
+guide worker development. It is maintained separately from exported definitions
+and job deliverables.
 
 From the repository root:
 

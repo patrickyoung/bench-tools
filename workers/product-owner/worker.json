@@ -1,0 +1,37 @@
+{
+  "id": "product-owner",
+  "description": "Own product outcomes and backlog recommendations with evidence-led intake and discovery, delivery awareness and AI product judgment.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "cd0394dd3a578c8128ee32f71cf51fef1f435cbe",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9 standard library on Linux or macOS",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "review": "Human review of product judgment; the check validates the bound artifact package only"
+  },
+  "files": [
+    "workers/product-owner/expert/AGENTS.md",
+    "workers/product-owner/expert/CONTRACT.md",
+    "workers/product-owner/expert/LICENSE",
+    "workers/product-owner/expert/README.md",
+    "workers/product-owner/expert/bin/check",
+    "workers/product-owner/expert/references.md",
+    "workers/product-owner/expert/skills/ai-product/SKILL.md",
+    "workers/product-owner/expert/skills/backlog-planning/SKILL.md",
+    "workers/product-owner/expert/skills/evidence-discovery/SKILL.md",
+    "workers/product-owner/expert/skills/flow-delivery/SKILL.md",
+    "workers/product-owner/expert/skills/interview-review/SKILL.md",
+    "workers/product-owner/expert/skills/product-intake/SKILL.md"
+  ]
+}

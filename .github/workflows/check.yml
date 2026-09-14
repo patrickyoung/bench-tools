@@ -150,6 +150,26 @@ jobs:
       - name: Run starter examples with local model fixtures
         run: python3 scripts/check-examples.py --bin-dir .build/bin
 
+  worker-contract:
+    needs: boundaries
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Export the committed Product Owner without tests or run content
+        run: python3 scripts/workers export product-owner "$RUNNER_TEMP/product-owner" --ref "$(git rev-parse HEAD)" --allow-experimental
+      - name: Check Product Owner contracts with synthetic cases and no model
+        env:
+          PRODUCT_OWNER_EXPERT: ${{ runner.temp }}/product-owner/expert
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s workers/product-owner/tests -v
+
   worker-browser:
     needs: boundaries
     runs-on: ubuntu-latest

@@ -69,8 +69,8 @@ Binary installation and skill installation do not copy the worker library.
 ## Verify without a model first
 
 ```sh
-"$BENCH_PREFIX/bin/agent" -version
-"$BENCH_PREFIX/bin/hire" -version
+"$BENCH_PREFIX/bin/agent" version
+"$BENCH_PREFIX/bin/hire" version
 "$BENCH_PREFIX/bin/cage" check
 "$BENCH_PREFIX/bin/hire" verify "$BENCH_SOURCE/examples/support-reply/expert"
 ```
