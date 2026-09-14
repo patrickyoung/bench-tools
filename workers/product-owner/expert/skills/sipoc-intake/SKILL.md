@@ -11,6 +11,9 @@ description: Structure Product Owner intake with SIPOC plus constraints and meas
    requested solution as the problem.
 2. Separate observed symptom, supplied evidence, proposed solution, and unknown.
 3. Set process boundaries: the triggering start and receiving-customer end.
+   Keep mapped stages inside that scope. If the supplied wider flow includes
+   an earlier invitation or a later handoff, label it as upstream/downstream
+   context. Flag inconsistent scope rather than silently moving the boundary.
 4. Map:
    - suppliers that provide required inputs;
    - inputs and their quality/availability conditions;
