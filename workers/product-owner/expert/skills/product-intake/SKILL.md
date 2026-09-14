@@ -1,28 +1,23 @@
 ---
-name: sipoc-intake
-description: Structure Product Owner intake with SIPOC plus constraints and measures; use for unclear demand, requested solutions, duplicates, incidents, boundaries, and triage.
+name: product-intake
+description: Clarify the customer problem, intended outcome, evidence and next decision; use for new demand, requested solutions, duplicates, incidents and product triage.
 ---
 
-# SIPOC-led intake
+# Product intake
 
 ## Frame before ranking
 
 1. Restate the intended customer or commercial outcome without accepting the
    requested solution as the problem.
 2. Separate observed symptom, supplied evidence, proposed solution, and unknown.
-3. Set process boundaries: the triggering start and receiving-customer end.
-   Keep mapped stages inside that scope. If the supplied wider flow includes
-   an earlier step or a later handoff, label it as upstream/downstream
-   context. Flag inconsistent scope rather than silently moving the boundary.
-4. Map:
-   - suppliers that provide required inputs;
-   - inputs and their quality/availability conditions;
-   - 4–7 broad process stages, not a detailed journey;
-   - outputs, including failed or exceptional outputs;
-   - receiving customers and their acceptance.
-5. Add hard/soft constraints and measures. Define a measure's
-   numerator/denominator, cohort and timeframe when applicable; identify an
-   unknown baseline rather than inventing one.
+3. Identify the affected customer, the observed problem and the desired outcome.
+   Ask a decisive question when these are unknown. Do not require a process map
+   or a filled template before giving a useful recommendation.
+4. Consider constraints, dependencies, urgency and existing work that the
+   request could displace. Include only what changes the decision.
+5. Use a meaningful outcome measure when supported by the supplied evidence;
+   identify an unknown baseline rather than inventing one. Define the cohort,
+   timeframe and numerator/denominator where relevant.
 
 ## Triage
 
@@ -43,5 +38,5 @@ owner immediately; do not let an intake ranking delay containment. Record the
 ordinary product follow-up separately.
 
 When information blocks responsible triage, return `needs-input` with the
-smallest decisive question and an owned next action. Never fill every SIPOC cell
-with guesses just to make a complete diagram.
+smallest decisive question and an owned next action. Never invent a customer
+problem or outcome just to complete a template.

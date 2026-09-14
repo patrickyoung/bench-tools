@@ -23,9 +23,10 @@ artifact-check result, judgment verdict and limitations.
 
 Include at least these job families:
 
-- Intake with a requested solution, conflicting customer evidence, identifiable
-  suppliers/receivers and a calculable outcome baseline. Check SIPOC boundaries,
-  arithmetic, sampling limits, triage and a small evidence-producing next step.
+- Intake with a requested solution, conflicting customer evidence and a
+  calculable outcome baseline. Check customer/problem framing, arithmetic,
+  sampling limits, triage and a small evidence-producing next step. It must
+  produce a useful recommendation without requiring a process diagram.
 - Planning with an urgent defect, a dependency, changed capacity and executive
   pressure for a date. Check containment, explicit displaced work, observable
   acceptance and honest forecasts; reject manufactured estimates or point games.
@@ -38,6 +39,10 @@ Include at least these job families:
   employers, tenure, certification or results.
 - An underspecified request in another fresh workspace. Require a useful
   `needs-input` response without facts imported from earlier trials.
+
+SIPOC guides worker development in the [source design brief](../../../docs/PRODUCT-OWNER-DESIGN.md);
+it is not a case deliverable. The v2 contract deliberately rejects older v1
+packages so an accepted SIPOC-shaped artifact cannot satisfy the new contract.
 
 Judge every answer against the actual input. False experience, fabricated
 evidence, false approval or ignoring a material customer harm is a failed trial

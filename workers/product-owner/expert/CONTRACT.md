@@ -17,7 +17,7 @@ segments are invalid. Empty `inputs/` is represented by `[]`.
 
 `decision.json` has exactly these keys:
 
-- `schema`: `"bench.product-owner/v1"`
+- `schema`: `"bench.product-owner/v2"`
 - `mode`: `"intake"`, `"planning"`, `"review"`, or `"interview"`
 - `status`: `"ready"` or `"needs-input"`
 - `request_sha256`: lowercase SHA-256 hex
@@ -40,23 +40,24 @@ action. `ready` means only ready for human review.
 ### intake
 
     {
-      "sipoc": {
-        "suppliers": ["..."], "inputs": ["..."], "process": ["..."],
-        "outputs": ["..."], "customers": ["..."]
-      },
-      "constraints": ["..."],
-      "measures": ["..."],
-      "boundaries": {"start": "...", "end": "..."},
+      "problem": "...",
+      "customers": ["..."],
+      "desired_outcome": "...",
       "triage": [
         {"demand": "...", "decision": "discover|plan|defer|reject",
          "rationale": "..."}
       ]
     }
 
-All fields are present. For `ready`, every SIPOC list, constraints, measures, both boundaries, and
-triage are nonempty. For `needs-input`, unknown lists or boundaries may be
-empty; questions must identify what blocks completion. Urgent incidents should
-be routed to incident response rather than disguised as ordinary discovery.
+All fields are present. For `ready`, the problem, customers, desired outcome and
+triage are nonempty. For `needs-input`, unknown strings and customer lists may
+be empty; questions identify what blocks completion. Explain evidence and
+material constraints in the response where they affect the decision. Urgent
+incidents should be routed to incident response.
+
+Version 2 replaces the original mandatory SIPOC intake fields with this product
+decision. Version 1 packages do not satisfy this check; keep an older definition
+pin for an existing v1 consumer, or update that consumer to the v2 contract.
 
 ### planning
 

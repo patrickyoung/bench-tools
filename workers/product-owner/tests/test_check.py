@@ -19,16 +19,9 @@ def digest(data):
 
 DETAILS = {
     "intake": {
-        "sipoc": {
-            "suppliers": ["Support"],
-            "inputs": ["Bound request"],
-            "process": ["Triage demand"],
-            "outputs": ["Disposition"],
-            "customers": ["Product customer"],
-        },
-        "constraints": ["No release authority"],
-        "measures": ["Accepted demands / all demands, monthly cohort"],
-        "boundaries": {"start": "Demand received", "end": "Disposition accepted"},
+        "problem": "Customers need avoidable help to complete the task",
+        "customers": ["Product customer"],
+        "desired_outcome": "Customers can complete with less support",
         "triage": [{
             "demand": "Reduce avoidable support contact",
             "decision": "discover",
@@ -97,7 +90,7 @@ class PackageCheckTests(unittest.TestCase):
                 "sha256": digest(source.read_bytes()),
             })
         document = {
-            "schema": "bench.product-owner/v1",
+            "schema": "bench.product-owner/v2",
             "mode": mode,
             "status": status,
             "request_sha256": digest(request),
@@ -117,8 +110,9 @@ class PackageCheckTests(unittest.TestCase):
         if status == "needs-input":
             document["questions"] = ["Who owns the current outcome baseline?"]
             if mode == "intake":
-                document["details"]["sipoc"]["suppliers"] = []
-                document["details"]["boundaries"]["start"] = ""
+                document["details"]["problem"] = ""
+                document["details"]["customers"] = []
+                document["details"]["desired_outcome"] = ""
         output.joinpath("decision.json").write_text(
             json.dumps(document, sort_keys=True), encoding="utf-8"
         )
@@ -190,9 +184,24 @@ class PackageCheckTests(unittest.TestCase):
         self.rewrite(document)
         self.run_check(1)
 
-    def test_missing_sipoc(self):
+    def test_missing_problem(self):
         document = self.write_package("intake")
-        del document["details"]["sipoc"]
+        del document["details"]["problem"]
+        self.rewrite(document)
+        self.run_check(1)
+
+    def test_ready_intake_needs_problem_customer_and_outcome(self):
+        original = self.write_package("intake")
+        for key, empty in (("problem", ""), ("customers", []), ("desired_outcome", "")):
+            with self.subTest(key=key):
+                document = copy.deepcopy(original)
+                document["details"][key] = empty
+                self.rewrite(document)
+                self.run_check(1)
+
+    def test_old_contract_is_not_accepted_as_new_work(self):
+        document = self.write_package()
+        document["schema"] = "bench.product-owner/v1"
         self.rewrite(document)
         self.run_check(1)
 

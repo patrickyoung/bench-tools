@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a bench.product-owner/v1 response package without executing it."""
+"""Validate a bench.product-owner/v2 response package without executing it."""
 
 import hashlib
 import json
@@ -177,28 +177,14 @@ def next_actions(value):
 def validate_intake(details, ready):
     exact_object(
         details,
-        {"sipoc", "constraints", "measures", "boundaries", "triage"},
+        {"problem", "customers", "desired_outcome", "triage"},
         "details",
     )
-    parts = {"suppliers", "inputs", "process", "outputs", "customers"}
-    exact_object(details["sipoc"], parts, "details.sipoc")
-    for part in sorted(parts):
-        value = details["sipoc"][part]
-        string_list(value, f"details.sipoc.{part}")
-        if ready and not value:
-            fail(f"ready intake requires details.sipoc.{part}")
-    for key in ("constraints", "measures"):
-        value = details[key]
-        string_list(value, f"details.{key}")
-        if ready and not value:
-            fail(f"ready intake requires details.{key}")
-    exact_object(details["boundaries"], {"start", "end"}, "details.boundaries")
-    for key in ("start", "end"):
-        string(
-            details["boundaries"][key],
-            f"details.boundaries.{key}",
-            nonempty=ready,
-        )
+    for key in ("problem", "desired_outcome"):
+        string(details[key], f"details.{key}", nonempty=ready)
+    string_list(details["customers"], "details.customers")
+    if ready and not details["customers"]:
+        fail("ready intake requires details.customers")
     triage = details["triage"]
     if not isinstance(triage, list):
         fail("details.triage must be an array")
@@ -310,7 +296,7 @@ def validate(root):
         "questions", "next_actions", "details",
     }
     exact_object(document, core, "decision")
-    if document["schema"] != "bench.product-owner/v1":
+    if document["schema"] != "bench.product-owner/v2":
         fail("schema is invalid")
     mode = document["mode"]
     if mode not in ("intake", "planning", "review", "interview"):

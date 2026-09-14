@@ -1,7 +1,7 @@
 # Portable Product Owner worker
 
 A focused filesystem expert for product outcome and backlog decisions, with
-SIPOC-led intake and practical delivery awareness. It is current to the selected
+evidence-led intake and practical delivery awareness. It is current to the selected
 references dated 2026-09-13, while accurately retaining older publication dates.
 It does not claim employment, certification, framework compliance, or automatic
 access to websites, analytics, trackers, model accounts, or other tools.
@@ -36,7 +36,7 @@ Alternatively, write `request.md` with an ordinary file-producing command before
 invoking Agent. The model writes exactly:
 
 - `output/response.md` — human recommendation or answer
-- `output/decision.json` — the bound `bench.product-owner/v1` handoff
+- `output/decision.json` — the bound `bench.product-owner/v2` handoff
 
 See `CONTRACT.md` for the exact schema. Agent stdout is the concise completion
 report; diagnostics go to stderr. `status: ready` means ready for human review,
@@ -102,7 +102,7 @@ A positive package can be generated deterministically with Python:
     w = Path(os.environ["WORK"])
     h = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     d = {
-     "schema":"bench.product-owner/v1","mode":"review","status":"ready",
+     "schema":"bench.product-owner/v2","mode":"review","status":"ready",
      "request_sha256":h(w/"request.md"),"inputs":[],
      "response_sha256":h(w/"output/response.md"),
      "summary":"Evidence gap identified.","recommendation":"Hold pending evidence.",

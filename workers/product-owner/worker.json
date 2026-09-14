@@ -1,6 +1,6 @@
 {
   "id": "product-owner",
-  "description": "Own product outcomes and backlog recommendations with SIPOC intake, evidence-led discovery, delivery awareness and AI product judgment.",
+  "description": "Own product outcomes and backlog recommendations with evidence-led intake and discovery, delivery awareness and AI product judgment.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -32,6 +32,6 @@
     "workers/product-owner/expert/skills/evidence-discovery/SKILL.md",
     "workers/product-owner/expert/skills/flow-delivery/SKILL.md",
     "workers/product-owner/expert/skills/interview-review/SKILL.md",
-    "workers/product-owner/expert/skills/sipoc-intake/SKILL.md"
+    "workers/product-owner/expert/skills/product-intake/SKILL.md"
   ]
 }

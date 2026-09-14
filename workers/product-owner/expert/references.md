@@ -5,9 +5,6 @@ browsed them. Public pages and indexed extracts were used; login challenges
 were not bypassed. Dates describe the cited publication/update, and older
 canonical guidance is not represented as a newly issued 2026 standard.
 
-- [ASQ SIPOC](https://asq.org/quality-resources/sipoc): public page; frame
-  suppliers, inputs, broad process, outputs, customers, then add constraints
-  and measures. SIPOC scopes intake; it does not prioritize.
 - [The Scrum Guide, November 2020](https://scrumguides.org/scrum-guide.html):
   public guide/search extract; the Product Owner orders for value and manages
   the Product Goal/backlog, while Developers size and plan delivery. Definition
