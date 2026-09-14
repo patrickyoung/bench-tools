@@ -40,7 +40,7 @@ For “set up Bench to build workers,” the useful starting set is:
 ```sh
 cd "$BENCH_SOURCE"
 export BENCH_PREFIX="$HOME/.local"
-python3 scripts/install hire agent ask brief ply cage trail --prefix "$BENCH_PREFIX"
+python3 scripts/install hire agent ask brief ply cage trail hone --prefix "$BENCH_PREFIX"
 export PATH="$BENCH_PREFIX/bin:$PATH"
 ```
 
@@ -65,6 +65,11 @@ user's setup directory. A new session must be able to locate this record;
 record its path in the host's existing project instructions or setup handoff.
 Use it to recover the source catalog after installing this skill elsewhere.
 Binary installation and skill installation do not copy the worker library.
+
+Record non-secret provider/model and approved executable-wrapper selections as
+well as binary paths. Agent's `AGENT_ASK` and Hone's `ASK` are separate selectors;
+use the same configured connection when teaching from its runs. A raw installed
+Ask binary is not a replacement for a required operator-selected wrapper.
 
 ## Verify without a model first
 

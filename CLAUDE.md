@@ -10,5 +10,10 @@ Evaluate the result and leave source identity, output paths and a repeatable
 invocation for the next session. Keep job content and development records out
 of reusable source. The shared skill contains the detailed procedure.
 
+For “learn this,” “teach this worker,” corrections or worker-specific memory,
+follow the skill’s [teaching procedure](.agents/skills/bench/references/learn.md).
+Apply and evaluate the authorized knowledge change; a chat acknowledgment or
+Claude’s own memory is not evidence that a Bench worker was taught.
+
 For requested repository changes, follow [AGENTS.md](AGENTS.md) and the affected
 component's guidance. Preserve the independent Unix programs.

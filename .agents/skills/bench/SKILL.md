@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Find, build, assemble, evaluate and run reusable Bench agents (workers) and teams. Use for digital-worker or expert-folder jobs with Bench, library maintenance, and harness setup; use existing Unix commands for execution and optional MCP/A2A connections.
+description: Find, build, teach, improve, evaluate and run reusable Bench workers and teams. Use when asked to teach a worker, learn from a Bench run, remember knowledge for a worker, assemble experts, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
 license: MIT
 ---
 
@@ -16,8 +16,10 @@ add ordinary code only for a missing input/output contract or deterministic task
 Read existing `BENCH-SETUP.md` records when available. Locate the authoritative
 checkout using [setup](references/setup.md); persist its absolute `BENCH_SOURCE`
 path, revision and installed command paths outside reusable source. A copied
-skill is knowledge, not the worker catalog or the binaries. Resolve repository
-paths in these references against that selected checkout, not this skill folder.
+skill is knowledge, not the worker catalog or the binaries. Resolve Markdown
+links relative to the file containing them: `references/learn.md` is inside
+this skill folder. Resolve paths to component manuals and repository commands
+named within a reference against the selected `BENCH_SOURCE`.
 
 For finding, selecting, exporting, assembling or maintaining workers, read
 [library](references/library.md). Inspect both `workers/` and `teams/`, including
@@ -31,6 +33,7 @@ Discovery and committed source export require no model call.
 | --- | --- |
 | Find a worker, choose a team, reuse source, change membership or lifecycle | [Library](references/library.md) |
 | Create missing expertise or adapt a definition/team | [Build](references/build.md), then [evaluate](references/evaluate.md) |
+| Teach a worker, learn from a run, correct its method or remember a fact for it | [Teach and learn](references/learn.md), then [evaluate](references/evaluate.md) |
 | Run, resume, inspect results or expose a command | [Operate](references/operate.md) |
 | Set this harness up | [Setup](references/setup.md), then the host reference below |
 | Connect or expose a tool through MCP | [MCP](references/mcp.md) |
@@ -42,6 +45,13 @@ includes its bounded real evaluation when access is available. A request to
 list workers or install Bench does not require inventing a job or model call.
 An ordinary fixed transformation may need no expert; Ask may suffice for one
 response. Match the composition to the user's actual outcome.
+
+“Learn this” in an active worker task means use the teaching procedure. Resolve
+the target worker and scope from the conversation; ask only if those remain
+ambiguous. Supplied knowledge goes through Hire, checked recovery evidence
+through Hone, and company facts into explicitly selected private context.
+Complete the authorized change and fresh-case evaluation. An acknowledgment in
+chat, a proposed lesson or a host's own memory is not a taught Bench worker.
 
 ## Keep definitions, teams and runs separate
 
