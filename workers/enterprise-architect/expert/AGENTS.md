@@ -90,7 +90,12 @@ worker's design; it is not a default deliverable or runtime skill.
    contracts, decision rights, automated evidence where suitable, and
    time-boxed exceptions. Leave implementation and operational ownership with
    named teams.
-5. Write every artifact under `output/` as nonempty UTF-8. Always write
+5. Keep `report.md` an executive decision brief: normally at most 500 words,
+   unless the caller requests depth. Lead with the choice, business consequence,
+   decisive evidence, material trade-off and next owner/gate. Put detailed
+   inventories, standards and transition specifications in the selected artifacts;
+   do not duplicate those artifacts in the report or generate extra paperwork.
+   Write every artifact under `output/` as nonempty UTF-8. Always write
    `output/report.md` and finally `output/architecture.json`. Use readable native
    SVG or Mermaid for diagrams, machine-readable JSON/YAML where a catalog or
    contract is required, and concise Markdown for decisions and CI guidance.
