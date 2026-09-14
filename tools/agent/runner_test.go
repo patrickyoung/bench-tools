@@ -155,7 +155,7 @@ func TestPortableGoalInputsAndExactOutcomes(t *testing.T) {
 	ply := filepath.Join(root, "ply")
 	writeFixture(t, ply, `#!/bin/sh
 if [ "$1" = capabilities ]; then
-  printf '%s\n' '{"schema":"ply.capabilities/v1","features":{"goal_file":true,"no_delegate":true}}'
+  printf '%s\n' '{"schema":"ply.capabilities/v1","features":{"goal_file":true,"no_delegate":true,"process_recording":"ply.recording/v1"}}'
   exit 0
 fi
 printf '%s\n' "$@" > "$FIXTURE_ROOT/argv"
@@ -200,7 +200,7 @@ exit "$FIXTURE_EXIT"
 				// Deliberately minimal: tests never use user credentials or state.
 				cmd.Env = []string{"PATH=/usr/bin:/bin", "HOME=" + root, "TMPDIR=" + root,
 					"AGENT_NATIVE_TEST_PROCESS=1", "AGENT_PLY=" + ply,
-					"AGENT_ASK=" + noop, "AGENT_BRIEF=" + noop,
+					"AGENT_ASK=" + noop, "AGENT_BRIEF=" + noop, "AGENT_RECORD=" + noop,
 					"FIXTURE_ROOT=" + root, "FIXTURE_EXIT=" + status}
 				cmd.Stdin = strings.NewReader(input)
 				var stderr bytes.Buffer

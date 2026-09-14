@@ -53,6 +53,21 @@ def main():
         run(["hire", "new", "-home", work / "agent home"])
         run(["agent", "check", work / "agent home"])
         run(["agent", "show", work / "agent home"])
+        # The relocated Agent must find Record itself, without harness prompting.
+        checker = work / "agent home/bin/check"
+        checker.write_text("#!/bin/sh\nexit 0\n")
+        checker.chmod(0o700)
+        idle = run(["agent", "run", "-q", "-no-cage", work / "agent home", "--", "Already satisfied."])
+        indexes = list((work / "agent home/.agent/recordings").glob("run.*/index.jsonl"))
+        if idle.stdout or len(indexes) != 1:
+            raise RuntimeError("relocated Agent did not record its zero-model pre-check")
+        run(["ask", "replay", "-check", indexes[0]])
+        for receipt in indexes[0].parent.glob("verifier.*/session.jsonl"):
+            run(["record", "check", "-f", receipt])
+        recorded = run(["record", "run", "-f", work / "record.jsonl", "--", "/usr/bin/printf", "recorded\\n"])
+        replayed = run(["record", "replay", "-f", work / "record.jsonl"])
+        if recorded.stdout != "recorded\n" or replayed.stdout != recorded.stdout:
+            raise RuntimeError("relocated Record/Ask changed observed bytes")
         # Draft replaces its generated reference using the caller's umask.
         # A private shell must remain upgradeable without widening permissions.
         reference = prefix / "lib/bench-tools/draft/skills/draft/references/tools.md"

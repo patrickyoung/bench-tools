@@ -114,6 +114,12 @@ When changing `ply`:
   After the already-sealed `ply.approval/v2`, seal `ply.confinement/v1`
   with the observed output and whether effects may exist before returning;
 
+- **optional full recording stays a public executable.** `-record-dir` wraps
+  action and verifier processes through Record before output caps, outside
+  Cage. Ask owns its invocation index as well as the conversation. Record
+  failures stop with 125; never let a model instruction decide whether
+  recording happens. Preserve interpreter identities and cancellation;
+
 - **keep the log somebody else's.** The conversation is an `ask` session and
   `ply` writes no log of its own, so `ask replay -check` proves an entire
   run. Ordinary action observations and rejected verifier results are sealed with `ask append` before a

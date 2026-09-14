@@ -121,6 +121,12 @@ func parse(args []string) (options, []string, error) {
 			return nil
 		})
 	}
+	for _, name := range []string{"record-input", "record-output"} {
+		fs.Func(name, "select a file for replay", func(value string) error {
+			o.forward = append(o.forward, "-"+name, value)
+			return nil
+		})
+	}
 	for _, name := range strings.Fields("B compact stream require-action") {
 		fs.BoolFunc(name, "Ply option", func(value string) error {
 			o.forward = append(o.forward, "-"+name+"="+value)
@@ -245,6 +251,8 @@ Piped stdin is evidence; if a portable definition has no goal, stdin is it.
   -goal-file FILE  private goal file, instead of goal text arguments
   -net             allow network in Cage actions
   -no-cage         ordinary host action permissions
+  -record-input FILE  retain an input file before work (repeatable)
+  -record-output FILE retain an output file after work (repeatable)
   -q               suppress progress
   -turns N -cycles N -timeout D -cap N -verbosity LEVEL
   -B -compact -compact-at N -compactions N -stream -require-action
@@ -260,7 +268,10 @@ stdin is input; stdout is the answer; stderr is progress. Exit is Ply's:
 0 checked, 1 broken, 2 unfinished, 3 declined, 75 parked, 125 boundary failure,
 130 interrupted. Invocation/definition errors use 2/1 respectively.
 
-AGENT_ASK, AGENT_BRIEF, AGENT_PLY and AGENT_CAGE select installed companions.
+AGENT_ASK, AGENT_BRIEF, AGENT_PLY, AGENT_CAGE and AGENT_RECORD select companions.
+Record is required for runs. Full action/check streams and selected files live
+under evidence/recordings; Ask owns their sealed history. Recording failures
+stop with 125. File selections are relative to the workspace.
 AGENT_DIR replaces ~/.agent for portable evidence. KEY derives from the
 physical definition and workspace paths, without a registry. Explicit state
 and evidence paths are recommended when the caller manages their lifecycle.

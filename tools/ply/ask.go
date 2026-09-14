@@ -37,13 +37,14 @@ var ErrCheck = errors.New("the check is broken")
 // commands are in the assistant messages, their output is in the user
 // messages, and `ask replay -check` proves the run.
 type Model struct {
-	Bin       string    // the ask binary
-	Session   string    // -f: a thread of ply's own, never the caller's current one
-	Spec      string    // -m, empty to let ask decide
-	Effort    string    // -effort, empty to let ask and the provider decide
-	Verbosity string    // -verbosity, empty to let ask and the provider decide
-	System    string    // -S, sent every turn so the log says what shaped it
-	Progress  io.Writer // optional live Ask progress; never the answer stream
+	Bin       string     // the ask binary
+	Session   string     // -f: a thread of ply's own, never the caller's current one
+	Spec      string     // -m, empty to let ask decide
+	Effort    string     // -effort, empty to let ask and the provider decide
+	Verbosity string     // -verbosity, empty to let ask and the provider decide
+	System    string     // -S, sent every turn so the log says what shaped it
+	Progress  io.Writer  // optional live Ask progress; never the answer stream
+	Recording *recording // explicit public compaction artifact handoff
 }
 
 // Turn sends text and returns the model's reply. The text goes on stdin
@@ -107,6 +108,9 @@ func (m Model) Compact(ctx context.Context) (string, error) {
 // token threshold. Zero means unconditional recovery after an overflow.
 func (m Model) CompactAt(ctx context.Context, at int) (string, error) {
 	args := []string{"compact", "-q"}
+	if m.Recording != nil {
+		args = append(args, "-json")
+	}
 	if m.Spec != "" {
 		args = append(args, "-m", m.Spec)
 	}
@@ -124,6 +128,24 @@ func (m Model) CompactAt(ctx context.Context, at int) (string, error) {
 		return "", fmt.Errorf("%s compact: %s", m.Bin, firstLine(errb.String()))
 	}
 	path := strings.TrimSpace(out.String())
+	if m.Recording != nil {
+		var handoff struct{ Source, Summary, Session string }
+		if err := json.Unmarshal(out.Bytes(), &handoff); err != nil || !sameSession(handoff.Source, m.Session) {
+			return "", fmt.Errorf("%w: invalid Ask compact JSON handoff", ErrRecording)
+		}
+		path = handoff.Session
+		if handoff.Summary != "" {
+			if !filepath.IsAbs(handoff.Summary) || filepath.Clean(handoff.Summary) != handoff.Summary || filepath.Dir(handoff.Summary) != filepath.Dir(path) {
+				return "", fmt.Errorf("%w: invalid compaction summary path", ErrRecording)
+			}
+			m.Recording.Sessions = append(m.Recording.Sessions, handoff.Summary)
+			if err := m.Recording.note("summary", map[string]any{"source": handoff.Source, "path": handoff.Summary, "session": path}); err != nil {
+				return "", err
+			}
+		} else if !sameSession(path, m.Session) {
+			return "", fmt.Errorf("%w: compaction omitted its summary", ErrRecording)
+		}
+	}
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || strings.ContainsAny(path, "\r\n\x00") {
 		return "", fmt.Errorf("%s compact: expected one clean absolute session path", m.Bin)
 	}

@@ -118,6 +118,13 @@ func run(kind string, args []string) int {
 	if err != nil {
 		return problem(err, 2)
 	}
+	record, err := tool("AGENT_RECORD", "record")
+	if err != nil {
+		return problem(err, 125)
+	}
+	if inside(d.Work, record) || inside(d.State, record) || inside(d.Home, record) {
+		return problem(fmt.Errorf("Record executable must be outside definition and mutable roots"), 125)
+	}
 	if err := checkPly(ply, !o.noCage); err != nil {
 		return problem(err, 2)
 	}
@@ -222,6 +229,9 @@ func run(kind string, args []string) int {
 		"AGENT_MAY", "BENCH_MAY", "AGENT_ACTION", "AGENT_ACTION_PATH", "AGENT_ACTION_POLICY", "ACTION_PATH", "ACTION_POLICY", "ACTION_MAY", "ACTION_ASK",
 		"PLY_TOOLS", "ASK_MODEL", "ASK_SYSTEM", "ASK_DIR")
 	argv := []string{"-sh", "-shell", "/bin/sh", "-no-delegate", "-C", d.Work, "-check", shellQuote(filepath.Join(d.Home, "bin/check")), "-goal-file", goal}
+	argv = append(argv, "-record", record, "-record-dir", filepath.Join(d.Control, "recordings"),
+		"-record-input", goal, "-record-input", filepath.Join(skill, "SKILL.md"),
+		"-record-input", filepath.Join(d.Home, "bin/check"))
 	if d.Tools != "" {
 		argv = append(argv, "-t", d.Tools)
 	}
@@ -309,6 +319,7 @@ func checkPly(path string, confined bool) error {
 			GoalFile       bool   `json:"goal_file"`
 			NoDelegate     bool   `json:"no_delegate"`
 			ActionBoundary string `json:"action_boundary_receipt"`
+			Recording      string `json:"process_recording"`
 		} `json:"features"`
 	}
 	if err := json.Unmarshal(b, &c); err != nil || c.Schema != "ply.capabilities/v1" {
@@ -316,6 +327,9 @@ func checkPly(path string, confined bool) error {
 	}
 	if !c.Features.GoalFile || !c.Features.NoDelegate {
 		return fmt.Errorf("Ply is incompatible: needs goal_file and no_delegate")
+	}
+	if c.Features.Recording != "ply.recording/v1" {
+		return fmt.Errorf("Ply is incompatible: needs ply.recording/v1 process recording")
 	}
 	if confined && c.Features.ActionBoundary != "ply.action-boundary/v1" {
 		return fmt.Errorf("Ply is incompatible: needs ply.action-boundary/v1")

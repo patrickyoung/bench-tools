@@ -806,3 +806,29 @@ literal script and inherited action environment; the named program owns any
 container, remote-execution, mount, credential, signal, and resource policy.
 The verifier remains outside that adapter under
 .BR \-shell .
+
+.SH FULL EXECUTION RECORDING
+.TP
+.BI -record-dir " directory"
+Retain separate full stdin/stdout/stderr and outcomes through the public
+Record executable. The existing directory must be outside the work tree.
+Each invocation gets a private subdirectory with a sealed Ask index,
+process receipts, input snapshots and output/conversation snapshots.
+A recording failure stops the loop with 125. Presentation caps still apply.
+.TP
+.BI -record " executable"
+Select Record (default record, or PLY_RECORD).
+.TP
+.BI -record-input " file"
+Snapshot a selected regular input before work. Repeatable; relative to -C.
+.TP
+.BI -record-output " file"
+Snapshot a selected regular output after work. Repeatable; relative to -C.
+Missing selected outputs leave incomplete evidence and return 125.
+.PP
+PLY_RECORD_DIR supplies the default recording root; PLY_RECORD_PARENT links
+nested invocations to their enclosing process receipt. Both are inherited.
+Recording runs outside the action interpreter and Cage. It grants no write
+access to nested commands. Retain the complete evidence roots for linked
+children; recordings do not scan other roots. Compaction summaries are
+snapshotted through Ask's public JSON handoff.

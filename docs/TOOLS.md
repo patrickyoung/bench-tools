@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **19 components and 23 public commands**. MCP supplies
+This guide covers all **20 components and 24 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -342,3 +342,19 @@ Start with an existing command or expert folder. When the task needs a new
 procedure, specify its inputs, output, and check before building it with Hire.
 Follow [Build with an LLM](BUILD-WITH-AN-LLM.md), try the [recipes](RECIPES.md),
 or read the [comparison with current agent tooling](COMPARISONS.md).
+
+## Record: preserve a process boundary for offline replay
+
+**[Record](../tools/record/README.md)** wraps a selected Unix command and retains
+its literal invocation, separate binary streams, and outcome as sealed Ask
+notes. Select files and child sessions explicitly when their bytes belong in
+the archive. Replay verifies and emits the observed streams without executing
+the original work. It does not infer unobserved filesystem or network effects.
+
+```sh
+record run -f lookup.jsonl -- context get policy < query.json
+record replay -f lookup.jsonl
+```
+
+See the [verification scope and archive selection](REPLAY.md) for nested worker
+histories, compaction links, and private credential handoffs.

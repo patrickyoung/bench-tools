@@ -322,3 +322,27 @@ ply help
 [DESIGN.md](DESIGN.md) explains the design. Contributors: read
 [AGENTS.md](AGENTS.md), run `go test ./...`, and add `go test -race ./...`
 for loop or runner changes. [MIT license](LICENSE).
+
+### Full process recording
+
+`-record-dir DIR` selects an existing controller directory outside the work
+tree. Ply invokes the independent Record executable (`-record PATH`, default
+`record`) around each action and verifier, before merging/capping output.
+Ask owns the sealed invocation index, process receipts and conversation.
+Agent enables this seam automatically. Plain Ply remains usable without Record.
+
+The index links attempts before execution, completed process receipts,
+conversation sessions, compaction summaries and nested invocation parents.
+Repeated `-record-input FILE` and `-record-output FILE` retain selected task
+files; relative paths use `-C`. Finite stdin and the goal are retained as well.
+Input snapshots precede work; output and used-session snapshots precede final
+stdout. A missing required output or incomplete recording stops with 125.
+`PLY_RECORD`, `PLY_RECORD_DIR` and `PLY_RECORD_PARENT` carry the selected
+executable, recording root and enclosing process receipt to ordinary nested
+Ply calls. They grant no filesystem or network authority.
+
+Use `record check -f PROCESS_SESSION` to verify completion before extracting
+streams with `record replay -f PROCESS_SESSION -stream stdout`. Keep child
+Agent evidence roots alongside parent records. A valid Ask prefix seal alone
+cannot prove the invocation finished; inspect the index terminal and linked
+receipts. Recording does not repeat effects or snapshot an entire machine.

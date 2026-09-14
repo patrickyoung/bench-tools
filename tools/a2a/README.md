@@ -30,7 +30,7 @@ This installs `a2a`, `a2aserve`, and the existing `tend`. Calling a remote agent
 needs only `a2a`. Serving Agent also requires Agent's documented companions:
 
 ```sh
-python3 scripts/install agent ask brief ply cage
+python3 scripts/install agent ask brief ply cage record
 ```
 
 The component is independently buildable, with no sibling source imports:

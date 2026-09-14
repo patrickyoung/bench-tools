@@ -91,6 +91,18 @@ When changing `ask`:
   stdout with usage errors on stderr. Guard wholes as well as parts: a
   flag-level check stays green while an entire verb goes undocumented.
 
+`ask init -f FILE` creates an explicitly named, sealed session without a
+model call. It never reads stdin, selects a model, changes current, or
+overwrites a file. It gives deterministic programs access to the existing
+note/append/replay boundary; it does not execute those programs.
+
+`ask note -jsonl - -seal` is a finite stream of typed notes. It holds the
+same single-writer lock and acknowledges a sequence only after the record
+and seal are fsynced. Each line supplies kind/body; source is fixed by -s.
+Invalid input stops without acknowledging it. Previously acknowledged notes
+remain valid. Incremental prefix hashing must produce exactly the existing
+canonical JSONL digest; neither this mode nor optimization changes the format.
+
 Things left out on purpose. Do not add them back without asking: tools, an
 agent loop, a model verifier loop, a workspace, skills, prompt templates, a
 config file, a REPL, a daemon, and MCP. Local JSON Schema validation is an

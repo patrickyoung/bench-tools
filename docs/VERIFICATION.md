@@ -143,7 +143,7 @@ python3 scripts/build agent hire
 python3 scripts/check-integration.py --bin-dir .build/bin --agent-only --portable --native-cage
 ```
 
-Packaging/install checks exercise 23 commands, relocation, repeated install and
+Packaging/install checks exercise 24 commands, relocation, repeated install and
 removal in disposable prefixes. They do not update an existing pinned Hire web
 installation; its old authoring calls need an explicit release migration.
 

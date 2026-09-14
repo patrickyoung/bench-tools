@@ -73,7 +73,7 @@ identity and file hashes. `--allow-experimental` explicitly selects an evaluatio
 of an experimental entry; it never enables retired or deprecated source.
 
 [Install](INSTALL.md) the selected worker's declared commands. The common
-starting set is `hire agent ask brief ply cage`; an individual definition may
+starting set is `hire agent ask brief ply cage record`; an individual definition may
 need more tools. [Configure Ask's model connection](GETTING-STARTED.md#2-connect-a-model)
 separately from the harness login. Follow the exported README for dependencies,
 installing them only in that copy. Read its check before executing it.

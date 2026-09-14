@@ -48,7 +48,7 @@ func run(args []string) int {
 		case "system":
 			return systemCmd(args[1:])
 		case "capabilities":
-			fmt.Printf("{\"schema\":\"ply.capabilities/v1\",\"version\":%q,\"features\":{\"action_boundary_receipt\":\"ply.action-boundary/v1\",\"content_addressed_stdin\":true,\"goal_file\":true,\"no_delegate\":true,\"durable_observations\":true,\"verifier_receipt\":%q,\"proactive_compaction\":true,\"streaming_progress\":true}}\n", version, verifierReceiptKind)
+			fmt.Printf("{\"schema\":\"ply.capabilities/v1\",\"version\":%q,\"features\":{\"action_boundary_receipt\":\"ply.action-boundary/v1\",\"content_addressed_stdin\":true,\"goal_file\":true,\"no_delegate\":true,\"process_recording\":\"ply.recording/v1\",\"durable_observations\":true,\"verifier_receipt\":%q,\"proactive_compaction\":true,\"streaming_progress\":true}}\n", version, verifierReceiptKind)
 			return 0
 		case "version", "-V", "--version":
 			fmt.Println("ply " + version)
@@ -63,39 +63,42 @@ func run(args []string) int {
 
 // opts is every knob, in one place, because three verbs share most of them.
 type opts struct {
-	fs              *flag.FlagSet
-	toolbox         *string
-	shell           *bool
-	shellExec       *string
-	actionShellExec *string
-	actionBoundary  *int
-	check           *string
-	force           *bool
-	requireAct      *bool
-	noDelegate      *bool
-	cycles          *int
-	turns           *int
-	timeout         *time.Duration
-	outcap          *int
-	dir             *string
-	spec            *string
-	effort          *string
-	verbosity       *string
-	goalFile        *string
-	sys             *string
-	skills          list
-	file            *string
-	sessionOut      *string
-	checkpoint      *string
-	quiet           *bool
-	compact         *bool
-	compactAt       *int
-	stream          *bool
-	compacts        *int
-	contractID      *string
-	steer           *string
-	mayJob          *string
-	cage            *bool
+	fs                          *flag.FlagSet
+	toolbox                     *string
+	shell                       *bool
+	shellExec                   *string
+	actionShellExec             *string
+	actionBoundary              *int
+	check                       *string
+	force                       *bool
+	requireAct                  *bool
+	noDelegate                  *bool
+	cycles                      *int
+	turns                       *int
+	timeout                     *time.Duration
+	outcap                      *int
+	dir                         *string
+	spec                        *string
+	effort                      *string
+	verbosity                   *string
+	goalFile                    *string
+	sys                         *string
+	skills                      list
+	file                        *string
+	sessionOut                  *string
+	checkpoint                  *string
+	quiet                       *bool
+	compact                     *bool
+	compactAt                   *int
+	stream                      *bool
+	compacts                    *int
+	contractID                  *string
+	steer                       *string
+	mayJob                      *string
+	cage                        *bool
+	recordDir                   *string
+	recordBin                   *string
+	recordInputs, recordOutputs list
 }
 
 func newOpts(name string) *opts {
@@ -134,7 +137,11 @@ func newOpts(name string) *opts {
 		steer:           fs.String("steer", "", "operator steering file read before turns and action/report use"),
 		mayJob:          fs.String("may-job", os.Getenv("PLY_MAY_JOB"), "require exact May approval before every model action"),
 		cage:            fs.Bool("cage", false, "confine every approved model action with Cage"),
+		recordDir:       fs.String("record-dir", os.Getenv("PLY_RECORD_DIR"), "retain full process recordings in this controller directory"),
+		recordBin:       fs.String("record", recordDefault(), "Record executable"),
 	}
+	fs.Var(&o.recordInputs, "record-input", "snapshot this input before work (repeatable)")
+	fs.Var(&o.recordOutputs, "record-output", "snapshot this output after work (repeatable)")
 	fs.Var(&o.skills, "s", "brief skill to compose; repeat for more; - picks one")
 	return o
 }
@@ -199,7 +206,7 @@ func (o *opts) checker(r Runner, b *Box, checkShell string) Runner {
 	return r
 }
 
-func work(args []string) int {
+func work(args []string) (code int) {
 	o := newOpts("ply")
 	if err := o.fs.Parse(args); err != nil {
 		return usage(err)
@@ -287,6 +294,7 @@ func work(args []string) int {
 	if err != nil {
 		return fail(err)
 	}
+	recordedInput := data
 	if goal == "" {
 		// Piped input alone is the goal, exactly as it is for ask and mu.
 		if goal = strings.TrimSpace(string(data)); goal == "" {
@@ -346,6 +354,33 @@ func work(args []string) int {
 	v := newView(os.Stderr, *o.quiet)
 	runner := o.runner(box, self, depth, actionShell, shell, approval)
 	checker := o.checker(runner, box, shell)
+	recording, err := openRecording(o, askBin, goal, recordedInput)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ply:", err)
+		return 125
+	}
+	var answerOutput string
+	defer func() {
+		if recording != nil {
+			code = recording.finish(code)
+		}
+		if answerOutput != "" && code != 125 {
+			fmt.Println(answerOutput)
+		}
+	}()
+	if recording != nil {
+		runner.Recording, checker.Recording = recording, recording
+		runner.RecordRole, checker.RecordRole = "action", "verifier"
+		v.Note("full execution evidence: %s", recording.Index.Session)
+		if *o.file != "" {
+			if _, err := os.Stat(*o.file); err == nil {
+				if err := recording.session(*o.file); err != nil {
+					fmt.Fprintln(os.Stderr, "ply:", err)
+					return 125
+				}
+			}
+		}
+	}
 
 	// make's "nothing to be done": a goal already met costs nothing, leaves
 	// no session behind, and is safe to put in a hook or a Makefile.
@@ -353,6 +388,9 @@ func work(args []string) int {
 	if *o.check != "" && !*o.force {
 		r := checker.RunInput(ctx, *o.check, "")
 		v.Check(r)
+		if r.RecordingFailed {
+			return 125
+		}
 		// An orchestrator may already have created -f while compiling an
 		// intent contract. In that case even a pre-check terminal must become
 		// durable evidence in the same session. Plain Ply keeps make's
@@ -425,6 +463,10 @@ func work(args []string) int {
 		if err != nil {
 			return fail(err)
 		}
+		if recording != nil && (pathWithin(confinement.TempDir, recording.Root) || pathWithin(confinement.TempDir, recording.Bin)) {
+			fmt.Fprintln(os.Stderr, "ply: recording evidence and executable must be outside Cage's writable temporary directory")
+			return 125
+		}
 		runner.Cage = confinement
 		runner.Env = append(runner.Env, "TMPDIR="+confinement.TempDir)
 	}
@@ -439,6 +481,12 @@ func work(args []string) int {
 	if err := writeSessionOut(*o.sessionOut, session); err != nil {
 		return fail(err)
 	}
+	if recording != nil {
+		if err := recording.session(session); err != nil {
+			fmt.Fprintln(os.Stderr, "ply:", err)
+			return 125
+		}
+	}
 
 	v.Note("%s · %s", session, describe(box, actionShell, shell, *o.check, approval != nil, confinement != nil))
 	if underTree(session, *o.dir) {
@@ -448,7 +496,7 @@ func work(args []string) int {
 	}
 	loop := &Loop{
 		Goal:           goalContext,
-		Model:          Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, Verbosity: *o.verbosity, System: system},
+		Model:          Model{Bin: askBin, Session: session, Spec: *o.spec, Effort: *o.effort, Verbosity: *o.verbosity, System: system, Recording: recording},
 		Runner:         runner,
 		Checker:        checker,
 		Check:          *o.check,
@@ -468,8 +516,13 @@ func work(args []string) int {
 	if *o.stream && !*o.quiet {
 		loop.Model.Progress = os.Stderr
 	}
-	if *o.sessionOut != "" {
+	if *o.sessionOut != "" || recording != nil {
 		loop.SessionChanged = func(path string) error {
+			if recording != nil {
+				if err := recording.session(path); err != nil {
+					return err
+				}
+			}
 			return writeSessionOut(*o.sessionOut, path)
 		}
 	}
@@ -477,11 +530,17 @@ func work(args []string) int {
 	if answer != "" && !v.Shown() && !errors.Is(err, ErrApprovalParked) &&
 		!errors.Is(err, ErrApprovalDeclined) && !errors.Is(err, ErrApprovalBoundary) &&
 		!errors.Is(err, ErrConfinement) {
-		fmt.Println(strings.TrimRight(answer, "\n"))
+		answerOutput = strings.TrimRight(answer, "\n")
 	}
 	switch {
 	case err == nil:
 		return 0
+	case errors.Is(err, ErrRecording):
+		if recording != nil {
+			recording.Failed = true
+		}
+		fmt.Fprintln(os.Stderr, "ply:", err)
+		return 125
 	case errors.Is(err, context.Canceled):
 		v.Note("interrupted")
 		return 130
@@ -504,6 +563,8 @@ func work(args []string) int {
 
 func (o *opts) validate() error {
 	switch {
+	case *o.recordDir == "" && (len(o.recordInputs) > 0 || len(o.recordOutputs) > 0):
+		return errors.New("-record-input and -record-output require -record-dir")
 	case *o.goalFile != "" && o.fs.NArg() != 0:
 		return errors.New("-goal-file cannot be combined with a positional goal")
 	case *o.checkpoint != "" && (*o.file != "" || *o.sessionOut != ""):

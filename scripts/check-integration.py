@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = ("a2a", "a2aserve", "hire", "agent", "ask", "brief", "ply", "cage", "mcp", "mcpbox", "hone", "context", "cite", "action", "may", "trail", "tend", "weave")
+REQUIRED = ("a2a", "a2aserve", "hire", "agent", "ask", "brief", "ply", "cage", "record", "mcp", "mcpbox", "hone", "context", "cite", "action", "may", "trail", "tend", "weave")
 
 
 def require(condition, message):
@@ -35,8 +35,34 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
+def recorded_argv(argv, env):
+    """Optional test instrumentation, outside the unchanged selected tool path."""
+    command = list(map(str, argv))
+    directory, binary_dir = env.get("BENCH_REPLAY_RECORD_DIR"), env.get("BENCH_REPLAY_BIN_DIR")
+    if not directory or not binary_dir or Path(command[0]).parent.resolve() != Path(binary_dir).resolve():
+        return command, None
+    names = {c["name"] for component in json.loads((ROOT / "components.json").read_text())["components"]
+             for c in component["commands"]}
+    if Path(command[0]).name not in names:
+        return command, None
+    destination = Path(tempfile.mkdtemp(prefix="invocation.", dir=directory)) / "session.jsonl"
+    bins = Path(binary_dir)
+    return [str(bins / "record"), "run", "-ask", str(bins / "ask"), "-f", str(destination),
+            "-label", "inventory=" + Path(command[0]).name, "--", *command], destination
+
+
+def verify_recorded(path, result, env):
+    if path is None:
+        return
+    bins = Path(env["BENCH_REPLAY_BIN_DIR"])
+    replay = subprocess.run([bins / "record", "replay", "-ask", bins / "ask", "-f", path],
+                            stdin=subprocess.DEVNULL, capture_output=True, env=env, timeout=120)
+    require((replay.returncode, replay.stdout, replay.stderr) ==
+            (result.returncode, result.stdout, result.stderr), "record/replay changed observed streams or exit: " + str(path))
+
+
 def invoke(argv, *, cwd, env, data=b"", code=0, timeout=180):
-    command = [str(arg) for arg in argv]
+    command, recording = recorded_argv(argv, env)
     with subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, cwd=cwd, env=env, start_new_session=True) as process:
         try:
@@ -49,6 +75,7 @@ def invoke(argv, *, cwd, env, data=b"", code=0, timeout=180):
             process.communicate()
             raise
         result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+    verify_recorded(recording, result, env)
     require(result.returncode == code,
             f"{Path(str(argv[0])).name} {list(map(str, argv[1:]))}: exit {result.returncode}, expected {code}\n"
             + result.stdout.decode(errors="replace") + result.stderr.decode(errors="replace"))
@@ -171,7 +198,7 @@ def create_ask_session(bins, work, env, evidence):
 def check_agent(bins, work, env, agent):
     """First prove what the existing Agent already does before replacing it."""
     agent_env = dict(env, **{"AGENT_" + name.upper(): str(bins / name)
-                            for name in ("ask", "brief", "ply", "cage", "trail")})
+                            for name in ("ask", "brief", "ply", "cage", "trail", "record")})
     home = work / "agent home"
     invoke([bins / "hire", "new", "-home", home, "Sort supplied records"], cwd=work, env=agent_env)
     (home / "AGENTS.md").write_text("# Instructions\nPARENT_PRIVATE_IDENTITY. Sort records, then verify exact output.\n")
@@ -262,6 +289,16 @@ sys.exit(0 if path.exists() and path.read_bytes() == b"Child review verified.\\n
     for root in (home, child):
         for session in (root / ".agent/runs").glob("*.jsonl"):
             invoke([bins / "ask", "replay", "-check", session], cwd=work, env=agent_env)
+    child_indexes = list((child / ".agent/recordings").glob("run.*/index.jsonl"))
+    require(child_indexes, "nested Agent omitted default recording")
+    for index in child_indexes:
+        checked = invoke([bins / "ask", "replay", "-check", "-json", index], cwd=work, env=agent_env)
+        rows = [event["data"]["body"] for event in map(json.loads, checked.stdout.splitlines())
+                if event["type"] == "note" and event["data"].get("kind") == "ply.recording/v1"]
+        parent = Path(rows[0]["parent"])
+        require(parent.is_relative_to(home / ".agent/recordings") and parent.is_file(), "child index lost its parent process link")
+        invoke([bins / "record", "check", "-f", parent], cwd=work, env=agent_env)
+        require(rows[-1].get("complete") and rows[-1].get("exit") == 0, "child recording did not complete")
     print("ok Agent -> Agent: ordinary nested command, explicit stdin, collected stdout, separate private context and replayable sessions (explicit host boundary)", flush=True)
 
     # Reuse MCP's shipped local server and public admission command. Agent
@@ -305,7 +342,7 @@ output = pathlib.Path("result.txt")
 sys.exit(0 if output.exists() and output.read_bytes() == pathlib.Path("input.txt").read_bytes() else 1)
 ''')
     before = {p.relative_to(definition).as_posix(): p.read_bytes() for p in definition.rglob("*") if p.is_file()}
-    agent_env = dict(env, **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage")})
+    agent_env = dict(env, **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage", "record")})
     for name, private_goal in (("first workspace", False), ("second workspace", True)):
         workspace, control = work / name, work / (name + " evidence")
         workspace.mkdir()
@@ -360,7 +397,7 @@ def check_agent_lifecycle(bins, work, env, agent):
     temporary = root / "temporary"
     temporary.mkdir()
     agent_env = dict(env, TMPDIR=str(temporary),
-                     **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage")})
+                     **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage", "record")})
     definitions, workspaces, controls = [], [], []
     for name in ("parent", "child"):
         definition, workspace, control = (root / (name + suffix) for suffix in (" definition", " workspace", " evidence"))
@@ -443,7 +480,7 @@ def check_hire(bins, work, env, agent, native_cage=False):
     build_work, run_work = work / "hire build workspace", work / "hired expert workspace"
     build_work.mkdir(); run_work.mkdir()
     hire_env = dict(env, HIRE_AGENT=str(agent),
-                    **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage")})
+                    **{"AGENT_" + name.upper(): str(bins / name) for name in ("ask", "brief", "ply", "cage", "record")})
     builder_turns, worker_turns = [], []
     revision_turns = []
     revising = False
@@ -630,9 +667,10 @@ def main():
     parser.add_argument("--agent", type=Path, help="Agent executable to test (default: built agent)")
     parser.add_argument("--portable", action="store_true", help="also require Agent's separate-workspace interface")
     parser.add_argument("--native-cage", action="store_true", help="prove portable Agent's default boundary on a supported native Cage backend")
+    parser.add_argument("--record-dir", type=Path, help="record public invocations into an existing explicit directory")
     args = parser.parse_args()
     bins = args.bin_dir.resolve()
-    required = ("hire", "agent", "ask", "brief", "ply", "cage", "trail", "mcp", "mcpbox") if args.agent_only else REQUIRED
+    required = ("hire", "agent", "ask", "brief", "ply", "cage", "record", "trail", "mcp", "mcpbox") if args.agent_only else REQUIRED
     for name in required:
         if name == "agent" and args.agent:
             require(args.agent.is_file() and os.access(args.agent, os.X_OK), f"missing executable: {args.agent}")
@@ -654,6 +692,9 @@ def main():
                    GOWORK="off", GOPROXY="off", GOTOOLCHAIN="local", ASK_LIVE="",
                    XDG_CONFIG_HOME=str(home / ".config"), XDG_STATE_HOME=str(home / ".local/state"),
                    XDG_CACHE_HOME=str(home / ".cache"), PYTHONDONTWRITEBYTECODE="1")
+        if args.record_dir:
+            require(args.record_dir.is_dir(), "--record-dir must already exist")
+            env.update(BENCH_REPLAY_RECORD_DIR=str(args.record_dir.resolve()), BENCH_REPLAY_BIN_DIR=str(bins))
         for name in REQUIRED:
             env[name.upper()] = str(bins / name)
         invoke(["sh", ROOT / "scripts/agent-hire_test.sh"], cwd=work, env=dict(env,

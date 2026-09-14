@@ -18,7 +18,7 @@ From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools)
 root, with Go 1.26+, Python 3.9+, Git, and a Unix shell:
 
 ```sh
-python3 scripts/install hire agent ask brief ply cage
+python3 scripts/install hire agent ask brief ply cage record
 export PATH="$HOME/.local/bin:$PATH"
 hire version
 cage check

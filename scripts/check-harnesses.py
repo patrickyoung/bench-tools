@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import runpy
 import shutil
 import signal
 import subprocess
@@ -15,6 +16,7 @@ import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+replay_support = runpy.run_path(str(ROOT / "scripts/check-integration.py"))
 
 
 def require(ok, message):
@@ -23,8 +25,10 @@ def require(ok, message):
 
 
 def run(argv, cwd, env, data=None, code=0):
-    result = subprocess.run(list(map(str, argv)), cwd=cwd, env=env, input=data,
+    command, recording = replay_support["recorded_argv"](argv, env)
+    result = subprocess.run(command, cwd=cwd, env=env, input=data,
                             capture_output=True, timeout=45)
+    replay_support["verify_recorded"](recording, result, env)
     require(result.returncode == code,
             f"{argv}: exit {result.returncode}, wanted {code}\n{result.stdout.decode()}\n{result.stderr.decode()}")
     return result.stdout
@@ -154,6 +158,7 @@ def main():
                "CLAUDE_CONFIG_DIR": str(home / ".claude"), "PI_CODING_AGENT_DIR": str(home / ".pi/agent"),
                "PI_OFFLINE": "1", "PI_TELEMETRY": "0", "DISABLE_TELEMETRY": "1",
                "DISABLE_AUTOUPDATER": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+        env.update({k:os.environ[k] for k in ("BENCH_REPLAY_RECORD_DIR","BENCH_REPLAY_BIN_DIR") if k in os.environ})
         run([bins / "brief", "lint", "-strict", ROOT / ".agents/skills/bench"], work, env)
         archive = work / "bench-tools.zip"
         files = [ROOT / ".claude-plugin/plugin.json", ROOT / "LICENSE"]

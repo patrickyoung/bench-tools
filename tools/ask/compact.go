@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -55,6 +56,7 @@ func cmdCompact(args []string) (code int) {
 		headerFD  = fs.Int("header-fd", -1, "descriptor containing an HTTP Authorization header")
 		quiet     = fs.Bool("q", false, "no progress on stderr; errors still print")
 		at        = fs.Int("at", 0, "compact at this estimated token count (0: unconditional)")
+		asJSON    = fs.Bool("json", false, "emit source, summary and continuation paths as JSON")
 	)
 	usage(fs, "ask compact [flags] [session]")
 	if err := fs.Parse(args); err != nil {
@@ -107,7 +109,7 @@ func cmdCompact(args []string) (code int) {
 			return fail(err)
 		}
 		if usage.EstimatedTokens < *at {
-			return printOutput(src + "\n")
+			return compactOutput(*asJSON, src, "", src)
 		}
 	}
 	var hdr event.Header
@@ -182,7 +184,22 @@ func cmdCompact(args []string) (code int) {
 		fmt.Fprintf(os.Stderr, "ask: compacted %s → %s (note by %s, %d bytes from %d)\n",
 			idOf(hdr, src), log.ID(), sumID, len(note), len(text))
 	}
-	return printOutput(log.Path() + "\n")
+	return compactOutput(*asJSON, src, filepath.Join(home, sumID+".jsonl"), log.Path())
+}
+
+func compactOutput(asJSON bool, source, summary, session string) int {
+	if !asJSON {
+		return printOutput(session + "\n")
+	}
+	b, err := json.Marshal(struct {
+		Source  string `json:"source"`
+		Summary string `json:"summary"`
+		Session string `json:"session"`
+	}{source, summary, session})
+	if err != nil {
+		return fail(err)
+	}
+	return printOutput(string(b) + "\n")
 }
 
 // summarize runs one fresh-context turn over the transcript, in a session

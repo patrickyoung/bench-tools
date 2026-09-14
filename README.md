@@ -115,7 +115,7 @@ authentication. Local use needs neither. See [A2A](tools/a2a/README.md).
 | [Runnable starters](examples/README.md) | Explicit practice inputs and executable examples |
 | [Recipes](docs/RECIPES.md) | Small compositions of existing tools |
 | [How it works](docs/HOW-IT-WORKS.md) | Model, loop, check and durable job responsibilities |
-| [Tool reference](docs/TOOLS.md) | All 19 components and 23 public commands |
+| [Tool reference](docs/TOOLS.md) | All 20 components and 24 public commands |
 | [Installation](docs/INSTALL.md) | Selected tools, updates and removal |
 | [Source and releases](docs/RELEASES.md) | Pinning a reproducible toolset |
 
@@ -132,7 +132,7 @@ content outside source. Review changes with GitHub pull requests.
 For toolkit development, from the checkout:
 
 ```sh
-make build                    # all 23 commands in .build/bin
+make build                    # all 24 commands in .build/bin
 make test                     # ordinary checks, no paid model calls
 make check                    # standalone and process integration checks
 ```

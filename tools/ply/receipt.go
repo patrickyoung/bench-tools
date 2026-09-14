@@ -54,7 +54,7 @@ func receiptFor(contractID, phase, candidate string, checker Runner, r Result) v
 }
 
 func verifierOutcome(r Result) string {
-	if r.Killed || r.Interrupted || r.OutputIncomplete || r.StartError || r.Elided > 0 || r.Code != 0 && r.Code != 1 {
+	if r.Killed || r.Interrupted || r.OutputIncomplete || r.StartError || r.RecordingFailed || r.Elided > 0 || r.Code != 0 && r.Code != 1 {
 		return "broken"
 	}
 	if r.Code == 1 {

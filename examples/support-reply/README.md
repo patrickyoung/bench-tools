@@ -15,7 +15,7 @@ From the monorepo root, install the companions and [configure a
 model](../../docs/GETTING-STARTED.md#2-connect-a-model):
 
 ```sh
-python3 scripts/install agent hire ask brief ply cage cite
+python3 scripts/install agent hire ask brief ply cage record cite
 export PATH="$HOME/.local/bin:$PATH"
 practice=$(mktemp -d)
 cp -R examples/support-reply "$practice/support-reply"

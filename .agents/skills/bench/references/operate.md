@@ -101,3 +101,37 @@ Use the host's scheduler only for requested recurring work. A schedule must
 name its executable paths, working directory, inputs, credentials source,
 limits, and output pickup. Do not add a scheduler to Agent or a background
 service merely to support on-demand work. Preserve evidence when retiring a job.
+
+## Retain and replay execution
+
+Agent automatically invokes Record through Ply. Install `record` alongside
+Agent, Ask and Ply; `AGENT_RECORD` selects its absolute executable. Keep the
+selected evidence root outside work/state. Do not ask the model to remember
+to record individual actions, wrap every tool, or replace the action interpreter.
+Full action and verifier streams are retained before presentation caps.
+
+Declare task files with repeated `-record-input FILE` and `-record-output FILE`
+on `agent run`; relative paths resolve against its workspace. Agent also
+retains its compiled context, goal and checker. A required output that is
+missing leaves incomplete recording; diagnose it instead of retrying.
+
+Retain `recordings/run.*/index.jsonl`, the referenced process receipts and
+snapshots, and linked Ask/child evidence roots. Use `ask replay -check` on an
+index and `record check -f PROCESS_SESSION` on each referenced process receipt.
+Inspect the index's terminal record as well: valid prefix seals alone do not
+prove completion. `record replay -f PROCESS_SESSION -stream stdout` extracts
+original output offline. It never repeats an action or refreshes credentials.
+Recording failure returns 125 and cannot establish task completion.
+
+For an ordinary command invoked directly by the harness, use an explicit Unix
+wrapper when its execution needs retained evidence:
+
+```sh
+record run -f NEW_SESSION -input INPUT_FILE -output OUTPUT_FILE -- COMMAND ARG
+```
+
+Select the actual command and files; omit file flags when irrelevant. This
+preserves streams and status. Host-internal tool calls outside this command
+boundary are not automatically recorded by Bench. Follow `tools/record/README.md`
+for private descriptors; never put credential values in public streams or
+selected artifacts merely to make a recording.

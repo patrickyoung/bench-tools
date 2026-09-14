@@ -2,6 +2,7 @@ package event
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
@@ -62,6 +63,7 @@ func Check(events []Event) error {
 			}
 		}
 	}
+	prefix := sha256.New()
 	for i, e := range events {
 		if e.Type == User {
 			u, err := As[UserData](e)
@@ -106,14 +108,17 @@ func Check(events []Event) error {
 			if s.Through != wantThrough {
 				return fmt.Errorf("seal seq %d names prefix through %d, want %d", e.Seq, s.Through, wantThrough)
 			}
-			got, err := PrefixDigest(events[:i])
-			if err != nil {
-				return err
-			}
+			got := fmt.Sprintf("sha256:%x", prefix.Sum(nil))
 			if got != s.SHA256 {
 				return fmt.Errorf("seal divergence at seq %d:\ncomputed: %s\nlogged:   %s", e.Seq, got, s.SHA256)
 			}
 		}
+		line, err := json.Marshal(e)
+		if err != nil {
+			return err
+		}
+		prefix.Write(line)
+		prefix.Write([]byte{'\n'})
 		if e.Type != Request {
 			continue
 		}

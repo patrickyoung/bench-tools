@@ -1523,7 +1523,8 @@ func TestDocsCoverEveryFlag(t *testing.T) {
 	flagLine := regexp.MustCompile(`(?m)^  (-[A-Za-z][A-Za-z-]*)(?: |\n)`)
 	for _, c := range []struct{ command, start, end string }{
 		{"", "flags:\n", "compact only:\n"},
-		{"compact", "compact only:\n", "replay only:\n"},
+		{"compact", "compact only:\n", "init only:\n"},
+		{"init", "init only:\n", "replay only:\n"},
 		{"replay", "replay only:\n", "note only:\n"},
 		{"note", "note only:\n", "append only:\n"},
 		{"append", "append only:\n", "context only:\n"},

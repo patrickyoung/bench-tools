@@ -75,6 +75,9 @@ identify the exact remaining operation and environment it requires.
 
 Compose literal argv, stdin, stdout, stderr, exit status and documented files.
 Reuse Agent's context/loop, Tend's retained attempts and Weave's dependencies.
+Agent automatically records action/check streams through Record; keep its
+selected evidence root and declare required input/output files. Read
+[operate](references/operate.md) for recording and offline replay.
 A2A optionally exposes or invokes the same worker/team command; standard stream
 contracts need configuration, with explicit declarations for returned files.
 Adapters translate application contracts, not provider loops or scheduling.

@@ -211,12 +211,35 @@ external. See [the manual](ask.1) for effort mappings and endpoint details.
 
 ## Inspect the record
 
+Create an explicit session before recording deterministic work, without a
+model call:
+
+```sh
+ask init -f tools.jsonl
+printf '%s\n' '{"exit_code":0,"result":"checked"}' |
+  ask note -q -s checker -f tools.jsonl -k checker.result/v1 -json - -seal
+ask replay -check tools.jsonl
+```
+
+`init` prints the new absolute path, refuses existing files, leaves `current`
+unchanged, and does not read stdin or select a model. The header is sealed
+before the path is printed. Later `note` and `append` calls work normally;
+select a model with `-m` or `ASK_MODEL` when adding a first model turn. A
+structured note is a record, so it does not enter the model's conversation.
+
 ```sh
 ask replay -json review.jsonl         # raw events
 ask replay -check -json review.jsonl  # the same snapshot, verified first
 ask replay -step 4 review.jsonl       # reconstruct one recorded request
 ask note -s reviewer -f review.jsonl 'Human review completed.'
 ```
+
+For a sequence of typed records, `ask note -s recorder -f tools.jsonl -jsonl - -seal`
+reads `{ "kind": "example/v1", "body": {} }` objects, one per line. It holds
+the existing session writer lock and emits `{"seq":N}` on stdout only after
+each record and its prefix seal are durable. Invalid input stops the stream;
+already acknowledged records remain sealed. Notes still never enter the model
+conversation. This is an ordinary stdin filter, with no background service.
 
 `ask note` requires attribution and an existing session; a note is a record,
 not another model message. Programs can atomically append typed JSON notes
@@ -286,6 +309,7 @@ capacity exit 2. Always check the exit status when saving or processing output.
 ```text
 ask [flags] [message ...]
 ask replay [flags] [session]
+ask init -f FILE
 ask compact [flags] [session]
 ask context [flags] [session]
 ask append -s SOURCE [flags] [text]
@@ -299,3 +323,8 @@ ask help
 Contributors should read [AGENTS.md](AGENTS.md) and run `go test ./...`; add
 `go test -race ./...` for log or stream changes. Report security issues using
 [SECURITY.md](SECURITY.md). [MIT license](LICENSE).
+
+`ask compact -json SESSION` emits `{source, summary, session}` with absolute
+paths for controllers retaining all three compaction artifacts. Below an
+`-at` threshold the summary is empty and the session equals the source.
+The default compact output remains the single continuation path.

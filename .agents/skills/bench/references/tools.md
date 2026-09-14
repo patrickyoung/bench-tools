@@ -24,6 +24,7 @@ the chosen tools' READMEs and manuals. `components.json` is the command inventor
 | Gate an exact connector operation | action | tools/action/README.md |
 | Record a person's decision on exact bytes | may | tools/may/README.md |
 | Limit a child's writes and networking | cage | tools/cage/README.md |
+| Capture full process streams and selected files for offline replay | record | tools/record/README.md |
 | Inspect retained Ask archives | trail | tools/trail/README.md |
 | Durable local jobs, waits, attempts, and output | tend | tools/tend/README.md |
 | Select ready tasks from a finite dependency graph | weave | tools/weave/README.md |

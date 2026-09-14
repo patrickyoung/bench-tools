@@ -51,3 +51,8 @@ The repo's `make check-examples` uses local model fixtures to prove process
 composition. `tools/ply/eval/README.md` describes paired harness evaluations.
 Use those for their documented scope. Scripted responses cannot establish
 model judgment, and tests of one model/host do not certify every harness.
+
+For Agent runs, verify the automatic `recordings/` index and referenced Record
+receipts as described in `operate.md`. Declare required task files explicitly.
+Also evaluate output semantics: a complete recording proves retained observed
+bytes and outcomes, not that the answer or business result is correct.

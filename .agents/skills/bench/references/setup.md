@@ -40,7 +40,7 @@ For “set up Bench to build workers,” the useful starting set is:
 ```sh
 cd "$BENCH_SOURCE"
 export BENCH_PREFIX="$HOME/.local"
-python3 scripts/install hire agent ask brief ply cage trail --prefix "$BENCH_PREFIX"
+python3 scripts/install hire agent ask brief ply cage record trail --prefix "$BENCH_PREFIX"
 export PATH="$BENCH_PREFIX/bin:$PATH"
 ```
 
@@ -71,6 +71,7 @@ Binary installation and skill installation do not copy the worker library.
 ```sh
 "$BENCH_PREFIX/bin/agent" version
 "$BENCH_PREFIX/bin/hire" version
+"$BENCH_PREFIX/bin/record" version
 "$BENCH_PREFIX/bin/cage" check
 "$BENCH_PREFIX/bin/hire" verify "$BENCH_SOURCE/examples/support-reply/expert"
 ```
