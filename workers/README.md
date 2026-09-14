@@ -11,6 +11,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 | Worker | Purpose |
 | --- | --- |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
+| [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |
@@ -23,6 +24,11 @@ selected by a team. Status, owner, requirements and approved files live in its
 The [Product Owner design brief](../docs/PRODUCT-OWNER-DESIGN.md) uses SIPOC to
 guide worker development. It is maintained separately from exported definitions
 and job deliverables.
+
+The [Enterprise Architect design brief](../docs/ENTERPRISE-ARCHITECT-DESIGN.md)
+uses the same source-only design method. Its
+[specialization guide](enterprise-architect/expert/SPECIALIZE.md) explains how
+to turn a clean pinned base into a focused architect with Hire.
 
 From the repository root:
 
@@ -47,7 +53,8 @@ files. Review source content as well as filenames before promotion.
 
 Use [teams](../teams/README.md) to assemble these definitions. A team owns a
 roster and wiring; workers are not stored underneath another worker in source.
-Architect, Writer and Present remain outside this library. Historical showcases
+The older large Architect, Writer and Present applications remain outside this
+library; Enterprise Architect is a new thin definition. Historical showcases
 stay under `examples/` and never enter exports.
 
 Only active entries appear in the default list. Experimental entries require

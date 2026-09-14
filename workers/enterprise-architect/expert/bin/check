@@ -1,0 +1,373 @@
+#!/usr/bin/env python3
+"""Validate a bench.enterprise-architect/v1 artifact package without executing it."""
+
+import hashlib
+import json
+import os
+import stat
+import sys
+from pathlib import Path, PurePosixPath
+
+MAX_FILE = 1024 * 1024
+MAX_JSON = 256 * 1024
+MAX_INPUT_FILES = 64
+MAX_INPUT_ENTRIES = 256
+MAX_INPUT_DEPTH = 16
+MAX_OUTPUT_FILES = 32
+MAX_OUTPUT_ENTRIES = 128
+MAX_OUTPUT_DEPTH = 8
+HEX = set("0123456789abcdef")
+
+DELIVERABLES = {
+    "advice": {"report"},
+    "north-star": {"report", "diagram"},
+    "capability-map": {"report", "catalog"},
+    "roadmap": {"report", "diagram"},
+    "guardrails": {"report", "policy", "tests", "ci"},
+    "decision": {"report", "decision-record"},
+    "integration-catalog": {"report", "catalog", "api-contract"},
+    "finops": {"report", "allocation"},
+    "data-ai-governance": {"report", "catalog", "policy"},
+    "portfolio": {"report", "catalog"},
+}
+ROLES = {
+    "report", "diagram", "catalog", "policy", "tests", "ci",
+    "decision-record", "api-contract", "allocation", "supporting",
+}
+LENSES = {
+    "product-capabilities", "business-outcomes", "value-stream-flow",
+    "cloud-edge", "data-ai", "security-design", "finops",
+    "api-ecosystem", "collaborative-governance",
+    "architecture-storytelling",
+}
+
+
+class Invalid(Exception):
+    pass
+
+
+def fail(message):
+    raise Invalid(message)
+
+
+def regular_bytes(path, limit, label):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"missing {label}: {path}")
+    except OSError as exc:
+        fail(f"cannot inspect {label}: {exc}")
+    if stat.S_ISLNK(info.st_mode):
+        fail(f"{label} must not be a symlink: {path}")
+    if not stat.S_ISREG(info.st_mode):
+        fail(f"{label} must be a regular file: {path}")
+    if info.st_size > limit:
+        fail(f"{label} exceeds {limit} bytes: {path}")
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(path, flags)
+        with os.fdopen(fd, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                fail(f"{label} must be a regular file: {path}")
+            data = stream.read(limit + 1)
+    except OSError as exc:
+        fail(f"cannot read {label}: {exc}")
+    if len(data) > limit:
+        fail(f"{label} exceeds {limit} bytes: {path}")
+    return data
+
+
+def text_bytes(path, limit, label):
+    data = regular_bytes(path, limit, label)
+    if not data.strip():
+        fail(f"{label} is empty")
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        fail(f"{label} is not UTF-8")
+    return data
+
+
+def directory(path, label):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"missing {label}: {path}")
+    except OSError as exc:
+        fail(f"cannot inspect {label}: {exc}")
+    if stat.S_ISLNK(info.st_mode):
+        fail(f"{label} must not be a symlink: {path}")
+    if not stat.S_ISDIR(info.st_mode):
+        fail(f"{label} must be a directory: {path}")
+
+
+def collect_tree(root, prefix, max_files, max_entries, max_depth, allow_absent):
+    if allow_absent and not root.exists() and not root.is_symlink():
+        return []
+    directory(root, prefix + " directory")
+    found = []
+    entries = 0
+
+    def visit(folder, depth):
+        nonlocal entries
+        if depth > max_depth:
+            fail(f"{prefix} nesting exceeds {max_depth} levels")
+        try:
+            children = []
+            for child in folder.iterdir():
+                entries += 1
+                if entries > max_entries:
+                    fail(f"{prefix} contain more than {max_entries} entries")
+                children.append(child)
+            children.sort(key=lambda item: item.name)
+        except OSError as exc:
+            fail(f"cannot read {prefix} directory: {exc}")
+        for child in children:
+            try:
+                info = child.lstat()
+            except OSError as exc:
+                fail(f"cannot inspect {prefix} entry: {exc}")
+            if stat.S_ISLNK(info.st_mode):
+                fail(f"{prefix} entry must not be a symlink: {child}")
+            if stat.S_ISDIR(info.st_mode):
+                visit(child, depth + 1)
+            elif stat.S_ISREG(info.st_mode):
+                found.append(child)
+                if len(found) > max_files:
+                    fail(f"{prefix} contain more than {max_files} files")
+            else:
+                fail(f"{prefix} entry must be a regular file or directory: {child}")
+
+    visit(root, 0)
+    return found
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def exact_object(value, keys, label):
+    if not isinstance(value, dict):
+        fail(f"{label} must be an object")
+    if set(value) != set(keys):
+        fail(
+            f"{label} keys invalid; "
+            f"missing={sorted(set(keys) - set(value))}, "
+            f"extra={sorted(set(value) - set(keys))}"
+        )
+
+
+def string(value, label, nonempty=True):
+    if not isinstance(value, str):
+        fail(f"{label} must be a string")
+    if nonempty and not value.strip():
+        fail(f"{label} must be nonempty")
+
+
+def string_list(value, label):
+    if not isinstance(value, list):
+        fail(f"{label} must be an array")
+    for index, item in enumerate(value):
+        string(item, f"{label}[{index}]")
+
+
+def hash_string(value, label):
+    string(value, label)
+    if len(value) != 64 or any(char not in HEX for char in value):
+        fail(f"{label} must be lowercase SHA-256 hex")
+
+
+def safe_path(value, prefix, label):
+    string(value, label)
+    pure = PurePosixPath(value)
+    if (
+        not value.startswith(prefix + "/")
+        or value.endswith("/")
+        or "\\" in value
+        or pure.is_absolute()
+        or any(part in ("", ".", "..") for part in value.split("/"))
+    ):
+        fail(f"{label} is not a canonical {prefix}/ path")
+
+
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            fail(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def invalid_constant(value):
+    fail(f"invalid JSON constant: {value}")
+
+
+def input_records(root):
+    files = collect_tree(
+        root, "inputs", MAX_INPUT_FILES, MAX_INPUT_ENTRIES, MAX_INPUT_DEPTH, True
+    )
+    records = []
+    for path in files:
+        data = regular_bytes(path, MAX_FILE, "input")
+        records.append({
+            "path": "inputs/" + path.relative_to(root).as_posix(),
+            "sha256": digest(data),
+        })
+    return sorted(records, key=lambda item: item["path"])
+
+
+def output_records(root):
+    files = collect_tree(
+        root, "output", MAX_OUTPUT_FILES, MAX_OUTPUT_ENTRIES, MAX_OUTPUT_DEPTH, False
+    )
+    records = []
+    for path in files:
+        rel = "output/" + path.relative_to(root).as_posix()
+        if rel == "output/architecture.json":
+            continue
+        data = text_bytes(path, MAX_FILE, "artifact")
+        records.append({"path": rel, "sha256": digest(data)})
+    return sorted(records, key=lambda item: item["path"])
+
+
+def validate_record_list(document_inputs, expected):
+    if not isinstance(document_inputs, list):
+        fail("inputs must be an array")
+    for index, item in enumerate(document_inputs):
+        label = f"inputs[{index}]"
+        exact_object(item, {"path", "sha256"}, label)
+        safe_path(item["path"], "inputs", label + ".path")
+        hash_string(item["sha256"], label + ".sha256")
+    if document_inputs != expected:
+        fail("inputs list is missing, extra, stale, duplicated, or unsorted")
+
+
+def validate_artifacts(artifacts, expected):
+    if not isinstance(artifacts, list):
+        fail("artifacts must be an array")
+    stripped = []
+    for index, item in enumerate(artifacts):
+        label = f"artifacts[{index}]"
+        exact_object(item, {"path", "sha256", "role"}, label)
+        safe_path(item["path"], "output", label + ".path")
+        if item["path"] == "output/architecture.json":
+            fail("architecture.json must not list itself")
+        hash_string(item["sha256"], label + ".sha256")
+        if not isinstance(item["role"], str) or item["role"] not in ROLES:
+            fail(label + ".role is invalid")
+        stripped.append({"path": item["path"], "sha256": item["sha256"]})
+    if stripped != expected:
+        fail("artifacts list is missing, extra, stale, duplicated, or unsorted")
+    reports = [item for item in artifacts
+               if item["path"] == "output/report.md" and item["role"] == "report"]
+    if len(reports) != 1:
+        fail("output/report.md with role report is required")
+
+
+def validate_rows(value, keys, label):
+    if not isinstance(value, list):
+        fail(f"{label} must be an array")
+    for index, item in enumerate(value):
+        row = f"{label}[{index}]"
+        exact_object(item, set(keys), row)
+        for key in keys:
+            string(item[key], row + "." + key)
+
+
+def validate(root, expert_root):
+    request = text_bytes(root / "request.md", MAX_FILE, "request")
+    profile = text_bytes(expert_root / "PROFILE.md", MAX_FILE, "profile")
+    expected_inputs = input_records(root / "inputs")
+    expected_artifacts = output_records(root / "output")
+    manifest_path = root / "output" / "architecture.json"
+    raw = regular_bytes(manifest_path, MAX_JSON, "architecture JSON")
+    try:
+        document = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=unique_json_object,
+            parse_constant=invalid_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        fail(f"architecture JSON is invalid: {exc}")
+
+    keys = {
+        "schema", "deliverable", "status", "request_sha256", "profile_sha256",
+        "inputs", "artifacts", "summary", "recommendation", "lenses",
+        "outcomes", "decisions", "assumptions", "questions", "next_actions",
+    }
+    exact_object(document, keys, "architecture")
+    if document["schema"] != "bench.enterprise-architect/v1":
+        fail("schema is invalid")
+    mode = document["deliverable"]
+    if not isinstance(mode, str) or mode not in DELIVERABLES:
+        fail("deliverable is invalid")
+    status = document["status"]
+    if status not in ("ready", "needs-input"):
+        fail("status is invalid")
+    for key in ("request_sha256", "profile_sha256"):
+        hash_string(document[key], key)
+    if document["request_sha256"] != digest(request):
+        fail("request hash is stale or invalid")
+    if document["profile_sha256"] != digest(profile):
+        fail("profile hash is stale or invalid")
+    validate_record_list(document["inputs"], expected_inputs)
+    validate_artifacts(document["artifacts"], expected_artifacts)
+
+    string(document["summary"], "summary")
+    string(document["recommendation"], "recommendation")
+    lenses = document["lenses"]
+    if not isinstance(lenses, list) or not lenses:
+        fail("lenses must be a nonempty array")
+    if any(not isinstance(item, str) or item not in LENSES for item in lenses):
+        fail("lenses contains an invalid skill ID")
+    if len(lenses) != len(set(lenses)):
+        fail("lenses must contain unique skill IDs")
+
+    validate_rows(document["outcomes"], ("outcome", "measure", "evidence"), "outcomes")
+    validate_rows(
+        document["decisions"],
+        ("decision", "rationale", "alternatives", "tradeoffs", "review_trigger"),
+        "decisions",
+    )
+    string_list(document["assumptions"], "assumptions")
+    string_list(document["questions"], "questions")
+    if len(document["questions"]) > 3:
+        fail("questions must contain no more than 3 items")
+    validate_rows(document["next_actions"], ("owner", "action", "acceptance"),
+                  "next_actions")
+    if not document["next_actions"]:
+        fail("next_actions must not be empty")
+
+    roles = {item["role"] for item in document["artifacts"]}
+    required = {"report"} if status == "needs-input" else DELIVERABLES[mode]
+    if not required.issubset(roles):
+        fail(f"{status} {mode} is missing required artifact roles")
+    if status == "ready":
+        if not document["outcomes"] or not document["decisions"]:
+            fail("ready requires at least one outcome and decision")
+    else:
+        if not document["questions"]:
+            fail("needs-input requires 1-3 decisive questions")
+
+
+def main():
+    try:
+        expert_root = Path(__file__).resolve().parent.parent
+        directory(expert_root, "expert definition")
+        validate(Path.cwd(), expert_root)
+    except Invalid as exc:
+        print(f"enterprise-architect check: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(
+            f"enterprise-architect check is broken: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+    print("enterprise-architect check: valid bound artifact package")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
