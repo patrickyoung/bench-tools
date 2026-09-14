@@ -15,6 +15,9 @@ choose among investments.
    measure owner, timeframe, and decision horizon.
 2. Record the baseline, target, and source only when supplied. Otherwise mark
    each unknown and ask for the decisive measurement rather than inventing it.
+   Preserve the source's start/end events, cohort and period in every summary.
+   A stage's approval wait is not the end-to-end activation baseline; a service
+   component's availability is not the whole customer journey's availability.
 3. Write a causal hypothesis: intervention, affected behavior/capability,
    expected observable change, assumptions, confounders, and falsifying signal.
 4. Compare alternatives including reuse, defer/do nothing, purchased/SaaS,
