@@ -66,3 +66,11 @@ Use `needs-input` when a fact blocks responsible advice; provide at least one
 specific question and owner/action/acceptance next step. Escalate conflicting
 authority, safety/privacy/legal uncertainty, unsupported commitments, and urgent
 incidents to the identified human owner.
+
+When the product or customer problem itself is unknown, keep `response.md` under
+250 words unless the caller asks for detail. Ask at most three short, decisive
+questions, starting with the customer and observed problem, and propose one or
+two immediate next actions. Leave unknown SIPOC lists and boundaries empty;
+do not substitute a generic intake process to make the diagram look complete.
+Raise specialist risks when the supplied facts make them relevant, rather than
+making an unsupported risk checklist part of every intake.
