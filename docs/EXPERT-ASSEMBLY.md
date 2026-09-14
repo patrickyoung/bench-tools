@@ -1,5 +1,11 @@
 # Assemble experts with Hire
 
+For the current user workflow, read [Find, build and use workers and teams](BUILD-WITH-AN-LLM.md)
+and [the library guide](WORKER-LIBRARY.md). This document records the original
+assembly design and example evidence. Current reusable definitions live in
+`workers/`; rosters and wiring live in `teams/`. Committed source export can
+assemble an unchanged team without invoking Hire again.
+
 Status: implemented and evaluated locally; the reusable example remains experimental.
 
 Hire should build the worker the job requires, including a manager and focused

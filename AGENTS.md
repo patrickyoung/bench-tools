@@ -1,10 +1,15 @@
 # Use Bench; preserve the programs
 
-When asked to adopt Bench, set a harness up, or build a worker using it, start
-with [START-HERE.md](START-HERE.md) and [.agents/skills/bench/SKILL.md](.agents/skills/bench/SKILL.md).
-Follow the current harness's setup reference, use the existing installer, and
-build the user's solution outside this source checkout. Hire builds; Agent runs.
-The guidance below governs changes to the toolkit itself.
+For ordinary Bench work, help the user find, create, assemble, evaluate and
+use reusable workers and teams. Start with [START-HERE.md](START-HERE.md) and
+[the Bench skill](.agents/skills/bench/SKILL.md). Locate the authoritative
+checkout and inspect `workers/` and `teams/` before building. Export clean,
+pinned source; use Hire for missing expertise or adaptations and Agent for
+execution. Use each team's existing entry command and handoff contracts.
+Keep current inputs, results, runtime memories and development evidence outside
+the source library. Follow the relevant host setup reference when needed.
+
+For requested changes to the toolkit itself, use the guidance below.
 
 This repository houses independent Unix tools. Read the applicable tool's
 AGENTS.md and design documents before changing it. The root owns source

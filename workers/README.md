@@ -1,5 +1,9 @@
 # Reusable workers
 
+For finding, building and running definitions, follow the
+[worker/team walkthrough](../docs/BUILD-WITH-AN-LLM.md); harnesses start at
+[START-HERE.md](../START-HERE.md).
+
 Each entry owns one focused definition that can be exported on its own or
 selected by a team. Status, owner, requirements and approved files live in its
 `worker.json`; source changes go through ordinary GitHub pull requests.

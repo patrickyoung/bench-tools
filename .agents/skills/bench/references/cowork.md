@@ -47,3 +47,13 @@ account's custom connector interface and verify a harmless call from Cowork.
 Do not publish a development listener without the required hosting and access
 decisions. Keep remote Agent workspaces and evidence on the execution host and
 return explicit artifact references through the agreed tool contract.
+
+## Use Bench for the user's job
+
+Once the needed setup works, follow [library discovery and assembly](library.md)
+first. Find an existing worker or team, export its reviewed source, then use
+[building](build.md) for missing expertise and [operation](operate.md) to run it.
+Leave the `BENCH-SETUP.md` location, source pin, definition path and repeat command
+where this host's next session can find them. Keep current job content separate.
+The host authors and invokes Bench definitions; Agent and the existing team
+commands retain their execution and context boundaries.

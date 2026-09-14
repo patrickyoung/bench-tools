@@ -1,5 +1,10 @@
 # Choose components by responsibility
 
+Find reusable roles and assemblies through [library](library.md) before
+selecting lower-level components. `scripts/workers list` lists worker metadata;
+`list --teams` lists team metadata. This source utility lives in the checkout,
+not the installed command prefix, and never executes jobs.
+
 Read `docs/TOOLS.md` in the selected Bench checkout for full examples, then only
 the chosen tools' READMEs and manuals. `components.json` is the command inventory;
 `python3 scripts/build --list` prints the available build selections.

@@ -116,6 +116,29 @@ Try the [support-reply expert](../examples/support-reply/README.md) to see the
 whole path. Its citation checker is ordinary code; its writing method is a
 skill. Neither needs to duplicate the action loop.
 
+## Workers are reusable; teams select them; runs contain work
+
+The [worker catalog](../workers/README.md) owns individual definitions. A
+[team](../teams/README.md) owns a roster and execution wiring, referencing those
+workers by ID. Exporting a team at a full Git commit copies the selected source
+into a fresh folder; it does not run a model or copy a previous job.
+
+In a managed page team, Page Planner proposes assignments and existing Bench
+Manage, Tend and Weave admit and execute them. Each assigned worker runs through
+Agent with its own context, workspace and selected inputs. The same Frontend
+or Visual Artist definition can be used alone or in another team. The roster
+chooses membership; the existing team command defines the cooperation.
+
+Each job gets separate current inputs, outputs, mutable memories and evidence.
+Source changes are reviewed through GitHub and selected deliberately for future
+exports. A source lock records the starting version. The [library guide](WORKER-LIBRARY.md)
+explains assembly, ownership, upgrades and retirement.
+
+A worker or team remains an ordinary command. Optional A2A can expose that
+command through the existing authenticated listener, with declared returned
+artifacts. Its protocol task/context IDs do not imply shared model conversations
+or automatic discovery of team members.
+
 ## Instructions, evidence, and authority answer different questions
 
 | Question | The relevant piece | Support-digest example |

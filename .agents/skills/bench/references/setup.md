@@ -44,6 +44,12 @@ python3 scripts/install hire agent ask brief ply cage trail --prefix "$BENCH_PRE
 export PATH="$BENCH_PREFIX/bin:$PATH"
 ```
 
+Before installing, inspect the selected worker or team's metadata and README.
+A page team also uses Tend, Weave, separately installed Bench Manage and the
+export's pinned browser/artist dependencies. Install according to those declared
+requirements; optional art tools depend on the current brief. Setup for an
+individual worker does not imply the entire team is ready.
+
 For a smaller job install only its components. Add `cite` for the support
 starter, `mcp` for service tools, or another component from the tool map.
 The installer preserves unmanaged commands and records its installed files.
@@ -53,8 +59,12 @@ never delete it to make an installation succeed.
 Use absolute executable paths in unattended commands. Persist PATH through
 the host's supported configuration only when needed and authorized; editing
 a shell profile does not change every GUI app, container, or scheduled job.
-Keep the chosen prefix and source revision in `BENCH-SETUP.md` in the user's
-setup/work directory, where the next session can find it.
+Keep the absolute `BENCH_SOURCE`, full selected source revision, chosen prefix,
+actual command paths and private solution/run root in `BENCH-SETUP.md` in the
+user's setup directory. A new session must be able to locate this record;
+record its path in the host's existing project instructions or setup handoff.
+Use it to recover the source catalog after installing this skill elsewhere.
+Binary installation and skill installation do not copy the worker library.
 
 ## Verify without a model first
 
