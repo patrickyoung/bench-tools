@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+"""Validate a bench.product-owner/v1 response package without executing it."""
+
+import hashlib
+import json
+import os
+import stat
+import sys
+from pathlib import Path, PurePosixPath
+
+MAX_FILE = 1024 * 1024
+MAX_JSON = 256 * 1024
+MAX_INPUTS = 64
+MAX_ENTRIES = 256
+MAX_DEPTH = 16
+HEX = set("0123456789abcdef")
+
+
+class Invalid(Exception):
+    pass
+
+
+def fail(message):
+    raise Invalid(message)
+
+
+def regular_bytes(path, limit, label):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"missing {label}: {path}")
+    if stat.S_ISLNK(info.st_mode):
+        fail(f"{label} must not be a symlink: {path}")
+    if not stat.S_ISREG(info.st_mode):
+        fail(f"{label} must be a regular file: {path}")
+    if info.st_size > limit:
+        fail(f"{label} exceeds {limit} bytes: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                fail(f"{label} must be a regular file: {path}")
+            data = stream.read(limit + 1)
+    except OSError as exc:
+        fail(f"cannot read {label}: {exc}")
+    if len(data) > limit:
+        fail(f"{label} exceeds {limit} bytes: {path}")
+    return data
+
+
+def text_bytes(path, limit, label):
+    data = regular_bytes(path, limit, label)
+    if not data.strip():
+        fail(f"{label} is empty")
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        fail(f"{label} is not UTF-8")
+    return data
+
+
+def directory(path, label):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"missing {label}: {path}")
+    if stat.S_ISLNK(info.st_mode):
+        fail(f"{label} must not be a symlink: {path}")
+    if not stat.S_ISDIR(info.st_mode):
+        fail(f"{label} must be a directory: {path}")
+
+
+def collect_inputs(root):
+    if not root.exists() and not root.is_symlink():
+        return []
+    directory(root, "inputs directory")
+    found = []
+    entry_count = 0
+
+    def visit(folder, depth=0):
+        nonlocal entry_count
+        if depth > MAX_DEPTH:
+            fail(f"input nesting exceeds {MAX_DEPTH} levels")
+        try:
+            children = []
+            for child in folder.iterdir():
+                entry_count += 1
+                if entry_count > MAX_ENTRIES:
+                    fail(f"inputs contain more than {MAX_ENTRIES} files/directories")
+                children.append(child)
+        except OSError as exc:
+            fail(f"cannot read inputs directory: {exc}")
+        for child in children:
+            try:
+                info = child.lstat()
+            except OSError as exc:
+                fail(f"cannot inspect input: {exc}")
+            if stat.S_ISLNK(info.st_mode):
+                fail(f"input must not be a symlink: {child}")
+            if stat.S_ISDIR(info.st_mode):
+                visit(child, depth + 1)
+            elif stat.S_ISREG(info.st_mode):
+                found.append(child)
+                if len(found) > MAX_INPUTS:
+                    fail(f"more than {MAX_INPUTS} input files")
+            else:
+                fail(f"input must be a regular file or directory: {child}")
+
+    visit(root)
+    records = []
+    for path in found:
+        data = regular_bytes(path, MAX_FILE, "input")
+        rel = path.relative_to(root).as_posix()
+        records.append({
+            "path": "inputs/" + rel,
+            "sha256": hashlib.sha256(data).hexdigest(),
+        })
+    return sorted(records, key=lambda item: item["path"])
+
+
+def exact_object(value, keys, label):
+    if not isinstance(value, dict):
+        fail(f"{label} must be an object")
+    if set(value) != set(keys):
+        missing = sorted(set(keys) - set(value))
+        extra = sorted(set(value) - set(keys))
+        fail(f"{label} keys invalid; missing={missing}, extra={extra}")
+
+
+def string(value, label, nonempty=True):
+    if not isinstance(value, str):
+        fail(f"{label} must be a string")
+    if nonempty and not value.strip():
+        fail(f"{label} must be nonempty")
+
+
+def string_list(value, label):
+    if not isinstance(value, list):
+        fail(f"{label} must be an array")
+    for index, item in enumerate(value):
+        string(item, f"{label}[{index}]")
+
+
+def hash_string(value, label):
+    string(value, label)
+    if len(value) != 64 or any(char not in HEX for char in value):
+        fail(f"{label} must be lowercase SHA-256 hex")
+
+
+def input_record(value, index):
+    label = f"inputs[{index}]"
+    exact_object(value, {"path", "sha256"}, label)
+    string(value["path"], label + ".path")
+    path = value["path"]
+    pure = PurePosixPath(path)
+    if (
+        not path.startswith("inputs/")
+        or path.endswith("/")
+        or "\\" in path
+        or pure.is_absolute()
+        or any(part in ("", ".", "..") for part in path.split("/"))
+    ):
+        fail(f"{label}.path is not a safe inputs/ path")
+    hash_string(value["sha256"], label + ".sha256")
+
+
+def next_actions(value):
+    if not isinstance(value, list):
+        fail("next_actions must be an array")
+    for index, action in enumerate(value):
+        label = f"next_actions[{index}]"
+        exact_object(action, {"owner", "action", "acceptance"}, label)
+        for key in ("owner", "action", "acceptance"):
+            string(action[key], f"{label}.{key}")
+
+
+def validate_intake(details, ready):
+    exact_object(
+        details,
+        {"sipoc", "constraints", "measures", "boundaries", "triage"},
+        "details",
+    )
+    parts = {"suppliers", "inputs", "process", "outputs", "customers"}
+    exact_object(details["sipoc"], parts, "details.sipoc")
+    for part in sorted(parts):
+        value = details["sipoc"][part]
+        string_list(value, f"details.sipoc.{part}")
+        if ready and not value:
+            fail(f"ready intake requires details.sipoc.{part}")
+    for key in ("constraints", "measures"):
+        value = details[key]
+        string_list(value, f"details.{key}")
+        if ready and not value:
+            fail(f"ready intake requires details.{key}")
+    exact_object(details["boundaries"], {"start", "end"}, "details.boundaries")
+    for key in ("start", "end"):
+        string(
+            details["boundaries"][key],
+            f"details.boundaries.{key}",
+            nonempty=ready,
+        )
+    triage = details["triage"]
+    if not isinstance(triage, list):
+        fail("details.triage must be an array")
+    if ready and not triage:
+        fail("ready intake requires a triage decision")
+    for index, item in enumerate(triage):
+        label = f"details.triage[{index}]"
+        exact_object(item, {"demand", "decision", "rationale"}, label)
+        string(item["demand"], label + ".demand")
+        string(item["rationale"], label + ".rationale")
+        if item["decision"] not in ("discover", "plan", "defer", "reject"):
+            fail(label + ".decision is invalid")
+
+
+def validate_planning(details, ready):
+    exact_object(details, {"goal", "backlog", "forecast"}, "details")
+    string(details["goal"], "details.goal", nonempty=ready)
+    backlog = details["backlog"]
+    if not isinstance(backlog, list):
+        fail("details.backlog must be an array")
+    if ready and not backlog:
+        fail("ready planning requires backlog items")
+    for index, item in enumerate(backlog):
+        label = f"details.backlog[{index}]"
+        exact_object(item, {"item", "outcome", "rationale", "acceptance"}, label)
+        for key in ("item", "outcome", "rationale"):
+            string(item[key], f"{label}.{key}")
+        string_list(item["acceptance"], label + ".acceptance")
+        if not item["acceptance"]:
+            fail(label + ".acceptance must not be empty")
+    exact_object(details["forecast"], {"basis", "uncertainty"}, "details.forecast")
+    string(details["forecast"]["basis"], "details.forecast.basis", nonempty=ready)
+    string(
+        details["forecast"]["uncertainty"],
+        "details.forecast.uncertainty",
+        nonempty=ready,
+    )
+
+
+def validate_review(details, ready):
+    exact_object(details, {"decision", "findings"}, "details")
+    if details["decision"] not in ("proceed", "revise", "hold"):
+        fail("details.decision is invalid")
+    findings = details["findings"]
+    if not isinstance(findings, list):
+        fail("details.findings must be an array")
+    if ready and not findings:
+        fail("ready review requires findings")
+    for index, item in enumerate(findings):
+        label = f"details.findings[{index}]"
+        exact_object(item, {"finding", "evidence", "action"}, label)
+        for key in ("finding", "evidence", "action"):
+            string(item[key], f"{label}.{key}")
+
+
+def validate_interview(details, ready):
+    exact_object(details, {"answers"}, "details")
+    answers = details["answers"]
+    if not isinstance(answers, list):
+        fail("details.answers must be an array")
+    if ready and not answers:
+        fail("ready interview requires answers")
+    for index, item in enumerate(answers):
+        label = f"details.answers[{index}]"
+        exact_object(item, {"question", "answer", "experience_basis"}, label)
+        string(item["question"], label + ".question")
+        string(item["answer"], label + ".answer")
+        if item["experience_basis"] not in ("hypothetical", "supplied-evidence"):
+            fail(label + ".experience_basis is invalid")
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            fail(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def invalid_constant(value):
+    fail(f"invalid JSON constant: {value}")
+
+
+def validate(root):
+    request = text_bytes(root / "request.md", MAX_FILE, "request")
+    expected_inputs = collect_inputs(root / "inputs")
+
+    output = root / "output"
+    directory(output, "output directory")
+    try:
+        entries = sorted(item.name for item in output.iterdir())
+    except OSError as exc:
+        fail(f"cannot read output directory: {exc}")
+    if entries != ["decision.json", "response.md"]:
+        fail("output must contain exactly decision.json and response.md")
+
+    response = text_bytes(output / "response.md", MAX_FILE, "response")
+    raw_json = regular_bytes(output / "decision.json", MAX_JSON, "decision JSON")
+    try:
+        document = json.loads(raw_json.decode("utf-8"), object_pairs_hook=unique_object,
+                              parse_constant=invalid_constant)
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        fail(f"decision JSON is invalid: {exc}")
+
+    core = {
+        "schema", "mode", "status", "request_sha256", "inputs",
+        "response_sha256", "summary", "recommendation", "assumptions",
+        "questions", "next_actions", "details",
+    }
+    exact_object(document, core, "decision")
+    if document["schema"] != "bench.product-owner/v1":
+        fail("schema is invalid")
+    mode = document["mode"]
+    if mode not in ("intake", "planning", "review", "interview"):
+        fail("mode is invalid")
+    status = document["status"]
+    if status not in ("ready", "needs-input"):
+        fail("status is invalid")
+    hash_string(document["request_sha256"], "request_sha256")
+    hash_string(document["response_sha256"], "response_sha256")
+    if document["request_sha256"] != hashlib.sha256(request).hexdigest():
+        fail("request hash is stale or invalid")
+    if document["response_sha256"] != hashlib.sha256(response).hexdigest():
+        fail("response hash is stale or invalid")
+
+    supplied_inputs = document["inputs"]
+    if not isinstance(supplied_inputs, list):
+        fail("inputs must be an array")
+    for index, record in enumerate(supplied_inputs):
+        input_record(record, index)
+    if supplied_inputs != expected_inputs:
+        fail("inputs list is missing, extra, stale, duplicated, or unsorted")
+
+    string(document["summary"], "summary")
+    string(document["recommendation"], "recommendation")
+    string_list(document["assumptions"], "assumptions")
+    string_list(document["questions"], "questions")
+    next_actions(document["next_actions"])
+    if status == "needs-input":
+        if not document["questions"]:
+            fail("needs-input requires a blocking question")
+        if not document["next_actions"]:
+            fail("needs-input requires a next action")
+
+    ready = status == "ready"
+    validators = {
+        "intake": validate_intake,
+        "planning": validate_planning,
+        "review": validate_review,
+        "interview": validate_interview,
+    }
+    validators[mode](document["details"], ready)
+
+
+def main():
+    try:
+        validate(Path.cwd())
+    except Invalid as exc:
+        print(f"product-owner check: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        print(f"product-owner check is broken: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    print("product-owner check: valid bound response package")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
