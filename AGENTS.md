@@ -9,6 +9,11 @@ execution. Use each team's existing entry command and handoff contracts.
 Keep current inputs, results, runtime memories and development evidence outside
 the source library. Follow the relevant host setup reference when needed.
 
+For teaching, corrections, learning from a run or worker-specific memory,
+follow the shared [teaching procedure](.agents/skills/bench/references/learn.md).
+Use Hire for supplied knowledge, Hone for checked recoveries, and explicitly
+selected private context for company facts. Verify retention in fresh work.
+
 For requested changes to the toolkit itself, use the guidance below.
 
 This repository houses independent Unix tools. Read the applicable tool's

@@ -223,6 +223,8 @@ if not path.exists() or path.read_bytes() != b"apple\\nbanana\\npear\\n":
     require("rejected" in verdicts and "accepted" in verdicts, "Agent did not retain Ply's verified rejection and acceptance")
     print("ok Agent -> Brief -> Ply -> Ask: private identity, memory, local skill, piped evidence, real artifact, rejected candidate repaired, replay, zero-model re-entry", flush=True)
 
+    check_learning(bins, work, agent_env, home, sessions[0])
+
     child = home / "agents/reviewer"
     invoke([bins / "hire", "new", "-home", child, "Review one result"], cwd=work, env=agent_env)
     (child / "AGENTS.md").write_text("# Instructions\nCHILD_PRIVATE_IDENTITY. Review only the explicitly supplied result.\n")
@@ -351,6 +353,89 @@ sys.exit(0 if output.exists() and output.read_bytes() == pathlib.Path("input.txt
             "Portable runner silently converted the definition into a persistent home")
     boundary = "default Cage rejects definition writes" if native_cage else "explicit host actions"
     print(f"ok native Agent portability: one unchanged definition, two workspaces, {boundary}, explicit/private goals, stdin evidence, checked artifacts, separate replay evidence, zero-model re-entry", flush=True)
+
+
+def check_learning(bins, work, env, home, session):
+    """Actual recovered Ask record -> reviewed skill -> fresh Agent context."""
+    root = work / "learning"
+    root.mkdir()
+    expert = root / "authoring/expert"
+    (expert / "bin").mkdir(parents=True)
+    shutil.copytree(home / "skills", expert / "skills")
+    (expert / "AGENTS.md").write_text("Use the sort-records skill to sort the supplied input.\n")
+    (expert / "README.md").write_text("Sort supplied records into sorted.txt with the sort-records skill.\n")
+    shutil.copy2(home / "bin/check", expert / "bin/check")
+    baseline = (expert / "skills/sort-records/SKILL.md").read_bytes()
+    lesson = "When sorting supplied records, compare exact sorted and deduplicated output bytes."
+    learn_env = dict(env, HIRE_AGENT=str(bins / "agent"), AGENT_HONE=str(bins / "hone"),
+                     ASK=str(bins / "ask"), BRIEF=str(bins / "brief"),
+                     BRIEF_PATH=str(expert / "skills"), HONE_DIR=str(root / "wording"))
+    with model_fixture(learn_env, lambda _: "- " + lesson) as (fixture_env, calls):
+        invoke([bins / "hone", "-why", session], cwd=root, env=fixture_env)
+        require(not calls, "Hone inspection made a model call")
+        proposal = root / "lesson.json"
+        invoke([bins / "hone", "-into", "sort-records", "-m", "openai/fixture",
+                "-prepare", proposal, session], cwd=root, env=fixture_env)
+        require((expert / "skills/sort-records/SKILL.md").read_bytes() == baseline,
+                "Preparing a lesson changed the portable definition")
+        prepared = json.loads(proposal.read_text())
+        require(prepared["target"] == str(expert / "skills/sort-records/SKILL.md"),
+                "Proposal targeted a different skill root")
+        count = len(calls)
+        invoke([bins / "hone", "show", proposal], cwd=root, env=fixture_env)
+        target = expert / "skills/sort-records/SKILL.md"
+        target.write_bytes(baseline + b"\nConcurrent author edit.\n")
+        invoke([bins / "hone", "admit", proposal], cwd=root, env=fixture_env, code=2)
+        require(target.read_bytes().endswith(b"Concurrent author edit.\n"), "Stale admission overwrote an edit")
+        target.write_bytes(baseline)
+        invoke([bins / "hone", "admit", proposal], cwd=root, env=fixture_env)
+        require(target.read_bytes() == prepared["document"].encode(), "Admission changed reviewed bytes")
+        invoke([bins / "hone", "admit", proposal], cwd=root, env=fixture_env, code=1)
+        require(len(calls) == count, "Inspection/admission/duplicate called a model")
+
+        # Hire's retained home wrapper must exercise the same real Hone protocol.
+        invoke([bins / "hire", "learn", "-why", "-into", "sort-records", home, session], cwd=root, env=fixture_env)
+        invoke([bins / "hire", "learn", "-into", "sort-records", "-m", "openai/fixture",
+                "-prepare", "lesson.json", home, session], cwd=root, env=fixture_env)
+        require((home / "skills/sort-records/SKILL.md").read_bytes() == baseline, "Hire prepare changed skill")
+        home_proposal = json.loads((home / ".agent/learning/proposals/lesson.json").read_text())
+        count = len(calls)
+        invoke([bins / "hire", "learn", "-show", "lesson.json", home], cwd=root, env=fixture_env)
+        invoke([bins / "hire", "learn", "-admit", "lesson.json", home], cwd=root, env=fixture_env)
+        require((home / "skills/sort-records/SKILL.md").read_text() == home_proposal["document"],
+                "Hire did not admit the exact reviewed skill")
+        require(len(calls) == count, "Hire show/admit called a model")
+
+        ordinary = root / "ordinary.jsonl"
+        invoke([bins / "ask", "-q", "-f", ordinary, "-m", "openai/fixture", "Explain sorting."], cwd=root, env=fixture_env)
+        count = len(calls)
+        invoke([bins / "hone", "-why", ordinary], cwd=root, env=fixture_env, code=1)
+        invoke([bins / "hone", "-into", "sort-records", "-prepare", root / "no-lesson.json", ordinary],
+               cwd=root, env=fixture_env, code=1)
+        require(not (root / "no-lesson.json").exists() and len(calls) == count,
+                "An ordinary conversation became a learning proposal or called a model")
+
+    invoke([bins / "brief", "lint", "-strict", expert / "skills"], cwd=root, env=learn_env)
+    invoke([bins / "hire", "verify", expert], cwd=root, env=learn_env)
+    fresh = root / "fresh work"
+    fresh.mkdir()
+    (fresh / "input.txt").write_text("pear\napple\npear\nbanana\n")
+    turns = []
+
+    def respond(request):
+        if "You are choosing which skill" in request.get("instructions", ""):
+            return "sort-records"
+        turns.append(request)
+        return "```ply\nsort -u input.txt > sorted.txt\n```" if len(turns) == 1 else "Sorted."
+
+    with model_fixture(learn_env, respond) as (fixture_env, _):
+        invoke([bins / "agent", "run", "-no-cage", "-C", fresh, "-evidence", root / "fresh evidence",
+                "-m", "openai/fixture", expert, "--", "Sort the new input."], cwd=root, env=fixture_env)
+    require(lesson in turns[0].get("instructions", ""), "Fresh Agent context omitted the admitted lesson")
+    require((fresh / "sorted.txt").read_text() == "apple\nbanana\npear\n", "Fresh run output was wrong")
+    require(target.read_bytes() == prepared["document"].encode(), "Fresh run rewrote taught source")
+    require(not (expert / ".agent").exists() and not (expert / "work").exists(), "Learning polluted portable source")
+    print("ok learning: real Hone and Hire prepare/show/admit; exact bytes, stale/duplicate and no-recovery gates; fresh Agent loads the lesson; fixtures prove composition, not judgment", flush=True)
 
 
 def check_agent_lifecycle(bins, work, env, agent):
@@ -632,7 +717,7 @@ def main():
     parser.add_argument("--native-cage", action="store_true", help="prove portable Agent's default boundary on a supported native Cage backend")
     args = parser.parse_args()
     bins = args.bin_dir.resolve()
-    required = ("hire", "agent", "ask", "brief", "ply", "cage", "trail", "mcp", "mcpbox") if args.agent_only else REQUIRED
+    required = ("hire", "agent", "ask", "brief", "ply", "cage", "trail", "hone", "mcp", "mcpbox") if args.agent_only else REQUIRED
     for name in required:
         if name == "agent" and args.agent:
             require(args.agent.is_file() and os.access(args.agent, os.X_OK), f"missing executable: {args.agent}")

@@ -171,6 +171,10 @@ def main():
         run([bins / "brief", "lint", "-strict", skills / "bench"], work, env)
         require((skills / "bench/SKILL.md").read_bytes() == (ROOT / ".agents/skills/bench/SKILL.md").read_bytes(),
                 "packaging changed the canonical skill")
+        expected = {p.relative_to(ROOT / ".agents/skills"): p.read_bytes()
+                    for p in (ROOT / ".agents/skills").rglob("*") if p.is_file()}
+        actual = {p.relative_to(skills): p.read_bytes() for p in skills.rglob("*") if p.is_file()}
+        require(actual == expected, "relocated plugin lost or changed supporting skill files")
         print("ok skill: standalone strict lint and relocated plugin ZIP with complete references", flush=True)
 
         server = [bins / "mcpserve", ROOT / "tools/mcp/examples/filter-server/manifest.json", "--",

@@ -248,3 +248,13 @@ remote endpoint URLs. Local use remains the same command with no listener.
 For host tool integration, use [MCP](../tools/mcp/README.md). Neither transport
 replaces Hire, Agent or the team's controller. Read the selected command's
 manual for exact status, authentication and stream behavior.
+
+## Teach an existing worker
+
+Ask your harness: “Teach our architect these platform standards, evaluate it
+on fresh cases, and keep company material private.” The shared
+[teaching procedure](../.agents/skills/bench/references/learn.md) routes supplied
+knowledge through Hire, checked recoveries through Hone, and current company
+facts into selected private context. The result is an inspected file change
+with evaluation evidence and a reusable version, not merely an acknowledgment
+in the host conversation. Existing pinned exports retain their original version.

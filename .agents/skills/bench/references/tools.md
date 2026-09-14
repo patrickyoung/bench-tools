@@ -36,5 +36,9 @@ Cite for a cited draft; Hire → expert folder → Agent for reusable work; Tend
 Agent for retained attempts; mcpserve → dispatcher → ordinary program for a
 host tool; a2aserve → Tend → Agent for a remote expert.
 
+For worker teaching, use [the learning procedure](learn.md): Hire amends supplied
+knowledge; Hone prepares a lesson from a checked recovery; Brief and a fresh
+Agent run verify that the changed knowledge is available and useful.
+
 Install companion commands explicitly. Dependency adjacency in the monorepo
 does not install credentials, grant access, or require loading every tool.

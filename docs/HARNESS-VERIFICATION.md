@@ -74,6 +74,60 @@ separate workspaces, and evidence through actual Bench commands with local
 model fixtures. A requested model-backed solution must additionally follow the
 skill's [evaluation procedure](../.agents/skills/bench/references/evaluate.md).
 
+## Teaching checks on 2026-09-14
+
+The shared skill now routes teaching, checked-recovery learning and private
+worker context through [one procedure](../.agents/skills/bench/references/learn.md).
+The Claude plugin and Pi package are version **0.2.0**. Relocated package bytes,
+strict lint and fresh native discovery passed again for Claude Code 2.1.261,
+Codex CLI 0.153.4 and Pi 0.81.1 in disposable homes.
+
+Live **Codex CLI** cases used `gpt-5.6-sol` with medium effort and the existing
+Ask connection for bounded Hire/Agent runs. The observed results were:
+
+- Codex selected Hire to teach a private copy of the Enterprise Architect a
+  fictional platform standard. The original pin and checker stayed unchanged;
+  all 17 base contract tests passed. Fresh model cases loaded the new skill,
+  withheld adoption without the required proof, and exempted an existing
+  steady-state platform from the new-product gates. Outputs were reviewed
+  beyond the structural check.
+- Codex invoked Hone on a replay-verified synthetic recovery. Hone's wording
+  model returned no useful lesson; Codex preserved that result and identified
+  subsequent method corrections as separate Hire authoring. Fresh sorting
+  cases loaded the final amended skill, used the definition's checker and
+  passed in separate contexts. The two Hire authoring attempts ended nonzero;
+  their retained file changes were independently checked before final Agent
+  evaluation. They are not counted as successful builds. This is also not a
+  successful live Hone admission.
+- Given an ordinary Ask conversation with no checked recovery, Codex ran
+  `hone -why`, observed exit 1, and stopped without a proposal or worker change.
+  Independent file comparison confirmed preservation. No Hone wording call
+  occurred; the Codex harness itself used a model.
+
+The public-command integration suite separately exercises **successful**
+Hone and Hire prepare/show/admit operations against actual Ask/Ply records and
+a loopback response fixture. It checks exact admitted bytes, no model call on
+inspection/admission, stale and duplicate refusal, no-recovery handling, and
+the admitted lesson appearing in a fresh Agent context. These deterministic
+fixtures establish command composition, not learning quality. They run in the
+existing integration gate; the 112 source-coordination tests also passed.
+
+The live attempts exposed and retained failures: the first Codex shell blocked
+network access; enabling network exposed macOS's refusal of nested Cage;
+initial reference-path and Ask-wrapper selection were ambiguous; and the
+harness repaired case-input, checker-path and shell-test mistakes before final
+evaluation. The shared skill now distinguishes skill-relative links from
+checkout-relative paths and preserves the existing Ask wrapper across Agent's
+`AGENT_ASK` and Hone's `ASK` selectors. Final executing cases ran with Codex on
+the caller-selected host and **default Cage still enabled for Bench actions**;
+the native 13-check Cage proof passed. No personal sandbox setting was changed.
+
+Claude Code's live attempt stopped at expired OAuth before model execution.
+Its package/discovery checks passed, but live teaching remains unverified in
+Claude Code, Cowork, OpenClaw and Pi. The visible synthetic Codex cases are
+regression evidence, not a hidden benchmark or a guarantee for every harness.
+Teaching cases, private copies, outputs and traces stay outside reusable source.
+
 ## Behavioral evaluation cases
 
 Use these cases when evaluating a harness with the skill. They are acceptance
@@ -89,6 +143,14 @@ scenarios for a model run, **not reported results of the offline checks**.
 | “Retire this worker” | Change lifecycle metadata with a reason, identify affected rosters, preserve old pins and exclude run content from the PR |
 | “Expose this worker through A2A” | Use existing a2aserve around its ordinary command, select explicit authentication and artifacts, and add translation only if the contract needs it |
 | “Build a support reply worker” | Inspect and adapt the existing expert; use Hire/Agent as needed; evaluate correct and deliberately wrong replies in separate workspaces |
+| “Teach our architect these standards” | Load the teaching procedure; use Hire on a clean authoring copy; retain provenance and scope; test changed and unaffected behavior in fresh Agent cases |
+| “Learn from this repaired Bench run” with portable source | Inspect the real Ask record with Hone; prepare/show/admit into a selected authoring skill; evaluate retention without adding runtime directories to the export |
+| The same recovery in an existing recurring home | Use Hire's home-scoped learn commands and exact proposal review |
+| “Learn from this successful chat” without checked recovery | Report that Hone has no qualifying evidence; do not manufacture a failed run, receipts or a lesson; use authoring only if knowledge teaching is actually requested |
+| “Remember our identity platform is X for this worker” | Retain dated private context and explicitly supply it to future jobs; preserve the shared worker and unrelated organizations' context |
+| “Learn this” without a worker or knowledge destination | Resolve from the conversation, or ask one decisive question; do not choose a random worker or silently use harness memory |
+| A prepared lesson has stale destination bytes | Preserve the edit and proposal; diagnose or prepare anew instead of changing hashes or forcing admission |
+| The learned skill is never loaded on the next run | Treat retention as unverified; correct the worker's discovery/routing and evaluate a fresh case |
 | “Convert this fixed data format” | Use ordinary deterministic tools when sufficient; do not add an agent loop merely because Bench is installed |
 | Existing skill or command collides | Inspect and preserve local changes; select an explicit nonconflicting installation instead of erasing files |
 | Generated checker accepts an invalid answer | Reject that evaluation, fix the checker or acceptance design, and retain the failed case before accepting the worker |

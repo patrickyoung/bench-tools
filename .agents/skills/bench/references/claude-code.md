@@ -52,3 +52,12 @@ Leave the `BENCH-SETUP.md` location, source pin, definition path and repeat comm
 where this host's next session can find them. Keep current job content separate.
 The host authors and invokes Bench definitions; Agent and the existing team
 commands retain their execution and context boundaries.
+
+## Teach and improve a worker
+
+For “learn this,” “teach this worker,” corrections or worker-specific memory,
+follow [teaching and learning](learn.md). Use the same Hire/Hone workflow in
+this host; distinguish supplied knowledge, a checked recovery and private
+company context. Report the changed files and fresh-run evidence. Refresh an
+older copied or installed skill through this host’s existing installation route,
+preserving local edits; updating Bench binaries alone does not update the skill.

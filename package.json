@@ -1,8 +1,12 @@
 {
   "name": "bench-tools-skills",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Bench's portable skill for building with its independent Unix commands.",
+  "description": "Build, teach, evaluate and run reusable Bench workers with the existing independent Unix commands.",
   "license": "MIT",
-  "pi": {"skills": ["./.agents/skills"]}
+  "pi": {
+    "skills": [
+      "./.agents/skills"
+    ]
+  }
 }
