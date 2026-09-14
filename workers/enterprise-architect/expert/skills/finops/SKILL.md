@@ -18,6 +18,9 @@ economics, commitments, scaling, licenses, egress, or exit cost.
 3. Separate direct, shared, and unallocated cost. Document each allocation rule,
    driver, source, denominator, residual, owner, confidence, and review cadence.
    Do not hide unallocated cost to make totals appear complete.
+   Reconcile every total to its named service/account scope. Distinguish a
+   subtotal from the enterprise total and explain excluded services or possible
+   overlap rather than silently omitting or double-counting their costs.
 4. Select business-relevant units such as transaction, active tenant, order, or
    model inference. Define numerator, denominator, quality/SLO context, period,
    and exclusions. Units support decisions only when volume and service level
