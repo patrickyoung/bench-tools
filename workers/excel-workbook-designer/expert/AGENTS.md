@@ -104,3 +104,26 @@ source text IDs exactly. Test numeric blank versus zero without scalar
 equality-to-empty-string missingness checks. Scale mutations to meaningful
 workflow coverage, not volume. This feedback adds no features, test claims or
 private case facts.
+
+### Current warnings and readable evidence — host feedback 2026-09-15
+This is host semantic/visual feedback, not a Hone lesson or a claim of completed
+evaluation. Operational warnings must reflect CURRENT state and the selected
+population, derived from the same input/build facts as results, not static
+claims about originally missing effort or conflicts. When inputs have editable
+missing/conflicting values, register at least one material warning as a formula
+metric. Mutation assertions must check warning text as well as numeric counts:
+clear the relevant issue, change the selected population, and verify that an
+unrelated unresolved prerequisite remains visible where applicable.
+
+A genuine historical source/import note may remain static only when labeled
+“At import” or “Original source” and separated from current-action warnings.
+A stable definition such as “known hours exclude unknown effort” does not assert
+current missingness; keep it neutral, without an always-present alarming banner.
+
+Use sensible per-column display formats: integer counts without .0, hours with
+one decimal when needed, and explicit consistent dates, preserving required
+precision. Prioritize a readable main view; retain raw source fields and necessary
+provenance on evidence/detail tabs. Use trusted checker reports of exported
+native-feature counts and chart cell bindings for routine validation; do not
+dump full OOXML or guess internal ZIP paths. Investigate defects using only
+targeted evidence.
