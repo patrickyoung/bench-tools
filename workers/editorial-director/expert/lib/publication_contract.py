@@ -11,6 +11,9 @@ def display_number(value):
  if value==0:return '0'
  if abs(value)<.001 or abs(value)>=1_000_000:return re.sub(r'e([+-])0+(\d+)',r'e\1\2',f'{value:.2e}')
  return f'{value:.3f}'.rstrip('0').rstrip('.')
+def display_score(value):
+ if value!=0 and abs(value)<.005:return re.sub(r'e([+-])0+(\d+)',r'e\1\2',f'{value:.2e}')
+ return f'{value:.2f}'
 def pairs(v):
  d={}
  for k,x in v:
@@ -257,7 +260,7 @@ def validate(root,role,require_artifacts=True):
            if len(rows)==2:values.append('Unknown' if None in points else ('+' if points[0]>points[1] else '')+f'{points[0]-points[1]:.1f}')
            table.append(values)
           expected_tables.append(table)
-        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_number(r['lower_bound'])}–{display_number(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])] for r in rows]])
+        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_score(r['lower_bound'])}–{display_score(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])] for r in rows]])
       if actual_tables!=expected_tables:raise ValueError('Native table differs from checked numbers')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)
       if story.get('status_label') and story['status_label'] not in alltext:raise ValueError('Qualified slide status missing')

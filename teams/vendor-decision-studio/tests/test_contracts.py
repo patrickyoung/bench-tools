@@ -2,7 +2,7 @@
 import copy,json,sys,tempfile,unittest,subprocess
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'expert/tools'))
-from publication_contract import bindings,validate,read,safe_file,display_number
+from publication_contract import bindings,validate,read,safe_file,display_number,display_score
 from publication_io import check_visual
 def write(p,v):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(v))
 class PublicationTests(unittest.TestCase):
@@ -28,6 +28,9 @@ class PublicationTests(unittest.TestCase):
   for value in [-0.000001234,0.000001234]:
    shown=float(display_number(value));self.assertGreater(shown/value,0);self.assertLess(abs(shown-value)/abs(value),.005)
   self.assertEqual(float(display_number(0.0)),0.0)
+  self.assertEqual(display_score(41),'41.00')
+  self.assertEqual(display_score(0),'0.00')
+  self.assertEqual(float(display_score(.00001)),.00001)
  def test_rebuild_does_not_overwrite_existing_run_status(self):
   status=self.root/'status.json';status.write_text('original retained status')
   command=Path(__file__).resolve().parents[1]/'expert/tools/rebuild_publication.py'

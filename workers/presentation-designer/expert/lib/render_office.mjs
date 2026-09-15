@@ -8,6 +8,7 @@ const src=await read('inputs/source.json'),story=(await read('inputs/story.json'
 const out=path.join(root,'output'),pre=path.join(root,'previews',role==='information-designer'?'workbook':'slides');await fs.mkdir(pre,{recursive:true});
 const safe=v=>typeof v==='string'&&/^[=+@-]/.test(v)?"'"+v:v;
 const displayNumber=v=>v===0?'0':Math.abs(v)<.001||Math.abs(v)>=1e6?v.toExponential(2):String(Number(v.toFixed(3)));
+const displayScore=v=>v!==0&&Math.abs(v)<.005?v.toExponential(2):v.toFixed(2);
 const cell=(n)=>{let a='';for(let i=n+1;i>0;i=Math.floor((i-1)/26))a=String.fromCharCode(65+(i-1)%26)+a;return a;};
 const chunks=text=>{let parts=[],start=0;while(start<text.length){let end=Math.min(start+200,text.length);if(end<text.length){const space=text.lastIndexOf(' ',end);if(space>start+100)end=space+1;}parts.push(text.slice(start,end));start=end;}if(parts.join('')!==text)throw Error('Evidence text loss');return parts;};
 if(role==='information-designer'){
@@ -94,7 +95,12 @@ if(role==='information-designer'){
  for(let i=0;i<slides.length;i++){
   const s=slides[i],sl=p.slides.add();sl.background.fill=i===0?t.ink:t.paper;
   if(s.kind==='cover'){
-   text(sl,s.title,76,70,1120,205,54,'#FFFFFF',true);text(sl,s.lead,80,300,1060,110,30,'#FFFFFF');text(sl,s.body.join('\n'),80,435,1080,180,24,'#FFFFFF');text(sl,story.status_label||`Decision status: ${src.decision.status}`,80,640,1080,60,20,'#DDE8EC');
+   const height=(value,width,size)=>Math.max(1,Math.ceil(value.length/(width/(size*.53))))*size*1.18+8;
+   const titleH=height(s.title,1120,48),leadH=height(s.lead,1080,30);let y=64;
+   text(sl,s.title,76,y,1120,titleH,48,'#FFFFFF',true);y+=titleH+22;
+   text(sl,s.lead,80,y,1080,leadH,30,'#FFFFFF');y+=leadH+22;
+   for(const block of s.body){const h=height(block,1080,28);if(y+h>620)throw Error('Cover copy requires editorial shortening; essential conditions must remain at least 28 pt');text(sl,block,80,y,1080,h,28,'#FFFFFF');y+=h+16;}
+   text(sl,story.status_label||`Decision status: ${src.decision.status}`,80,650,1080,48,20,'#DDE8EC');
   }else{
    text(sl,s.title,70,45,1130,95,44,t.ink,true);text(sl,s.lead,74,157,1120,86,27,t.accent,true);
    if(s.kind==='score_chart'){
@@ -118,7 +124,7 @@ if(role==='information-designer'){
      const delta=s.rows.length===2;size=24;vals=[['Criterion','Weight (%)',...s.rows.map(r=>r.name+' score / points'),...(delta?['First minus second (points)']:[])]];
      for(const criterion of s.criteria){const cells=s.rows.map(r=>m.cells.find(c=>c.candidate_id===r.candidate_id&&c.criterion_id===criterion.id));const points=cells.map(c=>c.score===null?null:c.score*criterion.weight/5);vals.push([criterion.name,displayNumber(criterion.weight),...cells.map((c,i)=>c.score===null?'Unknown':`${displayNumber(c.score)}/5 · ${points[i].toFixed(1)} pts`),...(delta?[points.includes(null)?'Unknown':(points[0]-points[1]>0?'+':'')+(points[0]-points[1]).toFixed(1)]:[])]);}
      widths=[285,105,...s.rows.map(()=>delta?240:735/s.rows.length),...(delta?[255]:[])];
-    }else{vals=[['Option','Fit bounds /100','Coverage','Gates'],...s.rows.map(r=>[r.name,`${displayNumber(r.lower_bound)}–${displayNumber(r.upper_bound)}`,`${displayNumber(r.coverage_percent)}%`,story.eligibility_labels?.[r.candidate_id]||r.eligibility])];widths=[345,280,220,280];}
+    }else{vals=[['Option','Fit bounds /100','Coverage','Gates'],...s.rows.map(r=>[r.name,`${displayScore(r.lower_bound)}–${displayScore(r.upper_bound)}`,`${displayNumber(r.coverage_percent)}%`,story.eligibility_labels?.[r.candidate_id]||r.eligibility])];widths=[345,280,220,280];}
     const tab=sl.tables.add({rows:vals.length,columns:vals[0].length,left:76,top:275,width:1125,height:Math.min(305,70*vals.length),values:vals,columnWidths:widths});
     for(let r=0;r<vals.length;r++)for(let c=0;c<vals[0].length;c++){const z=tab.getCell(r,c);z.fill=r===0?t.ink:r%2?'#EDF1F4':t.paper;z.text.style={typeface:family,fontSize:size,color:r===0?'#FFFFFF':t.ink,bold:r===0};}
     tableOwners.push(i+1);if(s.table_view==='criteria'&&m.criteria.length>3)text(sl,`Criteria ${s.criteriaOffset+1}–${s.criteriaOffset+s.criteria.length} of ${m.criteria.length}`,76,565,1120,28,20,'#526476');text(sl,s.body.join(' '),76,600,1120,78,22,'#526476');
