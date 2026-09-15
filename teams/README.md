@@ -10,6 +10,7 @@ brief, workspace and selected inputs.
 
 | Team | Purpose | Authoritative roster |
 | --- | --- | --- |
+| [Vendor comparison team](vendor-comparison-team/expert/README.md) | Manage intake, comparison and independent review for technical vendor decisions. | [team.json](vendor-comparison-team/team.json) |
 | [Page team](page-team/expert/README.md) | Plan, create, integrate and review a single-file site using the useful available roles. | [team.json](page-team/team.json) |
 
 ```sh

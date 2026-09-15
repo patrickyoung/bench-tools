@@ -12,6 +12,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 | --- | --- |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
+| [Vendor comparison](vendor-comparison/expert/README.md) | Produce evidence-linked technical comparisons with business weights, anchored scores, mandatory gates and visible uncertainty. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |

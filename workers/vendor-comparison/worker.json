@@ -1,0 +1,39 @@
+{
+  "id": "vendor-comparison",
+  "description": "Compare technical candidates with evidence-linked anchored scores, business weights, mandatory gates, unknown coverage and sensitivity.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library on macOS or Linux",
+    "model": "Operator-configured Ask model/credentials, no credentials bundled",
+    "review": "Separate context review plus human judgment; numeric and byte checks do not establish truth"
+  },
+  "files": [
+    "workers/vendor-comparison/expert/AGENTS.md",
+    "workers/vendor-comparison/expert/CONTRACT.md",
+    "workers/vendor-comparison/expert/LICENSE",
+    "workers/vendor-comparison/expert/PROVENANCE.md",
+    "workers/vendor-comparison/expert/README.md",
+    "workers/vendor-comparison/expert/bin/check",
+    "workers/vendor-comparison/expert/bin/wake",
+    "workers/vendor-comparison/expert/skills/business-outcomes/SKILL.md",
+    "workers/vendor-comparison/expert/skills/evidence-discovery/SKILL.md",
+    "workers/vendor-comparison/expert/skills/finops/SKILL.md",
+    "workers/vendor-comparison/expert/skills/product-capabilities/SKILL.md",
+    "workers/vendor-comparison/expert/skills/weighted-comparison/SKILL.md",
+    "workers/vendor-comparison/expert/tools/compare.py"
+  ]
+}
