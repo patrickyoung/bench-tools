@@ -42,7 +42,7 @@ def render_role(role):
  with (run/'records'/role/'render.stdout').open('w') as out,(run/'records'/role/'render.stderr').open('w') as err:subprocess.run(argv,stdout=out,stderr=err,check=True)
 for role in ROLES[:4]:
  stage(run,role);root=run/'stages'/role
- if role in revise:
+ if role in revise and role in selected:
   shutil.copyfile(old/'stages'/role/'output/spec.json',root/'inputs/prior-spec.json')
   if (old/'control/visual-review.json').exists():
    prior=read(old/'control/visual-review.json');write(root/'inputs/prior-visual-review.json',{'source_review_sha256':sha(old/'control/visual-review.json'),'images':[im for im in prior['images'] if im['id'].startswith(role+'/')],'meaning':'Role-specific selection from the exact prior visual review; not a fresh approval.'})
