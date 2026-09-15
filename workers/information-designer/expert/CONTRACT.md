@@ -2,6 +2,8 @@
 
 Alt text must describe the actual supported encoding. Sensitivity uses separate categorical rows, an automatically ranged labeled score axis, and a named legend with distinct candidate marker shapes. It has no individual point labels and does not force a 0–100 axis. Do not claim a feature that the rendered figure does not contain.
 
+Decision-path panels are displayed as parallel labeled cards without automatic numbers or arrows. If the supplied evidence supports an actual ordered procedure, make that order explicit in the authored headings. Do not imply a sequence for alternative conditions or parallel responsibilities. Distinguish unknown score evidence from proposed or unknown preference weights in all short copy.
+
 Inputs: request.json and all explicitly selected regular inputs/ files. Read inputs/source.json for authoritative facts; additional story/design files are selected by the controller. No prior-run discovery.
 
 Output output/spec.json has exactly schema,role,request_sha256,inputs,content. schema is bench.publication-spec/v1. role is information-designer. Bind SHA256 of exact request bytes; inputs is a path-sorted list of {path,sha256} for every regular selected input recursively, paths beginning inputs/. No symlinks, duplicate JSON keys or nonfinite values.

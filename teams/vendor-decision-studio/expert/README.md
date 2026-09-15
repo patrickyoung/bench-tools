@@ -69,6 +69,22 @@ Hash-bound production manifests link source, authored specs, final artifacts,
 page previews and extracted text. Basic native semantics are inspected; formal
 PDF/UA or WCAG certification is not requested or claimed by the default profile.
 
+The shared story owns status_label and eligibility_labels, preserving decision
+scope and the evidence basis of each gate across formats. Parallel decision cards
+have no automatic sequence numbers; sensitivity uses distinct marker shapes.
+Native contribution tables paginate at three criteria and four candidates per
+slide for readable type. Exact statistical profiles/tests and gate records remain
+in the required audit JSON files, prepared and bound before publication review;
+the workbook's five sheets cover the comparison and its scoring evidence.
+
+For a narrowly scoped revision, PUBLICATION_REVISION_BRIEF may select a JSON
+object mapping only the named revision roles to instructions of at most 6000
+characters each. Each role receives its selected text in inputs/revision-brief.txt.
+The brief narrows the assignment; it cannot replace authoritative facts. To
+migrate an older story missing qualified status labels, include editorial-director
+among the roles to revise. Unchanged downstream content can retain explicit
+lineage while being rendered and reviewed afresh.
+
 Required environment: the existing analytical team's selectors plus
 PUBLICATION_NODE, PUBLICATION_NODE_MODULES, PUBLICATION_PYTHON,
 PUBLICATION_PLOT_PYTHON, PUBLICATION_SOFFICE, PUBLICATION_PDFTOPPM,

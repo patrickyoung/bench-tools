@@ -46,7 +46,7 @@ for part in s['sections']:
   if v['kind']=='decision_path':
    cards=doc.add_table(rows=(len(v['steps'])+1)//2,cols=2);cards.style='Normal Table';card_elements.add(cards._tbl)
    for i,step in enumerate(v['steps']):
-    cell=cards.rows[i//2].cells[i%2];cell.paragraphs[0].text=f"{i+1:02d}  {step['heading']}";cell.paragraphs[0].paragraph_format.keep_with_next=True;cell.add_paragraph(step['detail'])
+    cell=cards.rows[i//2].cells[i%2];cell.paragraphs[0].text=step['heading'];cell.paragraphs[0].paragraph_format.keep_with_next=True;cell.add_paragraph(step['detail'])
    borders=OxmlElement('w:tblBorders')
    for side in ['insideH','insideV']:
     edge=OxmlElement('w:'+side);edge.set(qn('w:val'),'single');edge.set(qn('w:sz'),'32');edge.set(qn('w:color'),'FFFFFF');borders.append(edge)

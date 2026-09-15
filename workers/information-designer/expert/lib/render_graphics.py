@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from publication_contract import display_number
 import numpy as np
 from matplotlib.patches import Rectangle
@@ -68,9 +69,9 @@ for v in spec['visuals']:
   ax.remove();steps=v['steps'];n=len(steps)
   for i,step in enumerate(steps):
    if docmode:
-    x=.035+(i%2)*.50;y=.96-(i//2)*.49;fig.text(x,y,f'{i+1:02d}  '+fitted(step['heading'],fig,11,.43,'bold'),fontsize=11,weight='bold',va='top');fig.text(x,y-.13,fitted(step['detail'],fig,10,.43),fontsize=10,color='#526476',va='top')
+    x=.035+(i%2)*.50;y=.96-(i//2)*.49;fig.text(x,y,fitted(step['heading'],fig,11,.43,'bold'),fontsize=11,weight='bold',va='top');fig.text(x,y-.13,fitted(step['detail'],fig,10,.43),fontsize=10,color='#526476',va='top')
    else:
-    x=.075+i*(.90/n);fig.text(x,.66,f'{i+1:02d}',fontsize=30,color=theme['accent'],weight='bold');fig.text(x,.55,fitted(step['heading'],fig,15,.90/n-.03,'bold'),fontsize=15,weight='bold',va='top');fig.text(x,.40,fitted(step['detail'],fig,11,.90/n-.03),fontsize=11,color='#526476',va='top')
+    x=.075+i*(.90/n);fig.add_artist(Rectangle((x-.009,.28),.90/n-.012,.39,transform=fig.transFigure,facecolor='#EDF1F4',edgecolor='none',zorder=-1));fig.text(x,.625,fitted(step['heading'],fig,15,.90/n-.03,'bold'),fontsize=15,weight='bold',color=theme['accent'],va='top');fig.text(x,.48,fitted(step['detail'],fig,11,.90/n-.05),fontsize=11,color=theme['ink'],va='top')
   note='Each panel explains a decision condition or responsibility. Read the labeled conditions together.'
  if docmode:
   for a in fig.axes:

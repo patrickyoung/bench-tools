@@ -204,6 +204,7 @@ def validate(root,role,require_artifacts=True):
          if sc.get(chr(65+ci)+str(si))!=scenario['weights'][c['id']]:raise ValueError('Saved scenario weight differs from source')
         si+=1
       for i,row in enumerate(src['matrix']['totals'],8):
+       if overview.get('F'+str(i))!=story.get('eligibility_labels',{}).get(row['candidate_id'],row['eligibility']):raise ValueError('Saved workbook gate label mismatch')
        for col,key in [('B','lower_bound'),('C','upper_bound'),('D','coverage_percent'),('E','known_only_fit')]:
         expected=row[key];actual=overview.get(col+str(i))
         if expected is None and actual not in [None,'']:raise ValueError('Missing summary became numeric')
@@ -218,6 +219,8 @@ def validate(root,role,require_artifacts=True):
       tree=ET.fromstring(z.read('word/document.xml'));text=' '.join(tree.itertext())
       if c['title'] not in text or any(x['heading'] not in text for x in c['sections']):raise ValueError('Document content mismatch')
       normalized=' '.join(text.split())
+      if story.get('status_label') and story['status_label'] not in text:raise ValueError('Qualified report status missing')
+      if any(label not in text for label in story.get('eligibility_labels',{}).values()):raise ValueError('Qualified report gate labels missing')
       if any(' '.join(value.split()) not in normalized for value in [*c['executive_summary'].split('\n\n'),*(p for x in c['sections'] for p in x['paragraphs'])]):raise ValueError('Authored report text was not emitted')
      if role=='presentation-designer':
       slides=sorted((n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)),key=lambda n:int(re.search(r'slide(\d+)\.xml',n).group(1)))
@@ -257,6 +260,7 @@ def validate(root,role,require_artifacts=True):
         else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_number(r['lower_bound'])}–{display_number(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])] for r in rows]])
       if actual_tables!=expected_tables:raise ValueError('Native table differs from checked numbers')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)
+      if story.get('status_label') and story['status_label'] not in alltext:raise ValueError('Qualified slide status missing')
       if any(x['title'] not in alltext for x in c['slides']):raise ValueError('Slide content mismatch')
       normalized=' '.join(alltext.split())
       for slide in c['slides']:
