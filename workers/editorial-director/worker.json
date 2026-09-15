@@ -1,0 +1,36 @@
+{
+  "id": "editorial-director",
+  "description": "Own the shared argument, audience, terminology and visual direction across a decision publication.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 for contracts; selected bundled Python 3.12 for production and PDF checks",
+    "model": "Explicit operator-selected Ask model and credentials; no secrets bundled",
+    "production": "PUBLICATION_* selectors: bundled Artifact Tool Node/Python/LibreOffice, Poppler, document/presentation skill helpers; separate matplotlib 3.11.2 runtime for information design",
+    "review": "Independent actual-image Ask review plus a separate semantic Agent review; model judgment, not certification"
+  },
+  "files": [
+    "workers/editorial-director/expert/AGENTS.md",
+    "workers/editorial-director/expert/CONTRACT.md",
+    "workers/editorial-director/expert/LICENSE",
+    "workers/editorial-director/expert/PROVENANCE.md",
+    "workers/editorial-director/expert/README.md",
+    "workers/editorial-director/expert/bin/check",
+    "workers/editorial-director/expert/role.json",
+    "workers/editorial-director/expert/skills/editorial-direction/SKILL.md",
+    "workers/editorial-director/expert/tools/publication_contract.py"
+  ]
+}
