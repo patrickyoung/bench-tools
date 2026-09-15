@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+DEFINITION=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec "${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/contract.py" "$@"

@@ -1,0 +1,38 @@
+{
+  "id": "excel-workbook-designer",
+  "description": "Organize CSV, JSON and notes into traceable, user-friendly Excel workbooks with validated inputs, live formulas, charts and workflow controls.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "hire",
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "runtime": "Python >=3.9; operator-selected bundled Node with @oai/artifact-tool (tested bundled runtime 26.909.12148); WORKBOOK_NODE, WORKBOOK_NODE_MODULES, WORKBOOK_PYTHON",
+    "model": "Explicit Ask model/profile, no credentials bundled; evaluated with openai-codex/gpt-6-astra high effort",
+    "review": "Independent semantic and actual-image review; LibreOffice optional secondary calculation check; native Microsoft Excel behavior requires separate verification",
+    "limits": "Macro-free XLSX. No pivot/slicer/Power Query/VBA/checkbox/dynamic-array export. Finite documented input capacities."
+  },
+  "files": [
+    "workers/excel-workbook-designer/expert/AGENTS.md",
+    "workers/excel-workbook-designer/expert/CONTRACT.md",
+    "workers/excel-workbook-designer/expert/LICENSE",
+    "workers/excel-workbook-designer/expert/PROVENANCE.md",
+    "workers/excel-workbook-designer/expert/README.md",
+    "workers/excel-workbook-designer/expert/bin/check",
+    "workers/excel-workbook-designer/expert/lib/build.mjs",
+    "workers/excel-workbook-designer/expert/lib/contract.py",
+    "workers/excel-workbook-designer/expert/skills/workbook-design/SKILL.md",
+    "workers/excel-workbook-designer/expert/tools/render",
+    "workers/excel-workbook-designer/expert/tools/prepare-request"
+  ]
+}

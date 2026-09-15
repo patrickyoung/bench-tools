@@ -1,0 +1,260 @@
+{
+  "schema": "bench.workbook-spec/v1",
+  "request_sha256": "8c075d09ce0aa1e9c2ac85445dd9d13b339a6feb17e850a0dd54d5c49db22db9",
+  "inputs": [
+    {
+      "path": "inputs/data.csv",
+      "sha256": "114c0a4540b4cb3de7377d89eee70588c3b106f9c279d100a36a74d4908c6c00"
+    }
+  ],
+  "title": "Fixture",
+  "purpose": "Test trusted renderer",
+  "audience": "Tester",
+  "target_engine": "Excel 365",
+  "design_notes": "Mechanical fixture only",
+  "sheets": [
+    {
+      "name": "Summary",
+      "role": "output",
+      "display_range": "A1:J24",
+      "widths": {
+        "A": 22,
+        "B": 18
+      },
+      "blocks": [
+        {
+          "range": "A2",
+          "values": [
+            [
+              "Fixture"
+            ]
+          ],
+          "style": "title"
+        },
+        {
+          "range": "A4:B5",
+          "values": [
+            [
+              "Group",
+              "All"
+            ],
+            [
+              "Scale",
+              1
+            ]
+          ]
+        },
+        {
+          "range": "A8",
+          "values": [
+            [
+              "Total"
+            ]
+          ]
+        },
+        {
+          "range": "B8",
+          "formulas": [
+            [
+              "=IF(B4=\"All\",SUM('Data'!C5:C10),SUMIF('Data'!B5:B10,B4,'Data'!C5:C10))*B5"
+            ]
+          ],
+          "style": "metric"
+        },
+        {
+          "range": "A11:B13",
+          "values": [
+            [
+              "Group",
+              "Amount"
+            ],
+            [
+              "A",
+              null
+            ],
+            [
+              "B",
+              null
+            ]
+          ],
+          "style": "header"
+        },
+        {
+          "range": "B12:B13",
+          "formulas": [
+            [
+              "=SUMIF('Data'!B5:B10,A12,'Data'!C5:C10)*B5"
+            ],
+            [
+              "=SUMIF('Data'!B5:B10,A13,'Data'!C5:C10)*B5"
+            ]
+          ]
+        }
+      ],
+      "charts": [
+        {
+          "type": "bar",
+          "range": "A11:B13",
+          "title": "Amounts",
+          "from": "D10",
+          "to": "J23"
+        }
+      ]
+    },
+    {
+      "name": "Data",
+      "role": "input",
+      "display_range": "A1:D12",
+      "freeze_rows": 4,
+      "blocks": [
+        {
+          "range": "A2",
+          "values": [
+            [
+              "Records"
+            ]
+          ],
+          "style": "title"
+        },
+        {
+          "range": "A4:C4",
+          "values": [
+            [
+              "ID",
+              "Group",
+              "Amount"
+            ]
+          ],
+          "style": "header"
+        },
+        {
+          "range": "A5:C6",
+          "values": [
+            [
+              "001",
+              "A",
+              10
+            ],
+            [
+              "002",
+              "B",
+              20
+            ]
+          ]
+        }
+      ],
+      "tables": [
+        {
+          "name": "Records",
+          "range": "A4:C10"
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "group",
+      "sheet": "Summary",
+      "cell": "B4",
+      "label": "Group",
+      "values": [
+        "All",
+        "A",
+        "B"
+      ]
+    },
+    {
+      "id": "scale",
+      "sheet": "Summary",
+      "cell": "B5",
+      "label": "Scale",
+      "min": 0,
+      "max": 5
+    }
+  ],
+  "metrics": [
+    {
+      "id": "total",
+      "sheet": "Summary",
+      "cell": "B8",
+      "label": "Total"
+    }
+  ],
+  "lineage": [
+    {
+      "source": "inputs/data.csv",
+      "locator": "rows 2-3",
+      "target": "Data!A5:C6",
+      "note": "Direct"
+    }
+  ],
+  "issues": [],
+  "tests": [
+    {
+      "name": "Selector",
+      "edits": [
+        {
+          "sheet": "Summary",
+          "cell": "B4",
+          "value": "A"
+        }
+      ],
+      "expect": [
+        {
+          "metric": "total",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "name": "Scale",
+      "edits": [
+        {
+          "sheet": "Summary",
+          "cell": "B5",
+          "value": 2
+        }
+      ],
+      "expect": [
+        {
+          "metric": "total",
+          "value": 60
+        }
+      ]
+    },
+    {
+      "name": "Append",
+      "edits": [
+        {
+          "sheet": "Data",
+          "cell": "A7",
+          "value": "003"
+        },
+        {
+          "sheet": "Data",
+          "cell": "B7",
+          "value": "A"
+        },
+        {
+          "sheet": "Data",
+          "cell": "C7",
+          "value": 5
+        }
+      ],
+      "expect": [
+        {
+          "metric": "total",
+          "value": 35
+        }
+      ]
+    }
+  ],
+  "update_policy": {
+    "instructions": "Edit rows",
+    "capacity": "Six rows",
+    "filter_scope": "All rows"
+  },
+  "limitations": [
+    "Not a model-quality evaluation"
+  ]
+}

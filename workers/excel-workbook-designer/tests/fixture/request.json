@@ -1,0 +1,19 @@
+{
+  "schema": "bench.workbook-request/v1",
+  "title": "Fixture",
+  "brief": "Small trusted renderer exercise",
+  "audience": "Tester",
+  "inputs": [
+    {
+      "path": "inputs/data.csv",
+      "sha256": "114c0a4540b4cb3de7377d89eee70588c3b106f9c279d100a36a74d4908c6c00"
+    }
+  ],
+  "required_metrics": [
+    "total"
+  ],
+  "required_controls": [
+    "group",
+    "scale"
+  ]
+}

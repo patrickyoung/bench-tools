@@ -10,6 +10,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 
 | Worker | Purpose |
 | --- | --- |
+| [Excel workbook designer](excel-workbook-designer/expert/README.md) | Organize selected CSV, JSON and notes into traceable interactive Excel workbooks with formulas, controls, charts and a tested update workflow. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |

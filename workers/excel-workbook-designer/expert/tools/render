@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+DEFINITION=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+: "${WORKBOOK_NODE:?Select bundled Node executable}"
+: "${WORKBOOK_NODE_MODULES:?Select bundled node_modules directory}"
+"${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/contract.py" --spec
+mkdir -p .runtime
+cp "$DEFINITION/lib/build.mjs" .runtime/build.mjs
+if [ ! -e .runtime/node_modules ]; then ln -s "$WORKBOOK_NODE_MODULES" .runtime/node_modules; fi
+"$WORKBOOK_NODE" .runtime/build.mjs "$PWD"
