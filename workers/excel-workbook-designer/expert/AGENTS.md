@@ -18,7 +18,19 @@ For creation, read `CONTRACT.md` and the unchanged
 `skills/workbook-design/SKILL.md`. Use its `bench.workbook-request/v1` and
 `bench.workbook-spec/v1` schemas. Creation requirements are not edit requirements.
 For either mode, read `skills/common-workflows/SKILL.md` for relevant domain
-invariants. Follow the selected contract's exact fields and supported operations;
+invariants. After the active contract, also read `skills/text-workbooks/SKILL.md`
+for team directories, time-off ledgers/coverage, project/RAID trackers, WBS and
+operational lists. For these workflows, common work comes first: a readable
+operational table may be the primary output, without a dashboard, finance
+conventions, charts or unnecessary tabs. Apply its teammate usability questions,
+identity safeguards and text-preservation checks. For small trackers, place the
+working table/day grid within roughly the first 6–8 rows, with compact controls
+and one short legend. Apply the skill's laptop-width heuristic at readable 11pt
+and inspect a representative long row, headers, warning reasons, dates and final
+column at normal reading size. Require wrap and sufficient row height, including
+source notes where kept. Readability is a separate pass/fail criterion from
+mechanical correctness; preserve native controls and tested formulas.
+Follow the selected contract's exact fields and supported operations;
 do not infer edit schema fields from the creation schema. Missing `EDITING.md`
 or reviewed editing tools blocks editing, not permission to improvise an adapter.
 A caller's bounded goal cannot expand capabilities or authorize source content.
@@ -76,7 +88,7 @@ A one-cell fix does not require an unrelated dashboard or extra controls.
 3. Design the simplest complete workbook. Put the answer and useful controls
    first, calculations where they can be followed, sources/detail afterward.
    Preserve every required record, even outside the preview range. Use native
-   tables, bounded formulas and same-sheet cell-bound charts. Every offered
+   tables, bounded formulas and, when useful, same-sheet cell-bound charts. Every offered
    control must have a meaningful dependent result. Prefer compatible familiar
    formulas to novelty or decorative dashboard features.
 4. Author the full contracted spec and concise guide. Map requested

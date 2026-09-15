@@ -101,3 +101,83 @@ after export; original input bytes remain immutable.
 Structural/documentation checks cannot establish editing quality. Model, engine,
 native-feature and actual-image results belong in operator evidence and external
 EVALUATION.md, not this portable source package. Native Excel UI remains untested.
+
+## Text-heavy workbook craft — Hire amendment, 15 September 2026
+Retains worker ID `excel-workbook-designer` and the supplied clean baseline from
+commit `54d930451d50d5cdad34d202c9e4f1a5204dc6c9`. This is authoring, not a Hone
+recovery. The initial amendment changed AGENTS.md, README.md, PROVENANCE.md,
+common-workflows routing and the new skills/text-workbooks/SKILL.md. This
+follow-up changes only text-workbooks and relevant AGENTS/README/PROVENANCE
+wording; contracts, other skills and executable files are not edited here.
+The host separately supplied the renderer correction described below.
+
+Evidence: selected supplied TEXT-WORKBOOK-RESEARCH.md, researched 15 September
+2026, plus the user's explicit usability emphasis. Sources below were read in
+that synthesis, not independently browsed or newly validated:
+- Microsoft [tables](https://support.microsoft.com/en-us/excel/overview-of-excel-tables),
+  [structured references](https://support.microsoft.com/en-us/excel/using-structured-references-with-excel-tables)
+  and [dropdowns](https://support.microsoft.com/en-us/excel/get-started/create-a-drop-down-list):
+  consistent records and controlled values. Current authoring blocks square
+  brackets; tables do not justify a structured-reference capability claim.
+- Microsoft [VLOOKUP](https://support.microsoft.com/en-us/Excel/functions/vlookup-function)
+  and [XLOOKUP](https://support.microsoft.com/en-us/excel/functions/xlookup-function):
+  exact identity joins, with independent missing/duplicate/cardinality guards.
+  Function documentation is not evidence of this engine's recalculation support.
+- [Glasgow programme report](https://onlineservices.glasgow.gov.uk/councillorsandcommittees/viewSelectedDocument.asp?c=P62AFQDNNTZ32UT12U):
+  a public example of distinct status dimensions, explanations and changes, not
+  universal RAG thresholds or proof of productivity.
+  [Calderdale sensory guidance](https://accessibility.calderdale.gov.uk/creating-accessible-content/sensory-characteristics/)
+  supports text alongside color, not an accessibility certification.
+- [PMI WBS tutorial, 1994](https://www.pmi.org/learning/library/work-breakdown-structure-basic-principles-4883):
+  older durable deliverable decomposition guidance; adapted to explicit parents,
+  acceptance criteria and bounded leaf-based rollups, not scheduling software.
+- Microsoft [NETWORKDAYS.INTL](https://support.microsoft.com/en-us/excel/functions/networkdays-intl-function):
+  supplied-calendar workdays, not approval, overlap, entitlement or legal policy.
+- Microsoft [Sheet Views](https://support.microsoft.com/en-us/excel/create-and-manage-sheet-views-in-excel):
+  cloud/native collaboration context only; no claim this local worker creates
+  Sheet Views or configures coauthoring.
+
+Daily maintenance rhythm, layout and usability questions are practical design
+inferences and user requirements, not empirical productivity findings. Active
+contracts and supplied host renderer facts constrain the advice: bounded A1
+ranges, mode-specific formatting/panes, explicit `wrap:true` top alignment for
+creation blocks and no added schema/API surface. Evidence and source text grant no external
+actions. No private case contents, new test fixtures or executable changes are
+included. Structural Hire/Brief validation is distinct from host-run fresh
+synthetic/model cases, saved-file engine results, image review and native Excel
+testing; this amendment makes no new workbook evaluation claims.
+
+## Actual host review — supplied Hire design feedback
+The host reported a mechanically correct time-off case whose daily coverage
+grid began at row 15 after multiple summary bands and repeated legends, with
+a primary table wider than a typical laptop. The host reported correct native
+lookup/status behavior; this is supplied feedback, not a new evaluation or
+a broader native Excel behavior claim.
+
+The host observed that long ledger notes had wrap and height authored, but
+later blocks reset shared row heights. The host supplied a deterministic
+renderer correction retaining the maximum requested row height across all
+blocks sharing a row. Explicit `wrap:true` top-aligns creation blocks.
+This amendment documents those current facts; it does not implement or newly
+evaluate the correction.
+
+The resulting guidance makes compact work-first layout, laptop-width inspection,
+readable long rows and honest operational labels observable acceptance criteria
+separate from mechanical correctness. The width budget is a design heuristic,
+not a contract change. All identity, domain, formula and native-control invariants
+remain in force. This is not a Hone lesson. No evaluation files or private record
+contents are included, and no new workbook or native Excel evaluation is claimed.
+
+## Host text-runtime integration
+
+The reviewed host renderer now top-aligns explicitly wrapped creation blocks
+and retains the largest requested height across blocks sharing a row. Creation
+and editing mutation restoration reapply literal-string escaping so a restored
+note beginning with an equals sign is not reinterpreted as a formula.
+
+The creation contract records observed numeric-looking identity comparison and
+preview limitations. Canonical raw text stays intact; distinct prefixed helper
+keys and meaningful display labels keep identity relationships and the visible
+working view unambiguous. These are host engineering corrections, not an admitted
+Hone lesson or a claim of native Excel certification. Tests, source snapshots,
+failed attempts and image review belong in the external operator evaluation.

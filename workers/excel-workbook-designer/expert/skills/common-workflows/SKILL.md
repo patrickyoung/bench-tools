@@ -1,6 +1,6 @@
 ---
 name: common-workflows
-description: Use for creation or prompt edits involving budgets, reporting, joins, projects, inventory, capacity, marketing/research or invoices; apply domain invariants without imposing fixed templates.
+description: Use for creation or prompt edits involving budgets, reporting, joins, team directories, time off, project/RAID trackers, WBS, operational lists, inventory, capacity, marketing/research or invoices; apply domain invariants without imposing fixed templates.
 ---
 
 # Common spreadsheet workflows
@@ -10,6 +10,14 @@ Read the active contract: creation uses `CONTRACT.md` and workbook-design;
 operations. On edits inspect the bound workbook first, preserve its conventions,
 and change only requested scope. Combine relevant families instead of forcing
 every request into a dashboard template.
+
+For team directories, time-off ledgers/coverage, project/RAID trackers, WBS and
+other text-heavy operational lists, explicitly read `skills/text-workbooks/SKILL.md`
+after the active contract. It supplies daily maintenance recipes, exact lookup
+guards, hierarchy/coverage rules and teammate usability acceptance questions.
+The primary output may be the daily working table: no forced charts, finance
+conventions, extra tabs or dashboard. Apply its supported-field and engine limits
+alongside the families below; preserve existing narrow-edit workflows.
 
 ## Evidence and defaults
 The supplied research is dated 15 September 2026. AFP's 2025 practitioner survey

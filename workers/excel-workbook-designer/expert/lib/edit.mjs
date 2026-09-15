@@ -56,7 +56,7 @@ if(inspectOnly){
   try{
    for(const e of t.edits){const r=wb.worksheets.getItem(e.sheet).getRange(e.cell);saved.push([r,r.values,r.formulas]);r.values=[[typed(e.value)]];}
    wb.recalculate();refreshPivots(wb,spec.pivots||[]);const checks=check(t.expect,metrics());tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
-  }finally{for(const [r,v,f] of saved){if(f[0]?.[0])r.formulas=f;else r.values=v;}wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
+  }finally{for(const [r,v,f] of saved){if(f[0]?.[0])r.formulas=f;else r.values=v.map(row=>row.map(typed));}wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
  }
  const previews=await render(spec.previews,'previews');
  await (await SpreadsheetFile.exportXlsx(wb)).save(path.join(root,'output/workbook.xlsx'));

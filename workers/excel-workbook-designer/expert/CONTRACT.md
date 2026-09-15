@@ -40,6 +40,9 @@ Block: {range:"A2",values:[["Title"]],style:"title"} OR
 {range:"B8",formulas:[["=SUM('Data'!E6:E105)"]],style:"metric",format:"#,##0"}.
 Values/formulas exactly match range shape, null placeholders allowed. Never write
 one populated cell twice. Optional height:number, wrap:true, format:number-format.
+Explicit wrap:true also top-aligns that block for readable multiline text.
+Shared row height is the maximum requested by its blocks, so a later formula
+block cannot clip an earlier note on the same record.
 Styles: title,header,section,input,metric,note,body,warning,total.
 Typed dates: {"date":"2026-09-15"}, with format "mm/dd/yy". Numbers are numeric,
 identifiers text, missing values null. Literal strings starting = are escaped.
@@ -47,6 +50,17 @@ Formulas are explicit only. Use quoted sheet names and bounded reference ranges.
 Prefer SUM,SUMIF(S),COUNTIF(S),IF,AND,OR,IFERROR,INDEX/MATCH,SUMPRODUCT,MIN/MAX,ROUND.
 No external links, volatile functions, macros, web functions or dynamic arrays.
 Avoid COUNTIFS blank criteria (engine difference); use explicit status/COUNTBLANK.
+
+Observed text-engine boundary: bare comparisons/COUNTIF can coerce numeric-looking
+text IDs, collapsing codes such as 1.1 and 1.10. Preserve canonical raw text, use
+clearly prefixed helper keys for identity comparisons/joins, and test those
+distinct IDs plus reordering. Some preview paths also display numeric-looking
+text without significant zeros. On main views, use a meaningful prefixed DISPLAY
+formula (for example "WBS " & raw-ID-cell) when needed; never alter raw IDs to fix
+a preview. Verify both stored text and displayed identity. This is a renderer
+limitation, not a reason to accept a mismatched lookup or ambiguous visible code.
+Prefer explicit "0" for counts and "0.0" for fractional days/hours in this
+renderer: optional decimals such as "0.#" can display a trailing separator.
 
 Table: {name:"Records",range:"A5:F25"}; unique native named filterable table.
 Include reserved next rows when promising growth; document finite capacity.

@@ -26,6 +26,7 @@ const value=v=>v && typeof v==='object' && 'date' in v?new Date(v.date+'T00:00:0
 for(const s of spec.sheets)wb.worksheets.add(s.name);
 for(const s of spec.sheets){
  const sh=wb.worksheets.getItem(s.name);
+ const rowHeights=new Map();
  sh.showGridLines=false;sh.tabColor=s.role==='output'?colors.ink:s.role==='work'?colors.blue:'#B9C8D7';
  const area=sh.getRange(s.display_range);
  area.format.font={name:'Arial',size:11,color:colors.ink};area.format.rowHeight=24;
@@ -33,7 +34,10 @@ for(const s of spec.sheets){
  for(const [c,w] of Object.entries(s.widths||{}))sh.getRange(`${c}1:${c}1000`).format.columnWidth=w;
  for(const b of s.blocks){
   const r=sh.getRange(b.range);
-  r.format.font={name:'Arial',size:11,color:colors.ink};r.format.rowHeight=24;r.format.verticalAlignment='center';
+  r.format.font={name:'Arial',size:11,color:colors.ink};r.format.verticalAlignment='center';
+  const rowEnds=b.range.split(':').map(a=>Number(a.match(/[0-9]+$/)[0]));
+  const height=b.height??styles[b.style]?.rowHeight??24;
+  for(let row=rowEnds[0];row<=rowEnds[rowEnds.length-1];row++)rowHeights.set(row,Math.max(rowHeights.get(row)??24,height));
   if(b.values){
    // Prevent spreadsheet inference from collapsing text identifiers such as 001.
    for(let i=0;i<b.values.length;i++)for(let j=0;j<b.values[i].length;j++)
@@ -43,7 +47,7 @@ for(const s of spec.sheets){
   if(b.style)r.format=styles[b.style]||{};
   if(b.format)r.setNumberFormat(b.format);
   if(b.height)r.format.rowHeight=b.height;
-  if(b.wrap!==undefined)r.format.wrapText=b.wrap;
+  if(b.wrap!==undefined){r.format.wrapText=b.wrap;if(b.wrap)r.format.verticalAlignment='top';}
  }
  for(const t of s.tables||[]){const table=sh.tables.add(t.range,true,t.name);table.showFilterButton=true;}
  for(const d of s.validations||[])sh.getRange(d.range).dataValidation={rule:{type:'list',values:d.values}};
@@ -53,6 +57,9 @@ for(const s of spec.sheets){
  for(const c of s.charts||[]){
   addChart(sh,c);
  }
+ // Row height is shared by all columns. A later formula block must not erase
+ // the height requested by an earlier multiline note on the same record.
+ for(const [row,height] of rowHeights)sh.getRange(`A${row}`).format.rowHeight=height;
 }
 for(const c of spec.controls){
  const r=wb.worksheets.getItem(c.sheet).getRange(c.cell);r.format=styles.input;
@@ -69,7 +76,7 @@ for(const t of spec.tests){
   wb.recalculate();refreshPivots(wb,spec.pivots||[]);const observed=metrics();
   const checks=t.expect.map(e=>({metric:e.metric,expected:e.value,actual:observed[e.metric],passed:typeof e.value==='number'?typeof observed[e.metric]==='number'&&Math.abs(e.value-observed[e.metric])<=(e.tolerance??1e-6):e.value===observed[e.metric]}));
   tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
- }finally{for(const [r,vs] of saved)r.values=vs;wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
+ }finally{for(const [r,vs] of saved)r.values=vs.map(row=>row.map(value));wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
 }
 await fs.mkdir(path.join(root,'previews'),{recursive:true});
 const previews=[];

@@ -1,6 +1,6 @@
 {
   "id": "excel-workbook-designer",
-  "description": "Create and prompt-edit traceable Excel workbooks; infer schemas and column mappings, preserve existing content, add formulas/charts/native simple pivots, and verify live behavior.",
+  "description": "Create and prompt-edit Excel reports and text-first team workbooks; verify exact lookups, RAG, WBS and time-off logic, preserve content and add native charts/simple pivots.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -38,11 +38,12 @@
     "workers/excel-workbook-designer/expert/lib/features.mjs",
     "workers/excel-workbook-designer/expert/lib/features.py",
     "workers/excel-workbook-designer/expert/lib/preview.mjs",
+    "workers/excel-workbook-designer/expert/skills/common-workflows/SKILL.md",
+    "workers/excel-workbook-designer/expert/skills/text-workbooks/SKILL.md",
     "workers/excel-workbook-designer/expert/skills/workbook-design/SKILL.md",
     "workers/excel-workbook-designer/expert/skills/workbook-editing/SKILL.md",
-    "workers/excel-workbook-designer/expert/skills/common-workflows/SKILL.md",
-    "workers/excel-workbook-designer/expert/tools/render",
+    "workers/excel-workbook-designer/expert/tools/inspect-workbook",
     "workers/excel-workbook-designer/expert/tools/prepare-request",
-    "workers/excel-workbook-designer/expert/tools/inspect-workbook"
+    "workers/excel-workbook-designer/expert/tools/render"
   ]
 }

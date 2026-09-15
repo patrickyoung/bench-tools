@@ -1,6 +1,6 @@
 # Excel workbook designer and editor
 
-One independently reusable Agent/Cage worker designs friendly, summary-first
+One independently reusable Agent/Cage worker designs friendly, task-first
 workbooks from selected CSV/JSON, semi-structured records and notes. It authors
 declarative logic and guidance; the host's Artifact Tool renderer owns production.
 It adds workbook schema, control, formula, update and evaluation expertise without
@@ -12,7 +12,11 @@ preserving style and unrelated structure rather than rebuilding the workbook.
 Route `mode=edit` to `EDITING.md` and `skills/workbook-editing/SKILL.md`.
 Creation stays on `CONTRACT.md` and the preserved workbook-design skill.
 Read `skills/common-workflows/SKILL.md` for relevant domain invariants in either
-mode. Do not apply creation's minimum mutation count or control/dashboard design
+mode. After the active contract, also read `skills/text-workbooks/SKILL.md` for
+team directories, time-off ledgers/coverage, project/RAID trackers, WBS and
+operational lists. A readable daily table can be the main output; charts,
+finance conventions, dashboards and extra tabs are not mandatory.
+Do not apply creation's minimum mutation count or control/dashboard design
 requirements to a narrow edit.
 
 For creation, use the exact schemas and fields in `CONTRACT.md`. Inputs are:
@@ -114,7 +118,49 @@ the check is broken. Agent exit statuses follow Agent's public manual.
 A definition-only inspection is `agent check -C "$WORKSPACE" "$EXPERT"` with
 an existing workspace; it is not a workbook evaluation.
 
+## Text-heavy workbook craft
+The text-workbooks skill teaches maintenance by stable text ID, exact guarded
+relationships, controlled stages distinct from health, current next actions
+distinct from source notes, bounded WBS rollups and request-versus-coverage
+semantics. Use minimal employee data and supplied policies, never invented
+owners, dates, thresholds, entitlements or calendars.
+
+Acceptance is practical: can a teammate find their records, identify editable
+inputs versus formulas, make a routine update and see the next action without
+a manual? Put frequent work first, preserve a familiar layout, use readable
+wrapped text, meaningful filters, concise labels and status text plus color.
+Keep detailed evidence linked by ID without sprawling across the daily view.
+For small trackers, lead with the working table/day grid within roughly rows
+6–8, keeping the title, controls and one short legend compact; secondary totals
+belong below the work or in the guide, not in oversized KPI panels.
+Start primary working columns at 110–140 total Excel character-width units
+(roughly 800–1050 px) at readable 11pt, then inspect the actual image. This is a
+heuristic, not permission to omit fields or shrink text; link wider detail by ID.
+Require wrap AND enough row height, with a representative long row in the main
+preview. Check headers, warning reasons, dates and the final column at normal
+reading size, and source notes where kept; populated neighbors cannot provide
+overflow space. Giant full-sheet images alone do not establish usability.
+Use readable overlap flags, keeping numeric helpers away from routine editing.
+Separate current health from historical notes; a build feeding business outputs
+must not be misleadingly titled “Audit”. Preserve native pane/table/validation
+controls and tested formulas. Readable layout is a separate pass/fail criterion
+from mechanical correctness; text fidelity and sort association matter as much
+as totals.
+
+The skill does not extend the runtime: bounded A1 formulas, not structured
+references (square brackets are blocked); explicitly tested growth and hierarchy
+depth, not arbitrary graph validation. Creation's explicit `wrap:true` blocks
+top-align. The host corrected the renderer to retain the maximum requested row
+height across blocks sharing a row; authors still must request enough height.
+Edit formatting can express top alignment.
+Editing preserves panes but has no pane-setting operation. Calendar functions
+and scalar XLOOKUP need actual engine verification. Native Excel UI, coauthoring
+and Sheet Views are not claimed. Creation, prompt-edit and native-pivot contracts
+are preserved. This documentation amendment changes no executable code; the
+renderer correction was supplied by the host, not implemented here.
+
 ## What good looks like
+The following numeric reporting example is not a template for text trackers.
 An ops CSV becomes a compact summary, useful category selector, editable
 scenario rate/threshold, formula-linked native chart and complete filterable
 detail with stable record IDs. Required semantic IDs map to actual formula
@@ -217,11 +263,21 @@ and LibreOffice results do not certify Microsoft 365 desktop or web behavior;
 unverified native behavior must be disclosed.
 
 ## Maintenance
-This revision authors only `AGENTS.md`, `README.md`, `PROVENANCE.md`,
-`skills/workbook-editing/SKILL.md` and `skills/common-workflows/SKILL.md`.
-The creation skill is preserved. The host owns both contracts and all deterministic
+This Hire text-craft amendment retains worker ID `excel-workbook-designer` from
+the supplied clean committed baseline
+`54d930451d50d5cdad34d202c9e4f1a5204dc6c9`. The initial text-craft amendment
+added the text-workbooks skill and common-workflows routing. This follow-up
+changes only `skills/text-workbooks/SKILL.md` and relevant `AGENTS.md`,
+`README.md` and `PROVENANCE.md` wording. It is supplied host design feedback
+through Hire, not a Hone lesson.
+The creation and editing skills are preserved. The host owns both contracts and all deterministic
 implementation. Missing capabilities require a separately reviewed host adapter
 and external cases, not generated runtime code. One worker is sufficient:
 domain interpretation belongs in skills, transformations/checking in trusted tools.
 The dated 2026 evidence is directional, not a universal workflow ranking or proof
 of this worker's quality; see provenance. No new evaluations are claimed.
+
+Validate the definition with `hire verify "$EXPERT"` and
+`brief lint -strict "$EXPERT/skills"`. These inspect structure/skill format,
+not live workbook quality. Fresh synthetic cases and actual Agent evaluations
+are host-owned, outside this reusable source; none are added by this amendment.
