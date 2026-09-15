@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Bounded Unix team handoffs for a reviewed decision's publication package."""
-import argparse,hashlib,json,os,shutil,subprocess,sys
+import argparse,hashlib,json,os,shutil,subprocess,sys,csv
 from pathlib import Path
 from publication_contract import read,sha,inputs,validate,safe_file
 ROLES=['editorial-director','information-designer','executive-writer','presentation-designer','publication-reviewer']
@@ -68,6 +68,12 @@ def finish(run):
    if p.is_dir():shutil.copytree(p,result/p.name,dirs_exist_ok=True)
    else:shutil.copyfile(p,result/p.name)
  write(result/'narrative.json',specs[ROLES[0]]);write(result/'publication-review.json',verdict)
+ src=read(run/'control/source.json');write(result/'comparison-data.json',src['matrix']);write(result/'statistics.json',src['statistics']);write(result/'source-notes.json',src['facts'])
+ with (result/'comparison-data.csv').open('w',newline='') as f:
+  w=csv.writer(f);w.writerow(['candidate_id','criterion_id','weight_percent','score_0_to_5','confidence','status','rationale','sources']);cs={c['id']:c for c in src['matrix']['criteria']}
+  for c in src['matrix']['cells']:
+   row=[c['candidate_id'],c['criterion_id'],cs[c['criterion_id']]['weight'],c['score'],c['confidence'],c['status'],c['rationale'],'; '.join(r['source_id']+' / '+r['locator'] for r in c['refs'])];w.writerow(["'"+x if isinstance(x,str) and x[:1] in '=+@-' else x for x in row])
+ if (run/'control/rebuild.json').exists():shutil.copyfile(run/'control/rebuild.json',result/'rebuild.json')
  lines=['# '+specs[ROLES[0]]['content']['title'],'','Publication status: **'+status+'**','','- [Executive presentation](presentation.pptx)','- [Presentation PDF](presentation.pdf)','- [Long-form report](report.docx)','- [Report PDF](report.pdf)','- [Comparison workbook](comparison.xlsx)','- [Report text](report.md)','','All formats follow the same reviewed decision and narrative. See publication-review.json for the release verdict.']
  (result/'index.md').write_text('\n'.join(lines)+'\n');write(result/'manifest.json',{'schema':'bench.publication-result/v1','status':status,'source_sha256':sha(run/'control/source.json'),'visual_review_sha256':sha(run/'control/visual-review.json'),'specs':{r:sha(run/'stages'/r/'output/spec.json') for r in ROLES},'files':[{'path':p.relative_to(result).as_posix(),'sha256':sha(p)} for p in sorted(result.rglob('*')) if p.is_file() and p.name!='manifest.json']});write(run/'status.json',{'status':status,'exit_code':0 if status=='published' else 2,'message':str(result/'index.md')});return 0 if status=='published' else 2
 def check(run):
@@ -86,6 +92,16 @@ def check(run):
  verdict=read(run/'stages/publication-reviewer/output/spec.json')['content']['verdict'];visual=read(run/'control/visual-review.json')['verdict'];expected='published' if verdict=='publish' and visual=='pass' else 'needs-revision'
  if m['status']!=expected or read(run/'status.json')['status']!=expected:raise ValueError('False publication status')
  print('Valid bound publication result:',m['status'])
+def snapshot(run):
+ run=Path(run).resolve();selected=set()
+ for role in ROLES[:4]:
+  root=run/'stages'/role;selected.update([root/'request.json',root/'output/spec.json']);selected.update(p for p in (root/'inputs').rglob('*') if p.is_file())
+  if role!=ROLES[0]:
+   r=read(root/'output/artifacts.json');selected.add(root/'output/artifacts.json');selected.add(root/'workbook-check.json') if role=='information-designer' else None
+   selected.update(root/f['path'] for f in r['files']+r['previews'])
+ argv=[os.environ['BENCH_PREFIX']+'/bin/record','run','-f',str(run/'records/publication-files.jsonl'),'-ask',os.environ['BENCH_PREFIX']+'/bin/ask','-label','Selected current publication inputs, specs, editable artifacts and all inspected pixels']
+ for p in sorted(selected):argv+=['-input',str(p)]
+ subprocess.run(argv+['--','/usr/bin/true'],check=True)
 def check_visual(run):
  run=Path(run);ims=read(run/'control/visual-inputs.json');review=read(run/'control/visual-review.json');got=review['images']
  if review['input_sha256']!=sha(run/'control/visual-inputs.json'):raise ValueError('Stale visual review')
@@ -104,6 +120,7 @@ def main():
  if cmd=='prepare':prepare(*args)
  elif cmd=='stage':check_stage(args[0],ROLES[ROLES.index(args[1])-1]);stage(*args)
  elif cmd=='visual-inputs':visual_inputs(*args)
+ elif cmd=='snapshot':snapshot(*args)
  elif cmd=='finish':return finish(*args)
  elif cmd=='check':check(*args)
  else:raise ValueError('Unknown operation')

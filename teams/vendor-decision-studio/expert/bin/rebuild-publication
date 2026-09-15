@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+[ "$#" = 2 ] || { echo 'usage: rebuild-publication SELECTED_PUBLICATION_RUN NEW_RUN' >&2; exit 1; }
+TEAM=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+exec python3 "$TEAM/tools/rebuild_publication.py" "$@"

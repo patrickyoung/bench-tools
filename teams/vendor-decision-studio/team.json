@@ -28,9 +28,11 @@
     "teams/vendor-decision-studio/expert/bin/compare-studio",
     "teams/vendor-decision-studio/expert/bin/compare-team",
     "teams/vendor-decision-studio/expert/bin/publish-decision",
+    "teams/vendor-decision-studio/expert/bin/rebuild-publication",
     "teams/vendor-decision-studio/expert/plot-requirements.txt",
     "teams/vendor-decision-studio/expert/tools/publication_contract.py",
     "teams/vendor-decision-studio/expert/tools/publication_io.py",
+    "teams/vendor-decision-studio/expert/tools/rebuild_publication.py",
     "teams/vendor-decision-studio/expert/tools/team_io.py",
     "teams/vendor-decision-studio/expert/tools/visual_review.py"
   ],

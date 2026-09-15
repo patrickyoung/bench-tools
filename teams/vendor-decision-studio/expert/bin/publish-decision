@@ -36,6 +36,7 @@ for role in information-designer executive-writer presentation-designer; do
  run_role "$role"
 done
 python3 "$TEAM/tools/publication_io.py" visual-inputs "$RUN"
+python3 "$TEAM/tools/publication_io.py" snapshot "$RUN"
 python3 "$TEAM/tools/visual_review.py" "$RUN" "$TEAM/agents/publication-reviewer"
 python3 "$TEAM/tools/publication_io.py" stage "$RUN" publication-reviewer
 run_role publication-reviewer

@@ -7,14 +7,23 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
+from matplotlib.font_manager import FontProperties
 
 root=Path(sys.argv[1]).resolve();src=json.loads((root/'inputs/source.json').read_text());story=json.loads((root/'inputs/story.json').read_text())['content'];spec=json.loads((root/'output/spec.json').read_text())['content'];theme=story['design'];out=root/'output/graphics';out.mkdir(parents=True,exist_ok=True)
-plt.rcParams.update({'font.family':'DejaVu Sans','font.size':13,'axes.spines.top':False,'axes.spines.right':False,'axes.spines.left':False,'axes.edgecolor':'#B8C4CE','text.color':theme['ink'],'axes.labelcolor':theme['ink'],'xtick.color':theme['ink'],'ytick.color':theme['ink'],'svg.fonttype':'none'})
+plt.rcParams.update({'font.family':theme['font'],'font.size':13,'axes.spines.top':False,'axes.spines.right':False,'axes.spines.left':False,'axes.edgecolor':'#B8C4CE','text.color':theme['ink'],'axes.labelcolor':theme['ink'],'xtick.color':theme['ink'],'ytick.color':theme['ink'],'svg.fonttype':'none'})
 matrix=src['matrix'];rows=matrix['totals'];names=[r['name'] for r in rows];colors=[theme['accent'],theme['secondary'],'#8B6BA5','#A5894F','#477B9E','#75804B']*2
 def wrap(x,n=65):return '\n'.join(textwrap.wrap(x,n))
+def fitted(text,fig,size,width,weight='normal'):
+ fig.canvas.draw();renderer=fig.canvas.get_renderer();font=FontProperties(family=theme['font'],size=size,weight=weight);lines=[];line=''
+ for word in text.split():
+  candidate=(line+' '+word).strip()
+  if line and renderer.get_text_width_height_descent(candidate,font,False)[0]>fig.bbox.width*width:lines.append(line);line=word
+  else:line=candidate
+ if line:lines.append(line)
+ return '\n'.join(lines)
 for v in spec['visuals']:
  fig=plt.figure(figsize=(12,7.5),facecolor=theme['paper']);ax=fig.add_axes([.19,.24,.74,.49]);ax.set_facecolor(theme['paper']);kind=v['kind']
- fig.text(.07,.91,wrap(v['title'],62),fontsize=24,weight='bold',va='top');fig.text(.07,.795,wrap(v['subtitle'],105),fontsize=12,color='#526476',va='top')
+ fig.text(.07,.94,fitted(v['title'],fig,24,.86,'bold'),fontsize=24,weight='bold',va='top');fig.text(.07,.79,fitted(v['subtitle'],fig,12,.86),fontsize=12,color='#526476',va='top')
  note=''
  if kind=='score_bounds':
   for i,r in enumerate(rows):
@@ -39,8 +48,8 @@ for v in spec['visuals']:
   tests=[t for t in src['statistics']['comparisons'] if t['status']=='inferential'];ax.remove()
   for i,t in enumerate(tests):
    if len(tests)>3:raise ValueError('Effects graphic supports at most three comparisons; select another encoding or extend the reviewed renderer')
-   a=fig.add_axes([.18,.64-i*(.45/len(tests)),.72,.45/len(tests)-.08]);a.set_facecolor(theme['paper']);d=t['mean_difference_a_minus_b'];a.errorbar(d,0,xerr=[[d-t['ci_low']],[t['ci_high']-d]],fmt='o',color=colors[i],capsize=8,linewidth=3,markersize=9);a.axvline(0,color='#8C9BA6',linestyle='--');a.set_yticks([]);a.set_title(f"{t['metric_id']} · {t['groups'][0]} minus {t['groups'][1]}",loc='left',fontsize=12);a.set_xlabel(t['unit'],loc='right');a.margins(x=.2)
-  note='Marginal confidence intervals at the level declared in the statistical plan; separate unit scales. Not simultaneous intervals.'
+   pitch=.42/len(tests);a=fig.add_axes([.18,.74-pitch-i*pitch,.72,pitch-.10]);a.set_facecolor(theme['paper']);d=t['mean_difference_a_minus_b'];a.errorbar(d,0,xerr=[[d-t['ci_low']],[t['ci_high']-d]],fmt='o',color=colors[i],capsize=8,linewidth=3,markersize=9);a.axvline(0,color='#8C9BA6',linestyle='--');a.set_yticks([]);count=f"{t['paired_count']} matched pairs" if t['paired_count'] is not None else f"n={t['n_a']} / {t['n_b']}";label=f"{t['metric_id']}: {t['groups'][0]} minus {t['groups'][1]} ({t['unit']})\nMean {d:.3f}; {100*t['confidence_level']:g}% CI [{t['ci_low']:.3f}, {t['ci_high']:.3f}]; {count}; Holm p={t['p_holm']:.4g}";a.set_title(label,loc='left',fontsize=10.5);a.margins(x=.2)
+  levels=', '.join(f"{x:g}%" for x in sorted({t['confidence_level']*100 for t in tests}));note=f'Marginal {levels} confidence intervals; separate unit scales. Not simultaneous or multiplicity-adjusted intervals.'
  elif kind=='sensitivity':
   scenarios=matrix['sensitivity'];ax.set_position([.23,.24,.69,.49])
   for i,r in enumerate(rows):ax.plot([s['lower_bounds'][r['candidate_id']] for s in scenarios],np.arange(len(scenarios)),'.-',label=r['name'],color=colors[i],linewidth=1.5,markersize=7)
@@ -49,7 +58,7 @@ for v in spec['visuals']:
  elif kind=='decision_path':
   ax.remove();steps=v['steps'];n=len(steps)
   for i,step in enumerate(steps):
-   x=.075+i*(.90/n);fig.text(x,.66,f'{i+1:02d}',fontsize=30,color=theme['accent'],weight='bold');fig.text(x,.55,wrap(step['heading'],22 if n==4 else 28),fontsize=15,weight='bold',va='top');fig.text(x,.36,wrap(step['detail'],29 if n==4 else 37),fontsize=11,color='#526476',va='top')
+   x=.075+i*(.90/n);fig.text(x,.66,f'{i+1:02d}',fontsize=30,color=theme['accent'],weight='bold');fig.text(x,.55,fitted(step['heading'],fig,15,.90/n-.03,'bold'),fontsize=15,weight='bold',va='top');fig.text(x,.40,fitted(step['detail'],fig,11,.90/n-.03),fontsize=11,color='#526476',va='top')
   note='Read from the supported finding through its conditions. This is an explanatory sequence, not an approved delivery plan.'
- fig.text(.07,.12,wrap(v['caption'],120),fontsize=10.5,va='top');fig.text(.07,.035,wrap(note,135),fontsize=9,color='#526476',va='bottom')
+ fig.text(.07,.155,fitted(v['caption'],fig,10.5,.86),fontsize=10.5,va='top');fig.text(.07,.045,fitted(note,fig,9,.86),fontsize=9,color='#526476',va='top')
  fig.savefig(out/(v['id']+'.svg'),facecolor=fig.get_facecolor());fig.savefig(out/(v['id']+'.png'),dpi=150,facecolor=fig.get_facecolor());plt.close(fig)

@@ -147,7 +147,8 @@ def validate(root,role,require_artifacts=True):
    regions=read(root/'workbook-check.json')['regions'];expected={'previews/workbook/'+str(i+1)+'-'+r[0].lower()+'.png' for i,r in enumerate(regions)}
    actual={f['path'] for f in receipt['previews'] if f['path'].startswith('previews/workbook/')}
    if actual!=expected:raise ValueError('Incomplete workbook image coverage')
-   for sheet,last in [('Matrix',len(src['matrix']['cells'])+4),('Evidence',read(root/'workbook-check.json')['evidence_rows']+4)]:
+   wc=read(root/'workbook-check.json')
+   for sheet,last in [('Matrix',len(src['matrix']['cells'])+4),('Evidence',wc['evidence_rows']+4),('Scoring basis',wc['anchor_rows']+4),('Weight scenarios',wc['scenario_rows']+4)]:
     covered=set()
     for sh,region in regions:
      if sh==sheet:
@@ -167,6 +168,16 @@ def validate(root,role,require_artifacts=True):
      if '[Content_Types].xml' not in z.namelist():raise ValueError('Invalid Office package')
      if p.suffix=='.xlsx':
       overview=xlsx_cells(z,1);detail=xlsx_cells(z,2);criteria={c['id']:c for c in src['matrix']['criteria']}
+      ac=xlsx_cells(z,4);sc=xlsx_cells(z,5)
+      for criterion in criteria.values():
+       for score,meaning in [('Reason',criterion['reason']),*criterion['anchors'].items()]:
+        value=score if score=='Reason' else int(score);collected=''.join(str(ac.get('D'+str(i),'')) for i in range(5,wc['anchor_rows']+5) if ac.get('A'+str(i))==criterion['name'] and ac.get('C'+str(i))==value)
+        if collected!=meaning:raise ValueError('Saved score anchors differ from source')
+      si=5
+      for scenario in src['matrix']['sensitivity']:
+       for total in src['matrix']['totals']:
+        if sc.get('D'+str(si))!=scenario['lower_bounds'][total['candidate_id']] or sc.get('B'+str(si))!=scenario['factor'] or sc.get('C'+str(si))!=total['name']:raise ValueError('Saved sensitivity differs from source')
+        si+=1
       for i,row in enumerate(src['matrix']['totals'],8):
        for col,key in [('B','lower_bound'),('C','upper_bound'),('D','coverage_percent'),('E','known_only_fit')]:
         expected=row[key];actual=overview.get(col+str(i))
@@ -183,18 +194,22 @@ def validate(root,role,require_artifacts=True):
       if c['title'] not in text or any(x['heading'] not in text for x in c['sections']):raise ValueError('Document content mismatch')
      if role=='presentation-designer':
       slides=[n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)]
-      expected=sum(math.ceil(len(src['matrix']['totals'])/4) if s['kind']=='comparison_table' else 1 for s in c['slides'])
+      expected=sum(math.ceil(len(src['matrix']['totals'])/4) if s['kind']=='comparison_table' else math.ceil(len(src['matrix']['totals'])/6) if s['kind']=='score_chart' else 1 for s in c['slides'])
       if len(slides)!=expected:raise ValueError('Slide count mismatch')
       if not any(re.fullmatch('ppt/(slides/)?charts/chart[0-9]+.xml',n) for n in z.namelist()):raise ValueError('Missing editable chart')
       ns={'c':'http://schemas.openxmlformats.org/drawingml/2006/chart'}
+      chart_names=set();by_name={r['name']:r for r in src['matrix']['totals']}
       for n in z.namelist():
        if re.fullmatch('ppt/(slides/)?charts/chart[0-9]+.xml',n):
         chart=ET.fromstring(z.read(n));series=chart.findall('.//c:ser',ns)
-        expected=[[r['lower_bound'] for r in src['matrix']['totals']],[r['upper_bound']-r['lower_bound'] for r in src['matrix']['totals']]]
+        categories=[v.text for v in series[0].findall('./c:cat//c:pt/c:v',ns)];chart_names.update(categories)
+        if not set(categories)<=set(by_name):raise ValueError('Unknown chart category')
+        expected=[[by_name[name]['lower_bound'] for name in categories],[by_name[name]['upper_bound']-by_name[name]['lower_bound'] for name in categories]]
         actual=[[float(v.text) for v in s.findall('./c:val//c:pt/c:v',ns)] for s in series]
         if actual!=expected:raise ValueError('Native chart differs from checked numbers')
         axes=chart.findall('.//c:valAx',ns)
         if not axes or any(a.find('c:scaling/c:min',ns) is None or float(a.find('c:scaling/c:min',ns).get('val'))!=0 or a.find('c:scaling/c:max',ns) is None or float(a.find('c:scaling/c:max',ns).get('val'))!=100 for a in axes):raise ValueError('Score bar axis must explicitly span 0-100')
+      if chart_names!=set(by_name):raise ValueError('Chart pagination omitted a candidate')
       texts=[ET.fromstring(z.read(n)) for n in slides];native_tables=sum(len(x.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/main}tbl')) for x in texts)
       if native_tables<1:raise ValueError('Missing editable table')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)

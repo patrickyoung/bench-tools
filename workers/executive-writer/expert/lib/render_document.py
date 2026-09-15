@@ -41,7 +41,7 @@ for t in doc.tables:
    shade=OxmlElement('w:shd');shade.set(qn('w:fill'),theme['ink'][1:] if index==0 else 'EDF1F4' if index%2 else 'FFFFFF');cell._tc.get_or_add_tcPr().append(shade)
    for para in cell.paragraphs:
     for run in para.runs:run.font.size=Pt(10);run.font.color.rgb=RGBColor.from_string('FFFFFF' if index==0 else theme['ink'][1:]);run.bold=index==0
-doc.core_properties.title=s['title'];doc.core_properties.author='';doc.core_properties.subject=story['thesis'];doc.save(out/'report.docx');(out/'report.md').write_text('\n\n'.join(markdown)+'\n')
+doc.core_properties.title=s['title'][:255];doc.core_properties.author='';doc.core_properties.subject=s['subtitle'][:255];doc.save(out/'report.docx');(out/'report.md').write_text('\n\n'.join(markdown)+'\n')
 preview=root/'previews/document';preview.mkdir(parents=True,exist_ok=True)
 subprocess.run([sys.executable,os.environ['PUBLICATION_DOCX_RENDERER'],str(out/'report.docx'),'--output_dir',str(preview),'--emit_pdf'],check=True,timeout=180)
 pdf=preview/'report.pdf'
