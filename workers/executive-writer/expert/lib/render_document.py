@@ -8,6 +8,7 @@ from docx.enum.text import WD_BREAK
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from publication_contract import display_score
 
 root=Path(sys.argv[1]).resolve();s=json.loads((root/'output/spec.json').read_text())['content'];story=json.loads((root/'inputs/story.json').read_text())['content'];source=json.loads((root/'inputs/source.json').read_text());design=json.loads((root/'inputs/design.json').read_text())['content'];theme=story['design'];out=root/'output';out.mkdir(exist_ok=True);doc=Document();sec=doc.sections[0];sec.top_margin=Inches(.65);sec.bottom_margin=Inches(.65);sec.left_margin=sec.right_margin=Inches(.8)
 styles=doc.styles;normal=styles['Normal'];normal.font.name=theme['font'];normal.font.size=Pt(11);normal.font.color.rgb=RGBColor.from_string(theme['ink'][1:]);normal.paragraph_format.space_after=Pt(8);normal.paragraph_format.line_spacing=1.12
@@ -29,7 +30,7 @@ matrix=source['matrix'];table=doc.add_table(rows=1, cols=4);table.style='Normal 
 for c,text in zip(table.rows[0].cells,['Option','Score bounds /100','Evidence coverage','Gate eligibility']):c.text=text
 header=OxmlElement('w:tblHeader');table.rows[0]._tr.get_or_add_trPr().append(header)
 for r in matrix['totals']:
- for c,text in zip(table.add_row().cells,[r['name'],f"{r['lower_bound']:g}–{r['upper_bound']:g}",f"{r['coverage_percent']:g}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])]):c.text=text
+ for c,text in zip(table.add_row().cells,[r['name'],f"{display_score(r['lower_bound'])}–{display_score(r['upper_bound'])}",f"{r['coverage_percent']:g}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])]):c.text=text
 doc.add_paragraph('Score bounds describe missing evidence. Coverage does not establish source truth or statistical certainty.','Caption')
 visuals={v['id']:v for v in design['visuals']};facts={f['id']:f for f in source['facts']};markdown=['# '+s['title'],s['subtitle'],'## Executive summary',s['executive_summary']]
 used=[];card_elements=set()

@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from publication_contract import display_number
+from publication_contract import display_number,display_score
 import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.font_manager import FontProperties
@@ -34,8 +34,8 @@ for v in spec['visuals']:
    ax.barh(i,r['lower_bound'],color=colors[i],height=.48)
    gap=r['upper_bound']-r['lower_bound']
    if gap:ax.barh(i,gap,left=r['lower_bound'],color='#DBE2E7',height=.48,hatch='///',edgecolor='#8C9BA6',linewidth=0)
-   ax.text(min(r['upper_bound']+1.6,97),i,f"{r['lower_bound']:g}–{r['upper_bound']:g}",va='center',fontsize=12,weight='bold')
-  ax.set_yticks(range(len(rows)),names);ax.invert_yaxis();ax.set_xlim(0,108);ax.set_xticks([0,25,50,75,100]);ax.set_xlabel('Weighted fit / 100');ax.grid(axis='x',alpha=.18);ax.set_axisbelow(True)
+   ax.text(r['upper_bound']+1.6,i,f"{display_score(r['lower_bound'])}–{display_score(r['upper_bound'])}",va='center',fontsize=12,weight='bold')
+  ax.set_yticks(range(len(rows)),names);ax.invert_yaxis();ax.set_xlim(0,124);ax.set_xticks([0,25,50,75,100]);ax.set_xlabel('Weighted fit / 100');ax.grid(axis='x',alpha=.18);ax.set_axisbelow(True)
   note='Solid: supported points. Hatched: unresolved score potential. These bounds describe missing evidence.'
  elif kind=='coverage':
   vals=[r['coverage_percent'] for r in rows];ax.barh(names,vals,color=colors[:len(rows)],height=.5);ax.invert_yaxis();ax.set_xlim(0,110);ax.set_xticks([0,25,50,75,100]);ax.set_xlabel('Criteria weight supported by evidence (%)')

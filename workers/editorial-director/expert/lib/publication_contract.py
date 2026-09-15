@@ -224,6 +224,10 @@ def validate(root,role,require_artifacts=True):
       normalized=' '.join(text.split())
       if story.get('status_label') and story['status_label'] not in text:raise ValueError('Qualified report status missing')
       if any(label not in text for label in story.get('eligibility_labels',{}).values()):raise ValueError('Qualified report gate labels missing')
+      w='{http://schemas.openxmlformats.org/wordprocessingml/2006/main}';table=tree.find('.//'+w+'tbl')
+      actual=[] if table is None else [[''.join(cell.itertext()) for cell in row.findall(w+'tc')] for row in table.findall(w+'tr')]
+      expected=[['Option','Score bounds /100','Evidence coverage','Gate eligibility'],*[[r['name'],f"{display_score(r['lower_bound'])}–{display_score(r['upper_bound'])}",f"{r['coverage_percent']:g}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])] for r in src['matrix']['totals']]]
+      if actual!=expected:raise ValueError('Saved report summary table mismatch')
       if any(' '.join(value.split()) not in normalized for value in [*c['executive_summary'].split('\n\n'),*(p for x in c['sections'] for p in x['paragraphs'])]):raise ValueError('Authored report text was not emitted')
      if role=='presentation-designer':
       slides=sorted((n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)),key=lambda n:int(re.search(r'slide(\d+)\.xml',n).group(1)))
