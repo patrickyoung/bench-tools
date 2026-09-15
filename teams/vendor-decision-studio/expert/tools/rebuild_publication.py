@@ -22,7 +22,12 @@ for role in ROLES[:4]:
  root=old/'stages'/role
  if not (root/'output/spec.json').exists():break
  if inputs(root)!=read(old/'control'/(role+'-inputs.json')):raise ValueError('Changed prior admitted input')
- selected[role]=validate(root,role,False)
+ try:selected[role]=validate(root,role,False)
+ except ValueError:
+  if role not in revise:raise
+  prior=read(root/'output/spec.json')
+  if any(prior.get(k)!=v for k,v in bindings(root,role).items()):raise ValueError('Prior revision spec has stale bindings')
+  selected[role]=prior  # Invalid content is selected only as revision evidence, never reused.
  if sha(root/'inputs/source.json')!=sha(old/'control/source.json'):raise ValueError('Conflicting prior source')
 run.mkdir(parents=True);created_run=True;(run/'control').mkdir();(run/'records').mkdir()
 for name in ['source.json','profile.json','source-binding.json']:shutil.copyfile(old/'control'/name,run/'control'/name)
