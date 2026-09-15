@@ -160,7 +160,7 @@ def verify_pivots(root,spec):
                 for x in field.find('s:sharedItems',NS):
                     typ=x.tag.split('}')[-1];vals.append(None if typ=='m' else float(x.get('v')) if typ=='n' else x.get('v')=='1' if typ=='b' else x.get('v'))
                 shared.append(vals)
-            for rec,row in zip(records,rows):require([shared[j][int(x.get('v'))] for j,x in enumerate(rec)]==row,'Pivot cache/source data mismatch')
+            for rec,row in zip(records,rows):require([shared[j][int(x.get('v'))] for j,x in enumerate(rec)]==[None if v=='' else v for v in row],'Pivot cache/source data mismatch')
             groups={}
             for row in rows:groups.setdefault(row[ri],[]).extend([row[vi]] if isinstance(row[vi],(int,float)) else [])
             def agg(a):
