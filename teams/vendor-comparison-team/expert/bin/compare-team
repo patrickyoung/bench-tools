@@ -29,7 +29,7 @@ run_agent() {
     exit "$code"
   fi
 }
-run_agent manager -record-input request.md -record-input inputs/packet.json -record-output output/decision.json -record-output output/response.md
+run_agent manager -record-input request.md -record-input inputs/packet.json -record-input inputs/statistical-intake.json -record-output output/decision.json -record-output output/response.md
 python3 "$TEAM/tools/team_io.py" handoff "$RUN"
 POLARS_REQUEST_SHA256=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$RUN/control/analyst-request.json")
 export POLARS_REQUEST_SHA256

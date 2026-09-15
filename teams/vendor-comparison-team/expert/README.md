@@ -134,6 +134,11 @@ pairs and normality concerns differences. These are declared assertions, not
 software-verified sampling facts. Absent statistics or valid empty selections
 still receive a no-inference assessment; malformed input is not an empty case.
 
+The manager receives `inputs/statistical-intake.json`: admitted dataset identities
+and computed preflight profiles. Raw datasets are already available to the
+analyst; absence of rows from the manager context is not an evidence gap.
+The analyst owns statistical outputs; Vendor Comparison owns the matrix.
+
 Before any model calls, preparation validates schemas, runtime dependencies
 and the full selected data through the analyst profiler. Invalid input or
 unavailable dependencies stop the run. Valid data with unsupported inference
