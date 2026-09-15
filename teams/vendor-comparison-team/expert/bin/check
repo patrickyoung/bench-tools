@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+export PYTHONDONTWRITEBYTECODE=1
+exec python3 "$(CDPATH= cd -- "$(dirname "$0")/../tools" && pwd)/team_io.py" check "${COMPARISON_RUN:-.}"

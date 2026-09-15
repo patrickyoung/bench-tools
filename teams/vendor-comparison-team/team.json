@@ -1,0 +1,48 @@
+{
+  "id": "vendor-comparison-team",
+  "description": "Evaluate technical options through Product Manager framing and synthesis, Polars analysis, weighted comparison and independent Product Owner review.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library on macOS or Linux",
+    "model": "Operator-configured Ask model/credentials, no credentials bundled",
+    "review": "Separate context review plus human judgment; numeric and byte checks do not establish truth",
+    "pdf": "pdftotext (Poppler) for PDF evidence; no requirement for text/PPTX/DOCX",
+    "analytics": "Python >=3.12 selected by POLARS_PYTHON with polars-analyst requirements.txt installed outside source; core wiring remains Python >=3.9"
+  },
+  "files": [
+    "teams/vendor-comparison-team/expert/AGENTS.md",
+    "teams/vendor-comparison-team/expert/LICENSE",
+    "teams/vendor-comparison-team/expert/README.md",
+    "teams/vendor-comparison-team/expert/bin/check",
+    "teams/vendor-comparison-team/expert/bin/compare-team",
+    "teams/vendor-comparison-team/expert/tools/team_io.py"
+  ],
+  "members": {
+    "manager": {
+      "worker": "product-manager"
+    },
+    "analyst": {
+      "worker": "polars-analyst"
+    },
+    "comparison": {
+      "worker": "vendor-comparison"
+    },
+    "reviewer": {
+      "worker": "product-owner"
+    }
+  }
+}

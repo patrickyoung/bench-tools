@@ -1,0 +1,40 @@
+{
+  "id": "information-designer",
+  "description": "Design bound-data graphics, explanatory infographics and auditable editable Excel tables.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 for contracts; selected bundled Python 3.12 for production and PDF checks",
+    "model": "Explicit operator-selected Ask model and credentials; no secrets bundled",
+    "production": "PUBLICATION_* selectors: bundled Artifact Tool Node/Python/LibreOffice, Poppler, document/presentation skill helpers; separate matplotlib 3.11.2 runtime for information design",
+    "review": "Independent actual-image Ask review plus a separate semantic Agent review; model judgment, not certification"
+  },
+  "files": [
+    "workers/information-designer/expert/AGENTS.md",
+    "workers/information-designer/expert/CONTRACT.md",
+    "workers/information-designer/expert/LICENSE",
+    "workers/information-designer/expert/PROVENANCE.md",
+    "workers/information-designer/expert/README.md",
+    "workers/information-designer/expert/bin/check",
+    "workers/information-designer/expert/lib/publication_contract.py",
+    "workers/information-designer/expert/lib/render.py",
+    "workers/information-designer/expert/lib/render_graphics.py",
+    "workers/information-designer/expert/lib/render_office.mjs",
+    "workers/information-designer/expert/role.json",
+    "workers/information-designer/expert/skills/evidence-design/SKILL.md",
+    "workers/information-designer/expert/tools/render"
+  ]
+}

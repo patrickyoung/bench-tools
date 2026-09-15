@@ -10,6 +10,8 @@ brief, workspace and selected inputs.
 
 | Team | Purpose | Authoritative roster |
 | --- | --- | --- |
+| [Vendor comparison team](vendor-comparison-team/expert/README.md) | Lead technical evaluations through Product Manager framing/synthesis, Polars analysis, comparison and independent review. | [team.json](vendor-comparison-team/team.json) |
+| [Vendor decision studio](vendor-decision-studio/expert/README.md) | Add dedicated editorial, information design, executive writing, presentation and publication review expertise to the comparison process. | [team.json](vendor-decision-studio/team.json) |
 | [Page team](page-team/expert/README.md) | Plan, create, integrate and review a single-file site using the useful available roles. | [team.json](page-team/team.json) |
 
 ```sh

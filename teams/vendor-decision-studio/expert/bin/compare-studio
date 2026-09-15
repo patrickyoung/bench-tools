@@ -1,0 +1,21 @@
+#!/bin/sh
+# Fixed composition of the checked analytical team and independent publication roles.
+set -eu
+TEAM=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+ echo 'usage: compare-studio JOB_JSON NEW_RUN_DIRECTORY [--offline]' >&2
+ exit 1
+fi
+JOB=$1
+RUN=$2
+shift 2
+[ ! -e "$RUN" ] || { echo 'New studio run directory required' >&2; exit 1; }
+mkdir -p "$RUN"
+RUN=$(CDPATH= cd -- "$RUN" && pwd)
+"$TEAM/bin/compare-team" "$JOB" "$RUN/analysis" "$@"
+if [ -n "${PUBLICATION_PROFILE:-}" ]; then
+ "$TEAM/bin/publish-decision" "$RUN/analysis" "$RUN/publication" "$PUBLICATION_PROFILE"
+else
+ "$TEAM/bin/publish-decision" "$RUN/analysis" "$RUN/publication"
+fi
+python3 "$TEAM/tools/publication_io.py" check "$RUN/publication"
