@@ -32,6 +32,12 @@ Operations (executed in order; arrays are rectangular and range-exact):
   use relative offsets. Override copied values/formulas afterward as needed.
 - `{op:"format",sheet,range,format:{...}}`: font/fill/rowHeight/columnWidth/
   numberFormat/wrapText/alignment/borders using ordinary Artifact Tool format.
+  On imported workbooks, `copy` has been observed to leave destination styles
+  unchanged even with copy-all. When matching a header/input style, follow with
+  explicit format properties (font name/size/color/bold as relevant, fill and
+  alignment); preserve or explicitly set the destination's intended number
+  format. Do not treat a successful copy or preservation report as proof that
+  requested styling was applied. Compare saved styles and inspect the preview.
   `columnWidth` is Excel character units (typical 12–32), NOT pixels;
   `columnWidthPx` is pixels. Keep summary columns compact, generally <=60 units.
   Do not widen a whole column to fit a long instruction. Shorten the visible

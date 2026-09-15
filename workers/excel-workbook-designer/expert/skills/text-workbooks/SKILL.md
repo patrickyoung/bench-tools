@@ -46,6 +46,10 @@ Use meaningful table filters; explain if filtered rows do not change totals.
 Freeze headers and identity columns when supported; inspect saved panes.
 Keep formula/input styling distinct (creation's amber inputs with blue text);
 styling is not protection. Preserve an existing comprehensible convention.
+When moving or appending an input column, explicitly apply its input font/fill
+and header style. In the current imported-workbook runtime, copy-all can leave
+destination styles unchanged; use explicit format operations and verify saved
+font/fill/alignment as well as the preview. Keep native date/number formats.
 A small legend explains only non-obvious behavior. Error text states what to fix,
 for example “Unmatched owner ID — choose an ID from People”, not just “Invalid”.
 

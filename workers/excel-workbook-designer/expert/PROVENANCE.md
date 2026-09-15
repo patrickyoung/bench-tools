@@ -181,3 +181,13 @@ keys and meaningful display labels keep identity relationships and the visible
 working view unambiguous. These are host engineering corrections, not an admitted
 Hone lesson or a claim of native Excel certification. Tests, source snapshots,
 failed attempts and image review belong in the external operator evaluation.
+
+### Imported-cell formatting observation
+
+The host's follow-up text edit found that the bundled runtime's copy-all left an
+imported destination header style unchanged. An independent saved-style check
+caught this after preservation checks passed. Editing/text guidance now requires
+explicit font, fill and alignment when matching or moving inputs/headers, with
+saved-style and preview verification; preservation alone does not establish the
+requested change. This is supplied host feedback, not a Hone lesson or a claim
+that the underlying dependency has been fixed. Evidence stays outside source.
