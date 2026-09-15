@@ -1,11 +1,11 @@
 # Vendor comparison team
 
 Use `bin/compare-team JOB_JSON NEW_RUN_DIRECTORY [--offline]`. This fixed Unix
-composition invokes four sequential, separate Agent contexts: unchanged Product
-Owner manages intake and plans the decision; the new Polars statistical analyst
-audits observational data and performs only supported statistical analysis;
-existing Vendor Comparison assesses evidence and writes the weighted matrix;
-unchanged Product Owner independently reviews in a fresh context.
+composition uses four independent worker definitions across five sequential Agent
+contexts. Product Manager acts as Evaluation Lead for initial framing; Polars
+Analyst assesses observational evidence; Vendor Comparison produces the scored
+matrix; the same Product Manager definition returns for synthesis in a fresh
+workspace/context; Product Owner independently reviews the brief and matrix.
 Each assignment has separate work, state and records. The entry command is the
 runtime; do not replace it with a host subagent conversation or ad hoc scoring.
 There is no concurrency, automatic retry or resume. Preserve stopped stages and
@@ -87,7 +87,26 @@ without becoming negative scores or unsupported claims of superiority.
 Final statistical deliverables are `result/statistics.json`,
 `result/statistical-plan.json` and `result/statistics.md`, alongside all existing
 comparison, intake, review and manifest artifacts. Handoffs check admitted bytes
-and member contracts; final integration rechecks all four roles. The root
+and member contracts; final integration rechecks all five stage instances. The root
 read-only check validates bindings and artifacts without rerunning Agent.
 Recomputation establishes calculations, not sampling truth or defensible
 assumptions. Treat arithmetic checks and semantic evaluation as separate evidence.
+
+## Evaluation Lead handoffs
+
+Internal member ID `manager` selects `product-manager`. Its first context uses
+`bench.product-manager/v1`, mode `evaluation`, to frame customers, strategic fit,
+economics, lifecycle, criteria/weights and evidence ownership. It cannot select
+a winner. Its separate `synthesis` stage reuses that definition and explicitly
+receives the checked matrix, analysis, source packets, original framing and
+statistical outputs. Adopt the checked recommendation or defer for revision;
+never switch candidates, change weights, upgrade conditional or override an
+analytical refusal. Preserve exact supplied candidate order and mandatory gate
+requirement strings. Bench owns execution, not the Product Manager.
+
+The reviewer receives both Product Manager packages and audits the final brief
+alongside the matrix. Final outputs add decision-brief.md/json; report.md states
+the Evaluation Lead selection and links its brief. A deferred executive advice
+is distinct from a matrix ranking and does not authorize action. Outcomes and
+features can inform later PO/team planning; no invented sprint plans, capacity,
+roadmap, ROI or delivery commitments. Existing statistical rules remain in force.

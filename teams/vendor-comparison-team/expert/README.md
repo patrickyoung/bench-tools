@@ -1,6 +1,7 @@
 # Vendor comparison team
 
-A reusable team for technical product, service and vendor decisions. Supply a
+A reusable team for technical product, service and vendor decisions, led by a
+SAFe-informed Product Manager acting as Evaluation Lead. Supply a
 candidate list, business need, presentations, transcripts, website URLs and
 human notes. The team returns an evidence-linked comparison matrix, explicit
 weights and score anchors, rationale, mandatory-gate results, coverage and
@@ -10,10 +11,16 @@ uncertainty, weight sensitivity, and independent review.
 
 | Role | Library worker | Responsibility |
 |---|---|---|
-| Manager | `product-owner` unchanged | Frame the business need, scope, criteria, priorities and diligence plan. |
+| Evaluation Lead (`manager`) | `product-manager` | Frame customer outcomes, strategic/economic/lifecycle tradeoffs and the framework; return for a fresh-context executive synthesis. |
 | Analyst | `polars-analyst` | Profile observations, assess declared design and render supported statistics or explicit descriptive refusals. |
 | Comparison | `vendor-comparison` | Read the evidence, score every candidate against anchored criteria, explain tradeoffs and produce deterministic tables. |
 | Reviewer | `product-owner` unchanged, new context | Check every scored cell and gate against evidence and business priorities; return proceed, revise or hold. |
+
+The Evaluation Lead adds product-management judgment to reused Product Owner
+evidence discovery and Enterprise Architect business-outcome, capability and
+FinOps skills. Product Management owns business framing and synthesis; eventual
+PO/team delivery planning remains a downstream handoff. This is an application
+of SAFe responsibilities, not an official SAFe team pattern or certification.
 
 The comparison specialist reuses Enterprise Architect's business-outcomes,
 product-capabilities and finops skills and Product Owner's evidence-discovery
@@ -25,7 +32,8 @@ model history and workspace; it shares the selected model and is not an
 independent human auditor. Operator evaluation and domain experts remain
 appropriate for consequential procurement.
 
-The four sequential stages (manager → analyst → comparison → reviewer) are a
+The five sequential stages (manager framing → analyst → comparison → Product
+Manager synthesis → reviewer), using four independent worker definitions, are a
 fixed composition of public `agent run` commands in
 `bin/compare-team`. There is no new scheduler, provider client, model loop,
 background service or host-subagent controller. Members can be exported and
@@ -134,7 +142,7 @@ pairs and normality concerns differences. These are declared assertions, not
 software-verified sampling facts. Absent statistics or valid empty selections
 still receive a no-inference assessment; malformed input is not an empty case.
 
-The manager receives `inputs/statistical-intake.json`: admitted dataset identities
+The Evaluation Lead receives `inputs/statistical-intake.json`: admitted dataset identities
 and computed preflight profiles. Raw datasets are already available to the
 analyst; absence of rows from the manager context is not an evidence gap.
 The analyst owns statistical outputs; Vendor Comparison owns the matrix.
@@ -193,7 +201,7 @@ inspection from text alone.
 Limits: 32 materials, 20 MB per raw source, 40 MB decompressed Office archive,
 3,000 ZIP entries, 900 KB normalized packet, 12 gates, and 2–12 candidates.
 Oversized packets require explicit curation or splitting; they are not silently
-truncated. Product Owner inputs/outputs are bounded to 1 MiB per file; the statistical contract bounds its own files to 2 MB.
+truncated. Product Manager and Product Owner input/response files are bounded to 1 MiB each; their JSON outputs are bounded to 256 KiB; the statistical contract bounds its own files to 2 MB.
 
 ## Run
 
@@ -241,11 +249,11 @@ new-run/
                  packet, admissions and input hashes
   materials/     fetched/copied raw snapshots
   datasets/      admitted raw CSV/Parquet datasets
-  stages/        manager, analyst, comparison, reviewer work and state
+  stages/        manager, analyst, comparison, synthesis, reviewer work and state
   records/       each Agent's stdout/stderr, model sessions, Record receipts
   result/        report.md, matrix.csv, matrix.json, analysis.json, evidence.md,
                  intake.md/json, review.md/json, statistics.json,
-                 statistical-plan.json, statistics.md, manifest.json
+                 statistical-plan.json, statistics.md, decision-brief.md/json, manifest.json
   status.json
 ```
 
@@ -264,10 +272,24 @@ artifact hash. Manager planning and analyst assessment remain advisory.
 the statistics hash; the final manifest records both packet hashes and final
 artifact hashes.
 
+After the checked comparison, the Product Manager returns as `stages/synthesis`
+with a fresh model history, workspace and records. It receives original/derived
+packets, the original evaluation plan, comparison artifacts and statistical
+outputs. Its `bench.product-manager/v1` synthesis preserves actual checked
+criteria, weights, gates and selection, or defers with a correction request.
+It cannot change a winner or upgrade conditional advice. No scoring or
+statistical routines move into this stage. `result/decision-brief.md/json` records
+its business synthesis and recommendation conditions; report.md displays its
+selection and links the brief. The original framing remains `intake.md/json`.
+Both use the distinct Product Manager contract, replacing Product Owner planning
+for this team revision. Historical exports keep their original contract.
+
 The fresh Product Owner reviewer receives the original source documents as
 normalized in the original packet, the derived packet and declared study design,
 manager plan, comparison artifacts, and the full computed profiles/results,
-statistical plan and report. It audits counts, missingness, pair matching, effect
+statistical plan and report, plus both Product Manager decisions and the final
+executive brief. It audits strategic/economic/lifecycle claims and decision
+conditions as well as counts, missingness, pair matching, effect
 sign/units, interval scope, Holm adjustment and interpretation against design.
 Raw datasets remain in the analyst's admitted input and are recomputed by the
 trusted checker; the reviewer is not claimed to read every raw row. It must
@@ -275,15 +297,16 @@ check every scored cell and gate against cited evidence and anchors, including
 faithful use of computed passages. Descriptive-only results are legitimate;
 a passing calculation check does not establish defensible assumptions.
 
-The manager can stop with questions before matrix work. Otherwise `result/`
+The Evaluation Lead can stop with questions before matrix work or during
+synthesis if business intent blocks a responsible decision. Otherwise `result/`
 contains the comparison and review, including results that require revision.
 The report heading and status explicitly distinguish these. Exit codes:
 
 | Code | Meaning |
 |---:|---|
-| 0 | Four stages completed; independent review says proceed. Advice is reviewable, not approved for purchase. |
+| 0 | Five stages completed; independent review says proceed. Advice is reviewable, not approved for purchase. |
 | 2 | Reviewer requires revision, or an Agent stopped unfinished; inspect status and role records. |
-| 75 | Manager/reviewer needs human input, or Agent waits. |
+| 75 | Evaluation Lead/reviewer needs human input, or Agent waits. |
 | Other | Exact Agent failure/decline/boundary/interruption status, or invalid input/check failure. |
 
 Missing or conflicting cells retain null scores. The report shows lower and
@@ -308,9 +331,15 @@ are not a filesystem secrecy boundary.
 
 Source tests live beside the team, outside the exportable definition. Set
 `COMPARISON_TEAM_EXPERT` to a clean assembled export and run the supplied
-`tests/test_contracts.py`. The suite exercises deterministic acceptance and
+`tests/test_contracts.py` and `tests/test_lead_handoffs.py`. The suites exercises deterministic acceptance and
 rejection, extraction, local disposable HTTP snapshots and handoff integrity.
 Synthetic case generation writes to an explicit external destination. Model
 trials and their qualitative review belong in an external `EVALUATION.md`.
 Retain automatic Agent recordings and verify their terminal indexes and Record
 receipts; valid recordings establish observed bytes/outcomes, not business truth.
+
+The Product Manager's standalone contract suite lives at
+`workers/product-manager/tests/test_check.py` in the source library; select its
+export using PRODUCT_MANAGER_EXPERT. Polars tests remain with polars-analyst.
+The extra synthesis stage adds one bounded Agent invocation. The four role
+definitions can still be exported and run independently with selected inputs.

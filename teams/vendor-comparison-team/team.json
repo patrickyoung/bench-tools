@@ -1,6 +1,6 @@
 {
   "id": "vendor-comparison-team",
-  "description": "Manage technical vendor decisions through intake, Polars statistical analysis, evidence-linked weighted comparison and independent review in four Agent contexts.",
+  "description": "Evaluate technical options through Product Manager framing and synthesis, Polars analysis, weighted comparison and independent Product Owner review.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -33,7 +33,7 @@
   ],
   "members": {
     "manager": {
-      "worker": "product-owner"
+      "worker": "product-manager"
     },
     "analyst": {
       "worker": "polars-analyst"

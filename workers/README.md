@@ -10,6 +10,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 
 | Worker | Purpose |
 | --- | --- |
+| [Product Manager](product-manager/expert/README.md) | Frame SAFe-informed product strategy and evaluations, then synthesize checked evidence into business decisions with explicit economic and lifecycle tradeoffs. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
 | [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
