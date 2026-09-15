@@ -1,5 +1,5 @@
 """Synthetic publication boundary tests; no model calls or real customer data."""
-import copy,json,sys,tempfile,unittest
+import copy,json,sys,tempfile,unittest,subprocess
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'expert/tools'))
 from publication_contract import bindings,validate,read,safe_file
@@ -20,6 +20,11 @@ class PublicationTests(unittest.TestCase):
  def check(self,role):return validate(self.root,role,False)
  def review(self):return {'verdict':'publish','summary':'All outputs checked','rubric':{k:4 for k in ['evidence_fidelity','narrative_coherence','audience_usefulness','writing_quality','visual_craft','accessibility']},'findings':[],'cross_format_checks':['Sources agree']*5}
  def test_editorial_valid(self):self.setup_role('editorial-director',self.story);self.check('editorial-director')
+ def test_rebuild_does_not_overwrite_existing_run_status(self):
+  status=self.root/'status.json';status.write_text('original retained status')
+  command=Path(__file__).resolve().parents[1]/'expert/tools/rebuild_publication.py'
+  result=subprocess.run([sys.executable,str(command),str(self.root/'unused-old'),str(self.root)],capture_output=True,text=True)
+  self.assertNotEqual(result.returncode,0);self.assertEqual(status.read_text(),'original retained status')
  def test_stale_request(self):
   self.setup_role('editorial-director',self.story);write(self.root/'request.json',{'role':'editorial-director','audience':'changed'})
   with self.assertRaisesRegex(ValueError,'Stale'):self.check('editorial-director')

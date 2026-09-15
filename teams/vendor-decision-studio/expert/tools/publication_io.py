@@ -32,6 +32,8 @@ def stage(run,role):
  if dest.exists():raise ValueError('Stage already exists')
  (dest/'inputs').mkdir(parents=True);(dest/'output').mkdir();(run/'records'/role).mkdir(exist_ok=True)
  shutil.copyfile(run/'control/source.json',dest/'inputs/source.json');profile=read(run/'control/profile.json');write(dest/'request.json',{'role':role,'audience':profile['audience'],'brand':profile['brand'],'task':'Transform the reviewed expert findings into the contracted professional publication output. Read CONTRACT.md and selected skills. Preserve evidence and the shared narrative. Produce spec and render required artifacts.'})
+ if role in ROLES[1:4]:
+  request=read(dest/'request.json');request.update(production='controller',task='Author the complete contracted publication spec and run the authoring check. The trusted controller renders and validates artifacts after this assignment; do not run tools/render or claim produced files.');write(dest/'request.json',request)
  if role!='editorial-director':shutil.copyfile(run/'stages/editorial-director/output/spec.json',dest/'inputs/story.json')
  if role in ['executive-writer','presentation-designer','publication-reviewer']:
   shutil.copyfile(run/'stages/information-designer/output/spec.json',dest/'inputs/design.json')

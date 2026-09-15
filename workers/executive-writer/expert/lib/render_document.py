@@ -40,14 +40,17 @@ for part in s['sections']:
   v=visuals[part['visual_id']];img=root/'build/document-graphics'/(v['id']+'.png');doc.add_heading(v['title'],2);p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
   if desc:desc[0].set('descr',v['alt'])
   p.paragraph_format.keep_with_next=True
-  caption=v['subtitle']+' '+v['caption']+(' '+figure_notes[v['id']] if v['kind'] in ['score_bounds','score_heatmap','coverage'] else '')
+  caption=v['subtitle']+' '+v['caption']
   doc.add_paragraph(caption,'Caption');markdown+=['![ '+v['alt']+' ](graphics/'+v['id']+'.png)',caption]
   (out/'graphics').mkdir(exist_ok=True);shutil.copyfile(root/'inputs/graphics'/img.name,out/'graphics'/img.name)
  used+=part['fact_ids']
-doc.add_heading('Evidence and method notes',1)
+heading=doc.add_heading('Evidence and method notes',1);heading.paragraph_format.page_break_before=True
+references=doc.add_table(rows=1,cols=2);references.style='Normal Table';references.autofit=False;references.columns[0].width=Inches(2.3);references.columns[1].width=Inches(4.5)
+references.rows[0].cells[0].text='Evidence or method';references.rows[0].cells[1].text='Source / location';repeat=OxmlElement('w:tblHeader');references.rows[0]._tr.get_or_add_trPr().append(repeat)
 for fid in dict.fromkeys(used):
- f=facts[fid];p=doc.add_paragraph();p.paragraph_format.space_after=Pt(3);p.paragraph_format.line_spacing=1.0;p.add_run(f['label']+': ').bold=True;p.add_run(f['source']);markdown+=['- '+f['label']+': '+f['source']]
- for run in p.runs:run.font.size=Pt(9)
+ f=facts[fid];cells=references.add_row().cells;cells[0].text=f['label'];cells[1].text=f['source'];markdown+=['- '+f['label']+': '+f['source']]
+ for cell in cells:
+  for p in cell.paragraphs:p.paragraph_format.space_after=Pt(4);p.paragraph_format.line_spacing=1.0
 for t in doc.tables:
  for index,row in enumerate(t.rows):
   trPr=row._tr.get_or_add_trPr();trPr.append(OxmlElement('w:cantSplit'))

@@ -86,3 +86,28 @@ alone do not prove publication quality.
 
 Provenance: Generalized publication review guidance supplied 2026-09-15;
 authoring feedback, not Hone learning, certified recovery or new case facts.
+
+# Controller production handoff
+When request.json says production=controller, apply all creative and evidence
+requirements above to full authorship of output/spec.json. Read all selected
+relevant evidence and complete every contracted content element, not just an
+outline or old bindings. Bind exact request/input bytes, run the host-supplied
+absolute bin/check from the runtime workspace, correct authoring defects and
+finish. The host selects an authoring-only check for this phase. Do not invoke
+tools/render or claim rendered files exist. The controller subsequently runs
+the trusted renderer, full artifact checks and fresh independent image/semantic
+review; spec acceptance is not publication readiness. Fresh-render requirements
+above are publication gates, not a requirement to render during this phase.
+
+Without that mode, manually operated standalone work retains the default full
+bin/check requirement for real artifacts. The authorized host may run the same
+exported trusted tools/render after spec authorship. On a rendering permission
+failure, report the specific production issue to the controller; do not change
+dependencies, redefine renderers, weaken checks or link outside the workspace.
+
+Avoid repeated dumps of duplicated JSON or raw SVG/XML; inspect purposefully
+and reserve time to finish the complete authored spec and its check. Conclude
+with exactly what was authored, the observed check result and the production
+and independent review still owed by the controller, not a readiness claim.
+
+Provenance: Host architecture correction supplied 2026-09-15; not Hone learning.

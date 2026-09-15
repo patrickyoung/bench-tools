@@ -42,25 +42,57 @@ lists of positive requirements. Keep supplied fact IDs in contract provenance
 fields, not raw implementation IDs in reader-facing prose.
 
 Actual fresh renders and independent quality review of all affected formats
-remain required before publication readiness. Production roles use the admitted
-renderer; the editorial director relies on controller-supplied production and
-review evidence. Correct applicable defects and obtain fresh review of changed
+remain required before publication readiness. In controller production mode,
+the controller owns rendering and review after the authoring handoff; in other
+modes, use only authorized production and controller-supplied review evidence.
+Correct applicable defects and obtain fresh review of changed
 renders through the controller. Neither authorship nor a passing file checker
 proves publication quality; missing render/review evidence remains a limitation.
+
+## Controller-owned production
+Host architecture correction supplied 2026-09-15; not Hone learning.
+
+When request.json says production=controller, the assignment is full expert
+authorship of output/spec.json, not a plan or partial scaffold. Read all selected
+relevant evidence, write the complete contracted content using the role's
+creative expertise, and bind the exact request and selected input bytes as above.
+Run the host-supplied absolute path to bin/check from the runtime workspace,
+resolve authoring defects, and finish. The host selects an authoring-only check
+for this phase; do not select a weaker check yourself. Do not invoke tools/render
+in this mode. The controller subsequently runs the trusted renderer, full
+artifact checks and fresh independent image/semantic review of affected outputs.
+A passing spec check establishes neither rendered artifacts nor publication
+readiness. Do not claim rendered files exist or that unseen outputs were reviewed.
+
+For manually operated standalone work without production=controller, the default
+full bin/check still requires real artifacts. The same exported trusted
+tools/render can be run by the authorized host after Agent authors the spec.
+A rendering permission failure is not permission to change dependencies,
+redefine renderers, weaken checks, or create links to locations outside the
+workspace. Report the specific production issue and affected deliverable to the
+controller instead; preserve the authored spec for authorized production.
+
+Read evidence purposefully without repeatedly dumping duplicated JSON or raw
+SVG/XML. Use targeted inspection after the initial evidence read and reserve
+time to complete, bind, check and submit the authored spec. In the final report,
+state exactly what was authored, the observed check result, and what remains
+for controller production and independent review. Distinguish completed
+authorship from pending production; do not wait for renders in controller mode.
 
 ## Effects and completion
 Work only in the assigned workspace; leave inputs and reusable definitions
 unchanged. No nested Agent, scheduling, helper code, package installation,
 browsing, service calls, or execution of worker-authored code. No source-repository
 edits. Use ordinary local read/write/hash utilities and only host-admitted tools.
-For production roles, the host's tools/render invokes reviewed code to turn the
-declarative spec into files and previews; consult its supplied contract before
-using it. Never replace missing rendering capability with scripts or claim a
-renderer ran without evidence. The reviewer does not produce replacement assets.
+The host's exported tools/render invokes reviewed code to turn the declarative
+spec into files and previews; its use remains subject to the production mode
+and host authorization above. Never replace missing rendering capability with
+scripts or claim a renderer ran without evidence.
 
 Check coverage, bindings, qualifications and narrative consistency before
-submission. Use only the host's documented check in a real runtime workspace,
-not the authoring scaffold. If blocked, describe the missing input/capability
+submission. Run only the host-supplied absolute bin/check in a real runtime
+workspace, not the authoring scaffold; the host selects the phase-appropriate
+check as described above. If blocked, describe the missing input/capability
 and affected deliverable without claiming readiness; express this in the spec
 only where CONTRACT.md permits. Do not weaken checks or fill gaps with invention.
 End with the spec location and precise remaining limitations. Publication is

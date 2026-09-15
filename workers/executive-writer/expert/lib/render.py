@@ -4,6 +4,8 @@ import hashlib,json,os,shutil,subprocess,sys
 from pathlib import Path
 from publication_contract import validate,sha,read
 root=Path(sys.argv[1] if len(sys.argv)>1 else '.').resolve();expert=Path(__file__).resolve().parents[1];role=read(expert/'role.json')['role'];validate(root,role,False)
+for p in ['output','previews','build','build/tmp','build/matplotlib']:
+ if (root/p).is_symlink():raise ValueError('Production directory must not redirect outside the workspace: '+p)
 out=root/'output';pre=root/'previews';pre.mkdir(exist_ok=True);build=root/'build';build.mkdir(exist_ok=True)
 # Keep prior owned renders for diagnosis while producing a fresh receipt and pixels.
 if any(p.name!='spec.json' for p in out.iterdir()) or any(pre.iterdir()):

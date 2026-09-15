@@ -21,12 +21,8 @@ run_role() {
   [ -f "$f" ] || continue
   set -- "$@" -record-input "${f#"$RUN/stages/$role/"}"
  done
- case "$role" in
- information-designer) set -- "$@" -record-output output/artifacts.json -record-output output/comparison.xlsx ;;
- executive-writer) set -- "$@" -record-output output/artifacts.json -record-output output/report.docx -record-output output/report.pdf -record-output output/report.md ;;
- presentation-designer) set -- "$@" -record-output output/artifacts.json -record-output output/presentation.pptx -record-output output/presentation.pdf ;;
- esac
- if "${COMPARISON_AGENT:-agent}" run -C "$RUN/stages/$role" -evidence "$RUN/records/$role" -m "$ASK_MODEL" -effort high -turns "$turns" -timeout "${PUBLICATION_TIMEOUT:-15m}" "$@" "$TEAM/agents/$role" -- "Read request.json and selected inputs. Your definition root is $TEAM/agents/$role . Read its CONTRACT.md, role.json and skills from that absolute definition root, not from the workspace. Its absolute tools/render command accepts the workspace path. Its absolute bin/check runs with the workspace as current directory. Use targeted batched reads of large JSON and reserve time to write the required verdict. A revise verdict completes review when quality fails. Produce your complete contracted professional publication output and preserve shared narrative, facts and material uncertainty." > "$RUN/records/$role/stdout.txt" 2> "$RUN/records/$role/stderr.txt"; then :; else
+
+ if PUBLICATION_AUTHORING_ONLY=1 "${COMPARISON_AGENT:-agent}" run -C "$RUN/stages/$role" -evidence "$RUN/records/$role" -m "$ASK_MODEL" -effort high -turns "$turns" -timeout "${PUBLICATION_TIMEOUT:-15m}" "$@" "$TEAM/agents/$role" -- "Read request.json and selected inputs. Your definition root is $TEAM/agents/$role . Read its CONTRACT.md, role.json and skills from that absolute definition root, not from the workspace. Its absolute tools/render command accepts the workspace path. Its absolute bin/check runs with the workspace as current directory. Use targeted batched reads of large JSON and reserve time to write the required verdict. A revise verdict completes review when quality fails. Produce your complete contracted professional publication output and preserve shared narrative, facts and material uncertainty." > "$RUN/records/$role/stdout.txt" 2> "$RUN/records/$role/stderr.txt"; then :; else
   code=$?
   python3 -c 'import json,sys,pathlib;pathlib.Path(sys.argv[1]).write_text(json.dumps({"status":"unfinished","stage":sys.argv[2],"exit_code":int(sys.argv[3])})+"\n")' "$RUN/status.json" "$role" "$code"
   exit "$code"
@@ -36,6 +32,7 @@ run_role editorial-director
 for role in information-designer executive-writer presentation-designer; do
  python3 "$TEAM/tools/publication_io.py" stage "$RUN" "$role"
  run_role "$role"
+ "$BENCH_PREFIX/bin/record" run -f "$RUN/records/$role/render.jsonl" -ask "$BENCH_PREFIX/bin/ask" -input "$RUN/stages/$role/request.json" -input "$RUN/stages/$role/output/spec.json" -output "$RUN/stages/$role/output/artifacts.json" -- "$TEAM/agents/$role/tools/render" "$RUN/stages/$role" > "$RUN/records/$role/render.stdout" 2> "$RUN/records/$role/render.stderr"
 done
 python3 "$TEAM/tools/publication_io.py" visual-inputs "$RUN"
 python3 "$TEAM/tools/publication_io.py" snapshot "$RUN"

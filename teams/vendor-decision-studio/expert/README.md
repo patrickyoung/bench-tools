@@ -56,7 +56,7 @@ A revision verdict is a completed review, not a tool execution failure.
 publication/result contains report.docx, report.pdf, report.md, presentation.pptx,
 presentation.pdf, comparison.xlsx, SVG/PNG graphics, narrative and review JSON,
 comparison-data JSON/CSV, statistics/source-notes JSON, index.md and a hash manifest. Analytical results and all private records remain
-separate. Documents contain sustained prose; workbooks retain complete evidence;
+separate. Documents contain sustained prose; workbooks retain complete rationales; verbatim source quotes remain in the data JSON;
 PowerPoint tables paginate at four candidates per slide. Graphics support up to
 12 candidates; effects panels support up to three comparisons and fail explicitly
 for more. New encodings require a reviewed renderer extension.
@@ -66,8 +66,14 @@ PUBLICATION_NODE, PUBLICATION_NODE_MODULES, PUBLICATION_PYTHON,
 PUBLICATION_PLOT_PYTHON, PUBLICATION_SOFFICE, PUBLICATION_PDFTOPPM,
 PUBLICATION_PDFTOTEXT, PUBLICATION_DOCX_RENDERER and PUBLICATION_SLIDE_SKILL.
 Use the selected bundled Artifact Tool/LibreOffice runtime and document/slide
-skill helpers. Install matplotlib requirements outside source. No worker installs
-packages, executes generated code, calls another agent or edits its definition.
+skill helpers. Install matplotlib requirements outside source. The host sets request.production=controller and PUBLICATION_AUTHORING_ONLY=1
+for production Agent assignments, which write complete bound specs. The trusted
+controller then renders, runs full artifact validation and supplies fresh pixels
+for review. The default check still requires artifacts. Standalone production
+uses the same sequence: explicitly select that request/environment for authorship,
+then run tools/render from the host and bin/check without the authoring flag.
+No worker installs packages, executes generated code, calls another agent, edits
+its definition or redirects workspace paths to bypass a production boundary.
 PUBLICATION_TURNS defaults to 30; PUBLICATION_REVIEW_TURNS defaults to 40. PUBLICATION_TIMEOUT defaults to 15m per Agent
 action. Ask image review batches contain at most five pages and have a five-minute
 timeout each. Source pins reproduce definitions, not deterministic model judgments.

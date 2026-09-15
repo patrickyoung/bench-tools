@@ -40,7 +40,11 @@ Set the PUBLICATION_* runtime selectors described by the decision studio runbook
 No runtime packages or current job data are bundled. Checks run from the selected
 workspace. Production roles call the definition's tools/render with the workspace
 path; the renderer archives prior owned versions before generating fresh outputs.
-The reviewer consumes actual fresh image critiques; it must not invent them.
+When request.production=controller, the host selects PUBLICATION_AUTHORING_ONLY=1
+for the Agent assignment. It writes the complete bound spec; the host then runs
+this definition's tools/render and the full bin/check without that flag. Default
+checks require all artifacts. The reviewer consumes actual fresh image critiques;
+it must not invent them. Never redirect workspace paths around a write boundary.
 
 ## Host-owned evaluation recipe, not observed results
 Positive: in two fresh fictional runtime cases, test a full statistical
