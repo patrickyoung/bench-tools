@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json,sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"lib"))
 from publication_contract import validate
 try:
  role=json.loads((Path(__file__).resolve().parents[1]/"role.json").read_text())["role"]

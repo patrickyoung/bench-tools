@@ -29,12 +29,12 @@
     "workers/information-designer/expert/PROVENANCE.md",
     "workers/information-designer/expert/README.md",
     "workers/information-designer/expert/bin/check",
+    "workers/information-designer/expert/lib/publication_contract.py",
+    "workers/information-designer/expert/lib/render.py",
+    "workers/information-designer/expert/lib/render_graphics.py",
+    "workers/information-designer/expert/lib/render_office.mjs",
     "workers/information-designer/expert/role.json",
     "workers/information-designer/expert/skills/evidence-design/SKILL.md",
-    "workers/information-designer/expert/tools/publication_contract.py",
-    "workers/information-designer/expert/tools/render",
-    "workers/information-designer/expert/tools/render.py",
-    "workers/information-designer/expert/tools/render_graphics.py",
-    "workers/information-designer/expert/tools/render_office.mjs"
+    "workers/information-designer/expert/tools/render"
   ]
 }

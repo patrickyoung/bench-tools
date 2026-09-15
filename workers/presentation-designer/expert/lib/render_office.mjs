@@ -78,6 +78,6 @@ if(role==='information-designer'){
   }
   sl.speakerNotes.textFrame.setText(s.notes+'\n\nEvidence references: '+s.fact_ids.join(', ')+'\nMessages: '+s.message_ids.join(', '));
  }
- const stage=path.join(root,'.codex-finalizer');await fs.mkdir(stage,{recursive:true});const candidate=path.join(stage,'candidate.pptx');await (await PresentationFile.exportPptx(p)).save(candidate);
+ const stage=await fs.mkdtemp(path.join(root,'.codex-finalizer-'));const candidate=path.join(stage,'candidate.pptx');await (await PresentationFile.exportPptx(p)).save(candidate);
  await finalizePresentation({workspaceDir:root,candidatePath:candidate,finalPath:path.join(out,'presentation.pptx'),pythonExecutable:process.env.PUBLICATION_PYTHON,integrityValidatorPath:path.join(SKILL,'container_tools/inspect_presentation_package_integrity.py'),layoutValidatorPath:path.join(SKILL,'container_tools/inspect_presentation_layout_geometry.py'),layoutArgs:['--expected-slide-size-emu','12192000,6858000','--validate-heading-fit',...tableOwners.flatMap(n=>['--require-native-table-slide',String(n)])],explicitTotalSlideCount:slides.length,requiredNativeTableOwnerSlides:tableOwners,requiredNativeChartOwnerSlides:chartOwners,materializeLiteralChartWorkbooks:true,fontPolicy:{basis:'design',families:[family]},verifyArtifactToolImport:true,receiptPath:path.join(stage,'validation.json')});
 }

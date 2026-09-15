@@ -29,8 +29,8 @@
     "workers/publication-reviewer/expert/PROVENANCE.md",
     "workers/publication-reviewer/expert/README.md",
     "workers/publication-reviewer/expert/bin/check",
+    "workers/publication-reviewer/expert/lib/publication_contract.py",
     "workers/publication-reviewer/expert/role.json",
-    "workers/publication-reviewer/expert/skills/publication-audit/SKILL.md",
-    "workers/publication-reviewer/expert/tools/publication_contract.py"
+    "workers/publication-reviewer/expert/skills/publication-audit/SKILL.md"
   ]
 }

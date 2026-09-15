@@ -29,8 +29,8 @@
     "workers/editorial-director/expert/PROVENANCE.md",
     "workers/editorial-director/expert/README.md",
     "workers/editorial-director/expert/bin/check",
+    "workers/editorial-director/expert/lib/publication_contract.py",
     "workers/editorial-director/expert/role.json",
-    "workers/editorial-director/expert/skills/editorial-direction/SKILL.md",
-    "workers/editorial-director/expert/tools/publication_contract.py"
+    "workers/editorial-director/expert/skills/editorial-direction/SKILL.md"
   ]
 }

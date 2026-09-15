@@ -14,11 +14,11 @@ if any(p.name!='spec.json' for p in out.iterdir()) or any(pre.iterdir()):
 env=os.environ.copy();env['MPLCONFIGDIR']=str(root/'build/matplotlib');env['TMPDIR']=str(root/'build/tmp');Path(env['TMPDIR']).mkdir(exist_ok=True)
 env['RUNTIME_NODE_MODULES']=env.get('PUBLICATION_NODE_MODULES','')
 if role=='information-designer':
- subprocess.run([env['PUBLICATION_PLOT_PYTHON'],str(expert/'tools/render_graphics.py'),str(root)],env=env,check=True,timeout=150)
+ subprocess.run([env['PUBLICATION_PLOT_PYTHON'],str(expert/'lib/render_graphics.py'),str(root)],env=env,check=True,timeout=150)
 elif role=='executive-writer':
- subprocess.run([env['PUBLICATION_PYTHON'],str(expert/'tools/render_document.py'),str(root)],env=env,check=True,timeout=210)
+ subprocess.run([env['PUBLICATION_PYTHON'],str(expert/'lib/render_document.py'),str(root)],env=env,check=True,timeout=210)
 if role in ['information-designer','presentation-designer']:
- script=build/'render_office.mjs';shutil.copyfile(expert/'tools/render_office.mjs',script);modules=build/'node_modules'
+ script=build/'render_office.mjs';shutil.copyfile(expert/'lib/render_office.mjs',script);modules=build/'node_modules'
  if modules.exists() or modules.is_symlink():
   if not modules.is_symlink() or modules.resolve()!=Path(env['PUBLICATION_NODE_MODULES']).resolve():raise ValueError('Unexpected build dependencies')
  else:modules.symlink_to(env['PUBLICATION_NODE_MODULES'],target_is_directory=True)

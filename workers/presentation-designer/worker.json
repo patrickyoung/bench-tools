@@ -29,11 +29,11 @@
     "workers/presentation-designer/expert/PROVENANCE.md",
     "workers/presentation-designer/expert/README.md",
     "workers/presentation-designer/expert/bin/check",
+    "workers/presentation-designer/expert/lib/publication_contract.py",
+    "workers/presentation-designer/expert/lib/render.py",
+    "workers/presentation-designer/expert/lib/render_office.mjs",
     "workers/presentation-designer/expert/role.json",
     "workers/presentation-designer/expert/skills/executive-slidecraft/SKILL.md",
-    "workers/presentation-designer/expert/tools/publication_contract.py",
-    "workers/presentation-designer/expert/tools/render",
-    "workers/presentation-designer/expert/tools/render.py",
-    "workers/presentation-designer/expert/tools/render_office.mjs"
+    "workers/presentation-designer/expert/tools/render"
   ]
 }

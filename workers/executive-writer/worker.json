@@ -29,11 +29,11 @@
     "workers/executive-writer/expert/PROVENANCE.md",
     "workers/executive-writer/expert/README.md",
     "workers/executive-writer/expert/bin/check",
+    "workers/executive-writer/expert/lib/publication_contract.py",
+    "workers/executive-writer/expert/lib/render.py",
+    "workers/executive-writer/expert/lib/render_document.py",
     "workers/executive-writer/expert/role.json",
     "workers/executive-writer/expert/skills/executive-argument/SKILL.md",
-    "workers/executive-writer/expert/tools/publication_contract.py",
-    "workers/executive-writer/expert/tools/render",
-    "workers/executive-writer/expert/tools/render.py",
-    "workers/executive-writer/expert/tools/render_document.py"
+    "workers/executive-writer/expert/tools/render"
   ]
 }
