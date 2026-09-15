@@ -48,6 +48,19 @@ class PublicationTests(unittest.TestCase):
   self.setup_role('information-designer',{'title':'Comparison','workbook_intro':'A qualified comparison','visuals':vs})
   with self.assertRaisesRegex(ValueError,'No inferential'):self.check('information-designer')
  def test_review_valid(self):self.setup_role('publication-reviewer',self.review());self.check('publication-reviewer')
+ def threshold_spec(self,value=2):
+  self.src['statistics']['comparisons']=[{'id':'sample-test','status':'inferential'}]
+  vs=[{'id':f'v{i}','kind':k,'title':'A clear graphic','subtitle':'Qualified view','caption':'Read the limitations','alt':'Accessible description','fact_ids':['decision'],'message_ids':['m0'],'steps':[{'heading':'Validate','detail':'Resolve the evidence gap','fact_ids':['decision'],'message_ids':['m0']}]*3 if k=='decision_path' else []} for i,k in enumerate(['score_bounds','decision_path','effects'])]
+  vs[2]['reference_lines']=[{'comparison_id':'sample-test','value':value,'label':'Supplied practical threshold','fact_ids':['decision']}]
+  return {'title':'Comparison','workbook_intro':'Qualified result','visuals':vs}
+ def test_sourced_numeric_threshold_contract(self):
+  self.setup_role('information-designer',self.threshold_spec(-2));self.check('information-designer')
+ def test_threshold_cannot_be_free_text_value(self):
+  self.setup_role('information-designer',self.threshold_spec('2 ms'))
+  with self.assertRaisesRegex(ValueError,'threshold value'):self.check('information-designer')
+ def test_threshold_cannot_refer_to_nonexistent_inference(self):
+  c=self.threshold_spec();c['visuals'][2]['reference_lines'][0]['comparison_id']='invented';self.setup_role('information-designer',c)
+  with self.assertRaisesRegex(ValueError,'inferential comparison'):self.check('information-designer')
  def test_cannot_average_away_bad_score(self):
   c=self.review();c['rubric']['visual_craft']=3;self.setup_role('publication-reviewer',c)
   with self.assertRaisesRegex(ValueError,'quality gate'):self.check('publication-reviewer')
@@ -76,8 +89,11 @@ class PublicationTests(unittest.TestCase):
  def visual(self):
   from publication_contract import sha
   write(self.root/'control/visual-inputs.json',[{'id':'a','sha256':'abc'}])
-  c={'input_sha256':sha(self.root/'control/visual-inputs.json'),'verdict':'pass','images':[{'id':'a','image_sha256':'abc','verdict':'pass','rubric':{k:4 for k in ['legibility','hierarchy','composition','chart_integrity','consistency']},'findings':[]}]};return c
+  c={'input_sha256':sha(self.root/'control/visual-inputs.json'),'verdict':'pass','images':[{'id':'a','image_sha256':'abc','verdict':'pass','rubric':{k:4 for k in ['legibility','hierarchy','composition','chart_integrity','consistency']},'observations':['Synthetic fixture: labeled chart fits its plot bounds.'],'findings':[]}]};return c
  def test_visual_complete(self):write(self.root/'control/visual-review.json',self.visual());check_visual(self.root)
+ def test_visual_empty_observations(self):
+  c=self.visual();c['images'][0]['observations']=[];write(self.root/'control/visual-review.json',c)
+  with self.assertRaisesRegex(ValueError,'inspection observations'):check_visual(self.root)
  def test_visual_omitted_page(self):
   c=self.visual();c['images']=[];write(self.root/'control/visual-review.json',c)
   with self.assertRaisesRegex(ValueError,'Incomplete'):check_visual(self.root)

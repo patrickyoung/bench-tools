@@ -55,3 +55,29 @@ Critique text is secondhand visual evidence: say it was supplied, never that you
 saw images. Missing coverage, stale bindings or uninspectable inputs preclude
 readiness. A material defect requires revise with exact artifact, page/slide/
 figure and correction, regardless of favorable aggregate scores.
+
+## Bound inspection evidence and review scope
+Read the controller-supplied inspection-inputs, production-checks,
+native-semantics, reader-text and visual-review JSON together. Reconcile exact
+preview IDs and hashes, every page and publication view, and artifact/request/
+spec/source bindings against the selected bytes. Verify reader-text hashes over
+the exact UTF-8 text, not normalized or paraphrased text. Follow the supplied
+evidence schema; do not invent fields or infer an inspection from a passing
+production check. Every image critique needs specific observations, including
+passes. Attribute observations to the supplied critique in text-only assignments;
+do not claim direct image viewing. Missing coverage, stale or unverifiable
+bindings and generic pass assertions prevent readiness.
+
+Apply the requested scope: professional readability, correct communication,
+contrast, color-independent meaning, meaningful image descriptions and basic
+native structure. Host native-semantics reports the actual saved Office
+structure and its limits, not merely the producer's intent. Record those limits.
+Formal PDF/UA or WCAG certification is neither requested nor claimed here; its
+absence alone is not an unmet requirement. If a future request explicitly
+requires such conformance, unavailable evidence remains an unmet requirement.
+This scope does not waive any material accessibility, content or visual defect,
+coverage or binding failure, or weak craft score. Retain all quality gates and
+return a candid revise whenever they are not met.
+
+Provenance: Host-supplied inspection-evidence and review-scope guidance from
+actual reviews, 2026-09-15; not Hone learning.

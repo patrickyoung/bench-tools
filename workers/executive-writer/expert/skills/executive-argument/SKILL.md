@@ -10,6 +10,11 @@ Preserve decision-changing conditions in the executive summary itself. A proposa
 is not an approval, an uncertain estimate is not a guaranteed return, and a
 conditional preference is not an unconditional winner.
 
+Put the controlling decision branch before process detail in both the summary
+and decision discussion. If supplied conditions require deferral, state that
+if/then branch and its consequence before explaining the review process; do not
+bury a defer condition under a long narrative of meetings, gates or ownership.
+
 Outline the reasoning privately before writing: reader question, supported
 conclusion, evidence, alternatives, limits and decision implications. Then write
 complete connected paragraphs and transitions that explain why the evidence
@@ -71,8 +76,15 @@ status badge or heading overpower a more restrictive condition. State failure
 conditions as failures with supported consequences, not ambiguous lists of
 positive requirements.
 
-Use concise, well-formed paragraphs and readable numerical precision without
-rounding away a material distinction. Interpret exact anchors and scenarios;
+Use concise, well-formed paragraphs; a short paragraph may start with a concise
+descriptive label and colon to aid scanning without becoming an outline.
+Native Word decision-path grids now carry the selected information designer's
+steps. Select the corresponding inputs/design.json visual through visual_id;
+interpret the conditions and consequences in nearby prose instead of repeating
+every ownership block before the grid. Preserve all sourced content and material
+conditions across prose and the bound grid; do not invent fields, rewrite the
+designer's steps silently, or shorten away the complete report.
+Use readable numerical precision without rounding away a material distinction. Interpret exact anchors and scenarios;
 do not retype all anchors or all ten scenario results as continuous prose.
 The checked workbook/data preserve exact detail. Retain decision-relevant
 numbers and units where they support reasoning, while writing the complete
@@ -121,3 +133,6 @@ with exactly what was authored, the observed check result and the production
 and independent review still owed by the controller, not a readiness claim.
 
 Provenance: Host architecture correction supplied 2026-09-15; not Hone learning.
+
+Provenance: Corrected visual-argument publication-review guidance supplied
+2026-09-15; not Hone learning.

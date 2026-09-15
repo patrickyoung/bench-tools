@@ -60,6 +60,14 @@ separate. Documents contain sustained prose; workbooks retain complete rationale
 PowerPoint tables paginate at four candidates per slide. Graphics support up to
 12 candidates; effects panels support up to three comparisons and fail explicitly
 for more. New encodings require a reviewed renderer extension.
+Native criterion tables explain weighted contributions. Statistical interval
+slides use editable vector shapes with units, sample counts, uncertainty and
+sourced practical thresholds. They are not native chart objects; score bars
+remain native charts. Word decision diagrams use native text and table cards.
+Every inspected image has target-specific observations, including passes.
+Hash-bound production manifests link source, authored specs, final artifacts,
+page previews and extracted text. Basic native semantics are inspected; formal
+PDF/UA or WCAG certification is not requested or claimed by the default profile.
 
 Required environment: the existing analytical team's selectors plus
 PUBLICATION_NODE, PUBLICATION_NODE_MODULES, PUBLICATION_PYTHON,

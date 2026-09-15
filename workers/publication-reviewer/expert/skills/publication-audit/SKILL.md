@@ -67,3 +67,48 @@ optional style preferences. Do not rewrite assets, alter the PM's decision or
 approve on producers' confidence. New production requires fresh bound critiques
 before reconsideration. This is an independent model review judgment, not
 certification, procurement authorization or external-distribution permission.
+
+# Reconcile the controller's byte-bound inspection packet
+Read inspection-inputs, production-checks, native-semantics, reader-text and
+visual-review JSON as complementary evidence, using their supplied schemas.
+Match the selected artifact, request, spec and source byte bindings across the
+packet and production specs. Reconcile the full inventory to exact preview IDs
+and SHA-256 hashes for every page, slide, figure and workbook publication view,
+including detailed tables. Do not accept a similarly named preview, an older
+render or a packet-wide pass in place of per-target coverage.
+
+Verify reader-text UTF-8 hashes against the exact supplied text bytes, without
+whitespace or Unicode normalization, and match its artifact/spec/source/request
+bindings. Compare that reader text with the source and story for fidelity and
+visible material qualifiers; text extraction alone cannot establish layout,
+contrast or that all necessary meaning is visible. Missing bytes or an
+unverifiable link require controller correction, not an inferred match.
+
+Require specific image observations for each reviewed target even when its
+critique passes: for example, which labels are legible at intended size, where
+hierarchy guides reading, or how a legend communicates without color. Generic
+approval is insufficient. Attribute all such observations to the supplied
+critique when the assignment contains only text. Do not fabricate observations
+to repair weak critiques. Production-checks establish only their recorded
+checks; native-semantics describes actual saved Office structure and its
+reported limits. Neither replaces complete, current image critiques.
+
+# Apply accessibility scope without inventing certification
+Judge professional readability and correct communication, contrast,
+color-independent meaning, meaningful image descriptions and basic native
+structure. Use native-semantics for saved Office hierarchy, labels, descriptions
+and editability to the extent actually reported, and visual critiques for
+appearance. Record unsupported or unexamined properties candidly rather than
+assuming them from file type, appearance or author intent.
+
+Formal PDF/UA or WCAG certification is not requested or claimed for this scope.
+Record that limit in permitted review narrative, not as an invented unmet
+certification requirement. For a future explicit conformance request,
+unavailable conformance evidence must remain an unmet requirement. Do not use
+this distinction to excuse any material accessibility, content or visual defect,
+missing coverage, stale binding or weak craft score. All existing rubric
+thresholds and gates still apply; return revise with precise correction and
+reinspection needs whenever readiness is not established.
+
+Provenance: Host-supplied inspection-evidence and review-scope guidance from
+actual reviews, 2026-09-15; not Hone learning.

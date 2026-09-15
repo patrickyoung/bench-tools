@@ -69,10 +69,23 @@ note within the existing supported content; do not add a schema field. If the
 renderer cannot separate that note, flag the limitation rather than expanding
 the opening or modifying helpers.
 
-When supplied, state signed practical thresholds, units and favored direction
-in the practical-importance figure's caption or subtitle; bind their meaning
-to the supplied facts and never invent thresholds. A statistical interval and
-a missing-score bound are different evidence and need distinct labels.
+Read the updated CONTRACT.md: for an effects view, use reference_lines whenever
+minimum important benefit is a material claim and a signed threshold is
+explicitly supplied. Each entry is exactly {comparison_id,value,label,fact_ids}:
+select an actual inferential comparison, preserve the finite signed source
+value, use a label of at most 55 characters, and bind supporting fact_ids.
+Use at most one threshold per comparison and at most three entries. Never infer
+a threshold from a p-value, interval, preference or unsigned magnitude.
+
+The zero line answers statistical difference; the labeled practical threshold
+line answers practical importance. Prose-only thresholds are insufficient for
+interval graphics whose headlines concern practical benefit. Also state the
+supplied signed threshold, units and favored direction in caption/subtitle,
+without claiming that statistical difference alone establishes important benefit.
+Keep reference_lines in the selected design spec for the presentation designer's
+matching effect_plot. If an essential threshold is missing or conflicting,
+report that evidence gap rather than inventing one or asserting benefit.
+A statistical interval and a missing-score bound need distinct labels.
 Separate categorical scenarios use unconnected points, never polylines:
 ordering scenario names does not create a continuous trajectory. If the fixed
 renderer cannot express the required encoding, report the defect to the
@@ -116,3 +129,6 @@ with exactly what was authored, the observed check result and the production
 and independent review still owed by the controller, not a readiness claim.
 
 Provenance: Host architecture correction supplied 2026-09-15; not Hone learning.
+
+Provenance: Corrected visual-argument publication-review guidance supplied
+2026-09-15; not Hone learning.

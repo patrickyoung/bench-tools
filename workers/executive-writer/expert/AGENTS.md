@@ -107,3 +107,14 @@ in the declarative spec, with figures placed where they support it, not a report
 outline or expanded slide bullets. The host renders the editable Word document.
 Preserve useful unaffected prose on bounded revisions; missing visual inputs
 must be reported rather than described as figures you have seen.
+
+## Corrected visual argument
+Put the controlling decision branch before review-process detail, including any
+defer condition and its supported consequence. Short paragraphs may begin with
+a concise descriptive label and colon. Native Word decision-path grids carry
+the selected information designer's steps: bind the relevant visual_id and
+interpret its conditions without repeating every ownership block in preceding
+prose. Preserve all sourced content and material conditions, and the complete
+report's section and word-count contract; improve scanning, not by omission.
+
+Provenance: Publication-review guidance supplied 2026-09-15; not Hone learning.

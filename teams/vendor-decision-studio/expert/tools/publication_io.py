@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Bounded Unix team handoffs for a reviewed decision's publication package."""
-import argparse,hashlib,json,os,shutil,subprocess,sys,csv
+import argparse,hashlib,json,os,shutil,subprocess,sys,csv,zipfile,xml.etree.ElementTree as ET
 from pathlib import Path
 from publication_contract import read,sha,inputs,validate,safe_file
 ROLES=['editorial-director','information-designer','executive-writer','presentation-designer','publication-reviewer']
@@ -42,23 +42,41 @@ def stage(run,role):
  if role=='publication-reviewer':
   shutil.copyfile(run/'stages/presentation-designer/output/spec.json',dest/'inputs/presentation.json');shutil.copyfile(run/'control/visual-review.json',dest/'inputs/visual-review.json');shutil.copyfile(run/'control/reader-text.json',dest/'inputs/reader-text.json')
   shutil.copyfile(run/'control/production-checks.json',dest/'inputs/production-checks.json')
+  shutil.copyfile(run/'control/visual-inputs.json',dest/'inputs/inspection-inputs.json')
+  shutil.copyfile(run/'control/native-semantics.json',dest/'inputs/native-semantics.json')
+  for producer in ROLES[1:4]:
+   for folder,relative in [('production-requests','request.json'),('production-receipts','output/artifacts.json')]:
+    target=dest/'inputs'/folder/(producer+'.json');target.parent.mkdir(exist_ok=True);shutil.copyfile(run/'stages'/producer/relative,target)
+  request=read(dest/'request.json');request['review_scope']='Evaluate professional readability, evidence fidelity, complete emitted content, useful basic native semantics, contrast and color-independent meaning for the stated audience. Formal PDF/UA or WCAG conformance certification is not requested or claimed. Treat the host inspection manifest and bound native checks as evidence within their stated limits. Every image now requires target-specific observations. Require correction of material defects; do not infer a certification target from a generic quality request.';write(dest/'request.json',request)
  write(run/'control'/(role+'-inputs.json'),inputs(dest))
 def check_stage(run,role):
  run=Path(run).resolve();dest=run/'stages'/role
  if inputs(dest)!=read(run/'control'/(role+'-inputs.json')):raise ValueError('Changed admitted stage inputs')
  return validate(dest,role)
 def visual_inputs(run):
- run=Path(run).resolve();images=[];texts={};checks={}
+ run=Path(run).resolve();images=[];texts={};checks={};semantics={}
  for role in ROLES[1:4]:
   check_stage(run,role);dest=run/'stages'/role;receipt=read(dest/'output/artifacts.json')
   checks[role]={'artifacts':receipt['files'],'preview_count':len(receipt['previews']),'spec_sha256':receipt['spec_sha256'],'checks':'Current artifact hashes and required formats verified. '+({'information-designer':'Saved XLSX scores, weights, formula results, summaries, exact anchors and sensitivity values match the checked input. All workbook rows have rendered preview coverage.','executive-writer':'Native Word title and section content verified; every PDF page has a preview.','presentation-designer':'Native editable charts and tables verified in the PPTX package. Chart values match the checked source, score axes explicitly span 0–100, and every candidate appears. All final PDF slides have previews.'}[role]),'limits':'Structural/numerical checks and LibreOffice rendering; no Microsoft Office application interaction or human certification.'}
+  checks[role].update(request_sha256=sha(dest/'request.json'),source_sha256=sha(dest/'inputs/source.json'),receipt_sha256=sha(dest/'output/artifacts.json'),previews=receipt['previews'],reader_text={},binding='Each preview was generated with the listed final artifacts in this same spec-bound production receipt. Inspection inputs identify these exact preview bytes by role/path and SHA256. visual-review.input_sha256 is the SHA256 of the exact inspection-inputs.json bytes. Reader text hashes cover UTF-8 extraction strings, not JSON escaping.')
+  if role=='information-designer':checks[role]['workbook_view_coverage']=read(dest/'workbook-check.json')
   for f in receipt['previews']:images.append({'id':role+'/'+f['path'],'path':str(dest/f['path']),'sha256':f['sha256'],'medium':'workbook' if 'workbook' in f['path'] else 'slide' if role=='presentation-designer' else 'document' if role=='executive-writer' else 'graphic'})
   for f in receipt['files']:
    p=dest/f['path']
    if p.suffix=='.pdf':
-    r=subprocess.run([os.environ['PUBLICATION_PDFTOTEXT'],'-layout',str(p),'-'],check=True,capture_output=True,text=True);texts[role+'/'+p.name]=r.stdout
+    r=subprocess.run([os.environ['PUBLICATION_PDFTOTEXT'],'-layout',str(p),'-'],check=True,capture_output=True,text=True);texts[role+'/'+p.name]=r.stdout;checks[role]['reader_text'][role+'/'+p.name]={'artifact_sha256':sha(p),'text_utf8_sha256':hashlib.sha256(r.stdout.encode()).hexdigest()}
+   if p.suffix in ['.docx','.pptx','.xlsx']:
+    with zipfile.ZipFile(p) as z:
+     report={'artifact_sha256':sha(p),'scope':'Saved native structure; reading sequence follows element order. Actual visual reading and color-independent interpretation are reviewed separately. No formal accessibility certification.'}
+     if p.suffix=='.docx':
+      tree=ET.fromstring(z.read('word/document.xml'));w='{http://schemas.openxmlformats.org/wordprocessingml/2006/main}';report.update(heading_styles=[e.get(w+'val') for e in tree.iter(w+'pStyle') if 'Heading' in e.get(w+'val','')],image_descriptions=[e.get('descr','') for e in tree.iter('{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr')],repeated_table_headers=len(list(tree.iter(w+'tblHeader'))),native_paragraph_count=len(list(tree.iter(w+'p'))))
+     elif p.suffix=='.pptx':
+      parts=sorted(n for n in z.namelist() if __import__('re').fullmatch(r'ppt/slides/slide\d+.xml',n));a='{http://schemas.openxmlformats.org/drawingml/2006/main}';report['slides']=[{'part':n,'native_text_in_reading_order':[e.text for e in ET.fromstring(z.read(n)).iter(a+'t')],'native_tables':len(list(ET.fromstring(z.read(n)).iter(a+'tbl')))} for n in parts];report['charts_have_embedded_source_workbooks']=any(n.startswith('ppt/embeddings/') for n in z.namelist())
+     else:report.update(worksheet_names=[e.get('name') for e in ET.fromstring(z.read('xl/workbook.xml')).iter('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet')],native_table_definitions=len([n for n in z.namelist() if n.startswith('xl/tables/') and n.endswith('.xml')]),meaning='Workbook titles, header labels and numeric/source fidelity are checked; detailed views receive independent visual review.')
+     semantics[role+'/'+p.name]=report
  write(run/'control/visual-inputs.json',images);write(run/'control/reader-text.json',texts)
  write(run/'control/production-checks.json',checks)
+ write(run/'control/native-semantics.json',semantics)
 def finish(run):
  run=Path(run).resolve();specs={role:check_stage(run,role) for role in ROLES};visual=read(run/'control/visual-review.json');imgs=read(run/'control/visual-inputs.json')
  check_visual(run)
@@ -99,6 +117,7 @@ def check(run):
  print('Valid bound publication result:',m['status'])
 def snapshot(run):
  run=Path(run).resolve();selected=set()
+ selected.update(run/'control'/name for name in ['source.json','source-binding.json','visual-inputs.json','reader-text.json','production-checks.json','native-semantics.json'])
  for role in ROLES[:4]:
   root=run/'stages'/role;selected.update([root/'request.json',root/'output/spec.json']);selected.update(p for p in (root/'inputs').rglob('*') if p.is_file())
   if role!=ROLES[0]:
@@ -114,6 +133,7 @@ def check_visual(run):
  if len(got)!=len(expected) or {i['id']:i['image_sha256'] for i in got}!=expected:raise ValueError('Incomplete reviewed image set')
  passing=True
  for i in got:
+  if not isinstance(i.get('observations'),list) or not i['observations'] or any(not isinstance(o,str) or not o.strip() for o in i['observations']):raise ValueError('Missing target-specific inspection observations')
   if set(i['rubric'])!={'legibility','hierarchy','composition','chart_integrity','consistency'} or any(type(v)!=int or not 1<=v<=5 for v in i['rubric'].values()):raise ValueError('Invalid visual rubric')
   if any(f['severity'] not in ['material','minor'] for f in i['findings']):raise ValueError('Unknown finding severity')
   okay=i['verdict']=='pass' and min(i['rubric'].values())>=4 and not any(f['severity']=='material' for f in i['findings'])

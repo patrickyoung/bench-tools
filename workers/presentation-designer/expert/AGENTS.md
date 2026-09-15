@@ -105,6 +105,39 @@ shared message plan, intended presentation setting and selected visual assets
 or bound data. Use skills/executive-slidecraft/SKILL.md.
 Keep slide design intent, speaker notes and source mapping in the contract's
 declarative spec. The host renders the PowerPoint deck; specify native editable
-charts/tables/text for evidence instead of flattened screenshots.
+charts/tables/text and supported vector diagrams for evidence instead of
+flattened screenshots.
 Do not turn conceptual artwork into a measured architecture or approved delivery
 plan. Missing editable capability is a blocker, not grounds to rasterize evidence.
+
+## Corrected visual argument
+Use the updated CONTRACT.md's effect_plot with comparison_id for material
+inferential comparisons, not dense report-style statistical prose. Controller
+drawing retains native editable interval, axis and reference shapes, sample
+size and Holm p-value, with practical thresholds from the information designer.
+This is an editable vector diagram, not a native chart object. Keep the required
+native score_chart and comparison_table. Put a short audience-facing implication
+in lead/body; round displayed results without changing meaning and retain full
+precision and longer methods in notes. Keep conditional and synthetic-study
+qualifications visible. Stay within 12 logical slides, including any appendix.
+
+Provenance: Publication-review guidance supplied 2026-09-15; not Hone learning.
+
+## Visible slide semantics
+Read the current CONTRACT.md before selecting layouts or drafting copy. Cover
+body is visibly rendered and capped at 40 words. A score_chart sidebar body is
+capped at 28 words; label each candidate next to its numbers, never rely on
+order or "respectively." Distinguish a criterion score such as score 4/5 from an
+observed count such as 4 of 4 systems.
+
+comparison_table defaults to table_view=totals. Use table_view=criteria when the
+argument needs actual criterion scores, weights and weighted point
+contributions. Match the headline to the selected table's actual contents:
+a totals table does not show criterion contributions. Use effect_plot for
+material interval arguments instead of dense statistical paragraphs, and retain
+material qualifiers in visible lead/body text, not only notes. These are
+authorship requirements; production=controller still ends with the complete
+spec and authoring check, leaving rendering and independent review to the host.
+
+Provenance: Host-supplied slide-semantics guidance from actual reviews,
+2026-09-15; not Hone learning.

@@ -90,7 +90,7 @@ def validate(root,role,require_artifacts=True):
  elif role=='information-designer':
   keys(c,'title workbook_intro visuals');string(c['title']);string(c['workbook_intro'],1,1600);array(c['visuals'],3,6);kinds=[];ids=[]
   for v in c['visuals']:
-   keys(v,'id kind title subtitle caption alt fact_ids message_ids steps');string(v['id'],1,40)
+   keys(v,'id kind title subtitle caption alt fact_ids message_ids steps'+(' reference_lines' if 'reference_lines' in v else ''));string(v['id'],1,40)
    if not re.fullmatch('[a-z][a-z0-9-]*',v['id']):raise ValueError('Invalid asset ID')
    if v['kind'] not in ['score_bounds','score_heatmap','coverage','effects','decision_path','sensitivity']:raise ValueError('Unknown visual encoding')
    for k in ['title','subtitle','caption','alt']:string(v[k],1,900)
@@ -98,6 +98,13 @@ def validate(root,role,require_artifacts=True):
    array(v['steps'],3 if v['kind']=='decision_path' else 0,4 if v['kind']=='decision_path' else 0)
    for step in v['steps']:
     keys(step,'heading detail fact_ids message_ids');string(step['heading'],1,55);string(step['detail'],1,180);refs(step,facts,messages)
+   lines=v.get('reference_lines',[]);array(lines,0,3);line_ids=[]
+   for line in lines:
+    keys(line,'comparison_id value label fact_ids');string(line['label'],1,55);refs(line,facts)
+    if v['kind']!='effects' or line['comparison_id'] not in {x['id'] for x in src['statistics']['comparisons'] if x['status']=='inferential'}:raise ValueError('Threshold requires an inferential comparison')
+    if type(line['value']) not in [int,float] or not math.isfinite(line['value']):raise ValueError('Invalid threshold value')
+    line_ids.append(line['comparison_id'])
+   if len(line_ids)!=len(set(line_ids)):raise ValueError('Duplicate practical threshold')
   if len(set(ids))!=len(ids) or not {'score_bounds','decision_path'}<=set(kinds):raise ValueError('Need unique graphics, score chart and explanatory infographic')
   if 'effects' in kinds and not any(x['status']=='inferential' for x in src['statistics']['comparisons']):raise ValueError('No inferential data for effects plot')
  elif role=='executive-writer':
@@ -112,10 +119,16 @@ def validate(root,role,require_artifacts=True):
  elif role=='presentation-designer':
   keys(c,'title slides');string(c['title']);array(c['slides'],7,12);kinds=[]
   for p in c['slides']:
-   keys(p,'kind title lead body fact_ids message_ids notes')
-   if p['kind'] not in ['cover','message','score_chart','comparison_table','tradeoff','decision']:raise ValueError('Unknown slide layout')
+   keys(p,'kind title lead body fact_ids message_ids notes'+(' comparison_id' if p.get('kind')=='effect_plot' else '')+(' table_view' if p.get('kind')=='comparison_table' and 'table_view' in p else ''))
+   if p['kind'] not in ['cover','message','score_chart','comparison_table','tradeoff','decision','effect_plot']:raise ValueError('Unknown slide layout')
    string(p['title'],1,90);string(p['lead'],1,210);strings(p['body'],0,4);string(p['notes'],1,1800);refs(p,facts,messages);seen.update(p['message_ids']);kinds.append(p['kind'])
    if len(' '.join(p['body']).split())>75:raise ValueError('Slide copy too dense')
+   if p['kind']=='score_chart' and len(' '.join(p['body']).split())>28:raise ValueError('Score chart sidebar requires at most 28 words')
+   if p['kind']=='cover' and len(' '.join(p['body']).split())>40:raise ValueError('Cover qualifications require at most 40 words')
+   if p.get('table_view','totals') not in ['totals','criteria']:raise ValueError('Unknown native comparison table view')
+   if p['kind']=='effect_plot':
+    if p['comparison_id'] not in {x['id'] for x in src['statistics']['comparisons'] if x['status']=='inferential'}:raise ValueError('Effect plot requires actual inference')
+    if len(' '.join(p['body']).split())>35:raise ValueError('Effect plot commentary too dense')
   if kinds[0]!='cover' or not {'score_chart','comparison_table','decision'}<=set(kinds):raise ValueError('Need cover, editable chart/table and decision')
  elif role=='publication-reviewer':
   keys(c,'verdict summary rubric findings cross_format_checks');string(c['summary']);array(c['findings'],0,40);strings(c['cross_format_checks'],5,20);keys(c['rubric'],' '.join(RUBRIC))
@@ -171,7 +184,7 @@ def validate(root,role,require_artifacts=True):
       ac=xlsx_cells(z,4);sc=xlsx_cells(z,5);ev=xlsx_cells(z,3)
       if read(root/'output/comparison-data.json')!=src['matrix']:raise ValueError('Machine-readable matrix differs from source')
       for i,cell in enumerate(src['matrix']['cells']):
-       if ev.get('D'+str(5+i*2))!=cell['rationale']:raise ValueError('Saved evidence rationale differs from source')
+       if ' '.join(str(ev.get('D'+str(5+i*2))).split())!=' '.join(cell['rationale'].split()):raise ValueError('Saved evidence rationale differs from source')
       for criterion in criteria.values():
        for score,meaning in [('Reason',criterion['reason']),*criterion['anchors'].items()]:
         value=score if score=='Reason' else int(score);collected=''.join(str(ac.get('D'+str(i),'')) for i in range(5,wc['anchor_rows']+5) if ac.get('A'+str(i))==criterion['name'] and ac.get('C'+str(i))==value)
@@ -197,9 +210,11 @@ def validate(root,role,require_artifacts=True):
      if role=='executive-writer':
       tree=ET.fromstring(z.read('word/document.xml'));text=' '.join(tree.itertext())
       if c['title'] not in text or any(x['heading'] not in text for x in c['sections']):raise ValueError('Document content mismatch')
+      normalized=' '.join(text.split())
+      if any(' '.join(value.split()) not in normalized for value in [*c['executive_summary'].split('\n\n'),*(p for x in c['sections'] for p in x['paragraphs'])]):raise ValueError('Authored report text was not emitted')
      if role=='presentation-designer':
-      slides=[n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)]
-      expected=sum(math.ceil(len(src['matrix']['totals'])/4) if s['kind']=='comparison_table' else math.ceil(len(src['matrix']['totals'])/6) if s['kind']=='score_chart' else 1 for s in c['slides'])
+      slides=sorted((n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)),key=lambda n:int(re.search(r'slide(\d+)\.xml',n).group(1)))
+      expected=sum(math.ceil(len(src['matrix']['totals'])/4)*(math.ceil(len(src['matrix']['criteria'])/5) if s.get('table_view')=='criteria' else 1) if s['kind']=='comparison_table' else math.ceil(len(src['matrix']['totals'])/6) if s['kind']=='score_chart' else 1 for s in c['slides'])
       if len(slides)!=expected:raise ValueError('Slide count mismatch')
       if not any(re.fullmatch('ppt/(slides/)?charts/chart[0-9]+.xml',n) for n in z.namelist()):raise ValueError('Missing editable chart')
       ns={'c':'http://schemas.openxmlformats.org/drawingml/2006/chart'}
@@ -217,6 +232,30 @@ def validate(root,role,require_artifacts=True):
       if chart_names!=set(by_name):raise ValueError('Chart pagination omitted a candidate')
       texts=[ET.fromstring(z.read(n)) for n in slides];native_tables=sum(len(x.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/main}tbl')) for x in texts)
       if native_tables<1:raise ValueError('Missing editable table')
+      a='{http://schemas.openxmlformats.org/drawingml/2006/main}'
+      actual_tables=[[[ ''.join(e.text or '' for e in cell.iter(a+'t')) for cell in row.findall(a+'tc')] for row in table.findall(a+'tr')] for tree in texts for table in tree.iter(a+'tbl')]
+      expected_tables=[]
+      for slide in (v for v in c['slides'] if v['kind']=='comparison_table'):
+       for start in range(0,len(src['matrix']['totals']),4):
+        rows=src['matrix']['totals'][start:start+4]
+        if slide.get('table_view')=='criteria':
+         for offset in range(0,len(src['matrix']['criteria']),5):
+          table=[['Criterion','Weight (%)',*[r['name']+' score / points' for r in rows],*(['First minus second (points)'] if len(rows)==2 else [])]]
+          for criterion in src['matrix']['criteria'][offset:offset+5]:
+           cells=[next(v for v in src['matrix']['cells'] if v['candidate_id']==r['candidate_id'] and v['criterion_id']==criterion['id']) for r in rows];points=[None if v['score'] is None else v['score']*criterion['weight']/5 for v in cells]
+           values=[criterion['name'],f"{criterion['weight']:g}",*['Unknown' if v['score'] is None else f"{v['score']:g}/5 · {point:.1f} pts" for v,point in zip(cells,points)]]
+           if len(rows)==2:values.append('Unknown' if None in points else ('+' if points[0]>points[1] else '')+f'{points[0]-points[1]:.1f}')
+           table.append(values)
+          expected_tables.append(table)
+        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{r['lower_bound']:g}–{r['upper_bound']:g}",f"{r['coverage_percent']:g}%",r['eligibility']] for r in rows]])
+      if actual_tables!=expected_tables:raise ValueError('Native table differs from checked numbers')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)
       if any(x['title'] not in alltext for x in c['slides']):raise ValueError('Slide content mismatch')
+      normalized=' '.join(alltext.split())
+      for slide in c['slides']:
+       if any(' '.join(value.split()) not in normalized for value in [slide['lead'],*slide['body']]):raise ValueError('Authored slide text was not emitted')
+      for plot in [x for x in c['slides'] if x['kind']=='effect_plot']:
+       test=next(x for x in src['statistics']['comparisons'] if x['id']==plot['comparison_id']);fmt=lambda value:f'{value:.3f}'.rstrip('0').rstrip('.')
+       expected=[f"Mean {fmt(test['mean_difference_a_minus_b'])} {test['unit']}",f"{test['confidence_level']*100:g}% marginal CI [{fmt(test['ci_low'])}, {fmt(test['ci_high'])}]"]
+       if any(label not in alltext for label in expected):raise ValueError('Editable interval values missing or changed')
  return s

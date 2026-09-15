@@ -107,3 +107,15 @@ auditable detail. Declare editable source structures and desired exports within
 CONTRACT.md; never retype chart values. The host renders XLSX, figures and
 infographics. You do not compute a new ranking or quietly change a statistical
 interpretation to obtain a more persuasive picture.
+
+## Corrected visual argument
+Read the updated CONTRACT.md before authoring effects views. Whenever minimum
+important benefit is a material claim and an explicit signed threshold is
+supplied, use reference_lines with the comparison_id, value, label and supporting
+fact_ids. Do not invent or infer a threshold. The zero line answers statistical
+difference; the threshold line answers practical importance. For an interval
+graphic whose headline concerns practical benefit, prose alone is insufficient.
+Preserve the signed value, units and favored direction in the interpretation;
+follow skills/evidence-design/SKILL.md for the bound threshold handoff.
+
+Provenance: Publication-review guidance supplied 2026-09-15; not Hone learning.

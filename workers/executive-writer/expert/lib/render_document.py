@@ -32,14 +32,28 @@ for r in matrix['totals']:
  for c,text in zip(table.add_row().cells,[r['name'],f"{r['lower_bound']:g}–{r['upper_bound']:g}",f"{r['coverage_percent']:g}%",r['eligibility']]):c.text=text
 doc.add_paragraph('Score bounds describe missing evidence. Coverage does not establish source truth or statistical certainty.','Caption')
 visuals={v['id']:v for v in design['visuals']};facts={f['id']:f for f in source['facts']};markdown=['# '+s['title'],s['subtitle'],'## Executive summary',s['executive_summary']]
-used=[]
+used=[];card_elements=set()
 for part in s['sections']:
  doc.add_heading(part['heading'],1);markdown+=['## '+part['heading']]
- for para in part['paragraphs']:doc.add_paragraph(para);markdown.append(para)
+ for para in part['paragraphs']:
+  p=doc.add_paragraph();label,sep,body=para.partition(': ')
+  if sep and len(label)<65:p.add_run(label+': ').bold=True;p.add_run(body)
+  else:p.add_run(para)
+  markdown.append(para)
  if part['visual_id']:
-  v=visuals[part['visual_id']];img=root/'build/document-graphics'/(v['id']+'.png');doc.add_heading(v['title'],2);p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
-  if desc:desc[0].set('descr',v['alt'])
-  p.paragraph_format.keep_with_next=True
+  v=visuals[part['visual_id']];img=root/'build/document-graphics'/(v['id']+'.png');doc.add_heading(v['title'],2)
+  if v['kind']=='decision_path':
+   cards=doc.add_table(rows=(len(v['steps'])+1)//2,cols=2);cards.style='Normal Table';card_elements.add(cards._tbl)
+   for i,step in enumerate(v['steps']):
+    cell=cards.rows[i//2].cells[i%2];cell.paragraphs[0].text=f"{i+1:02d}  {step['heading']}";cell.paragraphs[0].paragraph_format.keep_with_next=True;cell.add_paragraph(step['detail'])
+   borders=OxmlElement('w:tblBorders')
+   for side in ['insideH','insideV']:
+    edge=OxmlElement('w:'+side);edge.set(qn('w:val'),'single');edge.set(qn('w:sz'),'32');edge.set(qn('w:color'),'FFFFFF');borders.append(edge)
+   cards._tbl.tblPr.append(borders)
+  else:
+   p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
+   if desc:desc[0].set('descr',v['alt'])
+   p.paragraph_format.keep_with_next=True
   caption=v['subtitle']+' '+v['caption']
   doc.add_paragraph(caption,'Caption');markdown+=['![ '+v['alt']+' ](graphics/'+v['id']+'.png)',caption]
   (out/'graphics').mkdir(exist_ok=True);shutil.copyfile(root/'inputs/graphics'/img.name,out/'graphics'/img.name)
@@ -52,12 +66,14 @@ for fid in dict.fromkeys(used):
  for cell in cells:
   for p in cell.paragraphs:p.paragraph_format.space_after=Pt(4);p.paragraph_format.line_spacing=1.0
 for t in doc.tables:
+ is_card=t._tbl in card_elements
  for index,row in enumerate(t.rows):
   trPr=row._tr.get_or_add_trPr();trPr.append(OxmlElement('w:cantSplit'))
   for cell in row.cells:
-   shade=OxmlElement('w:shd');shade.set(qn('w:fill'),theme['ink'][1:] if index==0 else 'EDF1F4' if index%2 else 'FFFFFF');cell._tc.get_or_add_tcPr().append(shade)
-   for para in cell.paragraphs:
-    for run in para.runs:run.font.size=Pt(10);run.font.color.rgb=RGBColor.from_string('FFFFFF' if index==0 else theme['ink'][1:]);run.bold=index==0
+   shade=OxmlElement('w:shd');shade.set(qn('w:fill'),'EDF1F4' if is_card else theme['ink'][1:] if index==0 else 'EDF1F4' if index%2 else 'FFFFFF');cell._tc.get_or_add_tcPr().append(shade)
+   for pi,para in enumerate(cell.paragraphs):
+    if is_card:para.paragraph_format.space_before=Pt(6);para.paragraph_format.space_after=Pt(6)
+    for run in para.runs:run.font.size=Pt(12 if is_card and pi==0 else 11 if is_card else 10);run.font.color.rgb=RGBColor.from_string(theme['accent'][1:] if is_card and pi==0 else theme['ink'][1:] if is_card else 'FFFFFF' if index==0 else theme['ink'][1:]);run.bold=(pi==0) if is_card else index==0
 doc.core_properties.title=s['title'][:255];doc.core_properties.author='';doc.core_properties.subject=s['subtitle'][:255];doc.save(out/'report.docx');(out/'report.md').write_text('\n\n'.join(markdown)+'\n')
 preview=root/'previews/document';preview.mkdir(parents=True,exist_ok=True)
 subprocess.run([sys.executable,os.environ['PUBLICATION_DOCX_RENDERER'],str(out/'report.docx'),'--output_dir',str(preview),'--emit_pdf'],check=True,timeout=180)
