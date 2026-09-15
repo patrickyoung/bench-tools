@@ -66,7 +66,7 @@ if(role==='information-designer'){
   const [sheet,range]=regions[index];let renderSheet=sheet,renderRange=range;
   if(sheet!=='Overview'){
    const sh=wb.worksheets.getItem(sheet),match=range.match(/^A(\d+):([A-Z]+)(\d+)$/),first=Math.max(5,Number(match[1])),last=Number(match[3]),col=match[2],count=last-first+1;
-   previewSheet.getRange('A1:Z100').unmerge();previewSheet.getRange('A1:Z100').clear({applyTo:'all'});previewSheet.getRange(`A1:${col}4`).copyFrom(sh.getRange(`A1:${col}4`),'all');previewSheet.getRange(`A5:${col}${count+4}`).copyFrom(sh.getRange(`A${first}:${col}${last}`),'all');
+   previewSheet.getRange('A1:Z100').unmerge();previewSheet.getRange('A1:Z100').clear({applyTo:'all'});previewSheet.getRange(`A1:${col}4`).copyFrom(sh.getRange(`A1:${col}4`),'values');previewSheet.getRange(`A5:${col}${count+4}`).values=sh.getRange(`A${first}:${col}${last}`).values;
    const cols=col.charCodeAt(0)-64;style(previewSheet,cols,count+4);previewSheet.getRange(`A5:${col}${count+4}`).format.wrapText=true;title(previewSheet,sh.getRange('A2').values[0][0],cols);header(previewSheet,4,sh.getRange(`A4:${col}4`).values[0]);
    if(sheet==='Matrix'){previewSheet.getRange(`C5:G${count+4}`).format.horizontalAlignment='center';previewSheet.getRange(`C5:E${count+4}`).setNumberFormat('0.0');}
    if(sheet==='Scoring basis'){previewSheet.getRange(`B5:C${count+4}`).format.horizontalAlignment='center';for(let j=0;j<count;j++)if(anchorRows[first+j-5][2]==='Reason'){previewSheet.getRange(`A${j+5}:D${j+5}`).format.fill='#EDF1F4';previewSheet.getRange(`A${j+5}:C${j+5}`).format.font.bold=true;}}

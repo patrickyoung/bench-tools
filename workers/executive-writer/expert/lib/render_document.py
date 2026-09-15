@@ -40,7 +40,7 @@ for part in s['sections']:
   v=visuals[part['visual_id']];img=root/'build/document-graphics'/(v['id']+'.png');doc.add_heading(v['title'],2);p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
   if desc:desc[0].set('descr',v['alt'])
   p.paragraph_format.keep_with_next=True
-  caption=v['caption']+(' '+figure_notes[v['id']] if v['kind'] in ['score_bounds','score_heatmap','coverage'] else '')
+  caption=v['subtitle']+' '+v['caption']+(' '+figure_notes[v['id']] if v['kind'] in ['score_bounds','score_heatmap','coverage'] else '')
   doc.add_paragraph(caption,'Caption');markdown+=['![ '+v['alt']+' ](graphics/'+v['id']+'.png)',caption]
   (out/'graphics').mkdir(exist_ok=True);shutil.copyfile(root/'inputs/graphics'/img.name,out/'graphics'/img.name)
  used+=part['fact_ids']

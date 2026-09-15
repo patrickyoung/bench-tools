@@ -39,12 +39,23 @@ workspaces and records, without rerunning or claiming to rerun the earlier analy
 Check with PUBLICATION_RUN=/absolute/new-publication /absolute/export/expert/bin/check.
 Exit 0 means the publication gates passed. Exit 2 preserves a needs-revision package.
 Other failures retain their stage records. No automatic retry or weakened gate.
+The local status published means publication-ready; the command sends nothing.
+
+To re-render explicitly selected prior content with fresh review:
+
+    /absolute/export/expert/bin/rebuild-publication /absolute/old-publication /absolute/new-publication
+
+An optional third argument names comma-separated workers to revise, such as
+information-designer,executive-writer,presentation-designer. Selected roles receive
+prior specs and critiques in fresh Agent contexts; unselected roles reuse content
+with explicit lineage. New facts or weights require a fresh analytical run.
+A revision verdict is a completed review, not a tool execution failure.
 
 ## Outputs and dependencies
 
 publication/result contains report.docx, report.pdf, report.md, presentation.pptx,
 presentation.pdf, comparison.xlsx, SVG/PNG graphics, narrative and review JSON,
-index.md and a hash manifest. Analytical results and all private records remain
+comparison-data JSON/CSV, statistics/source-notes JSON, index.md and a hash manifest. Analytical results and all private records remain
 separate. Documents contain sustained prose; workbooks retain complete evidence;
 PowerPoint tables paginate at four candidates per slide. Graphics support up to
 12 candidates; effects panels support up to three comparisons and fail explicitly
@@ -57,7 +68,7 @@ PUBLICATION_PDFTOTEXT, PUBLICATION_DOCX_RENDERER and PUBLICATION_SLIDE_SKILL.
 Use the selected bundled Artifact Tool/LibreOffice runtime and document/slide
 skill helpers. Install matplotlib requirements outside source. No worker installs
 packages, executes generated code, calls another agent or edits its definition.
-PUBLICATION_TURNS defaults to 20. PUBLICATION_TIMEOUT defaults to 15m per Agent
+PUBLICATION_TURNS defaults to 30; PUBLICATION_REVIEW_TURNS defaults to 40. PUBLICATION_TIMEOUT defaults to 15m per Agent
 action. Ask image review batches contain at most five pages and have a five-minute
 timeout each. Source pins reproduce definitions, not deterministic model judgments.
 

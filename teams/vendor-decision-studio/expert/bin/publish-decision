@@ -10,7 +10,7 @@ python3 "$TEAM/tools/publication_io.py" prepare "$@"
 RUN=$(CDPATH= cd -- "$2" && pwd)
 run_role() {
  role=$1
- turns=${PUBLICATION_TURNS:-20}
+ turns=${PUBLICATION_TURNS:-30}
  [ "$role" != publication-reviewer ] || turns=${PUBLICATION_REVIEW_TURNS:-40}
  set -- -record-input request.json -record-output output/spec.json
  for f in "$RUN/stages/$role/inputs/"*.json; do
