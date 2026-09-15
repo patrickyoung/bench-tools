@@ -167,6 +167,21 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             io.check_binding(run, "manager")
 
+    def test_manager_sees_admitted_statistical_inputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp).resolve()
+            (base / "measurements.csv").write_text("candidate,unit,value\na,a1,3\na,a2,5\nb,b1,4\nb,b2,8\n")
+            job = {"business_case": "Fictional data handoff regression", "candidates": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}], "statistics": {"datasets": [{"id": "data", "path": "measurements.csv", "group_column": "candidate", "unit_column": "unit", "metrics": [{"id": "latency", "column": "value", "unit": "ms", "measurement_level": "continuous"}]}]}}
+            (base / "job.json").write_bytes(compare.dump(job))
+            io.prepare(base / "job.json", base / "run", offline=True)
+            admitted = compare.parse(compare.read_bytes(base / "run/stages/manager/inputs/statistical-intake.json"))
+            self.assertEqual(admitted["datasets_admitted"], 1)
+            self.assertEqual(admitted["datasets"][0]["sha256"], compare.sha((base / "measurements.csv").read_bytes()))
+            self.assertEqual([g["n_units"] for g in admitted["profile"]["profiles"][0]["groups"]], [2, 2])
+            bound = compare.parse(compare.read_bytes(base / "run/control/manager-inputs.json"))
+            self.assertIn("inputs/statistical-intake.json", [item["path"] for item in bound])
+            self.assertEqual((base / "run/stages/analyst/inputs/datasets/data.csv").read_bytes(), (base / "measurements.csv").read_bytes())
+
     def test_live_url_snapshot_and_offline_unavailable(self):
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
