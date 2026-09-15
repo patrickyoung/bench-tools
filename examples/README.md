@@ -12,6 +12,7 @@ through their public process interfaces.
 | [Evidence answer](evidence-answer/README.md) | Context + Ask + Cite | An answer checked against saved citation identities |
 | [Signup audit](signup-audit/README.md) | Tend | An offline report and a durable record of its execution |
 | [Page team](page-team/README.md) | Agent + existing Bench Manage + Tend + Weave; MCP/A2A edges | Experimental creative team, checked artifact handoffs and a single HTML result |
+| [Event browser](event-browser/README.md) | Ask + Record | One-file live multi-agent timeline, stream inspector and offline HTML replay |
 
 From the checkout root, install only the components an example needs:
 

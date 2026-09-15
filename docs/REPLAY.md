@@ -11,6 +11,12 @@ refresh a credential, or contact a model. Re-execution is a separate explicit
 operation whose results may differ. This extends Ask's existing invariant:
 the model conversation can be reconstructed exactly from its retained events.
 
+For a visual browser, use [Bench Trace](../examples/event-browser/README.md).
+Its single Python file reads one or several Agent evidence roots or Ask/Record
+sessions, follows new events, displays recorded agent relationships and process
+streams, and exports a self-contained offline HTML replay. It composes the
+public read-only replay commands and never re-executes archived work.
+
 ## Completion requirements
 
 1. Every command in `components.json` has a documented recording path and
