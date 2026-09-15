@@ -186,66 +186,28 @@ associations. Never recommend sorting one column in isolation. Avoid top-N
 positional ranges that silently change the summarized record set after sorting.
 
 ## 6. Prove behavior, then review presentation
-Before rendering, calculate source-based baseline expectations independently,
-including count of included records, missing inputs and duplicate decisions.
-Do not derive expectations from rendered caches or the formula being tested.
-Use exact comparison for IDs, categories and counts; use a justified numeric
-`tolerance` for calculated decimals (contract example: 0.000001), not a broad
-tolerance that conceals a mistake.
+Independently calculate baseline facts and mutation expectations from selected
+evidence. Compare identifiers/counts exactly and calculated decimals with a
+justified tolerance. Cover each control, source edits, missing versus zero,
+invalid inputs, partial prerequisites, promised growth and whole-record order
+changes where applicable. A value permutation is not native sort/filter proof.
+Use CONTRACT.md's exact test shape; edit only input values. Do not copy cached
+outputs into expectations or weaken a failing test. Mutations must be restored
+and the workbook recalculated before export.
 
-Author `tests` only as `{name,edits:[{sheet,cell,value}],expect:[{metric,value,tolerance}]}`.
-Edits target input value cells, not formulas. Each test should state its intent
-in `name` and expect the real affected formula metrics. At least three meaningful
-mutations are mandatory; three is a floor, not coverage for every workbook:
-- Change each selector/control to a value that changes a dependent outcome.
-  For a threshold test, cross an actual record boundary; for a rate test, choose
-  nonzero applicable data. Include a category with no matches if relevant.
-- Change a meaningful source amount/driver and verify independently predicted
-  outputs and chart-feeding metrics. Check unrelated populations stay unchanged.
-- Test missing versus zero, invalid/pasted input, no-match and relevant exact
-  boundaries. Clearing a required factor must expose missingness, not a healthy
-  zero. A valid zero override must remain zero. In prerequisite workflows,
-  completing only one required step must leave the others visible.
-- Add a new stable-ID record in reserved capacity and expect it in counts,
-  totals and relevant summary/chart cells. Do not merely edit an existing row.
-- Exercise record-order independence with value-only whole-record permutations
-  where the contracted test edits can represent them. Keep all associated fields
-  together, and verify ID-bound notes/overrides, counts and totals against the
-  exact expected record set. Duplicate/conflict changes require explicit tests
-  when the update workflow supports them.
+Run trusted render and check, inspect actual QA, and verify first/middle/last/
+reserved-row dependencies and chart source references. Review every actual sheet
+preview at normal size for clipping, contrast, labels, honest scales, placement
+and usable navigation. Image paths do not prove image inspection. Request host
+review when this worker cannot inspect images; never invent a visual verdict.
 
-There is no sort/filter test command or new test field in this contract.
-A value permutation exercises order independence, not native Excel sorting.
-Require host live sort/filter review in a disposable workbook for actual feature
-behavior: sort full tables ascending/descending, filter and clear filters, compare
-the exact record-ID set used by summaries and all associations, not only totals.
-For the default scope, selectors held constant imply unchanged summary population
-through filtering. For any explicitly supported alternative, verify the exact
-declared subset. Record unavailable native tests as limitations, not passes.
-
-Invoke trusted render and check, read actual QA mutations/baselines/restoration
-and formula-error diagnostics. Tests are temporary and must be restored and
-recalculated before export. Verify chart bindings in generated evidence; image
-presence alone does not establish chart responsiveness. Inspect first, middle,
-last and reserved-row dependencies, not just the visible top rows.
-
-Distinguish evaluation layers:
-- Mechanical: source/spec/artifact byte binding, actual OOXML formula/value
-  cells, native feature structures, cached error scans and executed mutations.
-- Semantic: source truth, grain, record-set inclusion, independent expected facts,
-  missingness, duplicate/conflict decisions, units and useful control behavior.
-  A self-authored passing test can still encode a wrong assumption.
-- Visual: actual fresh previews of every sheet at normal scale, readable
-  labels/units, contrast, unclipped content, empty chart footprints and navigation.
-  File existence is not image inspection or accessibility certification.
-- Native application: real sort/filter/validation/recalculation/chart behavior
-  after opening, changing and saving in Microsoft 365 desktop/web. Artifact Tool
-  and LibreOffice provide useful distinct evidence, not Microsoft Excel proof.
-
-Fix only the authored spec/guide, then rerender and recheck. Never replace formulas
-with numbers, rewrite expected outcomes to match a defect, or claim unseen review.
-Keep pending evidence and essential unsupported features explicit in `limitations`
-and the guide. No runtime results or learned facts belong in this definition.
+Distinguish mechanical binding/export checks from independent semantic review
+of record inclusion, assumptions and calculations. Native Excel opening/editing,
+sort/filter behavior, validation, chart updates and save/reopen are another layer.
+Artifact Tool and LibreOffice evidence do not certify Excel UI behavior. A useful
+artifact may still require that target-application review. Record limitations
+honestly in the guide. Correct only the authored spec/guide and rerender; keep
+run evidence and private facts outside this definition.
 
 ## Host design feedback — 2026-09-15
 Supplied authoring feedback, not an admitted Hone lesson. This guidance retains
