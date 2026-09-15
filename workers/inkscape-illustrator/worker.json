@@ -1,0 +1,34 @@
+{
+  "id": "inkscape-illustrator",
+  "description": "Create polished, editable vector illustrations in Inkscape from a description and optional art style; export portable SVG with a rendered preview.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9",
+    "inkscape": ">=1.2; tested 1.4.4 on macOS arm64; operator selects INKSCAPE executable"
+  },
+  "files": [
+    "workers/inkscape-illustrator/expert/AGENTS.md",
+    "workers/inkscape-illustrator/expert/LICENSE",
+    "workers/inkscape-illustrator/expert/README.md",
+    "workers/inkscape-illustrator/expert/bin/check",
+    "workers/inkscape-illustrator/expert/bin/validate-handoff",
+    "workers/inkscape-illustrator/expert/references/inkscape-cli.md",
+    "workers/inkscape-illustrator/expert/skills/vector-illustration/SKILL.md",
+    "workers/inkscape-illustrator/expert/tools/finish",
+    "workers/inkscape-illustrator/expert/tools/make-handoff",
+    "workers/inkscape-illustrator/expert/tools/svg_contract.py"
+  ]
+}

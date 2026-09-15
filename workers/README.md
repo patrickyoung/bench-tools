@@ -16,6 +16,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |
 | [Blender artist](blender-artist/expert/README.md) | Produce editable Blender sources, a preview and a web asset. |
+| [Inkscape illustrator](inkscape-illustrator/expert/README.md) | Create editable vector illustrations from a description and optional style; export portable SVG and an Inkscape-rendered preview. |
 | [Image editor](image-editor/expert/README.md) | Preserve originals and produce an editable GIMP master and optimized export. |
 | [Image concept](image-concept/expert/README.md) | Prepare a checked image request and composition notes for a separately selected generator. |
 | [Page planner](page-planner/expert/README.md) | Propose bounded tasks against an explicitly supplied Bench Manage snapshot. |
