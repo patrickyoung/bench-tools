@@ -173,7 +173,7 @@ def validate(packet, analysis, packet_hash):
         require(any(g["candidate_id"] in (None, candidate) for g in analysis["gaps"]), "uncertainty needs followup")
 
 
-def calculate(packet, analysis):
+def calculate(packet, analysis, analysis_hash=None):
     weights = {c["id"]: c["weight"] for c in analysis["criteria"]}
     cells = {(c["candidate_id"], c["criterion_id"]): c for c in analysis["cells"]}
     totals = []
@@ -208,7 +208,7 @@ def calculate(packet, analysis):
             sensitivity.append({"criterion_id": criterion, "factor": factor, "weights": {k: round(v, 6) for k, v in varied.items()},
                                 "lower_bounds": {k: round(v, 6) for k, v in scores.items()}, "leaders": leaders})
     return {"schema": "bench.comparison-matrix/v1", "packet_sha256": analysis["packet_sha256"],
-            "analysis_sha256": sha(dump(analysis)), "totals": totals, "sensitivity": sensitivity,
+            "analysis_sha256": analysis_hash or sha(dump(analysis)), "totals": totals, "sensitivity": sensitivity,
             "criteria": analysis["criteria"], "cells": analysis["cells"], "gates": analysis["gates"],
             "recommendation": analysis["recommendation"]}
 
@@ -228,8 +228,8 @@ def csv_safe(value):
     return value
 
 
-def render(packet, analysis):
-    matrix = calculate(packet, analysis)
+def render(packet, analysis, analysis_hash=None):
+    matrix = calculate(packet, analysis, analysis_hash)
     names = {c["id"]: c["name"] for c in packet["job"]["candidates"]}
     criteria = {c["id"]: c for c in analysis["criteria"]}
     rows = ["# Technical vendor comparison", "", analysis["decision_summary"], "", "## Recommendation", "",
@@ -304,9 +304,10 @@ def main():
     require(len(sys.argv) == 2 and sys.argv[1] in ("render", "check"), "usage: compare.py render|check (from workspace)")
     raw = read_bytes("packet.json")
     packet = parse(raw)
-    analysis = parse(read_bytes("output/analysis.json"))
+    raw_analysis = read_bytes("output/analysis.json")
+    analysis = parse(raw_analysis)
     validate(packet, analysis, sha(raw))
-    artifacts = render(packet, analysis)
+    artifacts = render(packet, analysis, sha(raw_analysis))
     output = Path("output")
     require(not output.is_symlink(), "output symlink")
     if sys.argv[1] == "render":

@@ -146,6 +146,20 @@ class ContractTests(unittest.TestCase):
             (work / "output/report.md").write_text("Fabricated replacement")
             self.assertNotEqual(subprocess.run(command + ["check"], cwd=work, capture_output=True).returncode, 0)
 
+    def test_analysis_binding_uses_delivered_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp).resolve()
+            (work / "output").mkdir()
+            (work / "packet.json").write_bytes(compare.dump(self.packet))
+            # Valid JSON may use different whitespace/key order/Unicode escaping.
+            raw = json.dumps(self.a, sort_keys=True, ensure_ascii=True).encode()
+            (work / "output/analysis.json").write_bytes(raw)
+            command = [sys.executable, str(TEAM / "agents/comparison/tools/compare.py")]
+            self.assertEqual(subprocess.run(command + ["render"], cwd=work, capture_output=True).returncode, 0)
+            matrix = json.loads((work / "output/matrix.json").read_text())
+            self.assertEqual(matrix["analysis_sha256"], compare.sha(raw))
+            self.assertEqual(subprocess.run(command + ["check"], cwd=work, capture_output=True).returncode, 0)
+
     def test_changed_manager_input_rejected(self):
         run = Path(self.temp.name).resolve() / "binding"
         io.prepare(self.cases / "01-mixed-materials/job.json", run, offline=True)

@@ -25,4 +25,7 @@ The renderer computes weighted points = weight * score / 5 for known cells. Lowe
 
 ## Limits
 
+`matrix.json.analysis_sha256` binds the exact delivered `analysis.json` bytes,
+including whitespace and escaping; it is not a hash of a reserialized object.
+
 The read-only checker validates schema, source identities/quote containment, input binding, complete matrix, weights, gates, formulas and exact rendered bytes. It does not establish source truth, quote entailment, business judgment or completeness of extraction. The separate team reviewer must check these and may return revise/hold. Web snapshots may be unavailable or stale; no live claim is verified solely from its URL. Binary extraction does not establish visual completeness; image-only content needs a supplied transcript or explicit visual/OCR follow-up. Never claim that a source was read when unavailable.
