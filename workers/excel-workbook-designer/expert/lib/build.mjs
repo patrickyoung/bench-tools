@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {Workbook,SpreadsheetFile} from '@oai/artifact-tool';
+import {refreshPivots,addChart} from './features.mjs';
 
 // Deliberately declarative: no eval, subprocesses, arbitrary scripts or fetch.
 const root=path.resolve(process.argv[2]);
@@ -50,11 +51,7 @@ for(const s of spec.sheets){
  if(s.freeze_rows)sh.freezePanes.freezeRows(s.freeze_rows);
  if(s.freeze_columns)sh.freezePanes.freezeColumns(s.freeze_columns);
  for(const c of s.charts||[]){
-  const chart=sh.charts.add(c.type,sh.getRange(c.range));chart.title=c.title;chart.hasLegend=false;
-  chart.titleTextStyle.typeface='Arial';chart.titleTextStyle.fontSize=15;
-  chart.xAxis={axisType:'textAxis',textStyle:{typeface:'Arial',fontSize:12}};
-  chart.yAxis={numberFormatCode:c.number_format||'#,##0',numberFormatSourceLinked:false,textStyle:{typeface:'Arial',fontSize:12}};
-  chart.setPosition(c.from,c.to);
+  addChart(sh,c);
  }
 }
 for(const c of spec.controls){
@@ -62,16 +59,17 @@ for(const c of spec.controls){
  r.dataValidation={rule:c.values?{type:'list',values:c.values}:{type:'decimal',operator:'between',formula1:c.min,formula2:c.max}};
 }
 wb.recalculate();
+refreshPivots(wb,spec.pivots||[]);
 const metrics=()=>Object.fromEntries(spec.metrics.map(m=>[m.id,wb.worksheets.getItem(m.sheet).getRange(m.cell).values[0][0]]));
 const baseline=metrics(),tests=[];
 for(const t of spec.tests){
  const saved=[];
  try{
   for(const e of t.edits){const r=wb.worksheets.getItem(e.sheet).getRange(e.cell);saved.push([r,r.values]);r.values=[[value(e.value)]];}
-  wb.recalculate();const observed=metrics();
+  wb.recalculate();refreshPivots(wb,spec.pivots||[]);const observed=metrics();
   const checks=t.expect.map(e=>({metric:e.metric,expected:e.value,actual:observed[e.metric],passed:typeof e.value==='number'?typeof observed[e.metric]==='number'&&Math.abs(e.value-observed[e.metric])<=(e.tolerance??1e-6):e.value===observed[e.metric]}));
   tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
- }finally{for(const [r,vs] of saved)r.values=vs;wb.recalculate();}
+ }finally{for(const [r,vs] of saved)r.values=vs;wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
 }
 await fs.mkdir(path.join(root,'previews'),{recursive:true});
 const previews=[];

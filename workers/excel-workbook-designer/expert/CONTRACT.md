@@ -1,5 +1,11 @@
 # Workbook design contract v1
 
+Optional native simple PivotTables and additional chart types use EDITING.md's
+Native simple PivotTables contract in creation mode too. The feature bridge is
+the sole exception to older blanket pivot limitations below. Pie/doughnut/area/
+scatter charts use the same chart shape as bar/line. Existing-workbook edits
+use the separate EDITING.md schema, not regeneration from this creation spec.
+
 Read request.json and only its selected regular input files. Author output/spec.json
 and output/guide.md. Invoke `$AGENT_HOME/tools/render` then `$AGENT_HOME/bin/check`.
 No network, prior-run discovery, nested Agent, dependency installation or execution

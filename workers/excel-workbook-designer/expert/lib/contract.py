@@ -62,7 +62,7 @@ def validate_spec(root):
             r,c,R,C=bounds(t['range']);require(R>r,'Table has no records')
             require(all(col(j)+str(r) in occupied for j in range(c,C+1)),'Missing table header')
         for ch in sh.get('charts',[]):
-            require(ch['type'] in ['bar','line'],'Unsupported chart');bounds(ch['range']);r,c=cell(ch['from']);R,C=cell(ch['to'])
+            require(ch['type'] in ['bar','line','pie','doughnut','area','scatter'],'Unsupported chart');bounds(ch['range']);r,c=cell(ch['from']);R,C=cell(ch['to'])
             require(all(not(r<=cell(a)[0]<R and c<=cell(a)[1]<C) for a in occupied),'Chart covers cells')
     require(formulas and tn,'Need formulas and tables')
     for cat,reqkey in [('controls','required_controls'),('metrics','required_metrics')]:
@@ -116,6 +116,8 @@ def read_xlsx(path):
         return result,stats
 def validate_output(root):
     root=Path(root);req,s,cells=validate_spec(root)
+    from features import verify_pivots
+    verify_pivots(root,s)
     require((root/'output/guide.md').stat().st_size>100,'Missing guide');qa=json.loads((root/'output/qa.json').read_text())
     require(qa['spec_sha256']==digest(root/'output/spec.json'),'Stale render spec')
     require(qa['workbook_sha256']==digest(root/'output/workbook.xlsx'),'Changed workbook bytes')

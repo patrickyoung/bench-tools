@@ -3,21 +3,26 @@
 import argparse,hashlib,json,shutil
 from pathlib import Path
 p=argparse.ArgumentParser(description=__doc__)
-p.add_argument('--brief',required=True,type=Path)
-p.add_argument('--input',action='append',required=True,type=Path)
+g=p.add_mutually_exclusive_group(required=True)
+g.add_argument('--brief',type=Path)
+g.add_argument('--prompt')
+p.add_argument('--input',action='append',default=[],type=Path)
+p.add_argument('--workbook',type=Path,help='Existing XLSX to edit from the brief/prompt')
 p.add_argument('--out',required=True,type=Path)
 p.add_argument('--title',default='Working workbook')
 p.add_argument('--audience',default='The people responsible for this workflow')
 a=p.parse_args();out=a.out.absolute()
 if out.exists():p.error('Output directory already exists; select a fresh directory')
-paths=[x.absolute() for x in a.input]
+paths=[x.absolute() for x in a.input]+([a.workbook.absolute()] if a.workbook else [])
+if not paths:p.error('Select input data or an existing workbook')
 if len({x.name for x in paths})!=len(paths):p.error('Selected inputs must have distinct filenames')
-for f in [a.brief,*paths]:
+for f in ([a.brief] if a.brief else [])+paths:
     if not f.is_file() or f.is_symlink():p.error('Select regular files, not symlinks or directories: '+str(f))
-brief=a.brief.read_text()
+brief=a.brief.read_text() if a.brief else a.prompt
 (out/'inputs').mkdir(parents=True);inputs=[]
 for f in paths:
     target=out/'inputs'/f.name;shutil.copy2(f,target)
     inputs.append({'path':'inputs/'+f.name,'sha256':hashlib.sha256(target.read_bytes()).hexdigest()})
 req={'schema':'bench.workbook-request/v1','title':a.title,'brief':brief,'audience':a.audience,'inputs':sorted(inputs,key=lambda x:x['path']),'required_metrics':[],'required_controls':[]}
+if a.workbook:req.update(mode='edit',workbook='inputs/'+a.workbook.name)
 (out/'request.json').write_text(json.dumps(req,indent=2)+'\n');print(out/'request.json')

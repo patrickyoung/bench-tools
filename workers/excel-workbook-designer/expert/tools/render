@@ -3,8 +3,17 @@ set -eu
 DEFINITION=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 : "${WORKBOOK_NODE:?Select bundled Node executable}"
 : "${WORKBOOK_NODE_MODULES:?Select bundled node_modules directory}"
-"${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/contract.py" --spec
 mkdir -p .runtime
-cp "$DEFINITION/lib/build.mjs" .runtime/build.mjs
+cp "$DEFINITION/lib/"*.mjs .runtime/
 if [ ! -e .runtime/node_modules ]; then ln -s "$WORKBOOK_NODE_MODULES" .runtime/node_modules; fi
-"$WORKBOOK_NODE" .runtime/build.mjs "$PWD"
+MODE=$("${WORKBOOK_PYTHON:-python3}" -c 'import json;print(json.load(open("request.json")).get("mode","create"))')
+if [ "$MODE" = edit ]; then
+  "${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/edit_contract.py" --spec
+  "${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/edit_contract.py" --prepare-import
+  "$WORKBOOK_NODE" .runtime/edit.mjs "$PWD"
+else
+  "${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/contract.py" --spec
+  "$WORKBOOK_NODE" .runtime/build.mjs "$PWD"
+fi
+"${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/features.py"
+"$WORKBOOK_NODE" .runtime/preview.mjs "$PWD"

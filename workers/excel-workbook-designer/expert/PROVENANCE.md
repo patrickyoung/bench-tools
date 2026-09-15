@@ -50,8 +50,54 @@ controls, cell-linked native charts, finite update capacity, sorting/filter scop
 and independent semantic/mutation acceptance. One worker fills this gap; ordinary
 rendering/checking remains with the host's trusted Artifact Tool implementation.
 
-Only the five requested documentation/license files were authored by this
-adaptation. CONTRACT.md, bin/check, tools/ and lib/ are host-owned. No runtime
-input/output evidence is bundled. The external validation recipe is prospective;
+The original adaptation authored its requested documentation/license files.
+CONTRACT.md, bin/check, tools/ and lib/ are host-owned. No runtime input/output
+evidence is bundled. The external validation recipe is prospective;
 no model-backed workbook, mutation run, LibreOffice run, image review or native
 Microsoft Excel evaluation is claimed here.
+
+
+## Prompt-editing and common-workflow revision
+This revision changes only AGENTS.md, README.md, PROVENANCE.md and the new
+workbook-editing and common-workflows skills. The existing workbook-design skill,
+LICENSE, CONTRACT.md, bin/, tools/ and lib/ are unchanged by this revision.
+EDITING.md and deterministic editing/native-pivot adapters are host-owned
+prerequisites, not authored here. One worker remains appropriate: it supplies
+interpretation, declarative change plans and independent expectations; reviewed
+programs own inspection, edits and verification.
+
+Research basis: supplied RESEARCH-2026.md, dated 15 September 2026.
+- [AFP 2025 FP&A survey](https://www.afponline.org/training-resources/resources/survey-research-economic-data/Details/FPABenchmarking):
+  362 practitioners; 96% use spreadsheets for planning, 93% for daily/weekly
+  reporting. Finance-specific evidence, not a worldwide spreadsheet census.
+- [Vena 2026 FP&A Impact Report](https://www.venasolutions.com/hubfs/The%202026%20FPA%20Impact%20Report/2026%20FP%26A%20Impact%20Report.pdf):
+  vendor survey reports 90% use Excel alongside planning software and 61% cite
+  spreadsheets for budgeting/forecasting; directional, not independent validation.
+- [Microsoft Excel templates](https://excel.cloud.microsoft/create/en/templates/)
+  show supported workflow families, not measured prevalence.
+- [Copilot in Excel guidance](https://support.microsoft.com/en-us/excel/copilot/get-started-with-copilot-in-excel)
+  documents prompt edits and native Excel workflows; it does not establish this
+  worker's implementation capabilities.
+- [Microsoft finance workflow article, 25 June 2026](https://www.microsoft.com/en-us/microsoft-365/blog/2026/06/25/copilot-in-excel-built-for-the-era-of-frontier-finance/)
+  motivates traceable updates and reconciliation, not Bench success claims.
+
+These references were supplied research, not independently browsed for this
+revision. There is no representative universal 2026 ranking. The new domain
+guidance uses periods, units, keys, denominators and missingness rather than
+fixed templates or invented accounting/tax rules. Editing guidance adds immutable
+source inspection, preservation, confidence-aware mapping and scope-proportionate
+baseline/live tests. Prior current-warning and evidence rules remain applicable.
+
+The Hire documentation amendment above was subsequently assembled with reviewed
+host-owned editing, inspection, preservation, chart and native-pivot adapters.
+Native PivotTable packaging follows Microsoft's Open XML PivotTable documentation:
+https://learn.microsoft.com/en-us/office/open-xml/spreadsheet/working-with-pivottables
+The source contract includes specific observed runtime limits and fixes, not an
+independent implementation of an agent loop. Package relationships use default
+namespaces required by the selected Open XML reader. Existing native pivots are
+isolated from Artifact import in a disposable copy and restored byte-for-byte
+after export; original input bytes remain immutable.
+
+Structural/documentation checks cannot establish editing quality. Model, engine,
+native-feature and actual-image results belong in operator evidence and external
+EVALUATION.md, not this portable source package. Native Excel UI remains untested.

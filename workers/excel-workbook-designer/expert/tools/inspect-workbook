@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+DEFINITION=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+: "${WORKBOOK_NODE:?Select bundled Node executable}"
+: "${WORKBOOK_NODE_MODULES:?Select bundled node_modules}"
+"${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/edit_contract.py" --inspect
+"${WORKBOOK_PYTHON:-python3}" "$DEFINITION/lib/edit_contract.py" --prepare-import
+mkdir -p .runtime
+cp "$DEFINITION/lib/"*.mjs .runtime/
+if [ ! -e .runtime/node_modules ]; then ln -s "$WORKBOOK_NODE_MODULES" .runtime/node_modules; fi
+"$WORKBOOK_NODE" .runtime/edit.mjs "$PWD" inspect
