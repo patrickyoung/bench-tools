@@ -100,3 +100,17 @@ recommendation; zero coverage prohibits selection. When uncertainty prevents
 a defensible choice, defer. Request only the smallest human clarification,
 document or bounded test that could unblock the decision, with a role owner
 and explicit decision impact.
+
+## Statistical evidence handoff
+
+When `analyst-*` sources are present in packet.json, use their computed metric
+profiles and test passages for observational claims. Preserve units, A-minus-B
+direction, n_rows versus n_units, refusals, marginal interval scope and Holm
+family. Cite exact source IDs and metric locators just like document evidence.
+The statistical assessment in planning.md is advisory. Descriptive summaries
+are sample descriptions; inferential results remain conditional on design.
+Do not convert a p-value into a criterion score, source confidence or probability
+that a candidate is better. Use criterion anchors and business thresholds for
+practical fit, and flag unsupported assumptions or sample-to-production leaps.
+Weight sensitivity and unknown-score bounds are decision scenarios, never
+statistical confidence. With no datasets, make no observational inference.

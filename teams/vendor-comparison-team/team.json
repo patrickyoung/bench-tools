@@ -1,6 +1,6 @@
 {
   "id": "vendor-comparison-team",
-  "description": "Manage recurring types of technical vendor decisions through intake, evidence comparison and independent review in separate Agent contexts.",
+  "description": "Manage technical vendor decisions through intake, Polars statistical analysis, evidence-linked weighted comparison and independent review in four Agent contexts.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -20,7 +20,8 @@
     "python": ">=3.9 standard library on macOS or Linux",
     "model": "Operator-configured Ask model/credentials, no credentials bundled",
     "review": "Separate context review plus human judgment; numeric and byte checks do not establish truth",
-    "pdf": "pdftotext (Poppler) for PDF evidence; no requirement for text/PPTX/DOCX"
+    "pdf": "pdftotext (Poppler) for PDF evidence; no requirement for text/PPTX/DOCX",
+    "analytics": "Python >=3.12 selected by POLARS_PYTHON with polars-analyst requirements.txt installed outside source; core wiring remains Python >=3.9"
   },
   "files": [
     "teams/vendor-comparison-team/expert/AGENTS.md",
@@ -33,6 +34,9 @@
   "members": {
     "manager": {
       "worker": "product-owner"
+    },
+    "analyst": {
+      "worker": "polars-analyst"
     },
     "comparison": {
       "worker": "vendor-comparison"

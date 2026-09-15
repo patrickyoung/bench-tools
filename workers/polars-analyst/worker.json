@@ -1,0 +1,37 @@
+{
+  "id": "polars-analyst",
+  "description": "Audit observational datasets with Polars; produce design-gated Welch/paired statistics, Holm correction, uncertainty and explicit descriptive refusals.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.12 in an isolated operator environment selected by POLARS_PYTHON",
+    "analytics": "Install expert/requirements.txt pins outside source: Polars, NumPy, SciPy",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "design": "Supported sampling and measurement assumptions; checks prove computations, not source truth or study validity"
+  },
+  "files": [
+    "workers/polars-analyst/expert/AGENTS.md",
+    "workers/polars-analyst/expert/CONTRACT.md",
+    "workers/polars-analyst/expert/LICENSE",
+    "workers/polars-analyst/expert/PROVENANCE.md",
+    "workers/polars-analyst/expert/README.md",
+    "workers/polars-analyst/expert/bin/check",
+    "workers/polars-analyst/expert/requirements.txt",
+    "workers/polars-analyst/expert/skills/evidence-discovery/SKILL.md",
+    "workers/polars-analyst/expert/skills/polars-statistics/SKILL.md",
+    "workers/polars-analyst/expert/tools/analyze.py"
+  ]
+}
