@@ -168,7 +168,10 @@ def validate(root,role,require_artifacts=True):
      if '[Content_Types].xml' not in z.namelist():raise ValueError('Invalid Office package')
      if p.suffix=='.xlsx':
       overview=xlsx_cells(z,1);detail=xlsx_cells(z,2);criteria={c['id']:c for c in src['matrix']['criteria']}
-      ac=xlsx_cells(z,4);sc=xlsx_cells(z,5)
+      ac=xlsx_cells(z,4);sc=xlsx_cells(z,5);ev=xlsx_cells(z,3)
+      if read(root/'output/comparison-data.json')!=src['matrix']:raise ValueError('Machine-readable matrix differs from source')
+      for i,cell in enumerate(src['matrix']['cells']):
+       if ev.get('D'+str(5+i*2))!=cell['rationale']:raise ValueError('Saved evidence rationale differs from source')
       for criterion in criteria.values():
        for score,meaning in [('Reason',criterion['reason']),*criterion['anchors'].items()]:
         value=score if score=='Reason' else int(score);collected=''.join(str(ac.get('D'+str(i),'')) for i in range(5,wc['anchor_rows']+5) if ac.get('A'+str(i))==criterion['name'] and ac.get('C'+str(i))==value)
@@ -177,6 +180,8 @@ def validate(root,role,require_artifacts=True):
       for scenario in src['matrix']['sensitivity']:
        for total in src['matrix']['totals']:
         if sc.get('D'+str(si))!=scenario['lower_bounds'][total['candidate_id']] or sc.get('B'+str(si))!=scenario['factor'] or sc.get('C'+str(si))!=total['name']:raise ValueError('Saved sensitivity differs from source')
+        for ci,c in enumerate(src['matrix']['criteria'],4):
+         if sc.get(chr(65+ci)+str(si))!=scenario['weights'][c['id']]:raise ValueError('Saved scenario weight differs from source')
         si+=1
       for i,row in enumerate(src['matrix']['totals'],8):
        for col,key in [('B','lower_bound'),('C','upper_bound'),('D','coverage_percent'),('E','known_only_fit')]:

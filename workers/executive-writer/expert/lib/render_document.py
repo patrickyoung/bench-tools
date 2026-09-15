@@ -19,7 +19,12 @@ subprocess.run([os.environ['PUBLICATION_PLOT_PYTHON'],str(Path(__file__).with_na
 figure_notes=json.loads((root/'build/document-graphics/notes.json').read_text())
 for name,size in [('Title',30),('Subtitle',15),('Heading 1',20),('Heading 2',14)]:
  styles[name].font.name=theme['font'];styles[name].font.size=Pt(size);styles[name].font.color.rgb=RGBColor.from_string(theme['ink'][1:]);styles[name].paragraph_format.space_before=Pt(14);styles[name].paragraph_format.space_after=Pt(8)
-doc.add_paragraph(s['title'],'Title');doc.add_paragraph(s['subtitle'],'Subtitle');doc.add_heading('Executive summary',1);doc.add_paragraph(s['executive_summary']);d=source['decision'];p=doc.add_paragraph();p.add_run('Decision status: ').bold=True;p.add_run(d['status'].capitalize()+(' · '+source['candidate_names'].get(d['candidate_id'],'') if d['candidate_id'] else ''))
+doc.add_paragraph(s['title'],'Title');doc.add_paragraph(s['subtitle'],'Subtitle');doc.add_heading('Executive summary',1)
+for text in s['executive_summary'].split('\n\n'):
+ p=doc.add_paragraph();label,sep,body=text.partition(': ')
+ if sep and len(label)<65:p.add_run(label+': ').bold=True;p.add_run(body)
+ else:p.add_run(text)
+d=source['decision'];p=doc.add_paragraph();p.add_run('Decision status: ').bold=True;p.add_run(d['status'].capitalize()+(' · '+source['candidate_names'].get(d['candidate_id'],'') if d['candidate_id'] else ''))
 matrix=source['matrix'];table=doc.add_table(rows=1, cols=4);table.style='Normal Table'
 for c,text in zip(table.rows[0].cells,['Option','Score bounds /100','Evidence coverage','Gate eligibility']):c.text=text
 header=OxmlElement('w:tblHeader');table.rows[0]._tr.get_or_add_trPr().append(header)
@@ -41,7 +46,8 @@ for part in s['sections']:
  used+=part['fact_ids']
 doc.add_heading('Evidence and method notes',1)
 for fid in dict.fromkeys(used):
- f=facts[fid];p=doc.add_paragraph();p.add_run(f['label']+': ').bold=True;p.add_run(f['source']);markdown+=['- '+f['label']+': '+f['source']]
+ f=facts[fid];p=doc.add_paragraph();p.paragraph_format.space_after=Pt(3);p.paragraph_format.line_spacing=1.0;p.add_run(f['label']+': ').bold=True;p.add_run(f['source']);markdown+=['- '+f['label']+': '+f['source']]
+ for run in p.runs:run.font.size=Pt(9)
 for t in doc.tables:
  for index,row in enumerate(t.rows):
   trPr=row._tr.get_or_add_trPr();trPr.append(OxmlElement('w:cantSplit'))

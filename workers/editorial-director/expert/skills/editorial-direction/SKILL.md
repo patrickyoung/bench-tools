@@ -46,3 +46,41 @@ description: Translate checked expert findings into a shared publication argumen
 
 This plan is a dependency, not an execution receipt. Express all deliverable
 content through CONTRACT.md; do not add another plan file or schema.
+
+# Cross-medium publication gates
+Make the opening, visual emphasis and closing decision express the same
+conditional argument. Spell out alternatives as if/then statements; phrase
+failure gates as failures with supported consequences. Do not let a status
+badge, headline or final call to action erase a stricter condition.
+
+Set these medium-specific directions within the existing message plan fields,
+not new schema fields:
+- Executive summary: 3-4 short labeled paragraphs separated by blank lines;
+  default to four: Recommendation, Evidence, Tradeoff, Conditions. Prefer at
+  most 150 words; put numerical detail in body sections without losing material
+  conditions or uncertainty.
+- Workbook: intro at most 450 characters, identifying the conditional
+  recommendation and essential caveat. Keep navigation in a short separate
+  note within supported content, not a new field.
+- Practical-importance figures: captions or subtitles state supplied signed
+  practical thresholds, units and favored direction. Never invent thresholds.
+  Distinguish statistical intervals from missing-score bounds. Separate
+  categorical scenarios use unconnected points, never polylines.
+- Word: concise, well-formed paragraphs with readable numerical precision;
+  interpret anchors and scenarios rather than reciting every exact anchor or
+  all ten scenario results as continuous prose. Checked workbook/data retain
+  exact detail. Require a complete sustained report without filler or caveats
+  repeated in every paragraph. Refer to figure titles, not guessed pages or
+  "below".
+- Infographics: ownership headings must fit their blocks; prefer short role
+  names with qualifications in the detail. Preserve supplied fact IDs in
+  provenance, not raw implementation IDs in reader prose.
+
+Read selected prior review and prior spec before revising the plan. Correct all
+applicable material defects rather than rebinding unchanged flawed content.
+Pass unresolved production issues to the controller; actual fresh renders and
+independent quality review remain release requirements, not claims this plan
+or its file check can establish.
+
+Provenance: Generalized publication review guidance supplied 2026-09-15;
+authoring feedback, not Hone learning, certified recovery or new case facts.

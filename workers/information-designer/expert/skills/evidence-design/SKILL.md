@@ -55,3 +55,39 @@ inputs and source mappings through the host. Unsupported output/editability is
 a blocker. Review fresh supplied render critiques at final size and in context:
 check clipped labels, axes, tables across page breaks and color-independent
 reading. Successful file creation or byte checks cannot prove visual craft.
+
+# Publication clarity gates
+Keep the shared conditional recommendation intact in the workbook opening,
+figures and closing decision path. Use explicit if/then language for alternate
+conditions. A status badge must carry its material restriction rather than
+overpower it. Write failure gates as failures with supported consequences, not
+as compressed lists of positive requirements.
+
+Keep workbook_intro at most 450 characters, identifying the conditional
+recommendation and its essential caveat. Put navigation in a short separate
+note within the existing supported content; do not add a schema field. If the
+renderer cannot separate that note, flag the limitation rather than expanding
+the opening or modifying helpers.
+
+When supplied, state signed practical thresholds, units and favored direction
+in the practical-importance figure's caption or subtitle; bind their meaning
+to the supplied facts and never invent thresholds. A statistical interval and
+a missing-score bound are different evidence and need distinct labels.
+Separate categorical scenarios use unconnected points, never polylines:
+ordering scenario names does not create a continuous trajectory. If the fixed
+renderer cannot express the required encoding, report the defect to the
+controller instead of claiming that wording repaired the visual.
+
+Ownership headings in infographics must fit their rendered blocks. Prefer
+short role names and move qualifications into the detail, preserving material
+conditions within contract limits. Keep supplied fact IDs in fact_ids/source
+mapping; do not expose raw implementation IDs in reader-facing prose.
+
+Read supplied selected prior review and prior spec, and correct all applicable
+material content defects, not merely old bindings. Preserve exact quantitative
+detail in the checked workbook/data while making summaries readable. Require
+actual fresh renders and independent quality review at final size; authorship
+and a file checker alone cannot establish publication quality.
+
+Provenance: Generalized publication review guidance supplied 2026-09-15;
+authoring feedback, not Hone learning, certified recovery or new case facts.

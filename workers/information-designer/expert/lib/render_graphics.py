@@ -23,7 +23,8 @@ def fitted(text,fig,size,width,weight='normal'):
  return '\n'.join(lines)
 notes={}
 for v in spec['visuals']:
- fig=plt.figure(figsize=(6.8,4.7) if docmode else (12,7.5),facecolor=theme['paper']);ax=fig.add_axes([.23,.28,.68,.50] if docmode else [.19,.24,.74,.49]);ax.set_facecolor(theme['paper']);kind=v['kind']
+ kind=v['kind'];height=3.7 if kind=='effects' else 3.6 if kind=='decision_path' else 2.8 if kind in ['score_bounds','coverage','score_heatmap'] else 3.9
+ fig=plt.figure(figsize=(6.8,height) if docmode else (12,7.5),facecolor=theme['paper']);ax=fig.add_axes([.23,.28,.68,.50] if docmode else [.19,.24,.74,.49]);ax.set_facecolor(theme['paper'])
  if not docmode:fig.text(.07,.94,fitted(v['title'],fig,24,.86,'bold'),fontsize=24,weight='bold',va='top');fig.text(.07,.79,fitted(v['subtitle'],fig,12,.86),fontsize=12,color='#526476',va='top')
  note=''
  if kind=='score_bounds':
@@ -53,14 +54,17 @@ for v in spec['visuals']:
   levels=', '.join(f"{x:g}%" for x in sorted({t['confidence_level']*100 for t in tests}));note=f'Marginal {levels} confidence intervals; separate unit scales. Not simultaneous or multiplicity-adjusted intervals.'
  elif kind=='sensitivity':
   scenarios=matrix['sensitivity'];ax.set_position([.23,.24,.69,.49])
-  for i,r in enumerate(rows):ax.plot([s['lower_bounds'][r['candidate_id']] for s in scenarios],np.arange(len(scenarios)),'.-',label=r['name'],color=colors[i],linewidth=1.5,markersize=7)
-  ax.set_yticks(range(len(scenarios)),[s['criterion_id']+' × '+str(s['factor']) for s in scenarios],fontsize=9);ax.invert_yaxis();ax.set_xlabel('Supported weighted score / 100');ax.grid(axis='x',alpha=.2)
+  for i,r in enumerate(rows):ax.plot([s['lower_bounds'][r['candidate_id']] for s in scenarios],np.arange(len(scenarios)),'.',label=r['name'],color=colors[i],markersize=8)
+  cn={c['id']:c['name'] for c in matrix['criteria']};ax.set_yticks(range(len(scenarios)),[wrap(cn[s['criterion_id']],23)+' × '+str(s['factor']) for s in scenarios],fontsize=9);ax.invert_yaxis();ax.set_xlabel('Supported weighted score / 100');ax.grid(axis='x',alpha=.2)
   if not docmode:ax.set_position([.23,.24,.69,.47-.033*math.ceil(len(rows)/3)]);fig.legend(*ax.get_legend_handles_labels(),frameon=False,loc='upper center',bbox_to_anchor=(.59,.745),ncol=min(3,len(rows)),fontsize=10)
   note='Each scenario changes one weight by ±20% and renormalizes. This is preference sensitivity, not sampling uncertainty.'
  elif kind=='decision_path':
   ax.remove();steps=v['steps'];n=len(steps)
   for i,step in enumerate(steps):
-   x=.035+i*(.96/n) if docmode else .075+i*(.90/n);fig.text(x,.90 if docmode else .66,f'{i+1:02d}',fontsize=20 if docmode else 30,color=theme['accent'],weight='bold');fig.text(x,.76 if docmode else .55,fitted(step['heading'],fig,11 if docmode else 15,(.96/n-.025) if docmode else .90/n-.03,'bold'),fontsize=11 if docmode else 15,weight='bold',va='top');fig.text(x,.51 if docmode else .40,fitted(step['detail'],fig,9 if docmode else 11,(.96/n-.025) if docmode else .90/n-.03),fontsize=9 if docmode else 11,color='#526476',va='top')
+   if docmode:
+    x=.035+(i%2)*.50;y=.96-(i//2)*.49;fig.text(x,y,f'{i+1:02d}  '+fitted(step['heading'],fig,11,.43,'bold'),fontsize=11,weight='bold',va='top');fig.text(x,y-.13,fitted(step['detail'],fig,10,.43),fontsize=10,color='#526476',va='top')
+   else:
+    x=.075+i*(.90/n);fig.text(x,.66,f'{i+1:02d}',fontsize=30,color=theme['accent'],weight='bold');fig.text(x,.55,fitted(step['heading'],fig,15,.90/n-.03,'bold'),fontsize=15,weight='bold',va='top');fig.text(x,.40,fitted(step['detail'],fig,11,.90/n-.03),fontsize=11,color='#526476',va='top')
   note='Read from the supported finding through its conditions. This is an explanatory sequence, not an approved delivery plan.'
  if docmode:
   for a in fig.axes:
@@ -69,8 +73,9 @@ for v in spec['visuals']:
   if kind=='score_heatmap':ax.set_position([.23,.30,.70,.64])
   elif kind in ['score_bounds','coverage','sensitivity']:ax.set_position([.27,.20,.63,.70])
   elif kind=='effects':
-   for i,a in enumerate(fig.axes):a.set_position([.15,.58-i*.42,.80,.16]);a.title.set_fontsize(9)
-  if kind=='sensitivity':ax.set_position([.27,.20,.63,.70-.045*math.ceil(len(rows)/3)]);fig.legend(*ax.get_legend_handles_labels(),frameon=False,loc='upper center',bbox_to_anchor=(.58,.97),ncol=min(3,len(rows)),fontsize=9)
+   pitch=.86/len(fig.axes)
+   for i,a in enumerate(fig.axes):a.set_position([.15,.85-pitch-i*pitch,.80,pitch-.20]);a.title.set_fontsize(9)
+  if kind=='sensitivity':ax.set_position([.38,.16,.52,.73-.045*math.ceil(len(rows)/3)]);fig.legend(*ax.get_legend_handles_labels(),frameon=False,loc='upper center',bbox_to_anchor=(.64,.98),ncol=min(3,len(rows)),fontsize=9)
  else:fig.text(.07,.155,fitted(v['caption'],fig,10.5,.86),fontsize=10.5,va='top');fig.text(.07,.045,fitted(note,fig,9,.86),fontsize=9,color='#526476',va='top')
  notes[v['id']]=note
  fig.savefig(out/(v['id']+'.svg'),facecolor=fig.get_facecolor());fig.savefig(out/(v['id']+'.png'),dpi=150,facecolor=fig.get_facecolor());plt.close(fig)

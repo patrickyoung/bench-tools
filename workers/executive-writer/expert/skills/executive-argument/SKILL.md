@@ -57,3 +57,42 @@ unsupported emphasis and terminology drift against the shared plan and other
 selected outputs. Consult fresh supplied page critiques for heading isolation,
 awkward breaks, figure placement, table legibility and typographic hierarchy.
 Textual completeness is not evidence that every rendered page reads well.
+
+# Publication prose gates
+Write the executive summary as 3-4 short labeled paragraphs separated by blank
+lines in executive_summary; default to four: Recommendation, Evidence, Tradeoff,
+Conditions. Prefer at most 150 words while respecting the contract's character
+limits. Move numerical detail into body sections, not material conditions or
+uncertainty out of the summary.
+
+Carry the same argument from recommendation through the closing decision.
+Give alternate conditions explicit if/then language. Do not let an unqualified
+status badge or heading overpower a more restrictive condition. State failure
+conditions as failures with supported consequences, not ambiguous lists of
+positive requirements.
+
+Use concise, well-formed paragraphs and readable numerical precision without
+rounding away a material distinction. Interpret exact anchors and scenarios;
+do not retype all anchors or all ten scenario results as continuous prose.
+The checked workbook/data preserve exact detail. Retain decision-relevant
+numbers and units where they support reasoning, while writing the complete
+sustained report within the existing section and word-count contract. No filler
+or caveat repeated in every paragraph: place each qualification where it governs
+the claim, retaining it at the opening and close when decision-changing.
+
+Refer to figures by their supplied titles, not guessed page numbers or "below".
+For practical-importance figures, the caption or subtitle must state supplied
+signed practical thresholds, units and favored direction; never invent them.
+Distinguish statistical intervals from missing-score bounds. Flag supplied
+figures connecting separate categorical scenarios with polylines for correction;
+they require unconnected points. Preserve supplied fact IDs in contract source
+mapping, not raw implementation IDs in reader-facing prose.
+
+Read selected prior review and prior spec before revision. Correct all applicable
+material content defects rather than rebinding old prose. Actual fresh renders
+and independent quality review remain required, including paragraph flow,
+precision, figure references and the closing decision. Neither authorship nor
+a file checker alone proves publication quality.
+
+Provenance: Generalized publication review guidance supplied 2026-09-15;
+authoring feedback, not Hone learning, certified recovery or new case facts.

@@ -56,3 +56,33 @@ clipping, tiny labels, weak hierarchy, false visual implications and unsupported
 imagery. Keep spec/master, inputs and source mappings for reproducible revision.
 Successful deck creation establishes neither native editability nor visual craft
 without the host's corresponding checks and complete inspection.
+
+# Decision and visual publication gates
+Carry one supported argument through the opening, evidence slides and closing
+decision. State alternate conditions as explicit if/then language in visible
+copy, not only notes. Qualify status badges so they cannot overpower a stricter
+condition. Failure gates must read as failures with supported consequences,
+not as ambiguous lists of positive requirements. The closing ask must preserve
+the same conditional recommendation and uncertainty as the shared plan.
+
+For practical-importance figures, state supplied signed practical thresholds,
+units and favored direction in a caption or subtitle using existing supported
+slide text; do not add schema fields or invent thresholds. Statistical intervals
+and missing-score bounds need distinct labels. Separate categorical scenarios
+use unconnected points, never polylines. If the fixed renderer cannot produce
+the required encoding, flag the capability defect to the controller rather than
+rasterizing evidence or claiming the visual is corrected.
+
+In ownership diagrams/infographics, headings must fit their blocks: use short
+role names and put qualifications in the detail without losing material gates.
+Keep supplied fact IDs in the contract's provenance mapping; raw implementation
+IDs are not reader-facing copy.
+
+Read selected prior review and prior spec before revision. Correct all applicable
+material content defects rather than rebinding old slides. Require actual fresh
+renders and independent quality review of the revised deck, including the
+closing decision, legibility and semantic emphasis. Authorship and file checks
+alone do not prove publication quality.
+
+Provenance: Generalized publication review guidance supplied 2026-09-15;
+authoring feedback, not Hone learning, certified recovery or new case facts.

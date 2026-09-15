@@ -12,7 +12,7 @@ const chunks=text=>{let parts=[],start=0;while(start<text.length){let end=Math.m
 if(role==='information-designer'){
  const wb=Workbook.create(),summary=wb.worksheets.add('Overview'),matrix=wb.worksheets.add('Matrix'),evidence=wb.worksheets.add('Evidence'),anchors=wb.worksheets.add('Scoring basis'),sensitivity=wb.worksheets.add('Weight scenarios');
  const style=(sheet,cols,last)=>{
-  const r=sheet.getRange(`A1:${cell(cols-1)}${last}`);r.format.font={name:t.font,size:11,color:t.ink};r.format.rowHeight=26;r.format.columnWidth=20;r.format.verticalAlignment='top';
+  const r=sheet.getRange(`A1:${cell(cols-1)}${last}`);r.format.font={name:t.font,size:11,color:t.ink};r.format.rowHeight=26;r.format.columnWidth=20;r.format.verticalAlignment='top';r.format.borders={insideVertical:{style:'thin',color:'#D7DFE5'},insideHorizontal:{style:'thin',color:'#E8EDF1'}};
  };
  const summaryEnd=16+m.totals.length;style(summary,6,summaryEnd);style(matrix,8,m.cells.length+7);style(evidence,4,4);
  for(const sh of [summary,matrix,evidence,anchors,sensitivity])sh.showGridLines=false;
@@ -32,28 +32,51 @@ if(role==='information-designer'){
  let crit=Object.fromEntries(m.criteria.map(c=>[c.id,c]));
  for(let i=0;i<m.cells.length;i++){
   const x=m.cells[i],row=5+i,c=crit[x.criterion_id];matrix.getRange(`A${row}:H${row}`).values=[[safe(src.candidate_names[x.candidate_id]),safe(c.name),c.weight,x.score,null,x.confidence,x.status,safe(x.refs.map(r=>r.source_id+' · '+r.locator).join('; '))]];
-  matrix.getRange(`E${row}`).formulas=[[`=IF(ISNUMBER(D${row}),C${row}*D${row}/5,"")`]];matrix.getRange(`C${row}:E${row}`).setNumberFormat('0.0');matrix.getRange(`A${row}:H${row}`).format.wrapText=true;matrix.getRange(`A${row}:H${row}`).format.rowHeight=58;
+  matrix.getRange(`E${row}`).formulas=[[`=IF(ISNUMBER(D${row}),C${row}*D${row}/5,"")`]];matrix.getRange(`C${row}:E${row}`).setNumberFormat('0.0');matrix.getRange(`C${row}:G${row}`).format.horizontalAlignment='center';matrix.getRange(`A${row}:H${row}`).format.wrapText=true;matrix.getRange(`A${row}:H${row}`).format.rowHeight=Math.max(58,Math.ceil(String(matrix.getRange(`H${row}`).values[0][0]).length/42)*14+14);
  }
  matrix.getRange(`B1:B${m.cells.length+7}`).format.columnWidth=30;matrix.getRange(`H1:H${m.cells.length+7}`).format.columnWidth=44;matrix.tables.add(`A4:H${m.cells.length+4}`,true,'ComparisonScores');
- title(evidence,'Evidence and rationale',4);header(evidence,4,['Option','Criterion','Part','Rationale / cited evidence']);let er=5;
+ title(evidence,'Evidence and rationale',4);header(evidence,4,['Option','Criterion','Section','Rationale and supporting references']);let er=5;
+ const evidenceRow=(x,section,content)=>{evidence.getRange(`A${er}:D${er}`).values=[[safe(src.candidate_names[x.candidate_id]),safe(crit[x.criterion_id].name),section,safe(content)]];evidence.getRange(`A${er}:D${er}`).format.font={name:t.font,size:11,color:t.ink};evidence.getRange(`A${er}:D${er}`).format.wrapText=true;evidence.getRange(`A${er}:D${er}`).format.verticalAlignment='top';evidence.getRange(`A${er}:D${er}`).format.rowHeight=Math.max(48,Math.min(400,content.split('\n').reduce((a,s)=>a+Math.max(1,Math.ceil(s.length/125)),0)*15+15));if(section==='Score rationale'){evidence.getRange(`A${er}:D${er}`).format.borders={top:{style:'thin',color:'#9CAEBB'}};evidence.getRange(`A${er}:C${er}`).format.font.bold=true;}er++;};
  for(const x of m.cells){
-  const text=x.rationale+'\nSources: '+x.refs.map(r=>r.source_id+' / '+r.locator+': '+r.quote).join('\n');let parts=chunks(text);
-  for(let i=0;i<parts.length;i++,er++){evidence.getRange(`A${er}:D${er}`).values=[[safe(src.candidate_names[x.candidate_id]),safe(crit[x.criterion_id].name),i+1,safe(parts[i])]];evidence.getRange(`A${er}:D${er}`).format.font={name:t.font,size:11,color:t.ink};evidence.getRange(`A${er}:D${er}`).format.wrapText=true;evidence.getRange(`A${er}:D${er}`).format.rowHeight=72;}
+  if(x.rationale.length>2500)throw Error('Rationale exceeds a readable Excel row; refine the analytical rationale before publication');
+  evidenceRow(x,'Score rationale',x.rationale);
+  evidenceRow(x,'Source references',x.refs.length?x.refs.map(r=>r.source_id+' / '+r.locator).join('\n')+'\nFull verbatim quotations: comparison-data.json.':'No supporting source was supplied. This is an explicit evidence gap.');
  }
- evidence.getRange(`D1:D${er}`).format.columnWidth=95;evidence.getRange(`B1:B${er}`).format.columnWidth=29;
- let ar=5;const anchorRows=[];for(const c of m.criteria){for(const [score,meaning] of [['Reason',c.reason],...Object.entries(c.anchors)])for(const part of chunks(meaning))anchorRows.push([safe(c.name),c.weight,score==='Reason'?score:Number(score),safe(part)]);}
- style(anchors,4,anchorRows.length+4);title(anchors,'Criteria, weights and exact score anchors',4);header(anchors,4,['Criterion','Weight (%)','Score /5','Definition and rationale']);anchors.getRange(`A5:D${anchorRows.length+4}`).values=anchorRows;anchors.getRange(`A5:D${anchorRows.length+4}`).format.wrapText=true;anchors.getRange(`A5:D${anchorRows.length+4}`).format.rowHeight=68;anchors.getRange(`A1:A${anchorRows.length+4}`).format.columnWidth=31;anchors.getRange(`D1:D${anchorRows.length+4}`).format.columnWidth=100;anchors.freezePanes.freezeRows(4);
- const scenarios=[];for(const s of m.sensitivity)for(const r of m.totals)scenarios.push([safe(crit[s.criterion_id].name),s.factor,safe(r.name),s.lower_bounds[r.candidate_id],safe(m.criteria.map(c=>c.name+': '+s.weights[c.id]+'%').join('; '))]);
- style(sensitivity,5,scenarios.length+5);title(sensitivity,'One-at-a-time relative-weight scenarios',5);header(sensitivity,4,['Changed criterion','Multiplier','Option','Supported score','Renormalized weights']);
- if(scenarios.length){sensitivity.getRange(`A5:E${scenarios.length+4}`).values=scenarios;sensitivity.getRange(`A5:E${scenarios.length+4}`).format.wrapText=true;sensitivity.getRange(`A5:E${scenarios.length+4}`).format.rowHeight=68;sensitivity.getRange(`B5:B${scenarios.length+4}`).setNumberFormat('0.0');sensitivity.getRange(`D5:D${scenarios.length+4}`).setNumberFormat('0.000000');}
- sensitivity.getRange(`A1:A${scenarios.length+5}`).format.columnWidth=31;sensitivity.getRange(`E1:E${scenarios.length+5}`).format.columnWidth=100;sensitivity.freezePanes.freezeRows(4);wb.recalculate();
+ evidence.getRange(`A1:A${er}`).format.columnWidth=23;evidence.getRange(`B1:B${er}`).format.columnWidth=28;evidence.getRange(`C1:C${er}`).format.columnWidth=20;evidence.getRange(`D1:D${er}`).format.columnWidth=110;
+ const anchorRows=[];for(const c of m.criteria){for(const [score,meaning] of [['Reason',c.reason],...Object.entries(c.anchors)])anchorRows.push([safe(c.name),c.weight,score==='Reason'?score:Number(score),safe(meaning)]);}
+ style(anchors,4,anchorRows.length+4);title(anchors,'Criteria, weights and exact score anchors',4);header(anchors,4,['Criterion','Weight (%)','Score /5','Definition and rationale']);anchors.getRange(`A5:D${anchorRows.length+4}`).values=anchorRows;anchors.getRange(`A5:D${anchorRows.length+4}`).format.wrapText=true;anchors.getRange(`A5:D${anchorRows.length+4}`).format.rowHeight=45;anchors.getRange(`A1:A${anchorRows.length+4}`).format.columnWidth=31;anchors.getRange(`D1:D${anchorRows.length+4}`).format.columnWidth=100;anchors.freezePanes.freezeRows(4);
+ for(let i=0;i<anchorRows.length;i++){anchors.getRange(`A${i+5}:D${i+5}`).format.rowHeight=Math.max(32,Math.ceil(anchorRows[i][3].length/100)*14+14);anchors.getRange(`B${i+5}:C${i+5}`).format.horizontalAlignment='center';if(anchorRows[i][2]==='Reason'){anchors.getRange(`A${i+5}:D${i+5}`).format.fill='#EDF1F4';anchors.getRange(`A${i+5}:C${i+5}`).format.font.bold=true;}}
+ const scenarios=[];for(const s of m.sensitivity)for(const r of m.totals)scenarios.push([safe(crit[s.criterion_id].name),s.factor,safe(r.name),s.lower_bounds[r.candidate_id],...m.criteria.map(c=>s.weights[c.id])]);
+ const scenarioCol=cell(3+m.criteria.length);style(sensitivity,4+m.criteria.length,scenarios.length+5);title(sensitivity,'Separate relative-weight scenarios · conservative scores /100',4+m.criteria.length);header(sensitivity,4,['Changed criterion','Multiplier','Option','Supported /100',...m.criteria.map(c=>c.name+' (%)')]);sensitivity.getRange(`A4:${scenarioCol}4`).format.rowHeight=60;
+ if(scenarios.length){sensitivity.getRange(`A5:${scenarioCol}${scenarios.length+4}`).values=scenarios;sensitivity.getRange(`A5:${scenarioCol}${scenarios.length+4}`).format.wrapText=true;sensitivity.getRange(`A5:${scenarioCol}${scenarios.length+4}`).format.rowHeight=38;sensitivity.getRange(`B5:B${scenarios.length+4}`).setNumberFormat('0.0');sensitivity.getRange(`D5:${scenarioCol}${scenarios.length+4}`).setNumberFormat('0.00');sensitivity.getRange(`B5:${scenarioCol}${scenarios.length+4}`).format.horizontalAlignment='center';for(let i=0;i<scenarios.length;i++)if(Math.floor(i/m.totals.length)%2===0)sensitivity.getRange(`A${i+5}:${scenarioCol}${i+5}`).format.fill='#EDF1F4';}
+ sensitivity.getRange(`A1:A${scenarios.length+5}`).format.columnWidth=31;sensitivity.freezePanes.freezeRows(4);wb.recalculate();
  const computed=matrix.getRange(`E5:E${m.cells.length+4}`).values;
  for(let i=0;i<m.cells.length;i++){let x=m.cells[i];if(x.score!==null&&Math.abs(Number(computed[i][0])-x.score*crit[x.criterion_id].weight/5)>1e-8)throw Error('Workbook points differ from checked source');if(x.score===null&&computed[i][0]!==''&&computed[i][0]!==null)throw Error('Unknown score became numeric');}
  await (await SpreadsheetFile.exportXlsx(wb)).save(path.join(out,'comparison.xlsx'));
+ await fs.writeFile(path.join(out,'comparison-data.json'),JSON.stringify(m,null,2)+'\n');
  const regions=[['Overview',`A1:F${summaryEnd}`]];
- for(const [sheet,last,col] of [['Matrix',m.cells.length+4,'H'],['Evidence',er-1,'D'],['Scoring basis',anchorRows.length+4,'D'],['Weight scenarios',scenarios.length+4,'E']])for(let start=1;start<=last;start+=12)regions.push([sheet,`A${start}:${col}${Math.min(start+11,last)}`]);
+ for(const [sheet,last,col] of [['Matrix',m.cells.length+4,'H'],['Evidence',er-1,'D'],['Scoring basis',anchorRows.length+4,'D'],['Weight scenarios',scenarios.length+4,scenarioCol]]){
+  const sh=wb.worksheets.getItem(sheet);let start=1,height=100;
+  if(sheet==='Scoring basis'){for(let row=5;row<=last;row+=7)regions.push([sheet,`A${row===5?1:row}:${col}${Math.min(last,row+6)}`]);continue;}
+  for(let row=5;row<=last;row++){const h=Number(sh.getRange(`A${row}`).format.rowHeight);if(row>Math.max(5,start)&&height+h>600){regions.push([sheet,`A${start}:${col}${row-1}`]);start=row;height=100;}height+=h;}
+  regions.push([sheet,`A${start}:${col}${last}`]);
+ }
+ const previewSheet=wb.worksheets.add('_Publication preview');previewSheet.showGridLines=false;
  for(let index=0;index<regions.length;index++){
-  const [sheet,range]=regions[index],png=await wb.render({sheetName:sheet,range,scale:1.3,format:'png'});await fs.writeFile(path.join(pre,`${index+1}-${sheet.toLowerCase()}.png`),new Uint8Array(await png.arrayBuffer()));
+  const [sheet,range]=regions[index];let renderSheet=sheet,renderRange=range;
+  if(sheet!=='Overview'){
+   const sh=wb.worksheets.getItem(sheet),match=range.match(/^A(\d+):([A-Z]+)(\d+)$/),first=Math.max(5,Number(match[1])),last=Number(match[3]),col=match[2],count=last-first+1;
+   previewSheet.getRange('A1:Z100').unmerge();previewSheet.getRange('A1:Z100').clear({applyTo:'all'});previewSheet.getRange(`A1:${col}4`).copyFrom(sh.getRange(`A1:${col}4`),'all');previewSheet.getRange(`A5:${col}${count+4}`).copyFrom(sh.getRange(`A${first}:${col}${last}`),'all');
+   const cols=col.charCodeAt(0)-64;style(previewSheet,cols,count+4);previewSheet.getRange(`A5:${col}${count+4}`).format.wrapText=true;title(previewSheet,sh.getRange('A2').values[0][0],cols);header(previewSheet,4,sh.getRange(`A4:${col}4`).values[0]);
+   if(sheet==='Matrix'){previewSheet.getRange(`C5:G${count+4}`).format.horizontalAlignment='center';previewSheet.getRange(`C5:E${count+4}`).setNumberFormat('0.0');}
+   if(sheet==='Scoring basis'){previewSheet.getRange(`B5:C${count+4}`).format.horizontalAlignment='center';for(let j=0;j<count;j++)if(anchorRows[first+j-5][2]==='Reason'){previewSheet.getRange(`A${j+5}:D${j+5}`).format.fill='#EDF1F4';previewSheet.getRange(`A${j+5}:C${j+5}`).format.font.bold=true;}}
+   if(sheet==='Evidence')for(let j=0;j<count;j++)if((first+j-5)%2===0){previewSheet.getRange(`A${j+5}:C${j+5}`).format.font.bold=true;previewSheet.getRange(`A${j+5}:D${j+5}`).format.borders={top:{style:'thin',color:'#9CAEBB'}};}
+   if(sheet==='Weight scenarios'){previewSheet.getRange(`B5:${col}${count+4}`).format.horizontalAlignment='center';previewSheet.getRange(`B5:B${count+4}`).setNumberFormat('0.0');previewSheet.getRange(`D5:${col}${count+4}`).setNumberFormat('0.00');for(let j=0;j<count;j++)if(Math.floor((first+j-5)/m.totals.length)%2===0)previewSheet.getRange(`A${j+5}:${col}${j+5}`).format.fill='#EDF1F4';}
+   for(let c=0;c<=col.charCodeAt(0)-65;c++)previewSheet.getRange(`${cell(c)}1:${cell(c)}${count+4}`).format.columnWidth=Number(sh.getRange(`${cell(c)}1`).format.columnWidth);
+   for(let r=1;r<=count+4;r++)previewSheet.getRange(`A${r}:${col}${r}`).format.rowHeight=Number(sh.getRange(`A${r<=4?r:first+r-5}`).format.rowHeight);
+   renderSheet=previewSheet.name;renderRange=`A1:${col}${count+4}`;
+  }
+  const png=await wb.render({sheetName:renderSheet,range:renderRange,scale:1.3,format:'png'});await fs.writeFile(path.join(pre,`${index+1}-${sheet.toLowerCase()}.png`),new Uint8Array(await png.arrayBuffer()));
  }
  await fs.writeFile(path.join(root,'workbook-check.json'),JSON.stringify({weighted_points:computed,all_rows:m.cells.length,evidence_rows:er-5,anchor_rows:anchorRows.length,scenario_rows:scenarios.length,regions}));
 }else{
@@ -78,7 +101,7 @@ if(role==='information-designer'){
    }else if(s.kind==='tradeoff'){
     s.body.forEach((b,j)=>{text(sl,String(j+1).padStart(2,'0'),76,285+j*91,70,55,35,t.accent,true);text(sl,b,175,285+j*91,1020,76,27);});
    }else if(s.kind==='decision'){
-    text(sl,src.decision.status.toUpperCase(),75,279,1120,85,56,t.accent,true);s.body.forEach((b,j)=>text(sl,b,78,400+j*67,1110,61,26));
+    s.body.forEach((b,j)=>{text(sl,String(j+1).padStart(2,'0'),76,290+j*91,70,55,35,t.accent,true);text(sl,b,175,290+j*91,1020,80,27);});
    }else{
     s.body.forEach((b,j)=>text(sl,b,78,287+j*88,1100,78,29));
    }
