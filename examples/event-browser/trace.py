@@ -326,7 +326,7 @@ class Archive:
                     phase = body.get("phase", "")
                     if phase == "start":
                         s.update(cwd=body.get("directory", ""), title=Path(body.get("directory", "agent")).name or "Agent")
-                        ev.update(type="start", title="Agent invocation", text=body.get("directory", ""))
+                        ev.update(type="start", title="Agent invocation", text=body.get("directory", ""), details=body)
                     elif phase == "terminal":
                         complete = body.get("complete") is True and s["verification"] == "verified"
                         state = outcome(body.get("exit")) if complete else "incomplete"
@@ -502,7 +502,7 @@ class Archive:
                             issues.append({"path": s["path"], "message": "Recorded link is not present in the selected evidence: " + str(ref), "severity": "info"})
                     parent = self.aliases.get(body.get("parent", ""))
                     if phase == "start" and parent:
-                        edges.append({"fromSession": parent, "to": sid, "kind": "child", "label": "Recorded child", "verified": s["verification"] == "verified", "fromTime": loaded[parent]["session"]["start"], "toTime": s["start"]})
+                        edges.append({"fromSession": parent, "to": sid, "kind": "child", "label": "Recorded child", "verified": s["verification"] == "verified", "fromTime": loaded[parent]["session"]["start"], "toTime": s["start"], "eventIds": [e["id"] for e in entry["projected"] if e["type"] == "start"]})
                     for path_field, digest_field in [("inputs", "inputs_sha256"), ("outputs", "outputs_sha256"), ("path", "sha256")]:
                         expected = body.get(digest_field)
                         ref = body.get(path_field)
@@ -535,7 +535,7 @@ class Archive:
                 for field, relation in [("parentKey", "compaction"), ("summaryKey", "summary")]:
                     other = keys.get(s[field])
                     if other and other != sid:
-                        edges.append({"fromSession": other, "to": s["laneId"], "kind": relation, "label": "Recorded " + relation, "verified": s["verification"] == "verified", "fromTime": loaded[other]["session"]["end"], "toTime": s["start"]})
+                        edges.append({"fromSession": other, "to": s["laneId"], "kind": relation, "label": "Recorded " + relation, "verified": s["verification"] == "verified", "fromTime": loaded[other]["session"]["end"], "toTime": s["start"], "eventIds": [e["id"] for e in entry["projected"] if e["type"] == "context"]})
             producers = {}
             for sid, entry in loaded.items():
                 s = entry["session"]
@@ -560,7 +560,7 @@ class Archive:
                         matched.add(key)
                         if len(matched) > 200:
                             continue
-                        edges.append({"fromSession": producer, "to": s["laneId"], "kind": "artifact", "label": "Matching retained bytes · " + str(output.get("filename", "artifact")), "verified": True, "fromTime": origin["end"], "toTime": s["start"], "sha256": stream["sha256"]})
+                        edges.append({"fromSession": producer, "to": s["laneId"], "kind": "artifact", "label": "Matching retained bytes · " + str(output.get("filename", "artifact")), "verified": True, "fromTime": origin["end"], "toTime": s["start"], "sha256": stream["sha256"], "eventIds": [e["id"] for selected in (loaded[producer], entry) for e in selected["projected"] if e["type"] == "result"]})
             if len(matched) > 200:
                 issues.append({"path": "", "message": "More than 200 matching-artifact relationships; narrow the selected sources to inspect additional links.", "severity": "warning"})
             for edge in edges:
@@ -884,6 +884,8 @@ HTML = r'''<!doctype html>
 .inspector-head{padding:16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:3}.inspector-head h2{font-size:17px;margin:3px 38px 0 0}.close-details{display:none;position:absolute;right:12px;top:12px}.tabs{display:flex;padding:10px 12px 0;gap:2px;border-bottom:1px solid var(--line)}.tabs button{border:0;border-radius:5px 5px 0 0;background:transparent}.tabs button[aria-selected=true]{background:#e7e2d9;color:#075f5a}.tab-panel{padding:16px}.meta{display:grid;grid-template-columns:95px 1fr;margin:0}.meta dt,.meta dd{padding:7px 0;border-bottom:1px solid #e6e1d8;margin:0;min-width:0}.meta dt{color:var(--muted)}.meta dd{overflow-wrap:anywhere}.copy-text,.raw{white-space:pre-wrap;overflow-wrap:anywhere;background:#ebe7df;border:1px solid #d8d1c7;border-radius:7px;padding:10px;max-height:330px;overflow:auto;font:12px/1.55 ui-monospace,monospace}.stream-card{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:9px;background:#fffdf8}.stream-card header{display:flex;gap:8px;align-items:center}.stream-card header small{margin-left:auto;color:var(--muted)}.stream-actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.mobile-details{display:none}
 @media(max-width:980px){.layout{grid-template-columns:205px minmax(0,1fr)}.inspector{position:fixed;right:0;top:62px;bottom:0;width:min(390px,94vw);z-index:25;box-shadow:-12px 0 30px #0002;transform:translateX(105%);transition:transform .18s}.inspector:not(.open){display:none}.inspector.open{transform:none}.mobile-details,.close-details{display:block}}
 @media(max-width:650px){:root{--lane-label:88px}.topbar{position:relative;padding:10px 12px;gap:8px;flex-wrap:wrap}.brand span{display:none}.connection,.mode{font-size:10px;padding:2px 5px}.connection{display:flex}.mode{display:inline-block}.controls{margin-left:0;width:100%}.layout{display:block;min-height:0}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:10px 12px}.filter-toggle{display:flex}.filter-body[hidden]{display:none}.main{padding:12px}.inspector{top:0}.event-row{grid-template-columns:61px 57px minmax(80px,1fr)}.event-row .status{display:none}.scrub-row{grid-template-columns:55px 1fr 55px}.controls #export-button{margin-left:auto}.timeline-inner{min-width:100%}.timeline-shell.needs-scroll .timeline-inner{min-width:430px}.zoom-row{align-items:flex-start}.zoom-buttons{flex-wrap:wrap;justify-content:flex-end}.lane-label{padding-left:6px;padding-right:6px}}
+
+.narration-toggle{white-space:nowrap}.narration-panel{scroll-margin-top:80px;margin:14px 0 18px;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:10px;background:#fffdf9;box-shadow:var(--shadow);padding:14px}.narration-panel[hidden]{display:none}.narration-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.narration-head h2{font-size:18px;margin:1px 0 3px}.narration-head p,.narration-help,.narration-meta,.narration-speech-state{color:var(--muted);font-size:12px;margin:3px 0}.narration-controls{display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin:12px 0}.narration-controls label{display:grid;gap:3px;font-size:11px;font-weight:700;color:var(--muted)}.narration-controls select{padding:6px 8px}.narration-status{margin:10px 0}.narration-title{font-size:16px;margin:12px 0 2px}.narration-summary{font-size:14px;margin:4px 0 12px;max-width:76ch}.narration-notes{margin:8px 0;padding-left:20px;color:var(--muted)}.narration-list{max-height:380px;overflow-y:auto;overscroll-behavior:contain;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.narration-chapter{padding:12px 4px;border-bottom:1px solid #e5dfd5}.narration-chapter:last-child{border-bottom:0}.narration-chapter h3{font-size:14px;margin:0 0 4px}.narration-chapter p{margin:0;max-width:78ch;white-space:pre-wrap}.narration-evidence{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.narration-evidence button{min-height:30px;padding:3px 8px;font-size:12px}.narration-more{display:block;margin:10px auto 0}.narration-empty{padding:18px 0;color:var(--muted)}@media(max-width:480px){.narration-head{display:block}.narration-toggle{margin-top:8px}.narration-controls{align-items:stretch}.narration-controls label,.narration-controls select{width:100%}.narration-controls button{flex:1}.narration-list{max-height:55vh}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -920,11 +922,24 @@ HTML = r'''<!doctype html>
  <div id="state-banner" aria-live="polite"></div>
  <div id="empty" class="empty"><h1>No retained events loaded</h1><p id="empty-copy">Waiting for a selected Bench recording. Nothing here is evidence of a live run.</p><button id="demo-button" type="button">Load illustrative demo</button></div>
  <div id="workspace" hidden>
-  <div class="view-head"><div><h1>Recorded timeline</h1><p>Recorded wall times · parentage and artifact links</p></div><span class="results" id="result-count">0 events</span></div>
+  <div class="view-head"><div><h1>Recorded timeline</h1><p>Recorded wall times · parentage and artifact links</p></div><div><span class="results" id="result-count">0 events</span> <button class="narration-toggle" id="narration-toggle" type="button" aria-expanded="false" aria-controls="narration-panel">Narrate</button></div></div>
   <div class="legend" aria-label="Event legend"><span class="key"><i class="swatch"></i>model / response</span><span class="key"><i class="swatch action"></i>action / artifact</span><span class="key"><i class="swatch check"></i>check / result</span><span class="key"><i class="swatch error"></i>failure</span></div>
   <div class="zoom-row" aria-label="Timeline zoom"><span id="visible-range">Visible range</span><span class="zoom-buttons"><button type="button" data-zoom="1">1×</button><button type="button" data-zoom="2">2×</button><button type="button" data-zoom="4">4×</button><button type="button" id="fit-all">Fit all</button></span></div>
   <section class="timeline-shell" aria-label="Synchronized event timeline"><div class="timeline-inner"><div class="ruler" id="ruler"></div><div class="lanes" id="lanes"></div></div></section>
   <div class="scrub-row"><span id="scrub-start">—</span><input class="scrub" id="scrubber" type="range" min="0" max="0" value="0" step="1" aria-label="Recorded event cursor"><span id="scrub-end">—</span></div>
+  <section class="narration-panel" id="narration-panel" aria-labelledby="narration-heading" hidden>
+   <div class="narration-head"><div><div class="eyebrow">Evidence narration</div><h2 id="narration-heading">Timeline narration</h2><p>Locally written from the retained recording.</p></div></div>
+   <div class="narration-controls">
+    <label for="narration-scope">Narration range<select id="narration-scope"><option value="cursor" selected>Through cursor</option><option value="all">Whole recording — includes later events</option></select></label>
+    <button id="narration-download" type="button" disabled>Download narration</button>
+    <button id="narration-speak" type="button" disabled>Read aloud</button>
+    <button id="narration-stop" type="button" disabled>Stop reading</button>
+   </div>
+   <p class="narration-help">The agent lane filter limits narration. Search, event-kind, and status filters do not. “Through cursor” excludes later outcomes.</p>
+   <div class="narration-status" id="narration-status" role="status" aria-live="polite"></div>
+   <p class="narration-speech-state" id="narration-speech-state"></p>
+   <div id="narration-content"></div>
+  </section>
   <section class="feed" aria-labelledby="feed-title"><div class="view-head"><div><div class="eyebrow">Cursor-synchronized feed</div><h1 id="feed-title">Events through cursor; later events are dimmed</h1></div></div><div class="feed-list" id="feed-list"></div><div class="feed-pager"><button id="feed-earlier" type="button">Earlier</button><span id="feed-count" aria-live="polite"></span><button id="feed-later" type="button">Later</button></div></section>
  </div>
 </main>
@@ -941,7 +956,125 @@ HTML = r'''<!doctype html>
 </aside>
 </div>
 <div id="visual-fallback" data-visual-fallback hidden>Timeline graphics unavailable; retained events remain available in the list.</div>
-<script id="page-tests" type="application/json">[{"name":"Open details","steps":[{"action":"click","selector":"#demo-button"},{"action":"click","selector":"#details-button"},{"action":"expectVisible","selector":"#details-panel"},{"action":"expectText","selector":"#detail-title","value":"Check accepted"}]},{"name":"Reveal filters","steps":[{"action":"click","selector":"#filter-toggle"},{"action":"expectVisible","selector":"#filter-body"},{"action":"click","selector":"#show-all"},{"action":"expectText","selector":"#result-count","value":"8 events"}]}]</script>
+<script id="page-tests" type="application/json">[{"name":"Open narration","steps":[{"action":"click","selector":"#demo-button"},{"action":"click","selector":"#narration-toggle"},{"action":"expectVisible","selector":"#narration-panel"},{"action":"expectText","selector":"#narration-status","value":"Narration ready"}]},{"name":"Open details","steps":[{"action":"click","selector":"#demo-button"},{"action":"click","selector":"#details-button"},{"action":"expectVisible","selector":"#details-panel"},{"action":"expectText","selector":"#detail-title","value":"Check accepted"}]},{"name":"Reveal filters","steps":[{"action":"click","selector":"#filter-toggle"},{"action":"expectVisible","selector":"#filter-body"},{"action":"click","selector":"#show-all"},{"action":"expectText","selector":"#result-count","value":"8 events"}]}]</script>
+<script id="bench-narrator">
+/* Evidence narration is a local projection, never a model or an action runner. */
+globalThis.BenchNarrator = (() => {
+  'use strict';
+  const list = x => Array.isArray(x) ? x : [];
+  const text = x => x == null ? '' : String(x);
+  const excerpt = (x, n = 180) => {const s=text(x).replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n-1)+'…':s;};
+  const quote = x => '“'+excerpt(x)+'”';
+  const md = x => text(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\\`*_\[\]#]/g,'\\$&');
+  const elapsed = (a,b) => {
+    if(a.time==null||b.time==null||!Number.isFinite(Number(a.time))||!Number.isFinite(Number(b.time)))return '';
+    const ms=Number(b.time)-Number(a.time);if(ms<0)return ' (the recorded clock moved backward)';
+    return ' after '+(ms<1000?ms+' ms':ms<60000?(ms/1000).toFixed(1)+' seconds':(ms/60000).toFixed(1)+' minutes');
+  };
+  function build(snapshot={},options={}) {
+    const all=list(snapshot.events).map((e,i)=>({e,i})).sort((a,b)=>{
+      const ao=a.e.order,bo=b.e.order;return ao!=null&&bo!=null&&Number.isFinite(Number(ao))&&Number.isFinite(Number(bo))?Number(ao)-Number(bo)||a.i-b.i:a.i-b.i;
+    }).map(x=>x.e);
+    const index=new Map(all.map((e,i)=>[text(e.id),i]));
+    const scope=options.scope==='all'?'all':'cursor', cutoff=scope==='all'?all.length-1:(index.get(text(options.cutoffId))??-1);
+    const prefix=all.slice(0,cutoff+1), visibleIds=new Set(prefix.map(e=>text(e.id)));
+    const laneId=text(options.laneId), rows=prefix.filter(e=>!laneId||text(e.laneId)===laneId);
+    const lanes=new Map(list(snapshot.lanes).map(l=>[text(l.id),l]));
+    const sessions=new Map(list(snapshot.sessions).map(s=>[text(s.id),s]));
+    const name=id=>text(lanes.get(text(id))?.title)||'Unnamed lane';
+    const chapters=[], pending=new Map(), pendingModels=new Map(), rejected=new Map(), rejectedCommands=new Map(), inputLanes=new Set();
+    const counts={model:0,action:0,rejected:0,acceptedChecks:0,recovered:0,commandRecoveries:0,acceptedAgents:0,failedProcesses:0};
+    function add(e,kind,title,body,refs=[e.id],extraLanes=[]) {
+      const ids=[...new Set(refs.map(text))].filter(id=>visibleIds.has(id));if(!ids.length)return null;
+      const bad=ids.some(id=>{const e=all[index.get(id)],s=sessions.get(text(e.sessionId));return ['invalid','unavailable'].includes(s?.verification);});
+      const chapter={id:kind+':'+text(e.id),title,text:body+(bad?' The referenced archive is not verified; these observations are not established.':''),eventIds:ids,laneIds:[...new Set([text(e.laneId),...extraLanes.map(text)])],time:e.time,kind};
+      chapters.push(chapter);return chapter;
+    }
+    for(const e of rows) {
+      const who=name(e.laneId),sid=text(e.sessionId),d=e.details||{},session=sessions.get(sid)||{};
+      if(e.type==='start')add(e,'start','Work began',who+' began a recorded invocation.');
+      else if(e.type==='input'&&!e.stream&&!inputLanes.has(text(e.laneId))&&text(e.text).trim()) {
+        inputLanes.add(text(e.laneId));add(e,'input','The recorded request',who+' received this input excerpt: '+quote(e.text)+'.');
+      } else if(e.type==='model') {
+        counts.model++;const chapter=add(e,'model','Waiting for a model response',who+' sent a request'+(d.model?' to '+quote(d.model):' to the model')+'. No response has been recorded for this request at this point.');
+        pendingModels.set(sid,{event:e,chapter});
+      } else if(e.type==='response') {
+        const p=pendingModels.get(sid),partial=d.partial||e.status==='incomplete';
+        const body=who+' received '+(partial?'a partial model response':'a model response')+(p?elapsed(p.event,e):'')+'.'+(text(e.text).trim()?' Recorded response excerpt: '+quote(e.text)+'.':'');
+        if(p){p.chapter.title=partial?'Partial model response':'Model response received';p.chapter.text=body;p.chapter.eventIds.push(text(e.id));p.chapter.time=e.time;pendingModels.delete(sid);}
+        else add(e,'response',partial?'Partial model response':'Model response received',body);
+      } else if((e.type==='action'||e.type==='check')&&Array.isArray(d.argv)) {
+        counts.action++;const isCheck=session.role==='verifier'||e.type==='check';
+        const command=excerpt(d.argv.join(' ').replace(/\/(?:[^\/\s"'`]+\/)+([^\/\s"'`]+)/g,'…/$1'),160)||'unnamed command';
+        const chapter=add(e,isCheck?'check-process':'action',isCheck?'A check started':'An action started',who+' started '+(isCheck?'a check command':'a command')+': '+quote(command)+'. No process result is recorded at this point.');
+        const checkKey=isCheck&&d.cwd?text(e.laneId)+'\0'+text(d.cwd)+'\0'+JSON.stringify(d.argv):null;pending.set(sid,{event:e,chapter,isCheck,command,checkKey});
+      } else if(e.type==='check') {
+        const key=d.verifier_sha256&&d.directory?text(e.laneId)+'\0'+d.directory+'\0'+d.verifier_sha256:null;
+        if(e.status==='failed'&&d.outcome==='rejected') {
+          counts.rejected++;if(key)rejected.set(key,e);
+          add(e,'rejection','A check rejected the candidate',who+' recorded a rejected check.'+(text(e.text).trim()?' Check output excerpt: '+quote(e.text)+'.':''));
+        } else if(e.status==='accepted'&&d.outcome==='accepted') {
+          counts.acceptedChecks++;const earlier=key&&rejected.get(key);
+          if(earlier){counts.recovered++;add(e,'recovery','The same check later accepted',who+' later recorded acceptance from the same verifier in the same working directory. This follows its earlier rejection; the records do not by themselves identify which change caused the acceptance.',[earlier.id,e.id]);rejected.delete(key);}
+          else add(e,'acceptance','A check accepted the candidate',who+' recorded an accepted check.'+(text(e.text).trim()?' Check output excerpt: '+quote(e.text)+'.':''));
+        } else add(e,'uncertain','The check outcome is unresolved',who+' recorded a check with an unknown or broken outcome.'+(text(e.text).trim()?' Check output excerpt: '+quote(e.text)+'.':''));
+      } else if(e.type==='result') {
+        const p=pending.get(sid);
+        if(p) {
+          const code=d.exit,exit=Number.isInteger(code)?' Exit status: '+code+'.':'';
+          const state=e.status==='complete'?'finished':e.status==='failed'?'failed':e.status==='interrupted'?'was interrupted':e.status==='unfinished'?'stopped unfinished':'has incomplete or uncertain recorded results';
+          p.chapter.title=p.isCheck?'Check process '+state:'Action '+state;
+          p.chapter.text=who+'’s '+(p.isCheck?'check command ':'command ')+state+elapsed(p.event,e)+'. Command excerpt: '+quote(p.command)+'.'+exit+(e.status==='incomplete'?' A complete process receipt is not available.':'');
+          p.chapter.eventIds.push(text(e.id));p.chapter.time=e.time;pending.delete(sid);if(e.status==='failed')counts.failedProcesses++;
+          if(p.checkKey&&e.status==='failed')rejectedCommands.set(p.checkKey,{start:p.event,result:e});
+          if(p.checkKey&&e.status==='complete'&&code===0&&rejectedCommands.has(p.checkKey)){const earlier=rejectedCommands.get(p.checkKey);counts.commandRecoveries++;add(e,'recovery','The check command later succeeded',who+' later ran the same check command in the same directory and recorded exit status 0, following its earlier failure. The records establish this change in outcome, not which edit caused it.',[earlier.start.id,earlier.result.id,p.event.id,e.id]);rejectedCommands.delete(p.checkKey);}
+        } else if(session.kind==='conversation')add(e,'conversation','Conversation '+text(e.status),who+' recorded its model conversation as '+text(e.status||'unknown')+'.');
+      } else if(e.type==='end') {
+        if(e.status==='accepted')counts.acceptedAgents++;
+        const ending={accepted:'reached the runner’s accepted outcome',failed:'ended with a failed outcome',unfinished:'stopped before the runner accepted the work',interrupted:'was interrupted',incomplete:'has an incomplete terminal record',invalid:'has an invalid terminal record'}[e.status]||'ended with an unknown outcome';
+        add(e,'outcome','Invocation '+text(e.status||'unknown'),who+' '+ending+'.'+(e.status==='accepted'?' This is the recorded runner/check result, not independent proof of task correctness.':''));
+      } else if(e.type==='artifact'&&!e.stream)add(e,'artifact','Evidence capture began',who+' began retaining '+(e.title==='Retain inputs'?'the selected inputs':'selected output or conversation evidence')+'. Completion must be established by its receipt.');
+      else if(e.type==='retry')add(e,'retry','A retry was recorded',who+' recorded a retry.'+(text(e.text).trim()?' Recorded detail: '+quote(e.text)+'.':''));
+      else if(e.type==='error') {
+        add(e,'interruption','Work was interrupted',who+' recorded '+quote(e.title||'an error')+'.');
+        const p=pendingModels.get(sid);if(p){p.chapter.title='Model request interrupted';p.chapter.text=who+' requested a model response, then the conversation was interrupted'+elapsed(p.event,e)+'.';p.chapter.eventIds.push(text(e.id));pendingModels.delete(sid);}
+      }
+    }
+    let unanchored=0;
+    for(const edge of list(snapshot.edges)) {
+      if(laneId&&text(edge.from)!==laneId&&text(edge.to)!==laneId)continue;
+      const refs=list(edge.eventIds).map(text);if(!refs.length){unanchored++;continue;}if(!refs.every(id=>visibleIds.has(id)))continue;
+      const last=refs.reduce((a,b)=>index.get(a)>index.get(b)?a:b),event=all[index.get(last)];
+      const relation=edge.kind==='artifact'?name(edge.from)+' and '+name(edge.to)+' retained matching output/input bytes. This is evidence of identical content, not proof that one agent consumed the other’s output or caused its next action.':edge.kind==='child'?'A recorded parent/child relationship connects '+name(edge.from)+' to '+name(edge.to)+'.':'A recorded '+text(edge.kind)+' relationship connects '+name(edge.from)+' and '+name(edge.to)+'.';
+      const c=add(event,'relationship',edge.kind==='artifact'?'Matching evidence across agents':'A recorded agent relationship',relation+(edge.verified===true?'':' The relationship is not verified.'),refs,[edge.from,edge.to]);
+      if(c)c.id+=':'+text(edge.kind)+':'+text(edge.from)+':'+text(edge.to)+':'+text(edge.sha256);
+    }
+    // Pairing can update earlier paragraphs; sort by their last observed event.
+    chapters.sort((a,b)=>Math.max(...a.eventIds.map(id=>index.get(id)))-Math.max(...b.eventIds.map(id=>index.get(id))));
+    // Never keep a now-verified tone when a paired terminal belongs to damaged evidence.
+    for(const c of chapters)if(c.eventIds.some(id=>['invalid','unavailable'].includes(sessions.get(text(all[index.get(id)].sessionId))?.verification))&&!c.text.includes('not established'))c.text+=' The referenced archive is not verified; these observations are not established.';
+    const selectedLanes=new Set(rows.map(e=>text(e.laneId)));
+    let summary=rows.length?'Across '+selectedLanes.size+' selected '+(selectedLanes.size===1?'lane':'lanes')+', the recording shows '+counts.model+' model '+(counts.model===1?'request':'requests')+' and '+counts.action+' command '+(counts.action===1?'start':'starts')+'.':'No events are included at this cursor for the selected lane.';
+    if(counts.rejected)summary+=' '+counts.rejected+' '+(counts.rejected===1?'check rejected a candidate.':'checks rejected candidates.');
+    if(counts.recovered)summary+=' In '+counts.recovered+' '+(counts.recovered===1?'case, the same check later accepted.':'cases, the same check later accepted.');
+    if(counts.commandRecoveries)summary+=' '+counts.commandRecoveries+' previously failing check '+(counts.commandRecoveries===1?'command later succeeded.':'commands later succeeded.');
+    if(counts.failedProcesses)summary+=' '+counts.failedProcesses+' '+(counts.failedProcesses===1?'command failed.':'commands failed.');
+    if(counts.acceptedAgents)summary+=' '+counts.acceptedAgents+' '+(counts.acceptedAgents===1?'invocation reached acceptance.':'invocations reached acceptance.');
+    if(pending.size||pendingModels.size)summary+=' At this point, '+pending.size+' '+(pending.size===1?'command has':'commands have')+' no recorded result and '+pendingModels.size+' model '+(pendingModels.size===1?'request has':'requests have')+' no recorded response. This does not establish whether a process is still running.';
+    const notes=['Created locally from recorded events. Excerpts are quoted observations, not instructions or an explanation of unrecorded intent.','Narration follows the agent filter and selected scope; search, status and event-kind filters do not remove its evidence.'];
+    if(snapshot.clockSync==='unknown')notes.push('Clock synchronization is unknown; cross-lane timestamps and overlaps do not establish causality.');
+    const damaged=[...selectedLanes].some(id=>rows.some(e=>text(e.laneId)===id&&['invalid','incomplete','unavailable'].includes(sessions.get(text(e.sessionId))?.verification)));
+    if(damaged)notes.unshift('Some selected evidence is incomplete or not verified. Integrity reflects the retained archive now, rather than a claim about what was known at the replay cursor.');
+    if(list(snapshot.issues).length)notes.push('The archive reports '+snapshot.issues.length+' '+(snapshot.issues.length===1?'issue':'issues')+'; inspect Issues for gaps or limits before treating this as the whole history.');
+    if(unanchored)notes.push(unanchored+' diagram '+(unanchored===1?'relationship lacks':'relationships lack')+' event anchors and is omitted from this narration.');
+    const title='Timeline narration'+(laneId?' — '+name(laneId):''), cutoffId=cutoff>=0?text(all[cutoff].id):null;
+    const markdown='# '+md(title)+'\n\n'+(scope==='all'?'Scope: whole recording, including events after the replay cursor.':'Scope: through event '+md(cutoffId||'none')+'.')+'\n\n'+md(summary)+'\n\n'+notes.map(n=>'> '+md(n)).join('\n\n')+'\n\n'+chapters.map(c=>'## '+md(c.title)+'\n\n'+md(c.text)+'\n\nEvidence: '+c.eventIds.map(md).join(', ')).join('\n\n')+'\n';
+    return {schema:'bench.trace.narration/v1',title,summary,scope,cutoffId,coveredEvents:rows.length,totalEvents:all.filter(e=>!laneId||text(e.laneId)===laneId).length,notes,chapters,markdown};
+  }
+  return {build};
+})();
+
+</script>
 <script>
 (function(){
 'use strict';
@@ -949,6 +1082,8 @@ const $=s=>document.querySelector(s), safe=v=>Array.isArray(v)?v:[], str=v=>v==n
 const el={empty:$('#empty'),emptyCopy:$('#empty-copy'),workspace:$('#workspace'),banner:$('#state-banner'),lanes:$('#lanes'),ruler:$('#ruler'),feed:$('#feed-list'),details:$('#panel-details'),streams:$('#panel-streams'),raw:$('#panel-raw'),title:$('#detail-title'),scrub:$('#scrubber'),result:$('#result-count'),agent:$('#agent-filter'),kinds:$('#kind-filters'),sources:$('#sources'),issues:$('#issues-list'),issueCount:$('#issue-count'),mode:$('#mode-label'),follow:$('#follow-button'),play:$('#play-button')};
 const primary=new Set(['start','model','response','action','check','result','retry','error','end','artifact']);
 let snapshot=null, ordered=[], orderIndex=new Map(), eventMap=new Map(), laneMap=new Map(), sessionMap=new Map(), laneEvents=new Map(), selectedId=null, enabledKinds=new Set(), knownKinds=new Set(), filtersInitialized=false, following=false, playing=false, timer=null, feedStart=0, feedPage=200, generation=0, demoActive=false, zoom=1;const rawCache=new Map(),streamCache=new Map();
+let narration=null,narrationKey='',narrationShown=50,narrationSnapshotVersion=0,narrationVoice=null,narrationSpeaking=false,narrationFrozenKey='',narrationQueue=[],narrationUtterance=null,narrationReadingVoice=null,narrationSpeechToken=0;
+
 function make(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
 function timeOf(e){const n=Number(e&&e.time);return Number.isFinite(n)?n:0}
 function fmtTime(v){if(!Number.isFinite(v))return 'Not supplied';const d=new Date(v);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',fractionalSecondDigits:3})}
@@ -1018,11 +1153,75 @@ function showStreamResult(card,r,mode){const bytes=decode(r.base64),txt=bytesTex
 async function readStream(card,s,st,mode,requestEvent,requestGen){const api=window.BenchTrace,key=str(s.id)+'\u0000'+str(st.name)+'\u0000'+mode;if(!api||typeof api.readStream!=='function'){preview(card,str(st.preview),'Preview only — full-stream host API unavailable'+(st.truncated?' · truncated':''),'error');return}preview(card,'','Loading full retained bytes…');try{const r=await api.readStream(s.id,st.name);if(generation!==requestGen||selectedId!==requestEvent)return;streamCache.set(key,r);if(!card.isConnected){renderDetails();return}showStreamResult(card,r,mode)}catch(err){if(card.isConnected)preview(card,str(err&&err.message||err),'Unable to load full stream','error')}}
 function renderStreams(s,e){const streams=safe(s.streams).filter(x=>!e.stream||x.name===e.stream);if(!streams.length){el.streams.append(make('p','','No streams or artifacts are associated with this event session.'));return}streams.forEach(st=>{const c=make('article','stream-card'),h=make('header');h.append(make('strong','',st.name||'unnamed stream'),make('small','',(st.bytes??'unknown')+' bytes'));c.append(h);const acts=make('div','stream-actions'),g=generation,id=selectedId;[['Full text','text'],['Hex','hex']].forEach(([label,mode])=>{const b=make('button','',label);b.type='button';b.addEventListener('click',()=>readStream(c,s,st,mode,id,g));acts.append(b)});const down=make('button','','Download bytes');down.type='button';down.addEventListener('click',async()=>{const api=window.BenchTrace;if(!api||typeof api.readStream!=='function'){preview(c,str(st.preview),'Download unavailable — preview only','error');return}try{const r=await api.readStream(s.id,st.name);if(generation!==g||selectedId!==id||!c.isConnected)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([decode(r.base64)]));a.download=st.filename||st.name||'stream.bin';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}catch(err){preview(c,str(err&&err.message||err),'Download failed','error')}});acts.append(down);c.append(acts);const textKey=str(s.id)+'\u0000'+str(st.name)+'\u0000text',hexKey=str(s.id)+'\u0000'+str(st.name)+'\u0000hex',cached=streamCache.get(textKey)||streamCache.get(hexKey);if(cached)showStreamResult(c,cached,streamCache.has(textKey)?'text':'hex');else preview(c,str(st.preview||''),'Preview · '+(st.truncated?'truncated':'not marked truncated')+' · '+(st.encoding||'encoding unknown'));el.streams.append(c)})}
 function renderRaw(e){const cached=rawCache.get(str(e.id));if(cached){if(cached.normalizedRequest!==undefined)el.raw.append(make('div','section-title','Exact normalized model request'),make('pre','raw',typeof cached.normalizedRequest==='string'?cached.normalizedRequest:JSON.stringify(cached.normalizedRequest,null,2)));el.raw.append(make('pre','raw',JSON.stringify(cached,null,2)),make('div','section-title','Snapshot event'),make('pre','raw',JSON.stringify(e,null,2)));return}const msg=make('p','','Select “Load complete event” to request retained raw evidence from the host.'),btn=make('button','','Load complete event'),id=selectedId,g=generation;btn.type='button';btn.addEventListener('click',async()=>{btn.disabled=true;msg.textContent='Loading complete event…';try{const api=window.BenchTrace;if(!api||typeof api.readEvent!=='function')throw new Error('Host readEvent API unavailable');const raw=await api.readEvent(e.id);if(generation!==g||selectedId!==id)return;rawCache.set(str(e.id),raw);if(!btn.isConnected){renderDetails();return}msg.remove();btn.remove();if(raw&&raw.normalizedRequest!==undefined)el.raw.append(make('div','section-title','Exact normalized model request'),make('pre','raw',typeof raw.normalizedRequest==='string'?raw.normalizedRequest:JSON.stringify(raw.normalizedRequest,null,2)));el.raw.append(make('pre','raw',JSON.stringify(raw,null,2)))}catch(err){if(btn.isConnected){msg.textContent='Unable to load complete event: '+str(err&&err.message||err);btn.disabled=false}}});el.raw.append(msg,btn,make('div','section-title','Snapshot event'),make('pre','raw',JSON.stringify(e,null,2)))}
+
+function narrationElements(){return{panel:$('#narration-panel'),toggle:$('#narration-toggle'),scope:$('#narration-scope'),status:$('#narration-status'),content:$('#narration-content'),download:$('#narration-download'),speak:$('#narration-speak'),stop:$('#narration-stop'),speech:$('#narration-speech-state')}}
+function narrationCurrentKey(){const n=narrationElements();return [narrationSnapshotVersion,str(selectedId),str(el.agent.value),str(n.scope.value)].join('\u0000')}
+function narrationRangeKey(){const n=narrationElements();return [str(selectedId),str(el.agent.value),str(n.scope.value)].join('\u0000')}
+function stopNarration(reason){const n=narrationElements(),wasSpeaking=narrationSpeaking;narrationSpeaking=false;narrationSpeechToken++;narrationQueue=[];narrationUtterance=null;narrationReadingVoice=null;narrationFrozenKey='';if(window.speechSynthesis&&wasSpeaking)window.speechSynthesis.cancel();n.stop.disabled=true;n.speak.disabled=!narration||!narrationVoice;if(reason)n.speech.textContent=reason;else if(n.speech.textContent.startsWith('Reading'))n.speech.textContent='Reading stopped.'}
+function updateNarrationVoice(){
+ const n=narrationElements(),api=window.speechSynthesis;
+ if(!api||typeof window.SpeechSynthesisUtterance!=='function'){narrationVoice=null;n.speak.disabled=true;n.speech.textContent='Read aloud unavailable: this browser does not provide Speech Synthesis.';return}
+ const voices=safe(api.getVoices()).filter(v=>v.localService===true);
+ narrationVoice=voices.find(v=>/^en(?:-|$)/i.test(v.lang||''))||voices[0]||null;
+ n.speak.disabled=!narration||!narrationVoice||narrationSpeaking;
+ if(!narrationVoice)n.speech.textContent='Read aloud unavailable: no on-device voice is installed.';
+ else if(!narrationSpeaking)n.speech.textContent='On-device voice available: '+str(narrationVoice.name||narrationVoice.lang);
+}
+function narrationEvidence(chapter){
+ const wrap=make('div','narration-evidence'),ids=safe(chapter.eventIds).map(str).filter(id=>eventMap.has(id));
+ ids.forEach((id,i)=>{const last=i===ids.length-1,b=make('button','',last?'Show event':'Reference '+(i+1));b.type='button';b.addEventListener('click',()=>{selectEvent(id,true);const panel=$('#details-panel');panel.classList.add('open');$('#details-button').setAttribute('aria-expanded','true');setInspectorAccess(true);activateTab($('#tab-details'),false)});wrap.append(b)});
+ return wrap
+}
+function renderNarrationResult(){
+ const n=narrationElements(),oldScroll=n.content.querySelector('.narration-list')?.scrollTop||0,focused=document.activeElement,chapterId=focused?.closest('[data-chapter-id]')?.dataset.chapterId,buttonIndex=chapterId?[...focused.closest('[data-chapter-id]').querySelectorAll('button')].indexOf(focused):-1,moreFocused=focused?.classList.contains('narration-more'),notesOpen=n.content.querySelector('details')?.open||false;
+ n.content.replaceChildren();n.download.disabled=!narration;
+ if(!narration)return;
+ if(narration.title)n.content.append(make('h3','narration-title',str(narration.title)));
+ if(narration.summary)n.content.append(make('p','narration-summary',str(narration.summary)));
+ const meta=make('p','narration-meta',(narration.scope==='all'?'Whole recording':'Through cursor')+' · '+Number(narration.coveredEvents||0)+' of '+Number(narration.totalEvents||0)+' events covered');
+ n.content.append(meta);
+ const notes=safe(narration.notes);if(notes.length){const details=make('details','narration-notes');details.open=notesOpen;details.append(make('summary','','Evidence notes'));const ul=make('ul');notes.forEach(x=>ul.append(make('li','',str(x))));details.append(ul);n.content.append(details)}
+ const chapters=safe(narration.chapters),list=make('div','narration-list');list.setAttribute('aria-label','Narration paragraphs');
+ chapters.slice(0,narrationShown).forEach((c,i)=>{const article=make('article','narration-chapter');article.dataset.chapterId=str(c.id);article.append(make('h3','',str(c.title||'Section '+(i+1))),make('p','',str(c.text||'')));const refs=narrationEvidence(c);if(refs.childElementCount)article.append(refs);list.append(article)});
+ if(!chapters.length)list.append(make('p','narration-empty','No narrative chapters were returned for this range.'));
+ n.content.append(list);list.scrollTop=oldScroll;
+ if(chapters.length>narrationShown){const more=make('button','narration-more','Load more ('+(chapters.length-narrationShown)+' remaining)');more.type='button';more.addEventListener('click',()=>{narrationShown+=50;renderNarrationResult()});n.content.append(more)}
+ if(chapterId){const chapter=[...n.content.querySelectorAll('[data-chapter-id]')].find(c=>c.dataset.chapterId===chapterId);chapter?.querySelectorAll('button')[buttonIndex]?.focus({preventScroll:true})}else if(moreFocused)n.content.querySelector('.narration-more')?.focus({preventScroll:true});
+ updateNarrationVoice()
+}
+function buildNarration(force=false){
+ const n=narrationElements();if(n.panel.hidden||!snapshot)return;
+ const key=narrationCurrentKey();if(!force&&key===narrationKey)return;
+ if(narrationSpeaking&&narrationRangeKey()!==narrationFrozenKey)stopNarration('Reading stopped because the narration range changed.');
+ narrationKey=key;if(force)narrationShown=50;narration=null;n.download.disabled=true;n.speak.disabled=true;
+ const engine=window.BenchNarrator;
+ if(!engine||typeof engine.build!=='function'){n.content.replaceChildren();n.status.textContent='Narration unavailable: the local narration engine was not supplied.';updateNarrationVoice();return}
+ n.status.textContent='Building narration locally…';
+ try{
+  const result=engine.build(snapshot,{cutoffId:selectedId,scope:n.scope.value,laneId:el.agent.value});
+  if(!result||!Array.isArray(result.chapters)||typeof result.markdown!=='string')throw new Error('Narration engine returned an invalid result');
+  narration=result;n.status.textContent='Narration ready.';renderNarrationResult()
+ }catch(err){n.content.replaceChildren();console.error('Bench Trace narration failed',err);n.status.textContent='Narration unavailable: '+str(err&&err.message||err);updateNarrationVoice()}
+}
+function downloadNarration(){
+ if(!narration)return;const blob=new Blob([narration.markdown],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='bench-trace-narration.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+function speakNext(){
+ const n=narrationElements();if(!narrationSpeaking)return;
+ const text=narrationQueue.shift();if(text===undefined){narrationSpeaking=false;narrationUtterance=null;n.stop.disabled=true;n.speak.disabled=!narrationVoice;n.speech.textContent='Reading complete. This reading used the frozen narration snapshot.';return}
+ if(narrationReadingVoice?.localService!==true){stopNarration('Reading stopped: the selected local voice is unavailable.');return}const token=narrationSpeechToken;try{const u=new SpeechSynthesisUtterance(text);narrationUtterance=u;u.voice=narrationReadingVoice;u.onend=()=>{if(narrationSpeaking&&token===narrationSpeechToken)speakNext()};u.onerror=e=>{if(token!==narrationSpeechToken)return;stopNarration('Reading stopped because the on-device speech service reported an error.')};window.speechSynthesis.speak(u)}catch(error){stopNarration('Reading stopped: '+str(error.message))}
+}
+function speakNarration(){
+ if(!narration||!narrationVoice||!window.speechSynthesis)return;
+ const pieces=[narration.title,narration.scope==='all'?'Whole recording, including events after the replay cursor.':'Through the replay cursor.',narration.summary,...safe(narration.notes),...safe(narration.chapters).flatMap(c=>[c.title,c.text])].map(str).filter(Boolean);if(!pieces.length)return;
+ stopNarration();narrationReadingVoice=narrationVoice;narrationFrozenKey=narrationRangeKey();narrationQueue=pieces;narrationSpeaking=true;const n=narrationElements();n.speak.disabled=true;n.stop.disabled=false;n.speech.textContent='Reading a frozen narration snapshot. New live events will not be queued.';speakNext()
+}
+function renderNarration(){if(!$('#narration-panel').hidden)buildNarration()}
 function controls(){const n=ordered.length,i=currentIndex();$('#prev-button').disabled=n<2||i<=0;$('#next-button').disabled=n<2||i<0||i>=n-1;el.play.disabled=n<2;el.scrub.disabled=n<2;$('#export-button').disabled=!snapshot||demoActive;el.follow.disabled=!snapshot||!snapshot.live}
 function render(){
  el.banner.replaceChildren();if(!snapshot){el.empty.hidden=false;el.workspace.hidden=true;controls();return}renderSources();renderIssues();const count=safe(snapshot.events).length;if(!count){el.empty.hidden=false;el.workspace.hidden=true;el.emptyCopy.textContent='This host snapshot contains zero events. Source metadata and issues are shown; the illustrative demo remains separate and opt-in.'}else{el.empty.hidden=true;el.workspace.hidden=false;const f=filtered();el.result.textContent=f.length+' event'+(f.length===1?'':'s');renderTimeline();renderFeed();renderDetails()}
  if(snapshot.clockSync==='unknown'||safe(snapshot.sources).some(s=>s.clockSync==='unknown'))el.banner.append(make('div','notice','Clock sync unknown · cross-source wall times do not establish causality.'));
- if(demoActive)el.banner.append(make('div','notice','Illustrative demo only · not observed or verified evidence.'));el.mode.textContent=demoActive?'Illustrative demo':playing?'Historical replay':following&&snapshot.live?'Following live feed':snapshot.live?'Live feed · paused':'Recorded evidence';el.follow.setAttribute('aria-pressed',str(following));controls();
+ if(demoActive)el.banner.append(make('div','notice','Illustrative demo only · not observed or verified evidence.'));renderNarration();el.mode.textContent=demoActive?'Illustrative demo':playing?'Historical replay':following&&snapshot.live?'Following live feed':snapshot.live?'Live feed · paused':'Recorded evidence';el.follow.setAttribute('aria-pressed',str(following));controls();
 }
 function stop(){playing=false;clearTimeout(timer);timer=null;el.play.textContent='▶';el.play.setAttribute('aria-pressed','false');el.play.setAttribute('aria-label','Play replay')}
 function schedule(){if(!playing)return;const i=currentIndex();if(i<0||i>=ordered.length-1){stop();render();return}const gap=Math.max(0,timeOf(ordered[i+1])-timeOf(ordered[i]))/(Number($('#speed').value)||1);timer=setTimeout(()=>{timer=null;if(!playing)return;const next=currentIndex()+1;if(next>=ordered.length){stop();render();return}selectedId=ordered[next].id;generation++;render();schedule()},Math.min(gap,2147483647))}
@@ -1036,11 +1235,18 @@ function invalidateCaches(next){
  for(const key of rawCache.keys())if(changed(eventMap.get(key)?.sessionId))rawCache.delete(key);
  if(selectedId&&changed(eventMap.get(str(selectedId))?.sessionId))generation++;
 }
-function setData(next){if(!next||next.schema!=='bench.trace/v1'){snapshot={schema:'bench.trace/v1',revision:1,sources:[],lanes:[],sessions:[],events:[],edges:[],issues:[{severity:'error',message:'Invalid snapshot: expected schema bench.trace/v1.'}]};selectedId=null;buildIndexes();renderFilters();render();return}const previous=selectedId,wasFollowing=following,wasPlaying=playing,hadSnapshot=!!snapshot;invalidateCaches(next);snapshot=next;demoActive=false;buildIndexes();renderFilters();if(wasFollowing&&next.live&&ordered.length)selectedId=ordered.at(-1).id;else if(previous&&eventMap.has(str(previous)))selectedId=previous;else{const meaningful=[...ordered].reverse().find(e=>primary.has(e.type));selectedId=meaningful?.id||ordered.at(-1)?.id||null;following=!hadSnapshot&&!!next.live}if(str(previous)!==str(selectedId))generation++;if(wasPlaying&&playing&&str(previous)!==str(selectedId)){clearTimeout(timer);schedule()}render()}
+function setData(next){narrationSnapshotVersion++;if(!next||next.schema!=='bench.trace/v1'){snapshot={schema:'bench.trace/v1',revision:1,sources:[],lanes:[],sessions:[],events:[],edges:[],issues:[{severity:'error',message:'Invalid snapshot: expected schema bench.trace/v1.'}]};selectedId=null;buildIndexes();renderFilters();render();return}const previous=selectedId,wasFollowing=following,wasPlaying=playing,hadSnapshot=!!snapshot;invalidateCaches(next);snapshot=next;demoActive=false;buildIndexes();renderFilters();if(wasFollowing&&next.live&&ordered.length)selectedId=ordered.at(-1).id;else if(previous&&eventMap.has(str(previous)))selectedId=previous;else{const meaningful=[...ordered].reverse().find(e=>primary.has(e.type));selectedId=meaningful?.id||ordered.at(-1)?.id||null;following=!hadSnapshot&&!!next.live}if(str(previous)!==str(selectedId))generation++;if(wasPlaying&&playing&&str(previous)!==str(selectedId)){clearTimeout(timer);schedule()}render()}
 function demo(){const t=Date.UTC(2026,1,3,10);setData({schema:'bench.trace/v1',revision:1,live:false,start:t,end:t+9000,clockSync:'unknown',sources:[{id:'demo',label:'Illustrative demo',path:'Inline example · not observed evidence',clockSync:'unknown'}],lanes:[{id:'lead',title:'Lead · illustrative',state:'complete',verification:'unsealed'},{id:'child',title:'Frontend · illustrative',state:'accepted',verification:'verified',parentId:'lead'},{id:'sibling',title:'Incomplete · illustrative',state:'open',verification:'incomplete'}],sessions:[{id:'ask1',laneId:'lead',title:'Plan',complete:true,verification:'unsealed',streams:[]},{id:'proc1',laneId:'child',title:'Build UI',complete:true,verification:'verified',streams:[{name:'stderr',bytes:25,preview:'check failed: missing UI\n',truncated:false,encoding:'utf-8',verified:true,complete:true}]},{id:'proc2',laneId:'child',title:'Repair UI',complete:true,verification:'verified',streams:[{name:'stdout',bytes:13,preview:'check passed\n',truncated:false,encoding:'utf-8',verified:true,complete:true}]},{id:'ask2',laneId:'sibling',complete:false,verification:'incomplete',streams:[]}],events:[{id:'e1',sessionId:'ask1',laneId:'lead',seq:1,order:1,time:t,type:'model',title:'Model request',text:'Plan the evidence browser.',status:'complete',duration:900},{id:'e2',sessionId:'ask1',laneId:'lead',seq:2,order:2,time:t+900,type:'response',title:'Plan recorded',status:'complete'},{id:'e3',sessionId:'proc1',laneId:'child',seq:1,order:3,time:t+1700,type:'action',title:'Build interface',status:'complete',duration:1800},{id:'e4',sessionId:'ask2',laneId:'sibling',seq:1,order:4,time:t+2400,type:'model',title:'Sibling request',status:'incomplete'},{id:'e5',sessionId:'proc1',laneId:'child',seq:2,order:5,time:t+3600,type:'check',title:'Check failed',text:'failed: missing accessible label',status:'failed',stream:'stderr'},{id:'e6',sessionId:'proc2',laneId:'child',seq:1,order:6,time:t+5000,type:'retry',title:'Repair labels',status:'complete'},{id:'e7',sessionId:'proc2',laneId:'child',seq:2,order:7,time:t+6800,type:'artifact',title:'Artifact retained',status:'complete'},{id:'e8',sessionId:'proc2',laneId:'child',seq:3,order:8,time:t+7800,type:'result',title:'Check accepted',status:'accepted'}],edges:[{from:'lead',to:'child',kind:'child',label:'recorded child',verified:true},{from:'lead',to:'sibling',kind:'compaction',label:'compacted context',verified:false}],issues:[{severity:'warning',message:'Illustrative sibling has no observed terminal event.'}]});demoActive=true;render()}
 function setInspectorAccess(open){const p=$('#details-panel'),overlay=matchMedia('(max-width:980px)').matches;if(overlay&&!open){p.inert=true;p.setAttribute('aria-hidden','true')}else{p.inert=false;p.removeAttribute('aria-hidden')}}function closeInspector(){const p=$('#details-panel');p.classList.remove('open');setInspectorAccess(false);$('#details-button').setAttribute('aria-expanded','false');$('#details-button').focus()}
 function activateTab(tab,focus){document.querySelectorAll('[role=tab]').forEach(t=>{const on=t===tab;t.setAttribute('aria-selected',str(on));t.tabIndex=on?0:-1});document.querySelectorAll('[role=tabpanel]').forEach(p=>p.hidden=p.id!==tab.getAttribute('aria-controls'));if(focus)tab.focus()}
 window.BenchTraceUI={setData};document.addEventListener('bench:snapshot',e=>setData(e.detail));document.addEventListener('bench:connection',e=>{const d=e.detail||{},n=$('#connection');n.classList.toggle('connected',!!d.connected);$('#connection-label').textContent=d.message||(d.connected?'Connected':'Disconnected')});
+$('#narration-toggle').addEventListener('click',e=>{const n=narrationElements(),open=n.panel.hidden;n.panel.hidden=!open;e.currentTarget.setAttribute('aria-expanded',str(open));if(open){buildNarration(true);n.panel.scrollIntoView({block:'start'})}else stopNarration('Reading stopped because the narration panel was closed.')});
+$('#narration-scope').addEventListener('change',()=>buildNarration(true));
+$('#narration-download').addEventListener('click',downloadNarration);
+$('#narration-speak').addEventListener('click',speakNarration);
+$('#narration-stop').addEventListener('click',()=>stopNarration());
+if(window.speechSynthesis){window.speechSynthesis.addEventListener?.('voiceschanged',updateNarrationVoice)}
+window.addEventListener('pagehide',()=>stopNarration());
 $('#demo-button').addEventListener('click',demo);$('#search').addEventListener('input',()=>{feedStart=0;render()});el.agent.addEventListener('change',()=>{feedStart=0;render()});$('#prev-button').addEventListener('click',()=>step(-1));$('#next-button').addEventListener('click',()=>step(1));el.play.addEventListener('click',togglePlay);$('#speed').addEventListener('change',()=>{if(playing){clearTimeout(timer);schedule()}});
 el.follow.addEventListener('click',()=>{following=!following;if(following){stop();if(ordered.length)selectedId=ordered.at(-1).id}render()});el.scrub.addEventListener('input',()=>{const e=ordered[Number(el.scrub.value)];if(e)selectEvent(e.id,true)});$('#feed-earlier').addEventListener('click',()=>{feedStart=Math.max(0,feedStart-feedPage);renderFeed(false)});$('#feed-later').addEventListener('click',()=>{feedStart+=feedPage;renderFeed(false)});document.querySelectorAll('[data-zoom]').forEach(b=>b.addEventListener('click',()=>{zoom=Number(b.dataset.zoom);renderTimeline()}));$('#fit-all').addEventListener('click',()=>{zoom=1;el.agent.value='';render()});
 $('#show-all').addEventListener('click',()=>{knownKinds.forEach(k=>enabledKinds.add(k));renderFilters();render()});$('#reset-filters').addEventListener('click',()=>{enabledKinds=new Set([...knownKinds].filter(k=>primary.has(k)));el.agent.value='';$('#search').value='';$('#status-filter').value='all';zoom=1;feedStart=0;renderFilters();render()});$('#filter-toggle').addEventListener('click',e=>{const open=e.currentTarget.getAttribute('aria-expanded')!=='true';e.currentTarget.setAttribute('aria-expanded',str(open));$('#filter-body').hidden=!open});

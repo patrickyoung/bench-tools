@@ -67,6 +67,37 @@ numbers preserve within-session order even when a clock moves backward.
 Record preserves each stream's byte order, not the exact scheduling between
 stdout and stderr.
 
+## Narrate the timeline
+
+Click **Narrate** beside the timeline heading to create a written walkthrough.
+It groups requests with responses and commands with their results, describes
+check rejections and later acceptance from the same verifier, and explains
+recorded agent relationships. Every passage has buttons back to its evidence.
+
+**Through cursor** is the default: scrubbing backward removes later outcomes
+from the narration, and Follow live updates it as evidence arrives. Choose
+**Whole recording** to include later events explicitly. The agent filter limits
+the walkthrough; search, status and event-kind filters leave its evidence intact.
+
+**Download narration** saves the complete walkthrough as Markdown, including
+event references and qualifications. The offline HTML export contains the
+narration engine too, so it can generate walkthroughs without the local server.
+
+**Read aloud** is optional and starts only when clicked. It uses a voice that
+the browser reports as local; if none is available, the written narration
+remains available. Stop reading, changing the cursor/scope/agent, or closing
+the panel stops playback. Speech reads the selected narration snapshot; new
+events are not silently added to its queue. Voice availability varies by host.
+The voice selection uses the browser's
+[localService flag](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisVoice/localService).
+
+Narration is generated locally from event types, recorded outcomes and quoted
+excerpts. It needs no model connection and does not infer unrecorded intent or
+claim that a later success proves which change fixed a failure. Archive integrity
+warnings remain visible, and matching file bytes are qualified as evidence of
+identical content. Old projections without relationship event anchors omit
+those relationships from narration rather than assigning an invented time.
+
 ## One-file offline replay
 
 Use Export in the browser, or:
@@ -137,3 +168,15 @@ The suite checks live updates, pause preservation, replay during incoming
 updates, byte downloads, offline export, feed pagination, zoom, keyboard
 controls, and responsive layouts. It writes its browser report and screenshots
 to a temporary directory, or to `TRACE_TEST_OUTPUT` when set.
+
+The embedded narration engine has separate deterministic regressions:
+
+```sh
+node examples/event-browser/test_narration.mjs
+```
+
+These check cursor boundaries, failed processes, same-verifier recovery,
+relationship anchors, scoped evidence, malformed/missing cursor selection,
+archive qualifications and instruction-like input. Browser tests also exercise
+narration downloads, offline use, focus/scroll retention and speech control with
+a controlled Speech Synthesis API; they do not certify audible voice quality.
