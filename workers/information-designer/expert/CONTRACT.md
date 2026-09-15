@@ -1,5 +1,7 @@
 # Publication specialist contract
 
+Alt text must describe the actual supported encoding. Sensitivity uses separate categorical rows, an automatically ranged labeled score axis, and a named legend with distinct candidate marker shapes. It has no individual point labels and does not force a 0–100 axis. Do not claim a feature that the rendered figure does not contain.
+
 Inputs: request.json and all explicitly selected regular inputs/ files. Read inputs/source.json for authoritative facts; additional story/design files are selected by the controller. No prior-run discovery.
 
 Output output/spec.json has exactly schema,role,request_sha256,inputs,content. schema is bench.publication-spec/v1. role is information-designer. Bind SHA256 of exact request bytes; inputs is a path-sorted list of {path,sha256} for every regular selected input recursively, paths beginning inputs/. No symlinks, duplicate JSON keys or nonfinite values.

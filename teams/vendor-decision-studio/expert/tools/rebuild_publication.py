@@ -15,6 +15,8 @@ def failed(kind,error,tb):
  sys.__excepthook__(kind,error,tb)
 sys.excepthook=failed
 revise=set(sys.argv[3].split(',')) if len(sys.argv)>3 else set()
+revision_briefs=read(os.environ['PUBLICATION_REVISION_BRIEF']) if os.environ.get('PUBLICATION_REVISION_BRIEF') else {}
+if not isinstance(revision_briefs,dict) or not set(revision_briefs)<=revise or any(not isinstance(v,str) or not 1<=len(v)<=6000 for v in revision_briefs.values()):raise ValueError('Revision brief must map selected revision roles to bounded text')
 if not revise <= set(ROLES[:4]):raise ValueError('Revision must name existing production roles')
 if run.exists():raise ValueError('New rebuild directory required')
 selected={}
@@ -54,6 +56,8 @@ for role in ROLES[:4]:
   if (old/'stages/publication-reviewer/output/spec.json').exists():shutil.copyfile(old/'stages/publication-reviewer/output/spec.json',root/'inputs/prior-publication-review.json')
   request=read(root/'request.json');request['revision']='Revise your prior content using the supplied reviews and the current CONTRACT.md capabilities. Preserve every checked fact, decision condition and shared message. Address all material content findings applicable to your format. The current renderer supports sourced effect reference_lines, editable native effect_plot slides, comparison_table table_view=criteria, visible cover body, concise chart sidebars, native Word decision cards and grouped workbook views. Choose the supported encoding that makes the intended argument visible. Write clear decision branches, human terminology, concise paragraphs, explicit candidate labels and score denominators. Editorial: set practical display precision for readers (usually 1–3 decimals, p-values 3 decimals or <0.001), preserve exact values in audit data, and replace any previous blanket six-decimal display requirement. Never change decisions or calculations through rounding. Information design: include signed source-supported practical thresholds when material. Word: put the controlling branch first; avoid repeating every anchor, scenario or ownership block because the workbook and native decision cards preserve them. Do not merely rebind the previous content.';write(root/'request.json',request);write(run/'control'/(role+'-inputs.json'),inputs(root))
  if role not in selected or role in revise:
+  if role in revision_briefs:
+   (root/'inputs/revision-brief.txt').write_text(revision_briefs[role]+'\n');request=read(root/'request.json');request['revision_scope']='The explicitly selected inputs/revision-brief.txt narrows this assignment. Apply it before general revision suggestions; preserve unaffected content and all authoritative facts.';write(root/'request.json',request);write(run/'control'/(role+'-inputs.json'),inputs(root))
   run_agent(role)
   if role in ROLES[1:4]:render_role(role)
   check_stage(run,role);print('New specialist output:',role,flush=True);continue

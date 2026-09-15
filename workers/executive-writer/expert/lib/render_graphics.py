@@ -59,7 +59,8 @@ for v in spec['visuals']:
   levels=', '.join(f"{x:g}%" for x in sorted({t['confidence_level']*100 for t in tests}));note=f'Marginal {levels} confidence intervals; separate unit scales. Not simultaneous or multiplicity-adjusted intervals.'
  elif kind=='sensitivity':
   scenarios=matrix['sensitivity'];ax.set_position([.23,.24,.69,.49])
-  for i,r in enumerate(rows):ax.plot([s['lower_bounds'][r['candidate_id']] for s in scenarios],np.arange(len(scenarios)),'.',label=r['name'],color=colors[i],markersize=8)
+  markers=['o','s','^','D','v','P','X','*','h','<','>','p']
+  for i,r in enumerate(rows):ax.plot([s['lower_bounds'][r['candidate_id']] for s in scenarios],np.arange(len(scenarios)),linestyle='none',marker=markers[i],label=r['name'],color=colors[i],markersize=7 if docmode else 9)
   cn={c['id']:c['name'] for c in matrix['criteria']};ax.set_yticks(range(len(scenarios)),[wrap(cn[s['criterion_id']],23)+' × '+str(s['factor']) for s in scenarios],fontsize=9);ax.invert_yaxis();ax.set_xlabel('Supported weighted score / 100');ax.grid(axis='x',alpha=.2)
   if not docmode:ax.set_position([.23,.24,.69,.47-.033*math.ceil(len(rows)/3)]);fig.legend(*ax.get_legend_handles_labels(),frameon=False,loc='upper center',bbox_to_anchor=(.59,.745),ncol=min(3,len(rows)),fontsize=10)
   note='Each scenario changes one weight by ±20% and renormalizes. This is preference sensitivity, not sampling uncertainty.'

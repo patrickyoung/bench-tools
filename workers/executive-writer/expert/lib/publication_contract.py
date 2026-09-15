@@ -77,7 +77,10 @@ def validate(root,role,require_artifacts=True):
  required=set(story['required_message_ids']) if story else set()
  seen=set()
  if role=='editorial-director':
-  keys(c,'title subtitle audience thesis messages required_message_ids terminology design report_arc deck_arc')
+  keys(c,'title subtitle audience thesis messages required_message_ids terminology design report_arc deck_arc status_label eligibility_labels')
+  string(c['status_label'],1,120)
+  if not isinstance(c['eligibility_labels'],dict) or set(c['eligibility_labels'])!=set(src.get('candidate_names',{})):raise ValueError('Eligibility labels must cover exactly the supplied candidates')
+  for label in c['eligibility_labels'].values():string(label,1,90)
   for k in ['title','subtitle','audience','thesis']:string(c[k],1,1200)
   array(c['messages'],3,7);ids=[]
   for m in c['messages']:
@@ -218,7 +221,7 @@ def validate(root,role,require_artifacts=True):
       if any(' '.join(value.split()) not in normalized for value in [*c['executive_summary'].split('\n\n'),*(p for x in c['sections'] for p in x['paragraphs'])]):raise ValueError('Authored report text was not emitted')
      if role=='presentation-designer':
       slides=sorted((n for n in z.namelist() if re.fullmatch('ppt/slides/slide[0-9]+.xml',n)),key=lambda n:int(re.search(r'slide(\d+)\.xml',n).group(1)))
-      expected=sum(math.ceil(len(src['matrix']['totals'])/4)*(math.ceil(len(src['matrix']['criteria'])/5) if s.get('table_view')=='criteria' else 1) if s['kind']=='comparison_table' else math.ceil(len(src['matrix']['totals'])/6) if s['kind']=='score_chart' else 1 for s in c['slides'])
+      expected=sum(math.ceil(len(src['matrix']['totals'])/4)*(math.ceil(len(src['matrix']['criteria'])/3) if s.get('table_view')=='criteria' else 1) if s['kind']=='comparison_table' else math.ceil(len(src['matrix']['totals'])/6) if s['kind']=='score_chart' else 1 for s in c['slides'])
       if len(slides)!=expected:raise ValueError('Slide count mismatch')
       if not any(re.fullmatch('ppt/(slides/)?charts/chart[0-9]+.xml',n) for n in z.namelist()):raise ValueError('Missing editable chart')
       ns={'c':'http://schemas.openxmlformats.org/drawingml/2006/chart'}
@@ -243,15 +246,15 @@ def validate(root,role,require_artifacts=True):
        for start in range(0,len(src['matrix']['totals']),4):
         rows=src['matrix']['totals'][start:start+4]
         if slide.get('table_view')=='criteria':
-         for offset in range(0,len(src['matrix']['criteria']),5):
+         for offset in range(0,len(src['matrix']['criteria']),3):
           table=[['Criterion','Weight (%)',*[r['name']+' score / points' for r in rows],*(['First minus second (points)'] if len(rows)==2 else [])]]
-          for criterion in src['matrix']['criteria'][offset:offset+5]:
+          for criterion in src['matrix']['criteria'][offset:offset+3]:
            cells=[next(v for v in src['matrix']['cells'] if v['candidate_id']==r['candidate_id'] and v['criterion_id']==criterion['id']) for r in rows];points=[None if v['score'] is None else v['score']*criterion['weight']/5 for v in cells]
            values=[criterion['name'],display_number(criterion['weight']),*['Unknown' if v['score'] is None else f"{display_number(v['score'])}/5 · {point:.1f} pts" for v,point in zip(cells,points)]]
            if len(rows)==2:values.append('Unknown' if None in points else ('+' if points[0]>points[1] else '')+f'{points[0]-points[1]:.1f}')
            table.append(values)
           expected_tables.append(table)
-        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_number(r['lower_bound'])}–{display_number(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",r['eligibility']] for r in rows]])
+        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_number(r['lower_bound'])}–{display_number(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",story.get('eligibility_labels',{}).get(r['candidate_id'],r['eligibility'])] for r in rows]])
       if actual_tables!=expected_tables:raise ValueError('Native table differs from checked numbers')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)
       if any(x['title'] not in alltext for x in c['slides']):raise ValueError('Slide content mismatch')

@@ -10,6 +10,7 @@ class PublicationTests(unittest.TestCase):
   self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
   self.story={'title':'Conditional choice','subtitle':'Synthetic test','audience':'Decision makers','thesis':'Evidence supports conditional further work.','messages':[{'id':f'm{i}','text':'A supported finding','qualification':'Subject to the supplied limits','fact_ids':['decision']} for i in range(3)],'required_message_ids':['m0','m1'],'terminology':['Conditional'],'design':{'direction':'Clear evidence','font':'Arial','ink':'#112233','accent':'#456789','secondary':'#345678','paper':'#FFFFFF'},'report_arc':['a']*5,'deck_arc':['a']*7}
   self.src={'facts':[{'id':'decision'}],'statistics':{'comparisons':[]}}
+  self.story.update(status_label='Conditional evaluation — review required',eligibility_labels={})
  def tearDown(self):self.tmp.cleanup()
  def setup_role(self,role,content):
   write(self.root/'request.json',{'role':role});write(self.root/'inputs/source.json',self.src)
@@ -20,6 +21,9 @@ class PublicationTests(unittest.TestCase):
  def check(self,role):return validate(self.root,role,False)
  def review(self):return {'verdict':'publish','summary':'All outputs checked','rubric':{k:4 for k in ['evidence_fidelity','narrative_coherence','audience_usefulness','writing_quality','visual_craft','accessibility']},'findings':[],'cross_format_checks':['Sources agree']*5}
  def test_editorial_valid(self):self.setup_role('editorial-director',self.story);self.check('editorial-director')
+ def test_eligibility_labels_cannot_invent_a_candidate(self):
+  self.story['eligibility_labels']={'invented':'Eligible'};self.setup_role('editorial-director',self.story)
+  with self.assertRaisesRegex(ValueError,'supplied candidates'):self.check('editorial-director')
  def test_small_nonzero_estimates_never_display_as_zero(self):
   for value in [-0.000001234,0.000001234]:
    shown=float(display_number(value));self.assertGreater(shown/value,0);self.assertLess(abs(shown-value)/abs(value),.005)

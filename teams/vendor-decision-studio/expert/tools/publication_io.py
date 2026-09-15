@@ -44,6 +44,7 @@ def stage(run,role):
   shutil.copyfile(run/'control/production-checks.json',dest/'inputs/production-checks.json')
   shutil.copyfile(run/'control/visual-inputs.json',dest/'inputs/inspection-inputs.json')
   shutil.copyfile(run/'control/native-semantics.json',dest/'inputs/native-semantics.json')
+  shutil.copytree(run/'control/audit-data',dest/'inputs/audit-data');shutil.copyfile(run/'control/audit-data-manifest.json',dest/'inputs/audit-data-manifest.json')
   for producer in ROLES[1:4]:
    for folder,relative in [('production-requests','request.json'),('production-receipts','output/artifacts.json')]:
     target=dest/'inputs'/folder/(producer+'.json');target.parent.mkdir(exist_ok=True);shutil.copyfile(run/'stages'/producer/relative,target)
@@ -77,6 +78,10 @@ def visual_inputs(run):
  write(run/'control/visual-inputs.json',images);write(run/'control/reader-text.json',texts)
  write(run/'control/production-checks.json',checks)
  write(run/'control/native-semantics.json',semantics)
+ src=read(run/'control/source.json');audit=[]
+ for name,key in [('statistics.json','statistics'),('comparison-data.json','matrix'),('source-notes.json','facts')]:
+  path=run/'control/audit-data'/name;write(path,src[key]);audit.append({'path':name,'sha256':sha(path),'source_field':key})
+ write(run/'control/audit-data-manifest.json',{'schema':'bench.publication-audit-data/v1','source_sha256':sha(run/'control/source.json'),'files':audit,'meaning':'Exact source-derived audit artifacts, prepared before publication review and copied unchanged into the result.'})
 def finish(run):
  run=Path(run).resolve();specs={role:check_stage(run,role) for role in ROLES};visual=read(run/'control/visual-review.json');imgs=read(run/'control/visual-inputs.json')
  check_visual(run)
@@ -91,7 +96,12 @@ def finish(run):
    if p.is_dir():shutil.copytree(p,result/p.name,dirs_exist_ok=True)
    else:shutil.copyfile(p,result/p.name)
  write(result/'narrative.json',specs[ROLES[0]]);write(result/'publication-review.json',verdict)
- src=read(run/'control/source.json');write(result/'comparison-data.json',src['matrix']);write(result/'statistics.json',src['statistics']);write(result/'source-notes.json',src['facts'])
+ src=read(run/'control/source.json');audit=read(run/'control/audit-data-manifest.json')
+ if audit['source_sha256']!=sha(run/'control/source.json'):raise ValueError('Stale audit-data source')
+ for f in audit['files']:
+  p=safe_file(run/'control/audit-data',f['path'])
+  if sha(p)!=f['sha256'] or read(p)!=src[f['source_field']]:raise ValueError('Changed source-derived audit data')
+  shutil.copyfile(p,result/f['path'])
  with (result/'comparison-data.csv').open('w',newline='') as f:
   w=csv.writer(f);w.writerow(['candidate_id','criterion_id','weight_percent','score_0_to_5','confidence','status','rationale','sources']);cs={c['id']:c for c in src['matrix']['criteria']}
   for c in src['matrix']['cells']:
@@ -118,6 +128,7 @@ def check(run):
 def snapshot(run):
  run=Path(run).resolve();selected=set()
  selected.update(run/'control'/name for name in ['source.json','source-binding.json','visual-inputs.json','reader-text.json','production-checks.json','native-semantics.json'])
+ selected.add(run/'control/audit-data-manifest.json');selected.update((run/'control/audit-data').glob('*.json'))
  for role in ROLES[:4]:
   root=run/'stages'/role;selected.update([root/'request.json',root/'output/spec.json']);selected.update(p for p in (root/'inputs').rglob('*') if p.is_file())
   if role!=ROLES[0]:
