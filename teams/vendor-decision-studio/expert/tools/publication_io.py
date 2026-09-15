@@ -39,21 +39,24 @@ def stage(run,role):
  if role in ['presentation-designer','publication-reviewer']:shutil.copyfile(run/'stages/executive-writer/output/spec.json',dest/'inputs/document.json')
  if role=='publication-reviewer':
   shutil.copyfile(run/'stages/presentation-designer/output/spec.json',dest/'inputs/presentation.json');shutil.copyfile(run/'control/visual-review.json',dest/'inputs/visual-review.json');shutil.copyfile(run/'control/reader-text.json',dest/'inputs/reader-text.json')
+  shutil.copyfile(run/'control/production-checks.json',dest/'inputs/production-checks.json')
  write(run/'control'/(role+'-inputs.json'),inputs(dest))
 def check_stage(run,role):
  run=Path(run).resolve();dest=run/'stages'/role
  if inputs(dest)!=read(run/'control'/(role+'-inputs.json')):raise ValueError('Changed admitted stage inputs')
  return validate(dest,role)
 def visual_inputs(run):
- run=Path(run).resolve();images=[];texts={}
+ run=Path(run).resolve();images=[];texts={};checks={}
  for role in ROLES[1:4]:
   check_stage(run,role);dest=run/'stages'/role;receipt=read(dest/'output/artifacts.json')
+  checks[role]={'artifacts':receipt['files'],'preview_count':len(receipt['previews']),'spec_sha256':receipt['spec_sha256'],'checks':'Current artifact hashes and required formats verified. '+({'information-designer':'Saved XLSX scores, weights, formula results, summaries, exact anchors and sensitivity values match the checked input. All workbook rows have rendered preview coverage.','executive-writer':'Native Word title and section content verified; every PDF page has a preview.','presentation-designer':'Native editable charts and tables verified in the PPTX package. Chart values match the checked source, score axes explicitly span 0–100, and every candidate appears. All final PDF slides have previews.'}[role]),'limits':'Structural/numerical checks and LibreOffice rendering; no Microsoft Office application interaction or human certification.'}
   for f in receipt['previews']:images.append({'id':role+'/'+f['path'],'path':str(dest/f['path']),'sha256':f['sha256'],'medium':'workbook' if 'workbook' in f['path'] else 'slide' if role=='presentation-designer' else 'document' if role=='executive-writer' else 'graphic'})
   for f in receipt['files']:
    p=dest/f['path']
    if p.suffix=='.pdf':
     r=subprocess.run([os.environ['PUBLICATION_PDFTOTEXT'],'-layout',str(p),'-'],check=True,capture_output=True,text=True);texts[role+'/'+p.name]=r.stdout
  write(run/'control/visual-inputs.json',images);write(run/'control/reader-text.json',texts)
+ write(run/'control/production-checks.json',checks)
 def finish(run):
  run=Path(run).resolve();specs={role:check_stage(run,role) for role in ROLES};visual=read(run/'control/visual-review.json');imgs=read(run/'control/visual-inputs.json')
  check_visual(run)

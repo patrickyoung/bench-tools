@@ -5,15 +5,22 @@ from pathlib import Path
 from docx import Document
 from docx.shared import Inches,Pt,RGBColor
 from docx.enum.text import WD_BREAK
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 root=Path(sys.argv[1]).resolve();s=json.loads((root/'output/spec.json').read_text())['content'];story=json.loads((root/'inputs/story.json').read_text())['content'];source=json.loads((root/'inputs/source.json').read_text());design=json.loads((root/'inputs/design.json').read_text())['content'];theme=story['design'];out=root/'output';out.mkdir(exist_ok=True);doc=Document();sec=doc.sections[0];sec.top_margin=Inches(.65);sec.bottom_margin=Inches(.65);sec.left_margin=sec.right_margin=Inches(.8)
 styles=doc.styles;normal=styles['Normal'];normal.font.name=theme['font'];normal.font.size=Pt(11);normal.font.color.rgb=RGBColor.from_string(theme['ink'][1:]);normal.paragraph_format.space_after=Pt(8);normal.paragraph_format.line_spacing=1.12
+styles['Caption'].font.name=theme['font'];styles['Caption'].font.size=Pt(9);styles['Caption'].font.bold=False;styles['Caption'].font.color.rgb=RGBColor.from_string('526476')
+for style in styles:
+ for borders in style.element.findall('.//'+qn('w:pBdr')):borders.getparent().remove(borders)
+footer=sec.footer.paragraphs[0];footer.alignment=WD_ALIGN_PARAGRAPH.RIGHT;footer.add_run('Page ').font.size=Pt(9);field=OxmlElement('w:fldSimple');field.set(qn('w:instr'),'PAGE');footer._p.append(field)
+subprocess.run([os.environ['PUBLICATION_PLOT_PYTHON'],str(Path(__file__).with_name('render_graphics.py')),str(root),'--document'],check=True,timeout=150)
+figure_notes=json.loads((root/'build/document-graphics/notes.json').read_text())
 for name,size in [('Title',30),('Subtitle',15),('Heading 1',20),('Heading 2',14)]:
  styles[name].font.name=theme['font'];styles[name].font.size=Pt(size);styles[name].font.color.rgb=RGBColor.from_string(theme['ink'][1:]);styles[name].paragraph_format.space_before=Pt(14);styles[name].paragraph_format.space_after=Pt(8)
 doc.add_paragraph(s['title'],'Title');doc.add_paragraph(s['subtitle'],'Subtitle');doc.add_heading('Executive summary',1);doc.add_paragraph(s['executive_summary']);d=source['decision'];p=doc.add_paragraph();p.add_run('Decision status: ').bold=True;p.add_run(d['status'].capitalize()+(' · '+source['candidate_names'].get(d['candidate_id'],'') if d['candidate_id'] else ''))
-matrix=source['matrix'];table=doc.add_table(rows=1, cols=4);table.style='Light Shading Accent 1'
+matrix=source['matrix'];table=doc.add_table(rows=1, cols=4);table.style='Normal Table'
 for c,text in zip(table.rows[0].cells,['Option','Score bounds /100','Evidence coverage','Gate eligibility']):c.text=text
 header=OxmlElement('w:tblHeader');table.rows[0]._tr.get_or_add_trPr().append(header)
 for r in matrix['totals']:
@@ -25,11 +32,12 @@ for part in s['sections']:
  doc.add_heading(part['heading'],1);markdown+=['## '+part['heading']]
  for para in part['paragraphs']:doc.add_paragraph(para);markdown.append(para)
  if part['visual_id']:
-  v=visuals[part['visual_id']];img=root/'inputs/graphics'/(v['id']+'.png');p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
+  v=visuals[part['visual_id']];img=root/'build/document-graphics'/(v['id']+'.png');doc.add_heading(v['title'],2);p=doc.add_paragraph();run=p.add_run();run.add_picture(str(img),width=Inches(6.8));desc=run._r.xpath('.//wp:docPr')
   if desc:desc[0].set('descr',v['alt'])
   p.paragraph_format.keep_with_next=True
-  doc.add_paragraph(v['caption'],'Caption');markdown+=['![ '+v['alt']+' ](graphics/'+v['id']+'.png)',v['caption']]
-  (out/'graphics').mkdir(exist_ok=True);shutil.copyfile(img,out/'graphics'/img.name)
+  caption=v['caption']+(' '+figure_notes[v['id']] if v['kind'] in ['score_bounds','score_heatmap','coverage'] else '')
+  doc.add_paragraph(caption,'Caption');markdown+=['![ '+v['alt']+' ](graphics/'+v['id']+'.png)',caption]
+  (out/'graphics').mkdir(exist_ok=True);shutil.copyfile(root/'inputs/graphics'/img.name,out/'graphics'/img.name)
  used+=part['fact_ids']
 doc.add_heading('Evidence and method notes',1)
 for fid in dict.fromkeys(used):

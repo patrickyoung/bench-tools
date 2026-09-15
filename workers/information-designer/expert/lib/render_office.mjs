@@ -65,7 +65,7 @@ if(role==='information-designer'){
  for(let i=0;i<slides.length;i++){
   const s=slides[i],sl=p.slides.add();sl.background.fill=i===0?t.ink:t.paper;
   if(s.kind==='cover'){
-   text(sl,s.title,76,120,1080,180,64,'#FFFFFF',true);text(sl,s.lead,80,340,1060,110,32,'#FFFFFF');text(sl,`Decision status: ${src.decision.status}`,80,565,1080,45,24,'#DDE8EC');
+   text(sl,s.title,76,90,1080,235,56,'#FFFFFF',true);text(sl,s.lead,80,370,1060,160,30,'#FFFFFF');text(sl,`Decision status: ${src.decision.status}`,80,585,1080,45,24,'#DDE8EC');
   }else{
    text(sl,s.title,70,45,1130,95,44,t.ink,true);text(sl,s.lead,74,157,1120,86,27,t.accent,true);
    if(s.kind==='score_chart'){
