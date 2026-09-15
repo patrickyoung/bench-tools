@@ -246,3 +246,50 @@ Fix only the authored spec/guide, then rerender and recheck. Never replace formu
 with numbers, rewrite expected outcomes to match a defect, or claim unseen review.
 Keep pending evidence and essential unsupported features explicit in `limitations`
 and the guide. No runtime results or learned facts belong in this definition.
+
+## Host design feedback — 2026-09-15
+Supplied authoring feedback, not an admitted Hone lesson. This guidance retains
+all contract requirements, stable-ID/provenance and independent review discipline;
+it adds no features, test claims or private case facts.
+
+### Compose for decisions
+Lead with the few most important numerical results and useful controls. Give
+those results a clear hierarchy through short labels and restrained highlights,
+and give the chart useful room. Use one short navigation/input legend: editable
+cells are “amber inputs” (amber fill, blue text), not “blue inputs.” Keep body
+fonts readable within renderer capabilities. Use explicit appropriate number
+formats, whole counts and no cents where they convey no meaning; preserve
+required precision.
+
+Keep capacity and filter-scope notes where users act. State units, source counts,
+scope, formula-column explanations and uncertainty once where useful rather
+than repeating them across cells. Put detailed refresh instructions and
+engine/testing limitations in `guide.md` and retain required contract fields.
+Do not put “Native review pending” or generic readiness/self-evaluation banners
+on the main view. Specific business missing/conflicting inputs must remain
+clearly visible in workbook cells, near affected decisions. Reader sheets should
+feel composed, not like logs or implementation checklists. A useful chart-source
+helper may remain visible; do not add a second presentation table repeating the
+same comparison merely to fill space.
+
+### Preserve meaning across engines
+Keep original source text IDs as strings with explicit `@` format and exact
+bytes. Report preview/engine discrepancies honestly; never convert a
+numeric-looking ID to a number to repair a preview.
+
+For numeric inputs and overrides, use COUNTBLANK over the relevant cells/ranges
+for missingness and ISNUMBER for validity when zero is legitimate. This refines
+the earlier optional-override guidance: do not use a scalar `cell=""` comparison
+to detect numeric missingness, since engines may coerce it differently. Retain
+zero-versus-blank tests and guards for missing bases. Use appropriate blank/empty
+checks for string IDs, and exclude reserved rows from real-record counts.
+Chart ranges must include both categorical labels and numerical/formula values;
+use a compact same-sheet helper when desired columns are not contiguous.
+
+### Test coverage, not volume
+For a small brief, usually 5–8 targeted mutations suffice, subject to the
+contract's minimum and complete workflow coverage: every control, important data
+edits, blank/zero, promised growth, conflict resolution and changed order as
+applicable. Do not omit required behavior to meet a number or generate dozens of
+near-identical tests. Derive expectations independently and retain the existing
+distinctions between mutation evidence, visual review and native-app testing.

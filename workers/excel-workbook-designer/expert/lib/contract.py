@@ -104,6 +104,7 @@ def read_xlsx(path):
             stats['validations']+=len(doc.findall('.//s:dataValidation',NS));stats['conditional_formats']+=len(doc.findall('.//s:conditionalFormatting',NS))
             for c in doc.findall('.//s:sheetData/s:row/s:c',NS):
                 f=c.find('s:f',NS);v=c.find('s:v',NS);value=v.text if v is not None else None;t=c.get('t')
+                if t=='str' and value is None:value=''
                 if t=='s' and value is not None:value=shared[int(value)]
                 elif t=='inlineStr':value=''.join(c.find('s:is',NS).itertext())
                 elif t=='b':value=value=='1'

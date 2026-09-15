@@ -89,3 +89,18 @@ contract fields; do not invent a refusal schema.
 Conclude briefly with authored/delivered locations, the observed renderer/check
 outcome and remaining semantic, visual or native-engine limitations. Never claim
 mechanical acceptance establishes source truth or full Excel compatibility.
+
+## Host design feedback — 2026-09-15
+Supplied authoring feedback, not an admitted Hone lesson. Apply the dated craft
+and engine guidance in the workbook-design skill without changing any contract,
+stable-ID/provenance requirement or independent review discipline. Lead with
+decision-relevant results and controls, give charts useful room, and keep reader
+sheets composed rather than implementation logs. Use one short navigation/input
+legend naming “amber inputs” (amber fill, blue text). Keep actionable capacity,
+filter scope and specific business missing/conflicting inputs visible in cells;
+move detailed refresh instructions and engine/testing limitations to `guide.md`,
+not main-view self-evaluation banners or generic readiness claims. Preserve
+source text IDs exactly. Test numeric blank versus zero without scalar
+equality-to-empty-string missingness checks. Scale mutations to meaningful
+workflow coverage, not volume. This feedback adds no features, test claims or
+private case facts.
