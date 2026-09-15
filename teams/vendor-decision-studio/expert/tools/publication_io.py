@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Bounded Unix team handoffs for a reviewed decision's publication package."""
-import argparse,hashlib,json,os,shutil,subprocess,sys,csv,zipfile,xml.etree.ElementTree as ET
+import argparse,hashlib,json,os,shutil,subprocess,sys,csv,zipfile,re,xml.etree.ElementTree as ET
 from pathlib import Path
 from publication_contract import read,sha,inputs,validate,safe_file
 ROLES=['editorial-director','information-designer','executive-writer','presentation-designer','publication-reviewer']
@@ -71,7 +71,7 @@ def visual_inputs(run):
      if p.suffix=='.docx':
       tree=ET.fromstring(z.read('word/document.xml'));w='{http://schemas.openxmlformats.org/wordprocessingml/2006/main}';report.update(heading_styles=[e.get(w+'val') for e in tree.iter(w+'pStyle') if 'Heading' in e.get(w+'val','')],image_descriptions=[e.get('descr','') for e in tree.iter('{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}docPr')],repeated_table_headers=len(list(tree.iter(w+'tblHeader'))),native_paragraph_count=len(list(tree.iter(w+'p'))))
      elif p.suffix=='.pptx':
-      parts=sorted(n for n in z.namelist() if __import__('re').fullmatch(r'ppt/slides/slide\d+.xml',n));a='{http://schemas.openxmlformats.org/drawingml/2006/main}';report['slides']=[{'part':n,'native_text_in_reading_order':[e.text for e in ET.fromstring(z.read(n)).iter(a+'t')],'native_tables':len(list(ET.fromstring(z.read(n)).iter(a+'tbl')))} for n in parts];report['charts_have_embedded_source_workbooks']=any(n.startswith('ppt/embeddings/') for n in z.namelist())
+      parts=sorted((n for n in z.namelist() if re.fullmatch(r'ppt/slides/slide\d+.xml',n)),key=lambda n:int(re.search(r'slide(\d+)\.xml',n).group(1)));a='{http://schemas.openxmlformats.org/drawingml/2006/main}';report['slides']=[{'part':n,'native_text_in_reading_order':[e.text for e in ET.fromstring(z.read(n)).iter(a+'t')],'native_tables':len(list(ET.fromstring(z.read(n)).iter(a+'tbl')))} for n in parts];report['charts_have_embedded_source_workbooks']=any(n.startswith('ppt/embeddings/') for n in z.namelist())
      else:report.update(worksheet_names=[e.get('name') for e in ET.fromstring(z.read('xl/workbook.xml')).iter('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet')],native_table_definitions=len([n for n in z.namelist() if n.startswith('xl/tables/') and n.endswith('.xml')]),meaning='Workbook titles, header labels and numeric/source fidelity are checked; detailed views receive independent visual review.')
      semantics[role+'/'+p.name]=report
  write(run/'control/visual-inputs.json',images);write(run/'control/reader-text.json',texts)

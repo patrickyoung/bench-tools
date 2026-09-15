@@ -2,7 +2,7 @@
 import copy,json,sys,tempfile,unittest,subprocess
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'expert/tools'))
-from publication_contract import bindings,validate,read,safe_file
+from publication_contract import bindings,validate,read,safe_file,display_number
 from publication_io import check_visual
 def write(p,v):p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(v))
 class PublicationTests(unittest.TestCase):
@@ -20,6 +20,10 @@ class PublicationTests(unittest.TestCase):
  def check(self,role):return validate(self.root,role,False)
  def review(self):return {'verdict':'publish','summary':'All outputs checked','rubric':{k:4 for k in ['evidence_fidelity','narrative_coherence','audience_usefulness','writing_quality','visual_craft','accessibility']},'findings':[],'cross_format_checks':['Sources agree']*5}
  def test_editorial_valid(self):self.setup_role('editorial-director',self.story);self.check('editorial-director')
+ def test_small_nonzero_estimates_never_display_as_zero(self):
+  for value in [-0.000001234,0.000001234]:
+   shown=float(display_number(value));self.assertGreater(shown/value,0);self.assertLess(abs(shown-value)/abs(value),.005)
+  self.assertEqual(float(display_number(0.0)),0.0)
  def test_rebuild_does_not_overwrite_existing_run_status(self):
   status=self.root/'status.json';status.write_text('original retained status')
   command=Path(__file__).resolve().parents[1]/'expert/tools/rebuild_publication.py'

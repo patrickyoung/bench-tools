@@ -7,6 +7,7 @@ const read=async p=>JSON.parse(await fs.readFile(path.join(root,p),'utf8'));
 const src=await read('inputs/source.json'),story=(await read('inputs/story.json')).content,spec=(await read('output/spec.json')).content,t=story.design,m=src.matrix;
 const out=path.join(root,'output'),pre=path.join(root,'previews',role==='information-designer'?'workbook':'slides');await fs.mkdir(pre,{recursive:true});
 const safe=v=>typeof v==='string'&&/^[=+@-]/.test(v)?"'"+v:v;
+const displayNumber=v=>v===0?'0':Math.abs(v)<.001||Math.abs(v)>=1e6?v.toExponential(2):String(Number(v.toFixed(3)));
 const cell=(n)=>{let a='';for(let i=n+1;i>0;i=Math.floor((i-1)/26))a=String.fromCharCode(65+(i-1)%26)+a;return a;};
 const chunks=text=>{let parts=[],start=0;while(start<text.length){let end=Math.min(start+200,text.length);if(end<text.length){const space=text.lastIndexOf(' ',end);if(space>start+100)end=space+1;}parts.push(text.slice(start,end));start=end;}if(parts.join('')!==text)throw Error('Evidence text loss');return parts;};
 if(role==='information-designer'){
@@ -20,12 +21,12 @@ if(role==='information-designer'){
  const title=(sheet,title,cols)=>{sheet.getRange(`A2:${cell(cols-1)}2`).merge();sheet.getRange('A2').values=[[safe(title)]];sheet.getRange('A2').format.font={name:t.font,size:17,bold:true,color:t.ink};};
  const header=(sheet,row,values)=>{let r=sheet.getRange(`A${row}:${cell(values.length-1)}${row}`);r.values=[values];r.format={fill:t.ink,font:{name:t.font,color:'#FFFFFF',bold:true},rowHeight:32,wrapText:true,horizontalAlignment:'center',verticalAlignment:'center'};};
  title(summary,spec.title,6);summary.getRange('A4:F5').merge();summary.getRange('A4').values=[[safe(spec.workbook_intro)]];summary.getRange('A4:F5').format.wrapText=true;summary.getRange('A4:F5').format.rowHeight=Math.max(32,spec.workbook_intro.split('\n').reduce((n,line)=>n+Math.max(1,Math.ceil(line.length/125)),0)*8+8);
- header(summary,7,['Option','Lower bound','Upper bound','Coverage (%)','Known fit','Gate status']);
+ header(summary,7,['Option','Lower bound /100','Upper bound /100','Coverage (%)','Known-only fit /100','Gate eligibility']);
  for(let i=0;i<m.totals.length;i++){
-  let r=m.totals[i],row=8+i;summary.getRange(`A${row}:F${row}`).values=[[safe(r.name),r.lower_bound,r.upper_bound,r.coverage_percent,r.known_only_fit,safe(r.eligibility)]];summary.getRange(`B${row}:E${row}`).setNumberFormat('0.0');
+  let r=m.totals[i],row=8+i;summary.getRange(`A${row}:F${row}`).values=[[safe(r.name),r.lower_bound,r.upper_bound,r.coverage_percent,r.known_only_fit,safe(r.eligibility)]];summary.getRange(`B${row}:E${row}`).setNumberFormat('0.00');
   summary.getRange(`F${row}`).format.horizontalAlignment='center';
  }
- const decisionRow=10+m.totals.length,decisionText=`Recommendation: ${src.decision.status}${src.decision.candidate_id?' / '+src.candidate_names[src.decision.candidate_id]:''}. ${story.messages[0].qualification}`;
+ const decisionRow=10+m.totals.length,decisionText=`Recommendation: ${src.decision.status}${src.decision.candidate_id?' / '+src.candidate_names[src.decision.candidate_id]:''}. ${m.gates.length?'Gate results reflect the admitted evidence; decision conditions still apply.':'No mandatory gates were approved.'} See the introduction for conditions and the Evidence sheet for rationale. Known-only fit is normalized over the covered criterion weight.`;
  summary.getRange(`A${decisionRow}:F${decisionRow+2}`).merge();summary.getRange(`A${decisionRow}`).values=[[safe(decisionText)]];summary.getRange(`A${decisionRow}:F${decisionRow+2}`).format.wrapText=true;summary.getRange(`A${decisionRow}:F${decisionRow+2}`).format.rowHeight=Math.max(26,Math.ceil(decisionText.length/145)*7);
  const noteRow=decisionRow+4;summary.getRange(`A${noteRow}:F${noteRow+2}`).merge();summary.getRange(`A${noteRow}`).values=[['Bounds describe missing score evidence, not statistical confidence intervals. This is a saved evaluation. Points formulas expose the calculation; revised weights or scores require a fresh evaluation and review.']];summary.getRange(`A${noteRow}:F${noteRow+2}`).format.wrapText=true;
  title(matrix,'Scoring detail',8);header(matrix,4,['Option','Criterion','Weight (%)','Score /5','Points','Confidence','Status','Source locators']);
@@ -97,12 +98,13 @@ if(role==='information-designer'){
   }else{
    text(sl,s.title,70,45,1130,95,44,t.ink,true);text(sl,s.lead,74,157,1120,86,27,t.accent,true);
    if(s.kind==='score_chart'){
-    const chart=sl.charts.add('bar',{position:{left:75,top:265,width:810,height:335},categories:s.rows.map(r=>r.name),series:[{name:'Supported points',values:s.rows.map(r=>r.lower_bound),fill:t.accent},{name:'Unresolved potential',values:s.rows.map(r=>r.upper_bound-r.lower_bound),fill:'#DAE2E8'}],barOptions:{direction:'bar',grouping:'stacked'},xAxis:{visible:true,textStyle:{fontSize:24}},yAxis:{visible:true,min:0,max:100,majorUnit:25,textStyle:{fontSize:24},numberFormatCode:'0'},hasLegend:true,legend:{position:'bottom',textStyle:{fontSize:24}},dataLabels:{showValue:false}});applyPresentationChartFont(chart,{fontFamily:family});chartOwners.push(i+1);text(sl,s.body.join('\n\n'),920,275,290,315,23);text(sl,'Score bounds describe missing evidence. They are not statistical confidence intervals.',75,620,1120,60,20,'#526476');
+    s.rows=[...s.rows].reverse(); // Office places the first horizontal-bar category at the bottom.
+    const chart=sl.charts.add('bar',{position:{left:75,top:265,width:810,height:335},categories:s.rows.map(r=>r.name),series:[{name:'Supported points',values:s.rows.map(r=>r.lower_bound),fill:t.accent},{name:'Unresolved potential',values:s.rows.map(r=>r.upper_bound-r.lower_bound),fill:'#DAE2E8'}],barOptions:{direction:'bar',grouping:'stacked'},xAxis:{visible:true,textStyle:{fontSize:24}},yAxis:{visible:true,min:0,max:100,majorUnit:25,textStyle:{fontSize:24},numberFormatCode:'0'},hasLegend:s.rows.some(r=>r.upper_bound!==r.lower_bound),legend:{position:'bottom',textStyle:{fontSize:24}},dataLabels:{showValue:false}});applyPresentationChartFont(chart,{fontFamily:family});chartOwners.push(i+1);text(sl,s.body.join('\n\n'),920,275,290,315,23);text(sl,'Score bounds describe missing evidence. They are not statistical confidence intervals.',75,620,1120,60,20,'#526476');
    }else if(s.kind==='effect_plot'){
     const e=src.statistics.comparisons.find(e=>e.id===s.comparison_id&&e.status==='inferential'),design=(await read('inputs/design.json')).content;
     const refs=design.visuals.flatMap(v=>v.reference_lines||[]).filter(r=>r.comparison_id===e.id);if(new Set(refs.map(r=>r.value)).size>1)throw Error('Conflicting practical thresholds');const ref=refs[0];
     const low=Math.min(0,e.ci_low,ref?.value??0),high=Math.max(0,e.ci_high,ref?.value??0),rough=(high-low)/4,power=10**Math.floor(Math.log10(rough)),fraction=rough/power,step=power*(fraction<=1?1:fraction<=2?2:fraction<=5?5:10),lo=Math.floor(low/step)*step,hi=Math.ceil(high/step)*step;
-    const x=v=>130+(v-lo)/(hi-lo)*1020,fmt=v=>Number(v.toFixed(3)).toString();
+    const x=v=>130+(v-lo)/(hi-lo)*1020,fmt=displayNumber;
     text(sl,`Mean ${fmt(e.mean_difference_a_minus_b)} ${e.unit}`,76,266,450,57,38,t.accent,true);text(sl,`${100*e.confidence_level}% marginal CI [${fmt(e.ci_low)}, ${fmt(e.ci_high)}]`,555,274,640,55,27,t.ink,true);
     text(sl,(e.paired_count!==null?`${e.paired_count} matched pairs`:`n = ${e.n_a} / ${e.n_b}`)+` · Holm-adjusted p = ${Number(e.p_holm.toPrecision(3))}`,78,330,1120,44,24);
     for(let y=388;y<470;y+=12)rect(sl,x(0)-1,y,2,6,'#9BA8B0');text(sl,'No difference',Math.min(1000,Math.max(130,x(0)+9)),382,190,30,18,'#526476');
@@ -114,9 +116,9 @@ if(role==='information-designer'){
     let vals,widths,size=24;
     if(s.table_view==='criteria'){
      const delta=s.rows.length===2;size=20;vals=[['Criterion','Weight (%)',...s.rows.map(r=>r.name+' score / points'),...(delta?['First minus second (points)']:[])]];
-     for(const criterion of s.criteria){const cells=s.rows.map(r=>m.cells.find(c=>c.candidate_id===r.candidate_id&&c.criterion_id===criterion.id));const points=cells.map(c=>c.score===null?null:c.score*criterion.weight/5);vals.push([criterion.name,String(criterion.weight),...cells.map((c,i)=>c.score===null?'Unknown':`${c.score}/5 · ${points[i].toFixed(1)} pts`),...(delta?[points.includes(null)?'Unknown':(points[0]-points[1]>0?'+':'')+(points[0]-points[1]).toFixed(1)]:[])]);}
+     for(const criterion of s.criteria){const cells=s.rows.map(r=>m.cells.find(c=>c.candidate_id===r.candidate_id&&c.criterion_id===criterion.id));const points=cells.map(c=>c.score===null?null:c.score*criterion.weight/5);vals.push([criterion.name,displayNumber(criterion.weight),...cells.map((c,i)=>c.score===null?'Unknown':`${displayNumber(c.score)}/5 · ${points[i].toFixed(1)} pts`),...(delta?[points.includes(null)?'Unknown':(points[0]-points[1]>0?'+':'')+(points[0]-points[1]).toFixed(1)]:[])]);}
      widths=[285,105,...s.rows.map(()=>delta?240:735/s.rows.length),...(delta?[255]:[])];
-    }else{vals=[['Option','Fit bounds /100','Coverage','Gates'],...s.rows.map(r=>[r.name,`${r.lower_bound}–${r.upper_bound}`,`${r.coverage_percent}%`,r.eligibility])];widths=[345,280,220,280];}
+    }else{vals=[['Option','Fit bounds /100','Coverage','Gates'],...s.rows.map(r=>[r.name,`${displayNumber(r.lower_bound)}–${displayNumber(r.upper_bound)}`,`${displayNumber(r.coverage_percent)}%`,r.eligibility])];widths=[345,280,220,280];}
     const tab=sl.tables.add({rows:vals.length,columns:vals[0].length,left:76,top:275,width:1125,height:Math.min(305,(s.table_view==='criteria'?50:70)*vals.length),values:vals,columnWidths:widths});
     for(let r=0;r<vals.length;r++)for(let c=0;c<vals[0].length;c++){const z=tab.getCell(r,c);z.fill=r===0?t.ink:r%2?'#EDF1F4':t.paper;z.text.style={typeface:family,fontSize:size,color:r===0?'#FFFFFF':t.ink,bold:r===0};}
     tableOwners.push(i+1);text(sl,s.body.join(' '),76,600,1120,78,22,'#526476');

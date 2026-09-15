@@ -7,6 +7,10 @@ SCHEMA='bench.publication-spec/v1'
 ROLES={'editorial-director','information-designer','executive-writer','presentation-designer','publication-reviewer'}
 RUBRIC=['evidence_fidelity','narrative_coherence','audience_usefulness','writing_quality','visual_craft','accessibility']
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def display_number(value):
+ if value==0:return '0'
+ if abs(value)<.001 or abs(value)>=1_000_000:return re.sub(r'e([+-])0+(\d+)',r'e\1\2',f'{value:.2e}')
+ return f'{value:.3f}'.rstrip('0').rstrip('.')
 def pairs(v):
  d={}
  for k,x in v:
@@ -243,11 +247,11 @@ def validate(root,role,require_artifacts=True):
           table=[['Criterion','Weight (%)',*[r['name']+' score / points' for r in rows],*(['First minus second (points)'] if len(rows)==2 else [])]]
           for criterion in src['matrix']['criteria'][offset:offset+5]:
            cells=[next(v for v in src['matrix']['cells'] if v['candidate_id']==r['candidate_id'] and v['criterion_id']==criterion['id']) for r in rows];points=[None if v['score'] is None else v['score']*criterion['weight']/5 for v in cells]
-           values=[criterion['name'],f"{criterion['weight']:g}",*['Unknown' if v['score'] is None else f"{v['score']:g}/5 · {point:.1f} pts" for v,point in zip(cells,points)]]
+           values=[criterion['name'],display_number(criterion['weight']),*['Unknown' if v['score'] is None else f"{display_number(v['score'])}/5 · {point:.1f} pts" for v,point in zip(cells,points)]]
            if len(rows)==2:values.append('Unknown' if None in points else ('+' if points[0]>points[1] else '')+f'{points[0]-points[1]:.1f}')
            table.append(values)
           expected_tables.append(table)
-        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{r['lower_bound']:g}–{r['upper_bound']:g}",f"{r['coverage_percent']:g}%",r['eligibility']] for r in rows]])
+        else:expected_tables.append([['Option','Fit bounds /100','Coverage','Gates'],*[[r['name'],f"{display_number(r['lower_bound'])}–{display_number(r['upper_bound'])}",f"{display_number(r['coverage_percent'])}%",r['eligibility']] for r in rows]])
       if actual_tables!=expected_tables:raise ValueError('Native table differs from checked numbers')
       alltext=' '.join(' '.join(x.itertext()) for x in texts)
       if any(x['title'] not in alltext for x in c['slides']):raise ValueError('Slide content mismatch')
@@ -255,7 +259,7 @@ def validate(root,role,require_artifacts=True):
       for slide in c['slides']:
        if any(' '.join(value.split()) not in normalized for value in [slide['lead'],*slide['body']]):raise ValueError('Authored slide text was not emitted')
       for plot in [x for x in c['slides'] if x['kind']=='effect_plot']:
-       test=next(x for x in src['statistics']['comparisons'] if x['id']==plot['comparison_id']);fmt=lambda value:f'{value:.3f}'.rstrip('0').rstrip('.')
+       test=next(x for x in src['statistics']['comparisons'] if x['id']==plot['comparison_id']);fmt=display_number
        expected=[f"Mean {fmt(test['mean_difference_a_minus_b'])} {test['unit']}",f"{test['confidence_level']*100:g}% marginal CI [{fmt(test['ci_low'])}, {fmt(test['ci_high'])}]"]
        if any(label not in alltext for label in expected):raise ValueError('Editable interval values missing or changed')
  return s

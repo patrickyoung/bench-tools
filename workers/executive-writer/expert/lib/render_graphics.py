@@ -5,6 +5,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from publication_contract import display_number
 import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.font_manager import FontProperties
@@ -50,7 +51,7 @@ for v in spec['visuals']:
   tests=[t for t in src['statistics']['comparisons'] if t['status']=='inferential'];ax.remove()
   for i,t in enumerate(tests):
    if len(tests)>3:raise ValueError('Effects graphic supports at most three comparisons; select another encoding or extend the reviewed renderer')
-   pitch=.42/len(tests);a=fig.add_axes([.18,.74-pitch-i*pitch,.72,pitch-.10]);a.set_facecolor(theme['paper']);d=t['mean_difference_a_minus_b'];a.errorbar(d,0,xerr=[[d-t['ci_low']],[t['ci_high']-d]],fmt='o',color=colors[i],capsize=8,linewidth=3,markersize=9);a.axvline(0,color='#8C9BA6',linestyle='--');a.set_yticks([]);count=f"{t['paired_count']} matched pairs" if t['paired_count'] is not None else f"n={t['n_a']} / {t['n_b']}";label=f"{t['metric_id']}: {t['groups'][0]} minus {t['groups'][1]} ({t['unit']})\nMean {d:.3f}; {100*t['confidence_level']:g}% CI [{t['ci_low']:.3f}, {t['ci_high']:.3f}]; {count}; Holm p={t['p_holm']:.4g}";a.set_title(label,loc='left',fontsize=10.5)
+   pitch=.42/len(tests);a=fig.add_axes([.18,.74-pitch-i*pitch,.72,pitch-.10]);a.set_facecolor(theme['paper']);d=t['mean_difference_a_minus_b'];a.errorbar(d,0,xerr=[[d-t['ci_low']],[t['ci_high']-d]],fmt='o',color=colors[i],capsize=8,linewidth=3,markersize=9);a.axvline(0,color='#8C9BA6',linestyle='--');a.set_yticks([]);count=f"{t['paired_count']} matched pairs" if t['paired_count'] is not None else f"n={t['n_a']} / {t['n_b']}";label=f"{t['metric_id']}: {t['groups'][0]} minus {t['groups'][1]} ({t['unit']})\nMean {display_number(d)}; {100*t['confidence_level']:g}% CI [{display_number(t['ci_low'])}, {display_number(t['ci_high'])}]; {count}; Holm p={t['p_holm']:.4g}";a.set_title(label,loc='left',fontsize=10.5)
    for ref in v.get('reference_lines',[]):
     if ref['comparison_id']==t['id']:
      a.axvline(ref['value'],color=theme['secondary'],linestyle=':',linewidth=2);a.annotate(f"Practical {ref['value']:g} {t['unit']}",(ref['value'],.94),xycoords=('data','axes fraction'),xytext=(4,-2),textcoords='offset points',fontsize=8 if docmode else 9,va='top',ha='left',bbox={'facecolor':'white','edgecolor':'none','alpha':.85,'pad':1})
@@ -69,7 +70,7 @@ for v in spec['visuals']:
     x=.035+(i%2)*.50;y=.96-(i//2)*.49;fig.text(x,y,f'{i+1:02d}  '+fitted(step['heading'],fig,11,.43,'bold'),fontsize=11,weight='bold',va='top');fig.text(x,y-.13,fitted(step['detail'],fig,10,.43),fontsize=10,color='#526476',va='top')
    else:
     x=.075+i*(.90/n);fig.text(x,.66,f'{i+1:02d}',fontsize=30,color=theme['accent'],weight='bold');fig.text(x,.55,fitted(step['heading'],fig,15,.90/n-.03,'bold'),fontsize=15,weight='bold',va='top');fig.text(x,.40,fitted(step['detail'],fig,11,.90/n-.03),fontsize=11,color='#526476',va='top')
-  note='Read from the supported finding through its conditions. This is an explanatory sequence, not an approved delivery plan.'
+  note='Each panel explains a decision condition or responsibility. Read the labeled conditions together.'
  if docmode:
   for a in fig.axes:
    a.tick_params(labelsize=9);a.xaxis.label.set_size(9);a.yaxis.label.set_size(9)
