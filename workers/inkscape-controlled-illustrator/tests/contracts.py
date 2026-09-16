@@ -18,6 +18,12 @@ def run(work,tool,accept=True):
         raise AssertionError(f"{tool}: {p.returncode}\n{p.stdout.decode()}\n{p.stderr.decode()}")
     return p.stderr.decode()
 def main():
+    guidance=(HOME/"skills"/"composition-direction"/"SKILL.md").read_text().lower()
+    agents=(HOME/"AGENTS.md").read_text()
+    assert "composition-direction" in agents
+    assert "method, not a layout library" in guidance
+    # Training examples must not become scene-specific instructions.
+    assert all(term not in guidance for term in ("greenhouse","heron","sunroom","astra"))
     with tempfile.TemporaryDirectory(prefix="controlled-contract-") as td:
         w=pathlib.Path(td); out=w/"output"; out.mkdir()
         write(w/"request.json",{"description":"Synthetic curve contract","width":256,"height":256})
