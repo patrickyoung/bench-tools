@@ -5,7 +5,7 @@ No nulls, booleans as numbers, nonfinite numbers, markup, code, references,
 URLs, filesystem paths, embedded images, custom attribute names or raw SVG.
 All listed keys are required; no other keys are accepted.
 
-Root: `schema` = `inkscape-plan/v1`, `title`, `description`, `layers`.
+Root: `schema` = `inkscape-plan/v1`, `title`, `description`, `layers`, `review`.
 
 Plain text fields (title, description, layer name, text content): 1–500
 characters; Unicode word characters, spaces, and `,.!?()'’–—:+-` only.
@@ -17,6 +17,15 @@ are disallowed, as are URI-like word-colon sequences and double dots. Unsupporte
 Layer names must be distinct and meaningful. Objects are painted in array order.
 Maximum 500 objects total. IDs for objects and layers must be globally unique,
 match `[a-z][a-z0-9-]{0,39}`, and must not equal `drawing`.
+
+`review`: exactly `{ "targets": [...] }`. Targets are 1–24 distinct objects
+of exactly `{ "id", "importance" }`; `id` must name a real drawing object,
+never a layer. `importance` is `primary`, `required`, or `support`, and exactly
+one target is `primary`. Name visibly exposed objects that carry the focal read
+or an essential pictured fact. The trusted finishing audit rejects a primary or
+required target whose complete geometry bounds fall beneath a later opaque
+rectangle. This is a narrow paint-order guard, not proof that the image meets
+the request or looks good.
 
 Every object has:
 - `op`, `id`

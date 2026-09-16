@@ -45,7 +45,8 @@ Definition files are trusted read-only inputs; workspace receipts are untrusted.
 
 Outputs: `output/illustration.inkscape.svg`, `output/illustration.svg`,
 `output/preview.png`, `output/design-notes.md`, `output/render.json`,
-`output/inkscape.log`, `handoff.json`, plus the plan and authoring receipt.
+`output/inkscape.log`, `output/composition-audit.json`, `handoff.json`, plus
+the plan and authoring receipt.
 Native export outlines text and preserves vector-only art. Notes cover intent,
 composition, palette, style, simplifications and honest review limits.
 
@@ -61,8 +62,10 @@ artifacts fail. Changing reported hashes cannot authorize a different master.
 Receipts cannot cryptographically prove historical execution; identical valid
 artifacts with a fabricated identical history are indistinguishable without
 trusted external evidence. Regeneration establishes reproducibility, not intent.
-Structural checks cannot judge semantic accuracy, style fidelity or polish.
-Review the preview at full and thumbnail sizes. Fonts remain host-dependent.
+The composition audit verifies declared target bindings and detects complete
+coverage by later opaque rectangles; it cannot judge semantic accuracy, style
+fidelity, partial occlusion, text visibility, or polish. Review the preview at
+full and thumbnail sizes. Fonts remain host-dependent.
 Unsupported plan effects/characters require simplification or an unfinished report.
 
 ## Deterministic evaluation
@@ -71,7 +74,7 @@ From the Bench source checkout (tests are deliberately outside the reusable
 definition):
 
     python3 scripts/workers check
-    PYTHONDONTWRITEBYTECODE=1 python3 workers/inkscape-illustrator/tests/contracts.py
+    PYTHONDONTWRITEBYTECODE=1 python3 workers/inkscape-controlled-illustrator/tests/contracts.py
 
 The suite's synthetic positive example is a cream field and blue Bézier silhouette
 on two named layers, at 256×256. Negative examples inject markup, unknown operations,

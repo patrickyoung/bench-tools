@@ -10,8 +10,14 @@ Curves, overlap and deliberate negative space should carry the subject, not a
 pile of primitives. Use ellipses for circles. Flat planes substitute for effects
 not in this experimental schema. Lettering is only for explicitly requested text.
 
-Write only output/inkscape-plan.json and design notes. Run author_in_inkscape,
-then finish, then bin/check using absolute paths under AGENT_HOME. Correct
-diagnostics by revising the plan, never the generated master or receipts.
-Inspect the actual preview when image viewing is available. Otherwise record
-that visual review is still needed. Keep the original request unchanged.
+Write only output/inkscape-plan.json and design notes. The root `review` object
+must contain `targets`: exactly one `primary` object ID and any visible
+`required` or `support` object IDs. Every target must name a real drawing
+object, not a layer or a construction object intended to disappear.
+
+Run author_in_inkscape, then finish, then bin/check using absolute paths under
+AGENT_HOME. Finish generates a bound composition audit; treat a covered
+primary/required target as a plan-revision error. Correct diagnostics by
+revising the plan, never the generated master or receipts. Inspect the actual
+preview when image viewing is available. Otherwise record that visual review is
+still needed. Keep the original request unchanged.

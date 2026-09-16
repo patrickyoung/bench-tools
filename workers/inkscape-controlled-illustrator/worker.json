@@ -28,11 +28,14 @@
     "workers/inkscape-controlled-illustrator/expert/references/plan-schema.md",
     "workers/inkscape-controlled-illustrator/expert/skills/composition-direction/SKILL.md",
     "workers/inkscape-controlled-illustrator/expert/skills/plan-authoring/SKILL.md",
+    "workers/inkscape-controlled-illustrator/expert/skills/render-visibility/SKILL.md",
     "workers/inkscape-controlled-illustrator/expert/skills/vector-illustration/SKILL.md",
     "workers/inkscape-controlled-illustrator/expert/tools/author_in_inkscape",
     "workers/inkscape-controlled-illustrator/expert/tools/authoring.py",
+    "workers/inkscape-controlled-illustrator/expert/tools/composition_audit.py",
     "workers/inkscape-controlled-illustrator/expert/tools/finish",
     "workers/inkscape-controlled-illustrator/expert/tools/make-handoff",
+    "workers/inkscape-controlled-illustrator/expert/tools/review_composition",
     "workers/inkscape-controlled-illustrator/expert/tools/svg_contract.py"
   ]
 }

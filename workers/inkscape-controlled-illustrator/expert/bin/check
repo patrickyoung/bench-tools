@@ -6,10 +6,12 @@ import hashlib, json, os, pathlib, re, shutil, signal, stat, subprocess, tempfil
 EXPERT_ROOT=pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(EXPERT_ROOT/"tools"))
 from svg_contract import ContractError, bounded_regular_bytes, inspect_svg, png_pixels, read_request
+import composition_audit
 
 ROOT=pathlib.Path.cwd().resolve(); OUT=ROOT/"output"; MAX_JSON=1024*1024
 REQUIRED={"illustration.inkscape.svg","illustration.svg","preview.png",
-          "design-notes.md","render.json","inkscape.log","inkscape-plan.json","authoring-receipt.json"}
+          "design-notes.md","render.json","inkscape.log","inkscape-plan.json","authoring-receipt.json",
+          "composition-audit.json"}
 
 def fail(msg):
     print("check: "+msg,file=sys.stderr); raise SystemExit(1)
@@ -78,6 +80,10 @@ except (ContractError,UnicodeDecodeError) as e: fail(str(e))
 if len(notes.strip())<120: fail("design notes are too short")
 for term in ("intent","composition","palette","style","simplif","review"):
     if term not in notes.lower(): fail("design notes omit "+term)
+if "visibility" not in notes.lower(): fail("design notes omit visibility review")
+try:
+    composition_audit.verify(ROOT)
+except (ContractError,OSError) as e: fail("composition audit rejected: "+str(e))
 receipt=load_json(OUT/"render.json")
 if not isinstance(receipt,dict) or receipt.get("schema")!="inkscape-illustrator.render/v1":
     fail("invalid render receipt schema")
@@ -92,7 +98,8 @@ expected_bindings={
  "request":("request.json",hashlib.sha256(request_raw).hexdigest()),
  "master":("output/illustration.inkscape.svg",sha(master,16*1024*1024)),
  "final":("output/illustration.svg",sha(final,16*1024*1024)),
- "preview":("output/preview.png",sha(preview,64*1024*1024))}
+ "preview":("output/preview.png",sha(preview,64*1024*1024)),
+ "composition_audit":("output/composition-audit.json",sha(OUT/"composition-audit.json",1024*1024))}
 bindings=receipt.get("bindings")
 if not isinstance(bindings,dict) or set(bindings)!=set(expected_bindings): fail("invalid render bindings")
 for key,(path,digest) in expected_bindings.items():

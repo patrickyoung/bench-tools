@@ -5,6 +5,7 @@ sys.dont_write_bytecode = True
 import hashlib, json, os, pathlib, re, shutil, signal, stat, subprocess, time
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from svg_contract import ContractError, bounded_regular_bytes, inspect_svg, png_pixels, read_request
+import composition_audit
 
 ROOT=pathlib.Path.cwd().resolve(); OUT=ROOT/"output"
 LOG=OUT/"inkscape.log"; RENDER=OUT/"render.json"; TIMEOUT=120
@@ -93,6 +94,12 @@ def main():
             pw,ph,_,_=png_pixels(preview)
             if (pw,ph)!=(w,h): die("rendered PNG dimensions differ")
         except ContractError as e: die("rendered PNG rejected: "+str(e))
+        audit=composition_audit.write(ROOT)
+        blocked=composition_audit.blocking(audit)
+        if blocked:
+            names=", ".join(item["target_id"] for item in blocked)
+            die("review target fully covered by a later opaque rectangle: "+names+
+                "; revise the plan and read output/composition-audit.json")
         queryout,_=run([exe,"--query-all",str(final)],env,"bounds-query",records,logs)
     finally:
         LOG.write_text("\n".join(logs),encoding="utf-8")
@@ -100,7 +107,9 @@ def main():
       "request":{"path":"request.json","sha256":hashlib.sha256(raw).hexdigest()},
       "master":{"path":"output/illustration.inkscape.svg","sha256":digest(master,16*1024*1024)},
       "final":{"path":"output/illustration.svg","sha256":digest(final,16*1024*1024)},
-      "preview":{"path":"output/preview.png","sha256":digest(preview)}}
+      "preview":{"path":"output/preview.png","sha256":digest(preview)},
+      "composition_audit":{"path":"output/composition-audit.json",
+                           "sha256":digest(OUT/"composition-audit.json")}}
     receipt={"schema":"inkscape-illustrator.render/v1",
       "inkscape":{"executable":exe,"version":version.strip().splitlines()[0]},
       "requested_pixels":{"width":w,"height":h},"commands":records,"bindings":bindings,

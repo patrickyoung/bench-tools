@@ -10,7 +10,8 @@ PLAN={"schema":"inkscape-plan/v1","title":"Contract sample","description":"A war
  "layers":[{"id":"field","name":"Background field","objects":[
  {"op":"rect","id":"back","fill":"#eee5cc","stroke":"none","stroke_width":0,"opacity":1,"x":0,"y":0,"width":256,"height":256}]},
  {"id":"subject","name":"Subject silhouette","objects":[
- {"op":"path","id":"curve","fill":"#226688","stroke":"none","stroke_width":0,"opacity":1,"d":"M 35 210 C 25 20 220 20 220 210 Z"}]}]}
+ {"op":"path","id":"curve","fill":"#226688","stroke":"none","stroke_width":0,"opacity":1,"d":"M 35 210 C 25 20 220 20 220 210 Z"}]}],
+ "review":{"targets":[{"id":"curve","importance":"primary"}]}}
 def write(p,o): p.write_text(json.dumps(o))
 def run(work,tool,accept=True):
     p=subprocess.run([str(HOME/tool)],cwd=work,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
@@ -19,17 +20,19 @@ def run(work,tool,accept=True):
     return p.stderr.decode()
 def main():
     guidance=(HOME/"skills"/"composition-direction"/"SKILL.md").read_text().lower()
+    visibility=(HOME/"skills"/"render-visibility"/"SKILL.md").read_text().lower()
     agents=(HOME/"AGENTS.md").read_text()
     assert "composition-direction" in agents
+    assert "render-visibility" in agents
     assert "method, not a layout library" in guidance
     # Training examples must not become scene-specific instructions.
-    assert all(term not in guidance for term in ("greenhouse","heron","sunroom","astra"))
+    assert all(term not in guidance+visibility for term in ("greenhouse","heron","sunroom","astra","telescope","moon","deepseek","flash"))
     with tempfile.TemporaryDirectory(prefix="controlled-contract-") as td:
         w=pathlib.Path(td); out=w/"output"; out.mkdir()
         write(w/"request.json",{"description":"Synthetic curve contract","width":256,"height":256})
         pp=out/"inkscape-plan.json"; write(pp,PLAN)
-        (out/"design-notes.md").write_text("Intent: synthetic contract example.\nComposition: a curved silhouette on a field.\nPalette: warm cream and blue.\nStyle: economical flat vector.\nSimplifications: no extra details.\nReview: deterministic checks only, no aesthetic review claimed.\n")
-        run(w,"tools/author_in_inkscape"); run(w,"tools/finish"); run(w,"bin/check")
+        (out/"design-notes.md").write_text("Intent: synthetic contract example.\nComposition: a curved silhouette on a field.\nPalette: warm cream and blue.\nStyle: economical flat vector.\nSimplifications: no extra details.\nVisibility: the primary curve is not covered by a later opaque rectangle.\nReview: deterministic checks only, no aesthetic review claimed.\n")
+        run(w,"tools/author_in_inkscape"); run(w,"tools/finish"); run(w,"tools/review_composition"); run(w,"bin/check")
         print("PASS positive native plan-master-export and independent pixels")
         saved={p:p.read_bytes() for p in out.iterdir() if p.is_file()}
         hand=(w/"handoff.json").read_bytes()
@@ -48,6 +51,21 @@ def main():
             restore(); plan=copy.deepcopy(PLAN); change(plan); write(pp,plan)
             run(w,"tools/author_in_inkscape",False); run(w,"bin/check",False)
             print("PASS reject "+name)
+        restore(); plan=copy.deepcopy(PLAN); plan.pop("review"); write(pp,plan)
+        run(w,"tools/author_in_inkscape",False); run(w,"bin/check",False)
+        print("PASS reject missing review targets")
+        restore(); plan=copy.deepcopy(PLAN); plan["review"]["targets"][0]["id"]="not-real"; write(pp,plan)
+        run(w,"tools/author_in_inkscape",False); run(w,"bin/check",False)
+        print("PASS reject unknown review target")
+        restore(); plan=copy.deepcopy(PLAN); plan["layers"].append({"id":"cover","name":"Opaque cover","objects":[
+            {"op":"rect","id":"cover-panel","fill":"#222222","stroke":"none","stroke_width":0,"opacity":1,"x":20,"y":10,"width":210,"height":210}]})
+        write(pp,plan); run(w,"tools/author_in_inkscape")
+        covered_error=run(w,"tools/finish",False)
+        assert "review target fully covered" in covered_error, covered_error
+        audit=json.loads((out/"composition-audit.json").read_text())
+        assert audit["fully_covered_targets"][0]["target_id"]=="curve"
+        run(w,"bin/check",False)
+        print("PASS reject fully covered primary review target")
         restore(); plan=copy.deepcopy(PLAN); plan["layers"][1]["objects"][0]["fill"]="#993355"; write(pp,plan)
         assert "authoring rejected" in run(w,"bin/check",False)
         print("PASS changed plan stale receipt")

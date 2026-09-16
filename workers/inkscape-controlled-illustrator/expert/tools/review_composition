@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Generate and report the trusted composition visibility audit."""
+import sys
+sys.dont_write_bytecode = True
+from composition_audit import ContractError, blocking, write
+
+try:
+    if len(sys.argv)!=1: raise ContractError("accepts no arguments")
+    audit=write(".")
+    issues=blocking(audit)
+    if issues:
+        print("review: required target fully covered: "+", ".join(item["target_id"] for item in issues),file=sys.stderr)
+        raise SystemExit(1)
+    print("review: no declared primary or required target is fully covered by a later opaque rectangle")
+except (ContractError,OSError) as error:
+    print("review: "+str(error),file=sys.stderr)
+    sys.exit(1)
