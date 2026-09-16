@@ -1,0 +1,37 @@
+{
+  "id": "inkscape-controlled-illustrator",
+  "description": "Create original editable vector illustrations through a bounded drawing plan, trusted document adapter, and native Inkscape export.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage"
+      ]
+    },
+    "python": ">=3.9 standard library",
+    "inkscape": ">=1.2, selected by the operator; actual executable and version are recorded per run"
+  },
+  "files": [
+    "workers/inkscape-controlled-illustrator/expert/AGENTS.md",
+    "workers/inkscape-controlled-illustrator/expert/LICENSE",
+    "workers/inkscape-controlled-illustrator/expert/README.md",
+    "workers/inkscape-controlled-illustrator/expert/bin/check",
+    "workers/inkscape-controlled-illustrator/expert/bin/validate-handoff",
+    "workers/inkscape-controlled-illustrator/expert/references/inkscape-cli.md",
+    "workers/inkscape-controlled-illustrator/expert/references/plan-schema.md",
+    "workers/inkscape-controlled-illustrator/expert/skills/plan-authoring/SKILL.md",
+    "workers/inkscape-controlled-illustrator/expert/skills/vector-illustration/SKILL.md",
+    "workers/inkscape-controlled-illustrator/expert/tools/author_in_inkscape",
+    "workers/inkscape-controlled-illustrator/expert/tools/authoring.py",
+    "workers/inkscape-controlled-illustrator/expert/tools/finish",
+    "workers/inkscape-controlled-illustrator/expert/tools/make-handoff",
+    "workers/inkscape-controlled-illustrator/expert/tools/svg_contract.py"
+  ]
+}
