@@ -1,0 +1,45 @@
+{
+  "id": "inkscape-decision-diagrammer",
+  "description": "Create evidence-faithful decision-framework diagrams with editable Inkscape masters, native vector/PNG exports, deterministic geometry and explicit review limits; accepts selector handoffs.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "9fe699632e1ac23a8542c4861098b068a0f6a8fd",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library",
+    "inkscape": ">=1.2; operator-installed native executable, PATH or explicit absolute INKSCAPE; tested 1.4.4 on macOS arm64",
+    "model": "Operator-selected Ask connection; no provider client or credentials bundled",
+    "review": "Native correspondence, geometry, contrast, arithmetic and input bindings are checked. Framework judgment, evidence truth and visual quality require review. Documentation covers 17 frameworks; live evaluation is representative, not exhaustive."
+  },
+  "files": [
+    "workers/inkscape-decision-diagrammer/expert/AGENTS.md",
+    "workers/inkscape-decision-diagrammer/expert/CONTRACT.md",
+    "workers/inkscape-decision-diagrammer/expert/LICENSE",
+    "workers/inkscape-decision-diagrammer/expert/PROVENANCE.md",
+    "workers/inkscape-decision-diagrammer/expert/README.md",
+    "workers/inkscape-decision-diagrammer/expert/bin/check",
+    "workers/inkscape-decision-diagrammer/expert/references/inkscape-cli.md",
+    "workers/inkscape-decision-diagrammer/expert/references/selector-contract.md",
+    "workers/inkscape-decision-diagrammer/expert/skills/decision-diagrams/SKILL.md",
+    "workers/inkscape-decision-diagrammer/expert/skills/decision-diagrams/references/frameworks.md",
+    "workers/inkscape-decision-diagrammer/expert/skills/decision-diagrams/references/operator-specification.md",
+    "workers/inkscape-decision-diagrammer/expert/tools/finish",
+    "workers/inkscape-decision-diagrammer/expert/tools/native.py",
+    "workers/inkscape-decision-diagrammer/expert/tools/package.py",
+    "workers/inkscape-decision-diagrammer/expert/tools/plan_contract.py",
+    "workers/inkscape-decision-diagrammer/expert/tools/previews.py",
+    "workers/inkscape-decision-diagrammer/expert/tools/selector.py",
+    "workers/inkscape-decision-diagrammer/expert/tools/svg_contract.py"
+  ]
+}
