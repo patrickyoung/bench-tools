@@ -137,9 +137,40 @@ def arithmetic(p):
             if num(e["weight"])<=0: fail("force weight")
             close(e["extent"],e["weight"]*a["scale"])
 
+def provenance(request, plan):
+    """Resolve only bound claims; free-form evidence semantics remain a review task."""
+    metadata=plan.get("metadata")
+    if "metadata" in plan:
+        obj(metadata,"owner date")
+    resolved={}
+    for field in ("owner","date"):
+        fallback=request.get(field,"unspecified")
+        if metadata is None:
+            resolved[field]=fallback
+            continue
+        row=metadata[field]; obj(row,"value source evidence")
+        value=row["value"]; source=row["source"]; quote=row["evidence"]
+        if not isinstance(value,str) or not value.strip() or len(value)>2000:
+            fail("metadata value must be a nonblank bounded string")
+        if not isinstance(source,str) or source not in ("structured","brief","unspecified"):
+            fail("metadata source must be structured, brief or unspecified")
+        if field in request:
+            if source!="structured" or value!=request[field] or quote is not None:
+                fail("metadata must preserve structured "+field)
+        elif source=="brief":
+            if not isinstance(quote,str) or not quote.strip() or len(quote)>48000:
+                fail("metadata brief evidence must be a nonblank bounded quote")
+            if quote not in request["brief"] or value not in quote:
+                fail("metadata brief evidence/value unsupported by current brief")
+        elif source!="unspecified" or value!="unspecified" or quote is not None:
+            fail("metadata without evidence must be unspecified")
+        resolved[field]=value
+    return resolved
+
 def read_plan(out, request, width, height, selector):
     p=strict_json(bounded_regular_bytes(out/"diagram-plan.json",1048576,"plan"))
-    obj(p,"schema framework grammar decision audience axes regions tray visibility_bands items relationships omissions selector math geometry style")
+    obj(p,"schema framework grammar decision audience axes regions tray visibility_bands items relationships omissions selector math geometry style"+(" metadata" if "metadata" in p else ""))
+    provenance(request,p)
     if p["schema"]!="inkscape-decision-diagrammer.plan/v1": fail("plan identity")
     for k in ("framework","grammar","decision","audience","axes"): text(p[k])
     if p["selector"]!=selector: fail("plan must preserve complete selector verbatim as data")
@@ -331,6 +362,9 @@ def master_plan(path,p):
                 fail("Wardley dependencies require absolute M/L/Q/C geometry")
             values=[float(v) for v in re.findall(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?",d)]
             if len(values)<4 or values[1]>=values[-1]: fail("dependency path must point downward")
+            # For final L/Q/C, the preceding point/control point determines the
+            # endpoint tangent. A lower target alone permits a sideways arrow.
+            if values[-3]>=values[-1]: fail("dependency arrowhead must point downward")
             for node,point in ((mapping[r["from"]],values[:2]),(mapping[r["to"]],values[-2:])):
                 mark=ids[node["mark"]]; ma=attrs(mark)
                 if local(mark.tag)=="rect":
@@ -351,6 +385,11 @@ def bounds_check(query,p,ids,text_ids,width,height):
         if abs(b[0]+b[2]/2-i["x"])>.2 or abs(b[1]+b[3]/2-i["y"])>.2: fail("plan/mark center mismatch: "+i["id"])
     for k in text_ids:
         if k not in query: fail("missing native text bounds: "+k)
+    minimum_margin=48*min(width/1600,height/1000)
+    inset=[minimum_margin,minimum_margin,width-2*minimum_margin,height-2*minimum_margin]
+    for k in text_ids|{i["mark"] for i in p["items"]}:
+        if not inside(query[k],inset,tol=.1):
+            fail("visible content violates minimum outer margin: "+k)
     def get(k):
         if k not in query: fail("declared geometry not queried: "+k)
         return query[k]

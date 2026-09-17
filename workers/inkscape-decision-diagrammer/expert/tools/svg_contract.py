@@ -93,7 +93,25 @@ def read_request(path=pathlib.Path("request.json")):
     return obj,obj.get("width",1600),obj.get("height",1000),raw
 
 def dark_requested(request):
-    return request.get("dark", bool(re.search(r"dark[ -](?:mode|deck)|\bslides?\b",request["brief"],re.I)))
+    if "dark" in request: return request["dark"]
+    brief=request["brief"].lower()
+    # Bounded local negation; this deliberately is not a language parser.
+    neg=r"\b(?:not|no|without|avoid|never)\b(?:[ -]+(?:a|an|the|for|use|using|make|making|create|produce|intended|meant|designed|any|in|as)){0,4}[ -]*$"
+    light=(r"\blight(?:[- ](?:mode|theme|version))?[- ]only\b"
+           r"|\bonly (?:a |the )?light(?:[- ](?:mode|theme|version))?\b"
+           r"|\b(?:use|keep|remain) (?:it |the canvas )?light\b"
+           r"|\bcanvas[^.!?;\n]{0,100},\s*light\s*(?:[.!?;]|$)"
+           r"|\b(?:no|without) (?:a |any )?dark(?:[- ](?:mode|deck|version|companion|output))?\b")
+    # Explicit light/no-dark instructions override inferred medium, not dark:boolean.
+    for match in re.finditer(light,brief):
+        if not re.search(neg,brief[:match.start()]): return False
+    cue=r"\b(?:dark[ -](?:mode|deck)|slides?)\b"
+    for clause in re.split(r"[,;.!?\n]",brief):
+        for match in re.finditer(cue,clause):
+            if re.search(neg,clause[:match.start()]): continue
+            if re.match(r"\s+(?:(?:is|are)\s+)?(?:not (?:needed|required|wanted)|unnecessary)\b",clause[match.end():]): continue
+            return True
+    return False
 
 def local(tag):
     return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""

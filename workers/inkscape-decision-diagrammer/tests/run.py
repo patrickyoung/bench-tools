@@ -10,7 +10,7 @@ A.add_argument("--evidence",type=pathlib.Path); args=A.parse_args()
 EX=args.expert.resolve(); sys.path.insert(0,str(EX/"tools"))
 from svg_contract import ContractError,read_request,dark_requested,inspect_svg
 from selector import read_selector,REGIONS,AXES
-from plan_contract import arithmetic,read_plan,master_plan,bounds_check
+from plan_contract import arithmetic,read_plan,master_plan,bounds_check,provenance
 from package import *
 HERE=pathlib.Path(__file__).resolve().parent
 
@@ -79,6 +79,27 @@ def refresh_receipts(w):
         if c["label"].endswith("-export"): c["argv"][-1]=str(o/(c["label"][:-7]+".inkscape.svg"))
     write(o/"render.json",r); write(o/"result.json",result(w,"visual-review-pending",h,files))
 
+BRIEF_PROVENANCE="Owner: Delivery workshop. Document date: 2026-09-17."
+BRIEF_METADATA={
+    "owner":{"value":"Delivery workshop","source":"brief","evidence":"Owner: Delivery workshop."},
+    "date":{"value":"2026-09-17","source":"brief","evidence":"Document date: 2026-09-17."}}
+
+def regenerate(w,request,metadata=None,footer=None):
+    """Explicit fixture action; checker never runs layout.py."""
+    o=w/"output"; write(w/"request.json",request)
+    data=load(o/"layout-inputs.json"); data["inputs"]=inputs(w)[4]
+    data["dark"]=dark_requested(request)
+    if metadata is not None: data["metadata"]=metadata
+    else: data.pop("metadata",None)
+    if footer is not None: data["footer"]=footer
+    else: data.pop("footer",None)
+    write(o/"layout-inputs.json",data)
+    if not data["dark"]:
+        for name in DARK:
+            (o/name).unlink(missing_ok=True)
+    rc,out=command([sys.executable,o/"layout.py"],w)
+    if rc: raise RuntimeError(out)
+
 class Offline(unittest.TestCase):
     def setUp(self): self.t=tempfile.TemporaryDirectory(); self.w=pathlib.Path(self.t.name).resolve()
     def tearDown(self): self.t.cleanup()
@@ -91,6 +112,74 @@ class Offline(unittest.TestCase):
             with self.assertRaises(ContractError): read_request(p)
         p.write_text('{"brief":"x","brief":"y"}')
         with self.assertRaises(ContractError): read_request(p)
+    def test_medium_inference(self):
+        cases=[
+            ("Workshop slides",True),("Prepare a slide",True),("A DARK-DECK for review",True),
+            ("Use dark mode",True),("for a review document, not a slide",False),
+            ("for a review document, not a slide. Canvas 1600 by 1000, light.",False),
+            ("No slides. No dark mode.",False),("without a dark-deck",False),
+            ("Avoid using slides",False),("Slides are not required",False),
+            ("Not a slide, but use dark mode",True),
+            ("Slides; light-only please",False),("Slides. Only light version.",False),
+            ("Slides. Keep it light.",False),("Slides. Canvas 1600 by 1000, light.",False),
+            ("Slides, no dark companion",False),("Slides, light theme only",False),
+            ("Not intended for a slide",False),("Do not create a dark deck",False),
+            ("Slides, not light-only",True),("Review document",False)]
+        for brief,expected in cases:
+            with self.subTest(brief=brief):
+                self.assertEqual(dark_requested({"brief":brief}),expected)
+                for override in (False,True):
+                    self.assertIs(dark_requested({"brief":brief,"dark":override}),override)
+
+    def test_brief_metadata_and_legacy(self):
+        req={"brief":BRIEF_PROVENANCE}; p={"metadata":copy.deepcopy(BRIEF_METADATA)}
+        self.assertEqual(provenance(req,p),{"owner":"Delivery workshop","date":"2026-09-17"})
+        self.assertEqual(provenance({"brief":"Review"},{}),{"owner":"unspecified","date":"unspecified"})
+        structured=dict(req,owner="Operations",date="2027-01-02")
+        self.assertEqual(provenance(structured,{}),{"owner":"Operations","date":"2027-01-02"})
+        with self.assertRaises(ContractError): provenance(structured,p)
+        m={k:{"value":structured[k],"source":"structured","evidence":None} for k in ("owner","date")}
+        self.assertEqual(provenance(structured,{"metadata":m}),{k:structured[k] for k in m})
+        m["date"]=copy.deepcopy(BRIEF_METADATA["date"])
+        self.assertEqual(provenance(dict(req,owner="Operations"),{"metadata":m})["date"],"2026-09-17")
+        absent={k:{"value":"unspecified","source":"unspecified","evidence":None} for k in m}
+        self.assertEqual(provenance({"brief":"Review"},{"metadata":absent}),{k:"unspecified" for k in m})
+
+    def test_unsupported_metadata(self):
+        req={"brief":BRIEF_PROVENANCE}
+        for key,value in (("value","Invented"),("value",1),("value",""),("value","x"*2001),
+                          ("source",[]),("source","inferred"),("source","structured"),
+                          ("source","unspecified"),("evidence",None),("evidence",1),
+                          ("evidence","Owner: delivery workshop."),("evidence","x"*48001)):
+            with self.subTest(key=key,value=str(value)[:40]):
+                m=copy.deepcopy(BRIEF_METADATA); m["owner"][key]=value
+                with self.assertRaises(ContractError): provenance(req,{"metadata":m})
+        with self.assertRaises(ContractError):
+            provenance({"brief":"Owner: Another team."},{"metadata":BRIEF_METADATA})
+        for m in (None,[],{},dict(BRIEF_METADATA,extra={})):
+            with self.assertRaises(ContractError): provenance(req,{"metadata":m})
+        m=copy.deepcopy(BRIEF_METADATA); m["owner"]["evidence"]="Document date: 2026-09-17."
+        with self.assertRaises(ContractError): provenance(req,{"metadata":m})
+
+    def test_metadata_plan_and_footer(self):
+        make(self.w); req={"brief":BRIEF_PROVENANCE,"width":800,"height":640,"dark":False}
+        good="Owner: Delivery workshop · Date: 2026-09-17"
+        regenerate(self.w,req,BRIEF_METADATA,good)
+        o=self.w/"output"; p=read_plan(o,req,800,640,read_selector(self.w))
+        master=o/"diagram.inkscape.svg"; footer_check(master,req,p)
+        old=master.read_text()
+        for bad in ("Owner: invented · Date: 2026-09-17",
+                    "Owner: Delivery workshop extra · Date: 2026-09-17",
+                    "Owner: unspecified · Date: unspecified",
+                    good+" · JSON fields absent"):
+            master.write_text(old.replace(good,bad))
+            with self.assertRaises(ContractError): footer_check(master,req,p)
+        master.write_text(old.replace("</svg>",'<text>Owner: unspecified · Date: unspecified</text></svg>'))
+        with self.assertRaises(ContractError): footer_check(master,req,p)
+        p["metadata"]["owner"]["value"]="Invented"
+        write(o/"diagram-plan.json",p)
+        with self.assertRaises(ContractError): read_plan(o,req,800,640,read_selector(self.w))
+
     def test_selector_binding_and_unknown(self):
         s=selector_fixture(self.w); self.assertEqual(read_selector(self.w),s)
         p=self.w/"selector/response.md"; p.write_bytes(p.read_bytes()+b"\n")
@@ -264,6 +353,31 @@ class NativeCases(unittest.TestCase):
         self.assertFalse((self.w/"PWNED").exists())
         return out
     def test_positive_and_no_execution(self): self.checked(0)
+    def test_native_brief_provenance_light_only(self):
+        req={"brief":"Review document, not a slide. Canvas 1600 by 1000, light. "+BRIEF_PROVENANCE,
+             "width":800,"height":640}
+        regenerate(self.w,req,BRIEF_METADATA,"Owner: Delivery workshop · Date: 2026-09-17")
+        rc,out=command([EX/"tools/finish"],self.w); self.assertEqual(rc,0,out)
+        self.checked(0)
+        self.assertFalse(DARK & inventory(self.w/"output"))
+        if args.evidence:
+            shutil.copytree(self.w,args.evidence.resolve()/"brief-provenance",dirs_exist_ok=True)
+        # Rehashing unsupported metadata cannot make it authoritative.
+        o=self.w/"output"; p=load(o/"diagram-plan.json")
+        p["metadata"]["owner"]["value"]="Invented"; write(o/"diagram-plan.json",p)
+        refresh_receipts(self.w); self.checked(contains="unsupported")
+        rc,out=command([EX/"tools/finish"],self.w)
+        self.assertEqual(rc,1,out); self.assertIn("unsupported",out)
+        self.assertFalse((o/"result.json").exists())
+
+    def test_native_structured_precedence(self):
+        req={"brief":BRIEF_PROVENANCE,"owner":"Operations","date":"2027-01-02",
+             "width":800,"height":640,"dark":True}
+        # Legacy plan without metadata uses structured values, even against brief.
+        regenerate(self.w,req,None,"Owner: Operations · Date: 2027-01-02")
+        rc,out=command([EX/"tools/finish"],self.w); self.assertEqual(rc,0,out)
+        self.checked(0)
+
     def test_stale_bindings(self):
         for name in ("request.json","selector/request.md","selector/response.md","selector/diagram-brief.json","output/diagram-plan.json","output/layout.py","output/design-notes.md","output/layout-inputs.json"):
             p=self.w/name; old=p.read_bytes(); p.write_bytes(old+b"\n")
@@ -308,6 +422,12 @@ class NativeCases(unittest.TestCase):
             p=self.w/"output"/n
             p.write_text(p.read_text().replace("</svg>",'<text id="overlap" x="32" y="64" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="#16181d">Collision</text></svg>'))
         refresh_receipts(self.w); self.checked(contains="collision")
+    def test_visible_outer_margin(self):
+        for n in ("diagram.inkscape.svg","diagram-dark.inkscape.svg"):
+            p=self.w/"output"/n
+            p.write_text(p.read_text().replace('id="decision-title" x="32"',
+                                                'id="decision-title" x="8"'))
+        refresh_receipts(self.w); self.checked(contains="minimum outer margin")
     def test_final_native_overflow(self):
         p=self.w/"output/diagram.svg"
         p.write_text(p.read_text().replace("</svg>",'<rect id="outside-final" x="799" y="8" width="20" height="20" fill="#16181d"/></svg>'))
@@ -361,6 +481,10 @@ class NativeCases(unittest.TestCase):
             inspect_svg(final,800,640); n.query(final,kind+"-final-query",800,640)
         # Flipping SVG path direction is rejected even if plan prose is unchanged.
         link=next(v for v in root.iter() if v.get("id")=="link")
+        link.set("d",f'M {a["x"]} {ay} Q {a["x"]} {by} {b["x"]} {by}')
+        E.ElementTree(root).write(master,encoding="utf-8")
+        with self.assertRaisesRegex(ContractError,"arrowhead must point downward"):
+            master_plan(master,p)
         link.set("d",f'M {b["x"]} {by} L {a["x"]} {ay}')
         E.ElementTree(root).write(master,encoding="utf-8")
         with self.assertRaisesRegex(ContractError,"downward"): master_plan(master,p)

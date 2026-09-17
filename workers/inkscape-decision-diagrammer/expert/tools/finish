@@ -47,7 +47,7 @@ def main():
             for stem in stems:
                 master=out/(stem+".inkscape.svg")
                 inspect_svg(master,w,h,master=True); bound_master(master,expected)
-                ids,labels=master_plan(master,p); footer_check(master,req)
+                ids,labels=master_plan(master,p); footer_check(master,req,p)
                 q=native.query(master,stem+"-master-query",w,h); bounds_check(q,p,ids,labels,w,h)
                 boxes[stem+"-master"]=q
                 final=temp/(stem+".svg"); png=temp/(stem+".png")

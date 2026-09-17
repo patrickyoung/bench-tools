@@ -33,6 +33,7 @@ P={"schema":"inkscape-decision-diagrammer.plan/v1","framework":"SWOT Analysis",
  "style":{"font":"Arial, sans-serif","sizes":[24,18,16],"weights":[400,600],"margin":M,
  "tokens":{"canvas":{"light":"#fafaf8","dark":"#16181d"},"ink":{"light":"#16181d","dark":"#fafaf8"},
            "accent":{"light":"#145da0","dark":"#8dc8ff"}},"semantic_channels":[]}}
+if "metadata" in data: P["metadata"]=data["metadata"]
 write(O/"diagram-plan.json",P)
 bindings=dict(data["inputs"])
 for name in ("layout.py","layout-inputs.json","diagram-plan.json","design-notes.md"):
@@ -64,5 +65,5 @@ for dark in [False,True] if data["dark"] else [False]:
         label(g,i["label_id"],x-cw/2+16,y+5,i["label"])
     label(layers["labels"],"unplaced-heading",M,tray[1],"Unplaced — evidence required",18,600)
     label(layers["title-block"],"decision-title",M,64,"Where should we investigate next?",24,600)
-    label(layers["annotation"],"footer",M,H-M,"Owner: unspecified · Date: unspecified · Basis: supplied fixture")
+    label(layers["annotation"],"footer",M,H-M,data.get("footer","Owner: unspecified · Date: unspecified · Basis: supplied fixture"))
     E.ElementTree(root).write(O/("diagram-dark.inkscape.svg" if dark else "diagram.inkscape.svg"),encoding="utf-8",xml_declaration=True)

@@ -116,9 +116,19 @@ def receipt_check(r,root,hashes,files,w,h,dark):
             if len(a)!=10 or a[1:8]!=["--export-type=png","--export-area-page","--export-width",str(tw),"--export-height",str(th),"--export-filename"] or a[-1]!=final:
                 fail("thumbnail argv")
 
-def footer_check(path,req):
+def footer_check(path,req,plan):
+    from plan_contract import provenance
+    values=provenance(req,plan)
     root=ET.fromstring(bounded_regular_bytes(path,16*1024*1024,"master"))
-    live=" ".join("".join(e.itertext()) for e in root.iter() if local(e.tag)=="text").lower()
-    for field in ("owner","date"):
-        value=req.get(field,"unspecified").lower()
-        if field+": "+value not in live: fail("visible "+field+" footer missing or invented")
+    texts=["".join(e.itertext()) for e in root.iter() if local(e.tag)=="text"]
+    # One text element (tspans allowed), not a second API-metadata disclaimer.
+    candidates=[t for t in texts if re.search(r"\b(?:owner|date):",t,re.I)]
+    if len(candidates)!=1: fail("one clean provenance footer required")
+    footer=candidates[0]
+    for field,value in values.items():
+        if len(re.findall(r"\b"+field+r":",footer,re.I))!=1:
+            fail("duplicate/missing provenance footer label")
+        pattern=r"(?i:\b"+field+r":)\s*"+re.escape(value)+r"(?=\s*(?:[|·;]|$))"
+        if not re.search(pattern,footer): fail("visible "+field+" footer missing or invented")
+    if re.search(r"request\.json|\bJSON\b|top[- ]level|(?:missing|absent)\s+(?:request|field)|(?:request|field)\s+(?:missing|absent)",footer,re.I):
+        fail("provenance footer must not expose implementation commentary")

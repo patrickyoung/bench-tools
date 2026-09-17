@@ -42,8 +42,14 @@ Positive example (only brief required):
 
     {"brief":"Workshop SWOT: decide where to investigate next. Existing support is an internal strength, slow onboarding an internal weakness. No evidence for external opportunities or threats; leave those regions empty. Audience: operations leads. Owner and date unspecified."}
 
-Optional width/height default 1600/1000, bounded 640–4096. Slide/dark brief
-triggers same-geometry dark output unless dark:false. No invented owner/date.
+Optional width/height default 1600/1000, bounded 640–4096. Positive slide/dark
+medium cues trigger same-geometry dark output; negated cues do not. Clear
+light-only instructions suppress inference. Explicit boolean dark always wins;
+use it for ambiguous prose. See CONTRACT.md for the bounded heuristic.
+Structured owner/date win; otherwise explicit brief provenance may be recorded
+in optional bound plan metadata with exact quotes. Unsupported claims reject.
+One clean Owner/Date footer; unspecified only when genuinely absent. Notes
+explain provenance, not visible API-field commentary.
 The selector consumer preserves `bench.diagram-brief/v1`; see CONTRACT.md and
 references/selector-contract.md for exact identity/binding/placement rules.
 
@@ -84,7 +90,7 @@ outside the page. Master AND outlined exports are independently re-queried.
 Live text extents check label pairs, declared card containment and disjoint
 relationships (not naive parent/child or bubble collisions). Declared flat
 surface contrast uses actual paints/bounds; typography limits are checked.
-Footer presence and content require human review. Dark masters must have identical geometry/text/typography.
+Resolved footer values and one labeled footer are checked; semantic provenance and visual presentation still require human review. Dark masters must have identical geometry/text/typography.
 Native independent master export and final render pixels must each equal the
 supplied PNG. Preview correspondence is checked when present.
 

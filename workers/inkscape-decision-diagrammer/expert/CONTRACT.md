@@ -8,8 +8,17 @@ keys: integer width/height in [640,4096], defaults 1600/1000; boolean dark;
 nonblank owner/date/palette strings ≤2,000 characters. Duplicate keys, NaN,
 Infinity, unknown fields and executable input fields are rejected.
 “Run …” inside brief or a label is retained data, never executed.
-Dark explicit true/false wins; else case-insensitive dark-mode/dark mode,
-dark-deck/dark deck, slide/slides triggers it.
+Dark explicit boolean true/false always wins. Otherwise `dark_requested` is a
+small case-insensitive conservative heuristic: slide/slides, dark-mode/dark mode
+or dark-deck/dark deck trigger a companion unless locally negated. Clauses split
+at comma, semicolon, sentence punctuation or newline; not/no/without/avoid/never
+with up to four simple linking words negate a following cue. “Slides are not
+required/needed/wanted” and “slides unnecessary” are also negative. A positive
+cue in another clause still counts. Clear light-only/light theme only, only
+light, use/keep/remain light, “Canvas …, light.”, or no/without dark instructions
+override inferred medium (unless locally negated), not the explicit boolean.
+This is not general language parsing; for ambiguous scope, quotations, double
+negation or unsupported phrasing, caller supplies `dark: true` or `dark: false`.
 
 Selector directory, if present, contains exactly all three files. JSON/request
 ≤1 MiB, response ≤256 KiB. `references/selector-contract.md` is the original
@@ -55,12 +64,41 @@ quantitative units/formulas; grid exceptions; tokens/type/contrast surfaces;
 owner/date (unspecified if absent); remaining human review tasks. Include
 “Visual review pending”. Do not infer viewing from CLI checks.
 
+### Visible provenance
+Use ONE clean live-text footer (one SVG text element, tspans allowed) with
+`Owner: VALUE | Date: VALUE` and optional evidence basis. Separators may be `|`,
+`·` or `;`. Values must match resolved provenance exactly, not just a prefix.
+Exactly one Owner: and Date: label in that footer; no second fallback footer.
+Never display JSON field absence, top-level request commentary or other API
+details in the drawing. Put source/quote explanations, structured precedence
+and genuine gaps in design-notes.md instead. The checker enforces resolved
+values, one labeled footer and common implementation-commentary patterns;
+human review still checks meaningful provenance and visible presentation.
+
 ## Geometry plan v1
 JSON schema string: `inkscape-decision-diagrammer.plan/v1`.
-All top-level keys required, no extras:
+All top-level keys below required except `metadata`; no extras:
 - schema; framework (canonical spelling from framework reference); grammar
   (nonblank actual rules/evidence); decision; audience; axes (nonblank exact
   meaning/direction in this decision).
+- metadata (optional): exactly `{owner: row, date: row}`, each row exactly
+  `{value, source, evidence}`. Value is a nonblank string ≤2,000 characters;
+  source is `"structured"`, `"brief"` or `"unspecified"`.
+  Structured request fields take precedence per field: when present the row
+  must use source structured, the exact request value, and evidence null.
+  Otherwise brief source requires a nonblank exact quote ≤48,000 characters
+  present verbatim in the CURRENT brief, with value verbatim inside that quote.
+  Quote an explicit owner/date statement, not a coincidental mention. Otherwise
+  source unspecified requires value `"unspecified"` and evidence null.
+  No inferred dates, clock values or invented owners. No additional row keys.
+  Without metadata, legacy plans resolve directly from structured fields or
+  unspecified; they cannot make unbound brief claims. When provenance is supplied
+  only in the brief, author metadata rather than showing unspecified.
+  The full plan is already bound in master source hashes and render/result
+  receipts; finish and check both validate metadata and the resolved footer.
+  Quote inclusion is mechanically checked, not semantic entailment or absence
+  of provenance in arbitrary prose. Author/reviewer must ensure unspecified
+  means genuinely absent from both sources, and flag conflicting brief claims.
 - regions: ordered list of `{id,label,box,meaning}`. `box=[x,y,width,height]`
   is a positive rectangular ALLOCATION, not a mandate to draw a box. Retain
   empty regions. For Cynefin the actual boundary is soft, allocation can
@@ -82,6 +120,8 @@ All top-level keys required, no extras:
   Wardley dependency paths use absolute M/L/Q/C, attach to a rect/circle mark,
   downward source→target, solid local marker-end. No transformed dependencies
   or marks; use explicit coordinates. Movement dashed, uncertain timing.
+  The final L/Q/C tangent must point downward too; a lower endpoint alone does
+  not justify a sideways or upward arrowhead.
 - omissions: list `{source_ids:[...],reason}`; no displayed source also omitted.
   Clusters use items.source_ids, evidence/reason in notes. Each source exactly
   once across shown/omitted. Connected selector items cannot be clustered/cut.
@@ -89,6 +129,9 @@ All top-level keys required, no extras:
 - math: `{}` unless applicable; arithmetic contracts below.
 - geometry: `{anchors,contains,disjoint,overlaps,contrast}`.
   anchors list `{id,x,y}` computed structural anchors divisible by 8.
+  All live text and item marks must fit the actual native canvas inset of
+  `48 × min(width/1600,height/1000)` on every edge. Check glyph bounds, including
+  rotated titles and footer descenders, not just nominal baseline positions.
   contains list `{inner,outer,padding}` SVG IDs; native text extents must fit.
   disjoint list `[id1,id2]`; native bounds must not intersect.
   overlaps list `{ids:[id1,id2],reason}` only for intentional SEMANTIC overlap

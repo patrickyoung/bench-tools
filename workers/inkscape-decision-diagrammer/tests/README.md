@@ -28,3 +28,19 @@ layout.py, its documented JSON inputs and design-notes.md into a new directory;
 record master/plan hashes, rerun Python from a DIFFERENT cwd and compare bytes.
 Native finish is a separate step. The checker intentionally does not do this.
 
+
+Provenance/medium regression (bounded correction):
+- Brief-only Owner/Document date quotes, structured precedence, mixed sources,
+  legacy/no metadata and genuine absence; malformed/oversize/source/value/quote
+  claims reject. Single footer, wrong/prefix values and duplicate/API footer
+  reject. Exact quotes do not prove semantic attribution; that remains review.
+- Ordinary slides/dark decks, negation, independent positive cue, light-only,
+  no dark companion, canvas light, and boolean overrides in both directions.
+- Native fixture regenerated with brief-only provenance + negated slide/light
+  request passes finish/check without dark outputs; unsupported claims reject
+  even after receipt rehash. Structured legacy provenance also passes natively.
+Run all without models or touching pinned exports:
+    mkdir -p validation/correction-tmp
+    TMPDIR="$PWD/validation/correction-tmp" python3 tests/run.py expert --native --evidence validation/correction-native
+    brief lint -strict expert/skills
+    hire verify expert

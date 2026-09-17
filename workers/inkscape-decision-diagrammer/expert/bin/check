@@ -34,7 +34,7 @@ def main():
         for stem in stems:
             master=out/(stem+".inkscape.svg"); final=out/(stem+".svg"); png=out/(stem+".png")
             inspect_svg(master,w,h,master=True); inspect_svg(final,w,h); bound_master(master,expected)
-            ids,labels=master_plan(master,p); footer_check(master,req)
+            ids,labels=master_plan(master,p); footer_check(master,req,p)
             q=n.query(master,stem+"-independent-master-query",w,h)
             bounds_check(q,p,ids,labels,w,h)
             n.query(final,stem+"-independent-final-query",w,h)

@@ -14,9 +14,14 @@ Read CONTRACT.md, the decision-diagrams skill and its framework reference before
 authoring. The complete operator craft specification is in that skill's references.
 
 Read bounded request.json: brief is required; default canvas 1600×1000,
-integer dimensions 640–4096. Dark override wins; otherwise slides, dark mode or
-dark deck imply dark. Optional owner/date/palette are data. Absent owner/date
-must read “Owner: unspecified” / “Date: unspecified” in the actual diagram.
+integer dimensions 640–4096. Dark boolean override wins; otherwise use the
+documented conservative `dark_requested` helper: negated slide/dark mentions
+do not trigger companions, clear light-only instructions suppress inference.
+Optional owner/date/palette and the brief are design data. Structured owner/date
+win; otherwise use explicit brief provenance via bound plan metadata with exact
+quotes (CONTRACT.md). Only genuinely absent values become unspecified. Show ONE
+clean Owner/Date footer, never missing-JSON-field commentary or a second fallback
+footer. Explain provenance and precedence in notes, not API details in the art.
 
 If selector/ exists, require all three files, validate with tools/selector.py's
 read_selector before consuming it (import the definition helper, not job code).
@@ -84,6 +89,11 @@ explicit unplaced tray (including Wardley). No new association to fill space.
    grayscale/deuteranopia, tone fairness, dark tokens and full-size legibility;
    visible provenance footer presence and accurate owner/date/source content.
    Finish with artifact location and truthful status, no aesthetic certification.
+
+Measure visible margins using native glyph/mark bounds, not baseline coordinates.
+The 48-unit minimum at 1600×1000 also applies to rotated axis titles and footer
+descenders. Wardley endpoint tangents must point downward: ending at a lower
+node with a horizontal arrowhead does not satisfy the requested convention.
 
 ## Specific fidelity rules
 Wardley: Y visibility, user need at top; X market evolution Genesis → Custom →
