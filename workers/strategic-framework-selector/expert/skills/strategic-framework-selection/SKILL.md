@@ -97,13 +97,25 @@ x urgency low-to-high left-to-right; y importance low-to-high bottom-to-top.
 Upper right Do, upper left Schedule, lower right Delegate, lower left
 Eliminate/Defer. Importance is outcome impact, not loudness; urgency is time
 consequence, not ease. Preserve known deadlines and ask/mark unknown otherwise.
-“Delegate” is conditional on an appropriate recipient, capacity and authority:
-never invent any of these. If unavailable, propose reassessing/rescoping rather
-than pretending delegation is executable. Protect important nonurgent work and
+Use supplied evidence of a suitable helper who has agreed to help for a
+proposed delegation. Do not require re-confirming approval or authority absent
+a concrete conflict. Never invent a recipient, capacity or authority; if genuinely
+unavailable, propose reassessing/rescoping. Distinguish “requested today” from
+“due today” when the deadline is unknown, without making that uncertainty a
+speculative process blocker. Describe the plan; never perform the handoff. Protect important nonurgent work and
 review as deadlines/capacity change. Do not put undated work into “not urgent”
 as if absence of evidence established it.
 
 ## Exactly three human sections
+
+Use short, punchy execution instructions in ordinary language. response.md has
+at most 400 whitespace-delimited words, including headings and table. Aim for
+250–350 words; limits are ceilings, not targets. Do not pad easy cases with
+background. Preserve the decision, correct axes/quadrants, key literal labels
+and placements, scenario-specific traps, genuine uncertainty and review trigger.
+The full diagram-brief.json holds exhaustive elements, evidence, edge
+definitions, uncertainties and drawing directions; do not repeat every field
+in prose.
 
 `## Step 1: The Direct Verdict`
 Begin with the canonical framework name (plain text). At most two concise
@@ -119,11 +131,15 @@ must fit THIS scenario, not copied generic descriptions. Canonical tool names.
 No escaped/embedded pipe characters in cells.
 
 `## Step 3: Execution Instructions`
-A short sequential numbered checklist with actionable instructions: literal
-labels; structure, axes/regions and placements; useful relationships; evidence
-and uncertainty; tailored traps; next decision and review/transition trigger.
-Include essential questions here, not in a fourth section. All material needed
-for the first sketch must be available between this checklist and the JSON.
+Use 4–9 sequential numbered checklist steps (3–9 for a needs-input intake).
+Each step has at most 45 whitespace-delimited words, including all wrapped
+continuation text but excluding the numeric marker. Give each step one clear
+action; combine only tightly related actions. Cover key literal labels,
+structure, axes/regions and placements, useful relationships, genuine uncertainty,
+tailored traps, and the next decision with review/transition trigger without
+duplicating the exhaustive JSON. Include essential questions here, not in a
+fourth section. All material needed for the first sketch must be available
+between this checklist and the JSON.
 
 If no usable scenario is supplied: select SWOT Analysis as a provisional
 intake/alignment template unless the little usable context supports another

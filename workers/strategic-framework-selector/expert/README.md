@@ -47,14 +47,25 @@ request and response SHA-256 bytes. Do not normalize line endings afterward.
 Final human stdout repeats the response; evidence/logs belong outside the
 definition. Ready means handoff ready for review, never implemented.
 
+The human response is capped at 400 whitespace-delimited words, including
+headings and table; aim for 250–350 without padding. Verdict: at most two
+sentences. Step 3: 4–9 numbered steps (3–9 for needs-input), at most 45 words
+each including wrapped continuations and excluding numeric markers. One clear
+action per step; combine only tightly related actions. Retain key geometry,
+labels, placements, traps, uncertainty and review trigger, leaving exhaustive
+detail in JSON. Supplied agreement from a suitable helper supports a proposed
+delegation, not speculative approval blockers or an actual handoff.
+
 ## Validation and examples
 
 Synthetic suite, kept beside rather than inside this reusable definition:
 
     python3 tests/regression.py expert
+    brief lint -strict expert/skills
 
 It takes an expert path, creates disposable workspaces, invokes only bin/check,
-and tests all four layouts, intake and negative mutations. It makes no model
+and tests all four layouts, intake and negative mutations, including total and
+wrapped-step word ceilings and short/long checklists. It makes no model
 calls. Its fixture responses are structural examples, NOT model-quality evidence.
 Do not copy synthetic cases/results into the reusable expert.
 
@@ -90,7 +101,8 @@ artifacts with the original request; review independently:
 - Prose and JSON agree; no claim of rendering, implementation or certification.
 
 The checker proves bounded regular UTF-8 files, hashes, JSON/response shape,
-canonical geometry and valid references, not strategic truth, lack of bias,
+canonical geometry, valid references, word ceilings and checklist counts, not
+strategic truth, lack of bias,
 evidence sufficiency, prose quality or drawing quality. No live model quality
 is claimed by a synthetic pass. Source summaries/attribution: PROVENANCE.md.
 MIT applies only to original worker code/prose, not the named frameworks.

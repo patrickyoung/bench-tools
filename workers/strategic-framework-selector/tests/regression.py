@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -204,7 +205,7 @@ def main():
     passed = failed = 0
 
     def run(name, index=0, intake=False, mutate=None, response_edit=None,
-            disk=None, expect=1):
+            disk=None, expect=1, diagnostic=None):
         nonlocal passed, failed
         request, response, data = fixture(index, intake)
         if mutate:
@@ -232,6 +233,8 @@ def main():
             okay = proc.returncode == expect and before == snapshot()
             if expect == 1:
                 okay = okay and b"invalid:" in proc.stderr and b"Traceback" not in proc.stderr
+            if diagnostic:
+                okay = okay and diagnostic.encode() in proc.stderr
             if okay:
                 passed += 1
                 print("PASS " + name)
@@ -340,6 +343,63 @@ def main():
     ]
     for name, edit in edits:
         run(name, response_edit=edit)
+
+    # Boundary fixtures isolate each ceiling, with hashes refreshed by run().
+    # Repeated tokens here measure structure, not recommended writing style.
+    def total_words(response, count):
+        missing = count - len(response.split())
+        assert missing >= 0
+        response = response.replace("| Dispatch component evolution |",
+                                    "| " + "detail " * missing +
+                                    "Dispatch component evolution |", 1)
+        assert len(response.split()) == count
+        return response
+
+    def step_words(response, count, which=1, wrapped=True):
+        prefix, checklist = response.split(HEADINGS[2])
+        steps = list(re.finditer(r"^\d+\. ", checklist, re.M))
+        start = steps[which - 1].end()
+        end = steps[which].start() if which < len(steps) else len(checklist)
+        # Tabs, blank lines, and Unicode whitespace all delimit words.
+        words = ["Review"] + ["evidence"] * (count - 1)
+        text = (" ".join(words[:20]) + "\n\n    " +
+                "\t\u2003".join(words[20:])) if wrapped else " ".join(words)
+        result = prefix + HEADINGS[2] + checklist[:start] + text + "\n" + checklist[end:]
+        assert len(text.split()) == count and len(result.split()) < 400
+        return result
+
+    def checklist_count(response, count):
+        prefix, _ = response.split(HEADINGS[2])
+        return prefix + HEADINGS[2] + "\n\n" + "\n".join(
+            f"{i}. Review the placement evidence." for i in range(1, count + 1)) + "\n"
+
+    run("positive exactly 400 total words", response_edit=lambda s: total_words(s, 400),
+        expect=0)
+    run("overlong total 401 words with valid steps",
+        response_edit=lambda s: total_words(s, 401),
+        diagnostic="exceeds 400 whitespace words")
+    for which in (1, 4):
+        run(f"positive wrapped step {which} exactly 45 words",
+            response_edit=lambda s, n=which: step_words(s, 45, n), expect=0)
+        run(f"overlong wrapped step {which} under total ceiling",
+            response_edit=lambda s, n=which: step_words(s, 46, n),
+            diagnostic=f"step {which} exceeds 45 whitespace words")
+    run("overlong unwrapped step under total ceiling",
+        response_edit=lambda s: step_words(s, 46, wrapped=False),
+        diagnostic="step 1 exceeds 45 whitespace words")
+    for intake, counts in ((False, (3, 4, 9, 10)), (True, (2, 3, 9, 10))):
+        minimum = 3 if intake else 4
+        for count in counts:
+            valid = minimum <= count <= 9
+            run(f"{'intake' if intake else 'scenario'} checklist {count} steps",
+                index=2, intake=intake,
+                response_edit=lambda s, n=count: checklist_count(s, n),
+                expect=0 if valid else 1,
+                diagnostic=None if valid else f"checklist needs {minimum}–9 steps")
+    run("ready cannot use three-step intake allowance", index=3,
+        mutate=patch(["status"], "ready"),
+        response_edit=lambda s: checklist_count(s, 3),
+        diagnostic="checklist needs 4–9 steps")
 
     brief_path = "output/diagram-brief.json"
     run("missing response", disk=lambda w: (w / "output/response.md").unlink())

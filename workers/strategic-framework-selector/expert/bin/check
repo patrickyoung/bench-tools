@@ -137,7 +137,8 @@ def finite_float(value):
     return result
 
 
-def response_check(response, framework):
+def response_check(response, framework, status):
+    require(len(response.split()) <= 400, "response: exceeds 400 whitespace words")
     headings = list(re.finditer(r"^ {0,3}#{1,6}[ \t]+.*$", response, re.M))
     require([m.group().rstrip() for m in headings] == list(HEADINGS),
             "response: exactly three required headings, in order")
@@ -172,9 +173,17 @@ def response_check(response, framework):
     require(all(row[2] in ("Low", "Medium", "High") for row in table[2:]),
             "response: setup time must be Low/Medium/High")
     require(sections[2].startswith("1. "), "response: missing numbered checklist")
-    numbers = re.findall(r"^([0-9]+)\.[ \t]+\S", sections[2], re.M)
+    steps = list(re.finditer(r"^([0-9]+)\.[ \t]+(?=\S)", sections[2], re.M))
+    numbers = [step.group(1) for step in steps]
     require(bool(numbers) and numbers == [str(i) for i in range(1, len(numbers) + 1)],
             "response: checklist must be sequential")
+    minimum = 3 if status == "needs-input" else 4
+    require(minimum <= len(steps) <= 9,
+            f"response: checklist needs {minimum}–9 steps")
+    for i, step in enumerate(steps):
+        end = steps[i + 1].start() if i + 1 < len(steps) else len(sections[2])
+        require(len(sections[2][step.end():end].split()) <= 45,
+                f"response: step {i + 1} exceeds 45 whitespace words")
     require(not re.search(r"^\s*\|", sections[0] + "\n" + sections[2], re.M),
             "response: table outside Step 2")
 
@@ -300,7 +309,7 @@ def package_check(data, request_raw, request, response_raw, response):
                 "needs-input: unknowns and questions required")
     if data["status"] == "ready":
         require(bool(elements), "ready: no populated handoff")
-    response_check(response, framework)
+    response_check(response, framework, data["status"])
 
 
 def main():

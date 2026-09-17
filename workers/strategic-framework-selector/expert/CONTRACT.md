@@ -151,11 +151,28 @@ headings (including setext headings or standalone separators). Verdict starts wi
 concise sentences. Step 2 contains only the four-column Markdown table:
 Tool | Primary Metric | Strategic Setup Time | Actionable Output.
 Exactly three distinct tool rows, selected first, each time Low/Medium/High.
-Step 3 starts a sequential `1.`, `2.`, … numbered checklist (continuations are
-allowed). No fourth appendix. Do not put other Markdown tables in the response.
+response.md contains at most 400 whitespace-delimited words, counting headings,
+numeric markers and the table (including standalone Markdown tokens). Aim for
+250–350 words, not padding; there is no minimum word count.
+Step 3 contains 4–9 sequential `1.`, `2.`, … numbered checklist steps; a
+`needs-input` intake may use 3–9. Each step contains at most 45 whitespace-delimited
+words excluding its numeric marker. All text after that marker up to the next
+step or end of section, including wrapped continuations, counts toward that
+step. Counts use Python's Unicode whitespace `str.split()` semantics.
+Give each step one clear action, combining only tightly related actions.
+No fourth appendix. Do not put other Markdown tables in the response.
+
+Preserve the decision, correct axes/quadrants, key literal labels and placements,
+scenario-specific traps, genuine uncertainty and review trigger. Keep exhaustive
+elements, evidence, edge definitions, uncertainties and drawing directions in
+diagram-brief.json rather than repeating them in prose. Use ordinary language.
+Do not invent process blockers: a suitable helper's supplied agreement supports
+a proposed delegation unless a concrete conflict exists. Retain real unknowns
+without burying the plan; the worker never performs the handoff.
 
 The checker enforces file safety, shape, identity bindings, geometry, references,
-and basic response structure. It does not infer whether prose is true, concise,
+response structure, total/per-step word ceilings and checklist length. It does
+not infer whether prose is true, punchy,
 unbiased, contextual, or exactly two linguistic sentences; it cannot certify
 strategy, evidence sufficiency, semantic parity of prose/JSON, or drawing quality.
 Operator review uses the behavioral rubric in README.md.

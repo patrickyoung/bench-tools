@@ -36,6 +36,20 @@ The checker does not decide strategic fitness: review that yourself.
 
 The human response must be exactly the three specified sections, in the file
 and in the final answer (return that response without a fourth status section).
+Keep response.md at most 400 whitespace-delimited words, including headings and
+table; aim for 250–350, not padding. Step 3 has 4–9 sequential numbered steps
+(3–9 for needs-input), each at most 45 words including wrapped continuation
+text but excluding its numeric marker. Verdict stays at most two sentences.
+Use ordinary language and one clear action per step; combine only tightly
+related actions. Preserve the decision, correct geometry, key literal labels
+and placements, scenario-specific traps, genuine uncertainty and review trigger.
+Keep exhaustive elements, evidence, edge definitions, uncertainties and drawing
+directions in JSON rather than repeating them in prose.
+Use a supplied suitable helper's agreement when proposing delegation; do not
+invent approval/authority blockers without a concrete conflict. Preserve real
+unknowns (such as requested today versus due today) without burying the plan.
+This worker only describes the plan and never performs a handoff.
+
 The JSON is a handoff for a separately selected diagramming expert, not a
 rendering request executed here. `ready` means ready for human handoff review,
 not strategically certain, approved, drawn or implemented.
