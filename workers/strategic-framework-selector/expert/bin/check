@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""Read-only structural validation. No worker code, paths, or stdin executed."""
+import hashlib
+import json
+import math
+import os
+import re
+import stat
+import sys
+
+FRAMEWORKS = ("Wardley Mapping", "Cynefin Framework", "SWOT Analysis",
+              "Eisenhower Matrix")
+HEADINGS = ("## Step 1: The Direct Verdict",
+            "## Step 2: High-Level Contextual Comparison",
+            "## Step 3: Execution Instructions")
+REGIONS = {
+    FRAMEWORKS[0]: [
+        ("genesis", "Genesis", "column-1"),
+        ("custom-built", "Custom-built", "column-2"),
+        ("product", "Product (+rental)", "column-3"),
+        ("commodity", "Commodity (+utility)", "column-4")],
+    FRAMEWORKS[1]: [
+        ("complex", "Complex", "upper-left"),
+        ("complicated", "Complicated", "upper-right"),
+        ("clear", "Clear (Simple/Obvious)", "lower-right"),
+        ("chaotic", "Chaotic", "lower-left"),
+        ("confused", "Confused/Disorder", "center")],
+    FRAMEWORKS[2]: [
+        ("strengths", "Strengths", "upper-left"),
+        ("weaknesses", "Weaknesses", "upper-right"),
+        ("opportunities", "Opportunities", "lower-left"),
+        ("threats", "Threats", "lower-right")],
+    FRAMEWORKS[3]: [
+        ("do", "Do", "upper-right"),
+        ("schedule", "Schedule", "upper-left"),
+        ("delegate", "Delegate", "lower-right"),
+        ("eliminate-defer", "Eliminate/Defer", "lower-left")],
+}
+
+
+def axis(label, direction, values):
+    return dict(label=label, direction=direction, values=values)
+
+
+AXES = {
+    FRAMEWORKS[0]: {
+        "mode": "qualitative",
+        "x": axis("Evolution", "left-to-right",
+                  ["Genesis", "Custom-built", "Product (+rental)",
+                   "Commodity (+utility)"]),
+        "y": axis("Visibility to the user", "bottom-to-top", ["Low", "High"])},
+    FRAMEWORKS[1]: {"mode": "no-numeric-axes"},
+    FRAMEWORKS[2]: {
+        "mode": "categorical",
+        "x": axis("Effect", "left-to-right", ["Helpful", "Harmful"]),
+        "y": axis("Origin", "top-to-bottom", ["Internal", "External"])},
+    FRAMEWORKS[3]: {
+        "mode": "qualitative",
+        "x": axis("Urgency", "left-to-right", ["Low", "High"]),
+        "y": axis("Importance", "bottom-to-top", ["Low", "High"])},
+}
+
+
+class Invalid(ValueError):
+    pass
+
+
+def require(ok, message):
+    if not ok:
+        raise Invalid(message)
+
+
+def keys(value, names, where):
+    require(isinstance(value, dict), where + ": expected object")
+    require(set(value) == set(names.split()), where + ": missing/extra fields")
+
+
+def text(value, where):
+    require(isinstance(value, str) and bool(value.strip()),
+            where + ": expected nonblank string")
+    try:
+        value.encode("utf-8")
+    except UnicodeError:
+        raise Invalid(where + ": invalid Unicode")
+
+
+def texts(value, where, minimum=0, maximum=None):
+    require(isinstance(value, list), where + ": expected array")
+    require(len(value) >= minimum and (maximum is None or len(value) <= maximum),
+            where + ": invalid count")
+    for item in value:
+        text(item, where)
+
+
+def choice(value, choices, where):
+    require(isinstance(value, str) and value in choices, where + ": invalid value")
+
+
+def boolean(value, where):
+    require(type(value) is bool, where + ": expected boolean")
+
+
+def safe_read(name, maximum, directory=None, allow_empty=False):
+    info = os.stat(name, dir_fd=directory, follow_symlinks=False)
+    require(stat.S_ISREG(info.st_mode), name + ": expected regular non-symlink file")
+    require(info.st_size <= maximum, name + ": file too large")
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                 dir_fd=directory)
+    with os.fdopen(fd, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        require(stat.S_ISREG(info.st_mode), name + ": not a regular file")
+        raw = stream.read(maximum + 1)
+    require(len(raw) <= maximum, name + ": file too large")
+    require(allow_empty or bool(raw), name + ": empty file")
+    try:
+        decoded = raw.decode("utf-8")
+    except UnicodeError:
+        raise Invalid(name + ": invalid UTF-8")
+    return raw, decoded
+
+
+def object_pairs(pairs):
+    obj = {}
+    for key, value in pairs:
+        require(key not in obj, "JSON: duplicate key " + key[:60])
+        obj[key] = value
+    return obj
+
+
+def bad_constant(value):
+    raise Invalid("JSON: nonfinite number")
+
+
+def finite_float(value):
+    result = float(value)
+    require(math.isfinite(result), "JSON: nonfinite number")
+    return result
+
+
+def response_check(response, framework):
+    headings = list(re.finditer(r"^ {0,3}#{1,6}[ \t]+.*$", response, re.M))
+    require([m.group().rstrip() for m in headings] == list(HEADINGS),
+            "response: exactly three required headings, in order")
+    require(not re.search(r"^ {0,3}(?:={3,}|-{3,})[ \t]*$", response, re.M),
+            "response: setext heading or extra separator not allowed")
+    require(not response[:headings[0].start()].strip(), "response: unexpected preamble")
+    sections = []
+    for i, heading in enumerate(headings):
+        end = headings[i + 1].start() if i < 2 else len(response)
+        sections.append(response[heading.end():end].strip())
+    require(re.match(re.escape(framework) + r"(?:\s|[—:.,;-]|$)", sections[0]),
+            "response: verdict must start with selected framework")
+    lines = [line.strip() for line in sections[1].splitlines() if line.strip()]
+    require(len(lines) == 5, "response: table needs header, separator and three rows")
+
+    def cells(line):
+        require(line.startswith("|") and line.endswith("|"),
+                "response: table requires outer pipes")
+        result = [part.strip() for part in line[1:-1].split("|")]
+        require(len(result) == 4 and all(result), "response: table must have four columns")
+        return result
+
+    table = [cells(line) for line in lines]
+    require(table[0] == ["Tool", "Primary Metric", "Strategic Setup Time",
+                          "Actionable Output"], "response: wrong table header")
+    require(all(re.fullmatch(r":?-{3,}:?", cell) for cell in table[1]),
+            "response: invalid table separator")
+    names = [row[0] for row in table[2:]]
+    require(names[0] == framework and len(set(names)) == 3
+            and all(name in FRAMEWORKS for name in names),
+            "response: selected-first/distinct framework rows required")
+    require(all(row[2] in ("Low", "Medium", "High") for row in table[2:]),
+            "response: setup time must be Low/Medium/High")
+    require(sections[2].startswith("1. "), "response: missing numbered checklist")
+    numbers = re.findall(r"^([0-9]+)\.[ \t]+\S", sections[2], re.M)
+    require(bool(numbers) and numbers == [str(i) for i in range(1, len(numbers) + 1)],
+            "response: checklist must be sequential")
+    require(not re.search(r"^\s*\|", sections[0] + "\n" + sections[2], re.M),
+            "response: table outside Step 2")
+
+
+def package_check(data, request_raw, request, response_raw, response):
+    keys(data, "schema request_sha256 response_sha256 framework status title audience "
+         "decision uncertainty questions layout elements relationships legend traps review",
+         "brief")
+    require(data["schema"] == "bench.diagram-brief/v1", "brief: wrong schema")
+    for name, raw in (("request", request_raw), ("response", response_raw)):
+        require(data[name + "_sha256"] == hashlib.sha256(raw).hexdigest(),
+                "brief: stale/wrong " + name + " SHA-256")
+    choice(data["framework"], FRAMEWORKS, "framework")
+    framework = data["framework"]
+    wardley = framework == FRAMEWORKS[0]
+    choice(data["status"], ("ready", "provisional", "needs-input"), "status")
+    for field in ("title", "audience", "decision"):
+        text(data[field], field)
+    keys(data["uncertainty"], "assumptions unknowns", "uncertainty")
+    for field in ("assumptions", "unknowns"):
+        texts(data["uncertainty"][field], "uncertainty." + field)
+    texts(data["questions"], "questions", maximum=3)
+    texts(data["legend"], "legend", minimum=1)
+    texts(data["traps"], "traps", minimum=1)
+    keys(data["review"], "next_decision trigger scope transition", "review")
+    for field, value in data["review"].items():
+        text(value, "review." + field)
+
+    layout = data["layout"]
+    keys(layout, "orientation axes regions", "layout")
+    require(layout["orientation"] == "landscape", "layout: wrong orientation")
+    require(layout["axes"] == AXES[framework], "layout: framework axes mismatch")
+    require(isinstance(layout["regions"], list)
+            and len(layout["regions"]) == len(REGIONS[framework]),
+            "layout: missing/extra regions")
+    seen = set()
+
+    def new_id(value):
+        require(isinstance(value, str)
+                and re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value),
+                "IDs: invalid ID")
+        require(value not in seen, "IDs: duplicate " + value)
+        seen.add(value)
+
+    region_ids = set()
+    for region, expected in zip(layout["regions"], REGIONS[framework]):
+        keys(region, "id label position definition", "region")
+        require(tuple(region[k] for k in ("id", "label", "position")) == expected,
+                "layout: framework region mismatch")
+        text(region["definition"], "region.definition")
+        new_id(region["id"])
+        region_ids.add(region["id"])
+
+    require(isinstance(data["elements"], list), "elements: expected array")
+    elements = {}
+    for element in data["elements"]:
+        keys(element, "id label role placement basis evidence reason uncertain", "element")
+        new_id(element["id"])
+        for field in ("label", "evidence", "reason"):
+            text(element[field], "element." + field)
+        choice(element["role"], ("user", "need", "component") if wardley else ("item",),
+               "element.role")
+        choice(element["basis"], ("supplied", "inferred", "proposed", "unknown"),
+               "element.basis")
+        boolean(element["uncertain"], "element.uncertain")
+        require(element["basis"] != "unknown" or element["uncertain"],
+                "element: unknown evidence must be uncertain")
+        placement = element["placement"]
+        keys(placement, "region visibility" if wardley else "region", "placement")
+        region = placement["region"]
+        if region is not None:
+            choice(region, region_ids, "placement.region")
+        else:
+            require(element["uncertain"] or (wardley and element["role"] in ("user", "need")),
+                    "placement: unplaced item must be uncertain")
+        if wardley:
+            choice(placement["visibility"], ("high", "medium", "low", "unknown"),
+                   "placement.visibility")
+            require(placement["visibility"] != "unknown" or element["uncertain"],
+                    "placement: unknown visibility must be uncertain")
+        elements[element["id"]] = element
+    if wardley and elements:
+        roles = {item["role"] for item in elements.values()}
+        require({"user", "need"} <= roles, "Wardley: missing user/need anchors")
+
+    require(isinstance(data["relationships"], list), "relationships: expected array")
+    for relation in data["relationships"]:
+        keys(relation, "id from to type direction meaning style uncertain timing",
+             "relationship")
+        new_id(relation["id"])
+        choice(relation["from"], elements, "relationship.from")
+        choice(relation["type"], ("dependency", "movement", "association"), "relationship.type")
+        choice(relation["direction"], ("source-to-target", "undirected"),
+               "relationship.direction")
+        choice(relation["style"], ("solid", "dashed"), "relationship.style")
+        text(relation["meaning"], "relationship.meaning")
+        boolean(relation["uncertain"], "relationship.uncertain")
+        if relation["type"] == "movement":
+            require(wardley, "movement: Wardley only")
+            choice(relation["to"], region_ids, "movement.to")
+            source = elements[relation["from"]]
+            require(source["role"] == "component"
+                    and relation["to"] != source["placement"]["region"],
+                    "movement: needs component and different target stage")
+            require(relation["style"] == "dashed" and relation["uncertain"]
+                    and relation["timing"] == "uncertain"
+                    and relation["direction"] == "source-to-target",
+                    "movement: dashed, directed, uncertain timing required")
+        else:
+            choice(relation["to"], elements, "relationship.to")
+            require(relation["to"] != relation["from"], "relationship: self edge")
+            require(relation["timing"] is None, "relationship: only movement has timing")
+            if relation["type"] == "dependency":
+                require(wardley and relation["style"] == "solid"
+                        and relation["direction"] == "source-to-target",
+                        "dependency: Wardley solid A-depends-on-B arrow required")
+    if not request.strip():
+        require(data["status"] == "needs-input", "blank request: needs-input required")
+    if data["status"] == "needs-input":
+        require(not elements and not data["relationships"],
+                "needs-input: template must be unpopulated")
+        require(data["uncertainty"]["unknowns"] and data["questions"],
+                "needs-input: unknowns and questions required")
+    if data["status"] == "ready":
+        require(bool(elements), "ready: no populated handoff")
+    response_check(response, framework)
+
+
+def main():
+    try:
+        request_raw, request = safe_read("request.md", 1048576, allow_empty=True)
+        info = os.lstat("output")
+        require(stat.S_ISDIR(info.st_mode), "output: expected non-symlink directory")
+        directory = os.open("output", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            response_raw, response = safe_read("response.md", 262144, directory)
+            _, source = safe_read("diagram-brief.json", 1048576, directory)
+        finally:
+            os.close(directory)
+        data = json.loads(source, object_pairs_hook=object_pairs,
+                          parse_constant=bad_constant, parse_float=finite_float)
+        package_check(data, request_raw, request, response_raw, response)
+    except (Invalid, OSError, UnicodeError, ValueError, RecursionError) as error:
+        message = str(error).replace("\n", " ")[:200]
+        print("invalid: " + message, file=sys.stderr)
+        return 1
+    print("valid: structural package and raw-byte bindings")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -16,6 +16,7 @@ selected by a team. Status, owner, requirements and approved files live in its
 | [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
 | [Vendor comparison](vendor-comparison/expert/README.md) | Produce evidence-linked technical comparisons with business weights, anchored scores, mandatory gates and visible uncertainty. |
 | [Editorial Director](editorial-director/expert/README.md) | Own one audience-specific argument, message map and visual direction across publications. |
+| [Strategic Framework Selector](strategic-framework-selector/expert/README.md) | Choose Wardley, Cynefin, SWOT or Eisenhower and produce a clear diagram brief for a drawing expert. |
 | [Information Designer](information-designer/expert/README.md) | Design factual charts, explanatory infographics and complete auditable Excel tables. |
 | [Executive Writer](executive-writer/expert/README.md) | Transform expert evidence into sustained Word reports and executive summaries. |
 | [Presentation Designer](presentation-designer/expert/README.md) | Pace executive PowerPoint narratives with native editable charts, tables and text. |
