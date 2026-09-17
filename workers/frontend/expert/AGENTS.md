@@ -24,3 +24,12 @@ your local check alone does not establish browser or visual quality. Do not star
 For an assignment after review, read the retained findings. If review passed,
 copy the exact reviewed HTML unchanged and manifest it. If findings require
 changes, fix them and explicitly state that the new page needs another review.
+
+For new construction, layout/design changes or refactors, load the persistent
+CSS judgment skill before implementation:
+`brief cat "$AGENT_HOME/skills/css-first-layout"` and its
+`references/semantics.md` (or read those files directly under `$AGENT_HOME`).
+Apply its content-first, CSS/native-first decision process, not a feature quota.
+This routing never overrides a post-review copy assignment: after passing
+review, copy approved bytes exactly; never restyle or upgrade CSS to apply
+teaching. Repairs still need a new controller-owned review.
