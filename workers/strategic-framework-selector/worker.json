@@ -1,0 +1,33 @@
+{
+  "id": "strategic-framework-selector",
+  "description": "Select Wardley, Cynefin, SWOT or Eisenhower for a business decision and specify an evidence-aware diagram brief for a drawing expert.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "9fe699632e1ac23a8542c4861098b068a0f6a8fd",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library on Unix with dir_fd and O_NOFOLLOW",
+    "model": "Operator-selected Ask model and credentials; no secrets or provider client bundled",
+    "review": "Checks validate structure, exact framework geometry, references and input bindings; strategic fit and drawable usefulness require semantic review"
+  },
+  "files": [
+    "workers/strategic-framework-selector/expert/AGENTS.md",
+    "workers/strategic-framework-selector/expert/CONTRACT.md",
+    "workers/strategic-framework-selector/expert/LICENSE",
+    "workers/strategic-framework-selector/expert/PROVENANCE.md",
+    "workers/strategic-framework-selector/expert/README.md",
+    "workers/strategic-framework-selector/expert/bin/check",
+    "workers/strategic-framework-selector/expert/skills/strategic-framework-selection/SKILL.md"
+  ]
+}
