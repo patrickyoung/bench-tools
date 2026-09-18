@@ -26,6 +26,8 @@
     "workers/frontend/expert/bin/check",
     "workers/frontend/expert/bin/validate-handoff",
     "workers/frontend/expert/bin/validate-html",
+    "workers/frontend/expert/skills/css-first-layout/SKILL.md",
+    "workers/frontend/expert/skills/css-first-layout/references/semantics.md",
     "workers/frontend/expert/tools/make-handoff"
   ]
 }
