@@ -57,22 +57,31 @@ documentation or packaging commits. `components.json` retains the original
 import commits and trees for historical provenance; it is not a current
 dependency lock or a toolkit version number.
 
-## Published builder packages
+## Published tool packages
 
 `releases/builder.json` pins GitHub release assets by SHA-256, size, source
 revision, platform and the independent packages' source and receipt digests.
+The archive includes every component declared in `components.json`: currently
+20 independent packages and 24 public commands. The existing `builder.json`
+and `bench-builder-PLATFORM.tar.gz` names are retained for compatibility;
+their inventory is no longer limited to the nine default setup tools.
 Automatic downloads are limited to Linux. Macs build from source until
 Developer ID signing and notarization are configured; Mac CI packages remain
 verification artifacts. Setup uses published packages only when the current
-component sources match. Root-only
+selected component sources match. Root-only
 documentation or skill changes may therefore reuse a tested package without
 pretending its build came from the later commit. Changed component source uses
-the ordinary source build. `scripts/install` remains a source installer unless
-the caller selects `--from-build`; individual tools keep their own versions.
+the ordinary source build. `scripts/install` builds from source by default;
+`--from-release` installs selected pinned Linux packages without compilation,
+and `--from-build` installs caller-selected local packages. Individual tools
+keep their own versions. For example, `python3 scripts/install oauth --from-release`
+installs only OAuth; omitting component names installs all published components.
 
 The [Builder packages workflow](../.github/workflows/packages.yml) builds and
-tests native amd64/arm64 packages on Linux and macOS. It verifies installed
-commands, Hire's structural check and Cage before retaining an artifact. The
+tests native amd64/arm64 packages on Linux and macOS. It derives the complete
+inventory from `components.json`, verifies every installed command, relocation,
+Draft assets, repeat installation and removal, then checks the default setup,
+Hire's structural check and Cage before retaining an artifact. The
 Linux packages use `scripts/build --no-cgo` to avoid a distribution-specific
 glibc dependency; that compiler selection is retained in the package receipt.
 The archive contains each selected tool's unchanged package and receipt, plus

@@ -97,6 +97,24 @@ tools from the same intended installation together on PATH.
 The equivalent Make commands are `make install`, or
 `make install TOOLS="ask brief ply" PREFIX="$HOME/bench-local"`.
 
+### Install published Linux packages without Go
+
+The pinned release includes all 20 components and their 24 public commands,
+including OAuth, MCP, A2A and Draft. Select any components, or omit names for all:
+
+```sh
+python3 scripts/install oauth --from-release --prefix "$HOME/.local/share/bench/runtime"
+python3 scripts/install --from-release --prefix "$HOME/bench-all"
+```
+
+`--from-release` downloads the pinned archive, verifies its contents and source
+identity, and installs only the selected components. It needs Python and Git,
+but no Go compiler. It fails explicitly if the selected source has changed,
+no matching Linux package exists, or verification fails; it never switches to
+compilation. Omit the flag for a source build. Macs retain source builds.
+The default `scripts/setup` still selects its nine builder tools from this
+complete release; package availability does not require installing every tool.
+
 ## Deploy only the runtime
 
 An already built worker needs no Hire, Draft or Hone to run. Install Agent's

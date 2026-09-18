@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -12,7 +13,9 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TOOLS = ("hire", "agent", "ask", "brief", "ply", "cage", "record", "trail", "hone")
+COMPONENTS = json.loads((ROOT / "components.json").read_text())["components"]
+TOOLS = tuple(component["name"] for component in COMPONENTS)
+COMMANDS = tuple(command["name"] for component in COMPONENTS for command in component["commands"])
 
 
 @unittest.skipUnless(shutil.which("go") and shutil.which("git"), "Go and Git release prerequisites")
@@ -28,14 +31,30 @@ class RuntimePackageTests(unittest.TestCase):
             shutil.copy2(ROOT / "scripts" / name, cls.source / "scripts" / name)
         (cls.source / "scripts/check-boundaries.py").write_text("# Source policy has its own suite.\n")
         components = []
-        for name in TOOLS:
+        for component in COMPONENTS:
+            name = component["name"]
             leaf = cls.source / "tools" / name
             leaf.mkdir(parents=True)
-            (leaf / "go.mod").write_text("module example.invalid/" + name + "\n\ngo 1.26\n")
-            (leaf / "main.go").write_text('package main\nimport "fmt"\nfunc main() { fmt.Println("' + name + '") }\n')
+            module = "example.invalid/" + name if component["module"] else None
+            if module:
+                (leaf / "go.mod").write_text("module " + module + "\n\ngo 1.26\n")
+                for command in component["commands"]:
+                    entry = leaf / command["package"]
+                    entry.mkdir(parents=True, exist_ok=True)
+                    (entry / "main.go").write_text('package main\nimport "fmt"\nfunc main() { fmt.Println("' + command["name"] + '") }\n')
+            else:
+                for command in component["commands"]:
+                    entry = leaf / command["entry"]
+                    entry.parent.mkdir(parents=True, exist_ok=True)
+                    entry.write_text("#!/bin/sh\nprintf '%s\\n' " + shlex.quote(command["name"]) + "\n")
+                    entry.chmod(0o755)
+                skills = leaf / "skills/draft/references"
+                skills.mkdir(parents=True)
+                (skills / "tools.md").write_text("fixture Draft tool reference\n")
+                (skills.parent / "SKILL.md").write_text("fixture Draft skill\n")
             (leaf / "LICENSE").write_text("fixture license\n")
-            components.append({"name": name, "path": "tools/" + name, "module": "example.invalid/" + name,
-                               "source": {"commit": "fixture-import"}, "commands": [{"name": name, "package": "."}]})
+            components.append({"name": name, "path": "tools/" + name, "module": module,
+                               "source": {"commit": "fixture-import"}, "commands": component["commands"]})
         (cls.source / "components.json").write_text(json.dumps({"components": components}))
         (cls.source / "README.md").write_text("root documentation\n")
         subprocess.run(["git", "init", "-q", str(cls.source)], check=True)
@@ -44,7 +63,7 @@ class RuntimePackageTests(unittest.TestCase):
                         "-c", "commit.gpgsign=false", "commit", "-qm", "fixture"], cwd=cls.source, check=True)
         cls.env = dict(os.environ, GOPROXY="off", GOSUMDB="off")
         built = subprocess.run([sys.executable, str(cls.source / "scripts/build"), "--output", str(cls.packages)],
-                               env=cls.env, capture_output=True, text=True, timeout=90)
+                               env=cls.env, capture_output=True, text=True, timeout=120)
         if built.returncode:
             raise AssertionError(built.stdout + built.stderr)
 
@@ -57,10 +76,10 @@ class RuntimePackageTests(unittest.TestCase):
         shutil.copytree(self.packages, self.build, symlinks=True)
         self.output = self.work / "release with spaces" / "builder.tar.gz"
 
-    def package(self, output=None):
+    def package(self, output=None, env=None):
         return subprocess.run([sys.executable, str(self.root / "scripts/package-runtime"),
                                "--from-build", str(self.build), "--output", str(output or self.output)],
-                              env=self.env, capture_output=True, text=True, timeout=45)
+                              env=env or self.env, capture_output=True, text=True, timeout=60)
 
     def commit(self, message):
         subprocess.run(["git", "add", "."], cwd=self.root, check=True)
@@ -88,6 +107,9 @@ class RuntimePackageTests(unittest.TestCase):
             metadata = json.load(archive.extractfile("runtime.json"))
             self.assertEqual(metadata, {key: value for key, value in external.items() if key not in ("sha256", "size")})
             self.assertEqual(metadata["tools"], list(TOOLS))
+            self.assertIn("oauth", metadata["tools"])
+            self.assertIn("tools/oauth/bin/oauth", archive.getnames())
+            self.assertIn("tools/draft/skills/draft/references/tools.md", archive.getnames())
             for member in archive.getmembers():
                 self.assertTrue(member.isfile())
                 self.assertEqual(member.uid, 0)
@@ -105,8 +127,35 @@ class RuntimePackageTests(unittest.TestCase):
                                     "--from-build", str(unpacked), "--prefix", str(prefix)],
                                    env=self.env, capture_output=True, text=True, timeout=30)
         self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
-        for name in TOOLS:
+        for name in COMMANDS:
             self.assertEqual(subprocess.check_output([str(prefix / "bin" / name)], text=True).strip(), name)
+
+    def test_missing_oauth_package_cannot_produce_a_partial_release(self):
+        shutil.rmtree(self.build / "tools/oauth")
+        result = self.package()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("oauth", result.stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_shell_draft_is_packaged_without_go_binary_inspection(self):
+        wrappers = self.work / "compiler-wrapper"
+        wrappers.mkdir()
+        inspected = self.work / "inspected-commands"
+        compiler = shutil.which("go")
+        wrapper = wrappers / "go"
+        wrapper.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + shlex.quote(str(inspected)) +
+                           "\nexec " + shlex.quote(compiler) + " \"$@\"\n")
+        wrapper.chmod(0o755)
+        result = self.package(env=dict(self.env, PATH=str(wrappers) + os.pathsep + self.env.get("PATH", "")))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        observed = [Path(line.removeprefix("version -m ")).name for line in inspected.read_text().splitlines()]
+        expected = [command["name"] for component in COMPONENTS if component["module"]
+                    for command in component["commands"]]
+        self.assertEqual(observed, expected)
+        self.assertNotIn("draft", observed)
+        with tarfile.open(self.output, "r:gz") as archive:
+            self.assertTrue(archive.extractfile("tools/draft/bin/draft").read().startswith(b"#!/bin/sh\n"))
+            self.assertEqual(archive.getmember("tools/draft/bin/draft").mode, 0o755)
 
     def test_component_edit_rejects_stale_build_without_writing_an_archive(self):
         leaf = self.root / "tools/agent/main.go"

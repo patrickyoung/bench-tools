@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive verified independent builder packages for the native release platform."""
+"""Archive every verified independent package for the native release platform."""
 import argparse
 import gzip
 import hashlib
@@ -22,7 +22,6 @@ from install_support import verify_package
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECK = runpy.run_path(str(ROOT / "scripts/check"))
-TOOLS = ("hire", "agent", "ask", "brief", "ply", "cage", "record", "trail", "hone")
 REPOSITORY = "https://github.com/patrickyoung/bench-tools"
 
 
@@ -66,12 +65,12 @@ def verify_committed_component(component, revision):
 
 
 def runtime_metadata(build, target, compiler):
-    components = {entry["name"]: entry for entry in json.loads((ROOT / "components.json").read_text())["components"]}
+    components = json.loads((ROOT / "components.json").read_text())["components"]
     revisions, packages, sources, payload = set(), {}, {}, []
     if (build / "tools").is_symlink():
         raise ValueError("build tools directory must not be a symlink")
-    for name in TOOLS:
-        component = components[name]
+    for component in components:
+        name = component["name"]
         directory = build / "tools" / name
         receipt = verify_package(directory, name)
         if receipt["commands"] != [entry["name"] for entry in component["commands"]]:
@@ -90,8 +89,9 @@ def runtime_metadata(build, target, compiler):
         verify_committed_component(component, source["repository_revision"])
         packages[name] = sha256((directory / "package.json").read_bytes())
         sources[name] = source_hash
-        for command in receipt["commands"]:
-            verify_binary_platform(directory / "bin" / command, target, compiler)
+        if component["module"]:
+            for command in receipt["commands"]:
+                verify_binary_platform(directory / "bin" / command, target, compiler)
         for path in sorted(directory.rglob("*")):
             if path.is_symlink() or (not path.is_dir() and not path.is_file()):
                 raise ValueError("release payload must contain only regular files: " + str(path))
@@ -100,7 +100,8 @@ def runtime_metadata(build, target, compiler):
     if len(revisions) != 1:
         raise ValueError("builder packages must share one source commit")
     return {"schema": 1, "repository": REPOSITORY, "revision": revisions.pop(),
-            "platform": target, "tools": list(TOOLS), "packages": packages, "sources": sources}, payload
+            "platform": target, "tools": [entry["name"] for entry in components],
+            "packages": packages, "sources": sources}, payload
 
 
 def add_file(archive, name, data, mode):
