@@ -87,7 +87,9 @@ class PrebuiltSetup(unittest.TestCase):
             packages[name] = sha256(raw)
             self.files += [("tools/" + name + "/bin/" + name, data, 0o755),
                            ("tools/" + name + "/package.json", raw, 0o644)]
-        self.target = self.platform()
+        # Exercise Linux selection on every CI host; the payloads are portable
+        # shell fixtures, while package-runtime checks real binary platforms.
+        self.target = "linux-amd64"
         self.metadata = {"schema": 1, "repository": REPOSITORY, "revision": self.revision,
                          "platform": self.target, "tools": list(TOOLS),
                          "sources": self.sources, "packages": packages}
@@ -100,7 +102,7 @@ class PrebuiltSetup(unittest.TestCase):
 
         self.driver = self.base / "download-fixture.py"
         self.driver.write_text(
-            "import io, pathlib, runpy, sys, urllib.request\n"
+            "import io, os, pathlib, runpy, sys, urllib.request\n"
             "from unittest.mock import patch\n"
             f"sys.path.insert(0, {str(scripts)!r})\n"
             "class Response(io.BytesIO):\n"
@@ -110,7 +112,8 @@ class PrebuiltSetup(unittest.TestCase):
             f"    pathlib.Path({str(self.downloaded)!r}).write_text(request.full_url)\n"
             f"    return Response(pathlib.Path({str(self.archive)!r}).read_bytes())\n"
             f"sys.argv = [{str(scripts / 'setup')!r}, *sys.argv[1:]]\n"
-            "with patch.object(urllib.request, 'urlopen', download):\n"
+            "with patch.object(urllib.request, 'urlopen', download), "
+            "patch('prebuilt_support.host_platform', return_value=os.environ['BENCH_TEST_PLATFORM']):\n"
             f"    runpy.run_path({str(scripts / 'setup')!r}, run_name='__main__')\n")
         runtime_bin = self.base / "system-bin"
         runtime_bin.mkdir()
@@ -118,17 +121,13 @@ class PrebuiltSetup(unittest.TestCase):
             (runtime_bin / name).symlink_to(shutil.which(name))
         self.env = {"PATH": str(runtime_bin), "HOME": str(self.base / "home"),
                     "TMPDIR": str(self.base), "LANG": "C", "PYTHONDONTWRITEBYTECODE": "1",
-                    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+                    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+                    "BENCH_TEST_PLATFORM": self.target}
         self.assertIsNone(shutil.which("go", path=self.env["PATH"]))
 
     def git(self, *args):
         return subprocess.check_output(["git", "-C", str(self.root), *args],
                                        stderr=subprocess.PIPE, text=True).strip()
-
-    def platform(self):
-        import platform
-        machine = {"x86_64": "amd64", "amd64": "amd64", "arm64": "arm64", "aarch64": "arm64"}[platform.machine().lower()]
-        return platform.system().lower() + "-" + machine
 
     def make_archive(self, extra=None):
         with tarfile.open(self.archive, "w:gz") as archive:
@@ -191,6 +190,31 @@ class PrebuiltSetup(unittest.TestCase):
         result = self.setup("--from-source")
         self.assert_no_install(result)
         self.assertTrue(self.source_route.exists())
+        self.assertFalse(self.downloaded.exists())
+
+    def test_macos_defaults_to_source_even_with_matching_published_packages(self):
+        for target in ("darwin-amd64", "darwin-arm64"):
+            with self.subTest(target=target):
+                self.target = self.metadata["platform"] = self.env["BENCH_TEST_PLATFORM"] = target
+                self.make_archive()
+                self.write_pin()
+                result = self.setup()
+                self.assert_no_install(result)
+                self.assertIn("macOS setup builds from source", result.stdout)
+                self.assertTrue(self.source_route.exists())
+                self.assertFalse(self.downloaded.exists())
+
+    def test_macos_accepts_explicit_local_packages_without_download(self):
+        self.env["BENCH_TEST_PLATFORM"] = "darwin-arm64"
+        build = self.base / "caller-selected-build"
+        for name, raw, mode in self.files:
+            path = build / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            path.chmod(mode)
+        result = self.setup("--from-build", str(build))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.source_route.exists())
         self.assertFalse(self.downloaded.exists())
 
     def test_bad_archive_checksum_fails_before_installed_program_execution(self):

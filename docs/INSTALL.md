@@ -21,8 +21,10 @@ locations. A nonzero result means setup is incomplete; inspect the recorded
 failure before running workers. Keep personal notes outside generated files.
 The component installer below remains available for a smaller selection.
 
-Setup needs Python 3.9+ and Git. It prefers prebuilt packages for macOS and Linux
-on amd64 or arm64, pinned by `releases/builder.json`. The download checksum and
+Setup needs Python 3.9+ and Git. Mac installs build from source with Go 1.26+;
+automatic Mac binary distribution is deferred until Developer ID signing is
+available. Linux uses prebuilt packages on amd64 or arm64, pinned by
+`releases/builder.json`. The download checksum and
 every component's current source digest must match before installation. These
 packages retain the independent programs, licenses and original build receipts;
 the normal installer verifies and owns the installed files. Linux still needs

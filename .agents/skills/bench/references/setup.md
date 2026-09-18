@@ -42,10 +42,12 @@ the current Hire/Agent split.
 ## Finish setup with one command
 
 Check `python3 --version` and `git --version`. Setup needs Python 3.9+ and Git.
-For macOS and Linux on Intel/AMD or ARM64, it downloads the GitHub release
+For Linux on Intel/AMD or ARM64, it downloads the GitHub release
 packages pinned by this checkout when their component sources match. Go is not
-needed for that route. Other hosts or changed component sources build locally
-and need Go 1.26+. Use `--from-source` to choose compilation explicitly.
+needed for that route. Mac installs build locally and need Go 1.26+; automatic
+Mac binary downloads are deferred until Developer ID signing is available.
+Other hosts or changed component sources also build locally. Use `--from-source`
+to choose compilation explicitly.
 
 Linux also needs the system Bubblewrap package for Cage; macOS uses its native
 backend. If a prerequisite is absent, use the host's documented package

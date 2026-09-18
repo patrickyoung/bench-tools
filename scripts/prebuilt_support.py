@@ -36,6 +36,12 @@ def current_sources(root, tools):
 
 
 def select_artifact(root, tools):
+    target = host_platform()
+    # Until macOS releases have Developer ID signing, prefer local builds even
+    # if a checkout contains an older macOS package pin.
+    if target and target.startswith("darwin-"):
+        print("macOS setup builds from source; automatic prebuilt installs are limited to Linux.", flush=True)
+        return None
     path = root / "releases/builder.json"
     if not path.exists():
         print("No published package pin in this checkout; building from source.", flush=True)
@@ -43,7 +49,6 @@ def select_artifact(root, tools):
     record = json.loads(path.read_text())
     if not isinstance(record, dict) or record.get("schema") != 1 or not isinstance(record.get("artifacts"), dict):
         raise ValueError("invalid releases/builder.json")
-    target = host_platform()
     artifact = record["artifacts"].get(target)
     if artifact is None:
         print("No published packages for this host; building from source.", flush=True)

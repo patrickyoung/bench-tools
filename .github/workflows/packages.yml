@@ -15,6 +15,10 @@ permissions:
 
 jobs:
   package:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -78,11 +82,35 @@ jobs:
           archive = root / 'packages' / ('bench-builder-' + os.environ['TARGET_PLATFORM'] + '.tar.gz')
           metadata = json.loads(Path(str(archive) + '.json').read_text())
           assert metadata['platform'] == host_platform() == os.environ['TARGET_PLATFORM']
+          assert metadata['revision'] == os.environ['GITHUB_SHA']
           assert metadata['sha256'] == digest(archive) and metadata['size'] == archive.stat().st_size
           extract(archive, root / 'unpacked', metadata['tools'])
           verify_extracted(root / 'unpacked', metadata, metadata['tools'])
           PY
           python3 scripts/setup --from-build "$RUNNER_TEMP/unpacked" --prefix "$RUNNER_TEMP/runtime" --state-dir "$RUNNER_TEMP/setup"
+      - name: Attest the checked archive
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: '${{ runner.temp }}/packages/bench-builder-${{ matrix.platform }}.tar.gz'
+          create-storage-record: false
+      - name: Retain and verify signed build provenance
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="$RUNNER_TEMP/packages/bench-builder-$TARGET_PLATFORM.tar.gz"
+          cp "$ATTESTATION_BUNDLE" "$archive.sigstore.json"
+          gh attestation verify "$archive" \
+            --bundle "$archive.sigstore.json" \
+            --repo patrickyoung/bench-tools \
+            --cert-identity "https://github.com/patrickyoung/bench-tools/.github/workflows/packages.yml@$GITHUB_REF" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --signer-digest "$GITHUB_SHA" \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --deny-self-hosted-runners
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: builder-${{ matrix.platform }}

@@ -61,7 +61,10 @@ dependency lock or a toolkit version number.
 
 `releases/builder.json` pins GitHub release assets by SHA-256, size, source
 revision, platform and the independent packages' source and receipt digests.
-Setup uses them only when the current component sources match. Root-only
+Automatic downloads are limited to Linux. Macs build from source until
+Developer ID signing and notarization are configured; Mac CI packages remain
+verification artifacts. Setup uses published packages only when the current
+component sources match. Root-only
 documentation or skill changes may therefore reuse a tested package without
 pretending its build came from the later commit. Changed component source uses
 the ordinary source build. `scripts/install` remains a source installer unless
@@ -76,18 +79,28 @@ The archive contains each selected tool's unchanged package and receipt, plus
 `runtime.json` describing the transport bundle. It is not a shared executable,
 daemon, state directory or new component version.
 
+The workflow also creates a signed [GitHub build attestation](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+for the archive and retains its Sigstore bundle as `FILE.tar.gz.sigstore.json`.
+Before uploading artifacts, it verifies the archive digest, this repository,
+the exact package workflow, source ref and source/workflow commit, and GitHub's
+hosted runner identity. GitHub issues the signing identity from the workflow's
+short-lived OIDC token; this needs no maintainer signing key. This establishes
+build provenance. It does not provide Apple Developer ID signing or notarization.
+
 To refresh the published packages:
 
 1. Select a clean, checked source commit and run the Builder packages workflow
    for that exact ref. Require its four native jobs and the ordinary component
    and integration checks to pass.
 2. Download its four `builder-PLATFORM` artifacts. Verify each adjacent JSON
-   file's source revision, archive size and SHA-256. Publish the archives and
-   their JSON/checksum files as a new GitHub release tagged `builder-COMMIT`,
+   file's source revision, archive size and SHA-256, and verify each archive's
+   signed provenance as shown below. Publish the Linux archives and their
+   JSON/checksum/Sigstore files as a new GitHub release tagged `builder-COMMIT`,
    targeting that full commit. Do not replace assets of an existing pin.
-3. Update `releases/builder.json` from that metadata, adding each exact release
-   asset URL. Preserve `revision`, `sources`, `packages`, `sha256` and `size` for
-   each platform. Commit the pin so it is reviewed alongside installer source.
+3. Update `releases/builder.json` by copying each Linux archive's complete
+   adjacent JSON record into `artifacts[PLATFORM]`, adding its exact release
+   asset `url`. Retain all identity, source and checksum fields. Commit the pin
+   so it is reviewed alongside installer source.
 4. Exercise `scripts/setup` from the published URL on the target environments
    before claiming those routes verified.
 
@@ -95,7 +108,29 @@ To refresh the published packages:
 source packaging helper used by the workflow. It checks package source and
 native executable identity and writes deterministic archives and metadata.
 Checksums pinned in Git detect changed download bytes; these are not separate
-release signatures. System Bubblewrap remains a Linux host prerequisite.
+release signatures. The publication gate verifies the signed provenance;
+installation verifies the reviewed archive pin and component receipts.
+System Bubblewrap remains a Linux host prerequisite.
+
+To verify a downloaded release before publication, use a current GitHub CLI
+with `COMMIT` set to the reviewed full build commit, `REF` to the exact source
+ref used by that run (such as `refs/heads/main`), and `ARCHIVE` to its local path:
+
+```sh
+gh attestation verify "$ARCHIVE" \
+  --bundle "$ARCHIVE.sigstore.json" \
+  --repo patrickyoung/bench-tools \
+  --cert-identity "https://github.com/patrickyoung/bench-tools/.github/workflows/packages.yml@$REF" \
+  --source-digest "$COMMIT" \
+  --source-ref "$REF" \
+  --signer-digest "$COMMIT" \
+  --predicate-type https://slsa.dev/provenance/v1 \
+  --deny-self-hosted-runners
+```
+
+The local bundle avoids fetching the attestation from the repository API.
+Verification still needs current trusted roots; do not describe this command
+as fully offline. See the [GitHub CLI verification policy](https://cli.github.com/manual/gh_attestation_verify).
 
 ## Publication boundaries
 
