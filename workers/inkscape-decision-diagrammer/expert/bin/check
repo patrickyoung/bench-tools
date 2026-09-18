@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Read-only package check; native re-export/query/render, never workspace code."""
+import sys
+sys.dont_write_bytecode=True
+import pathlib, tempfile
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/"tools"))
+from svg_contract import ContractError, fail, inspect_svg, png_pixels, dark_requested
+from package import *
+from plan_contract import read_plan,master_plan,bounds_check,geometry_signature
+from native import Native
+from previews import grayscale_pixels
+
+def main():
+    root=pathlib.Path.cwd().resolve(); out=output(root)
+    req,w,h,sel,hashes=inputs(root); files=inventory(out)
+    r=load(out/"result.json")
+    if r.get("status")=="needs-input":
+        if files!=CONFLICT: fail("needs-input cannot include render/diagram artifacts")
+        conflict_data(out,sel); check_result(root,r,"needs-input",hashes,files)
+        print("checked semantic report only; not an accepted diagram")
+        return
+    if r.get("status")!="visual-review-pending": fail("invalid result status")
+    dark=dark_requested(req); required=BASE|(DARK if dark else set())
+    allowed=required|SUPPORT
+    if not required<=files or files-allowed: fail("missing/unexpected output files")
+    if not dark and any(n.startswith("dark-") for n in files): fail("dark support without trigger")
+    notes(out); check_result(root,r,"visual-review-pending",hashes,files)
+    receipt_check(load(out/"render.json"),root,hashes,files,w,h,dark)
+    p=read_plan(out,req,w,h,sel); expected=source_bindings(root,hashes)
+    stems=["diagram"]+(["diagram-dark"] if dark else [])
+    if dark and geometry_signature(out/"diagram.inkscape.svg")!=geometry_signature(out/"diagram-dark.inkscape.svg"): fail("dark geometry diverged")
+    with tempfile.TemporaryDirectory(prefix="decision-check-") as td:
+        temp=pathlib.Path(td).resolve(); n=Native(temp); n.probe()
+        for stem in stems:
+            master=out/(stem+".inkscape.svg"); final=out/(stem+".svg"); png=out/(stem+".png")
+            inspect_svg(master,w,h,master=True); inspect_svg(final,w,h); bound_master(master,expected)
+            ids,labels=master_plan(master,p); footer_check(master,req,p)
+            q=n.query(master,stem+"-independent-master-query",w,h)
+            bounds_check(q,p,ids,labels,w,h)
+            n.query(final,stem+"-independent-final-query",w,h)
+            independent=temp/(stem+"-export.svg")
+            n.export(master,independent,stem+"-independent-export"); inspect_svg(independent,w,h)
+            n.query(independent,stem+"-independent-export-query",w,h)
+            supplied=png_pixels(png)
+            if supplied[:2]!=(w,h): fail("supplied PNG dimensions")
+            for label,source in (("master",independent),("final",final)):
+                target=temp/(stem+"-"+label+".png")
+                n.render(source,target,w,h,stem+"-"+label+"-render")
+                if png_pixels(target)!=supplied: fail("independent "+label+"/PNG pixel correspondence failed")
+            prefix="dark-" if stem.endswith("-dark") else ""
+            if prefix+"thumbnail.png" in files:
+                tw=min(320,w); th=max(1,round(h*tw/w)); target=temp/(stem+"-thumbnail.png")
+                n.render(final,target,tw,th,stem+"-thumbnail")
+                if png_pixels(target)!=png_pixels(out/(prefix+"thumbnail.png")): fail("thumbnail correspondence")
+                if grayscale_pixels(png)!=png_pixels(out/(prefix+"grayscale.png")): fail("grayscale correspondence")
+    print("native correspondence/bindings checked; visual review pending")
+if __name__=="__main__":
+    try: main()
+    except (ContractError,OSError,ValueError,TypeError,KeyError,IndexError,StopIteration) as e:
+        print("check: "+str(e),file=sys.stderr); sys.exit(1)

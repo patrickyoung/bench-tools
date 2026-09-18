@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Fixed native exports and receipts; --needs-input binds only semantic reports."""
+import sys
+sys.dont_write_bytecode=True
+import json, pathlib, shutil, tempfile
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent))
+from svg_contract import ContractError, fail, inspect_svg, png_pixels, dark_requested
+from package import *
+from plan_contract import read_plan, master_plan, bounds_check, geometry_signature
+from native import Native
+from previews import grayscale
+
+def write(p,obj): p.write_text(json.dumps(obj,ensure_ascii=False,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+def main():
+    if sys.argv[1:] not in ([],["--needs-input"],["--previews"]): fail("usage: finish [--needs-input | --previews]")
+    root=pathlib.Path.cwd().resolve(); out=output(root)
+    # Revoke previous success BEFORE any validation/probe; never certify stale exports.
+    for name in ("result.json","render.json"):
+        p=out/name
+        if p.is_symlink(): fail("symlink receipt")
+        if p.exists(): p.unlink()
+    req,w,h,sel,hashes=inputs(root)
+    if sys.argv[1:]==["--needs-input"]:
+        files=inventory(out)
+        if files!=CONFLICT-{"result.json"}: fail("conflict output must contain only notes and conflicts.json")
+        conflict_data(out,sel)
+        write(out/"result.json",result(root,"needs-input",hashes,CONFLICT))
+        print("needs-input: bound conflict report, no accepted diagram")
+        return
+    dark=dark_requested(req); stems=["diagram"]+(["diagram-dark"] if dark else [])
+    for name in ("diagram.svg","diagram.png","diagram-dark.svg","diagram-dark.png","render.log","thumbnail.png","grayscale.png","dark-thumbnail.png","dark-grayscale.png"):
+        p=out/name
+        if p.is_symlink(): fail("symlink generated output")
+        if p.exists(): p.unlink()
+    files=inventory(out)
+    allowed=(BASE|DARK|SUPPORT)-{"result.json","render.json"}
+    if files-allowed or (not dark and any(n.startswith("diagram-dark") or n.startswith("dark-") for n in files)):
+        fail("unexpected outputs/unauthorized dark variant")
+    notes(out)
+    p=read_plan(out,req,w,h,sel); expected=source_bindings(root,hashes)
+    if dark and geometry_signature(out/"diagram.inkscape.svg")!=geometry_signature(out/"diagram-dark.inkscape.svg"): fail("dark geometry differs")
+    native=None
+    with tempfile.TemporaryDirectory(prefix="decision-export-") as td:
+        temp=pathlib.Path(td).resolve(); boxes={}
+        try:
+            native=Native(temp); native.probe()
+            for stem in stems:
+                master=out/(stem+".inkscape.svg")
+                inspect_svg(master,w,h,master=True); bound_master(master,expected)
+                ids,labels=master_plan(master,p); footer_check(master,req,p)
+                q=native.query(master,stem+"-master-query",w,h); bounds_check(q,p,ids,labels,w,h)
+                boxes[stem+"-master"]=q
+                final=temp/(stem+".svg"); png=temp/(stem+".png")
+                native.export(master,final,stem+"-export"); inspect_svg(final,w,h)
+                boxes[stem+"-final"]=native.query(final,stem+"-final-query",w,h)
+                native.render(final,png,w,h,stem+"-render")
+                if png_pixels(png)[:2]!=(w,h): fail("PNG dimension mismatch")
+                if sys.argv[1:]==["--previews"]:
+                    prefix="dark-" if stem.endswith("-dark") else ""
+                    tw=min(320,w); th=max(1,round(h*tw/w))
+                    native.render(final,temp/(prefix+"thumbnail.png"),tw,th,stem+"-thumbnail")
+                    grayscale(png,temp/(prefix+"grayscale.png"))
+                    native.logs.append("internal previews.grayscale: integer Rec.709 RGBA conversion of "+str(png))
+                    for suffix in ("thumbnail.png","grayscale.png"):
+                        shutil.copyfile(temp/(prefix+suffix),out/(prefix+suffix))
+            # Commit only a complete set of fresh native variants.
+            for stem in stems:
+                for ext in (".svg",".png"): shutil.copyfile(temp/(stem+ext),out/(stem+ext))
+        finally:
+            (out/"render.log").write_text("\n".join(native.logs) if native else "Native initialization failed; unfinished.\n",encoding="utf-8")
+        files=inventory(out)
+        if (BASE-{"render.json","result.json"})-files or (dark and DARK-files): fail("incomplete export set")
+        rec={"schema":ID+".render/v1","inkscape":{"executable":native.exe,"version":native.version},
+             "requested_pixels":{"width":w,"height":h},"commands":native.records,"bounds":boxes,
+             "bindings":dict(hashes,**bindings(root,["output/"+n for n in files]))}
+        write(out/"render.json",rec)
+    files=inventory(out)|{"result.json"}
+    write(out/"result.json",result(root,"visual-review-pending",hashes,files))
+    print("native package bound; visual review pending")
+if __name__=="__main__":
+    try: main()
+    except (ContractError,OSError,ValueError,TypeError,KeyError,IndexError,StopIteration) as e:
+        print("finish: "+str(e),file=sys.stderr); sys.exit(1)
