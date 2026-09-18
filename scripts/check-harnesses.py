@@ -103,10 +103,10 @@ def marketplace_fixture(work, env, package):
     return url, git_env
 
 
-def run(argv, cwd, env, data=None, code=0):
+def run(argv, cwd, env, data=None, code=0, timeout=45):
     command, recording = replay_support["recorded_argv"](argv, env)
     result = subprocess.run(command, cwd=cwd, env=env, input=data,
-                            capture_output=True, timeout=45)
+                            capture_output=True, timeout=timeout)
     replay_support["verify_recorded"](recording, result, env)
     require(result.returncode == code,
             f"{argv}: exit {result.returncode}, wanted {code}\n{result.stdout.decode()}\n{result.stderr.decode()}")
@@ -163,19 +163,24 @@ def peer(argv, cwd, env):
             process.stdout.close()
 
 
-def native_hosts(work, env, bins, package):
+def native_hosts(work, env, bins, package, source_url=None, source_ref=None):
     programs = {name: shutil.which(name) for name in ("codex", "claude", "pi")}
     require(all(programs.values()), "--host-clis requires installed Codex, Claude Code, and Pi")
     for name, executable in programs.items():
         print(run([executable, "--version"], work, env).decode().strip(), flush=True)
 
-    url, env = marketplace_fixture(work, env, package)
+    if source_url:
+        url = source_url
+        print("Checking published marketplace: " + url + (" at " + source_ref if source_ref else ""), flush=True)
+    else:
+        url, env = marketplace_fixture(work, env, package)
 
     # A package contains only its declared skill and manifest, so project
     # CLAUDE.md instructions cannot accidentally become plugin instructions.
     validated = json.loads(run([programs["claude"], "plugin", "validate", package, "--strict", "--json"], work, env))
     require(validated["success"], "Claude rejected the portable plugin")
-    run([programs["claude"], "plugin", "marketplace", "add", url], work, env)
+    run([programs["claude"], "plugin", "marketplace", "add", url + ("#" + source_ref if source_ref else "")],
+        work, env, timeout=180)
     run([programs["claude"], "plugin", "install", "bench-tools@bench-tools"], work, env)
     installed = json.loads(run([programs["claude"], "plugin", "list", "--json"], work, env))
     plugin = next((p for p in installed if p["id"] == "bench-tools@bench-tools"), None)
@@ -189,10 +194,12 @@ def native_hosts(work, env, bins, package):
                       work, env, json.dumps({"type": "control_request", "request_id": "bench-discovery",
                                              "request": {"subtype": "initialize"}}).encode() + b"\n")
     responses = [json.loads(line).get("response", {}) for line in initialized.splitlines()]
-    require(any(response.get("request_id") == "bench-discovery" and response.get("subtype") == "success"
-                and any(command["name"] == "bench-tools:bench"
-                        for command in response.get("response", {}).get("commands", []))
-                for response in responses), "Claude did not discover the packaged Bench skill")
+    discovered = [command["name"] for response in responses
+                  if response.get("request_id") == "bench-discovery" and response.get("subtype") == "success"
+                  for command in response.get("response", {}).get("commands", [])
+                  if command["name"].startswith("bench-tools:")]
+    require(discovered == ["bench-tools:bench"],
+            "Claude must discover exactly the packaged Bench skill: " + str(discovered))
 
     server = [bins / "mcpserve", "-allow-legacy",
               ROOT / "tools/mcp/examples/filter-server/manifest.json", "--",
@@ -202,7 +209,8 @@ def native_hosts(work, env, bins, package):
     require("Connected" in connection, "Claude did not connect to MCPserve: " + connection)
     print("ok Claude: Git marketplace install preserves skill; fresh session discovers installed plugin; MCP connects", flush=True)
 
-    run([programs["codex"], "plugin", "marketplace", "add", url, "--json"], work, env)
+    run([programs["codex"], "plugin", "marketplace", "add", url, "--json",
+         *(["--ref", source_ref] if source_ref else [])], work, env, timeout=180)
     installed = json.loads(run([programs["codex"], "plugin", "add", "bench-tools@bench-tools", "--json"], work, env))
     codex_package = Path(installed["installedPath"])
     require(skill_files(codex_package) == skill_files(package), "Codex marketplace installation changed the shared skill")
@@ -215,10 +223,11 @@ def native_hosts(work, env, bins, package):
         call({"method": "initialized"})
         listed = call({"id": 2, "method": "skills/list", "params": {"cwds": [str(work)], "forceReload": True}})
         skills = [skill for item in listed["result"]["data"] for skill in item["skills"]]
-        require(any(skill["name"] == "bench-tools:bench" and skill.get("pluginId") == "bench-tools@bench-tools"
+        plugin_skills = [skill for skill in skills if skill.get("pluginId") == "bench-tools@bench-tools"]
+        require(len(plugin_skills) == 1 and any(skill["name"] == "bench-tools:bench"
                     and skill.get("enabled") and Path(skill["path"]).resolve() ==
                     (codex_package / ".agents/skills/bench/SKILL.md").resolve()
-                    for skill in skills), "Codex did not discover the installed Bench skill")
+                    for skill in plugin_skills), "Codex must discover exactly the installed Bench skill: " + str(plugin_skills))
         status = call({"id": 3, "method": "mcpServerStatus/list", "params": {}})
         servers = status["result"]["data"]
         require(any(item["name"] == "bench-fixture" and item.get("tools") for item in servers),
@@ -238,7 +247,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bin-dir", type=Path, default=ROOT / ".build/bin")
     parser.add_argument("--host-clis", action="store_true", help="also verify installed host CLIs in isolated homes")
+    parser.add_argument("--source-url", help="explicit network check: install this published Git marketplace instead of the local fixture")
+    parser.add_argument("--ref", help="Git branch or tag to use with --source-url")
     args = parser.parse_args()
+    if args.source_url and not args.host_clis:
+        parser.error("--source-url requires --host-clis")
+    if args.ref and not args.source_url:
+        parser.error("--ref requires --source-url")
     bins = args.bin_dir.resolve()
     with tempfile.TemporaryDirectory(prefix="bench-harness-") as temp:
         work = Path(temp).resolve()
@@ -273,7 +288,7 @@ def main():
         run([bins / "mcp-legacy", "request", "tools/list", "--", *server], work, env, b"{}", code=2)
         print("ok MCP: real stdio discovery/calls; explicit legacy compatibility; default refusal", flush=True)
         if args.host_clis:
-            native_hosts(work, env, bins, package)
+            native_hosts(work, env, bins, package, args.source_url, args.ref)
     print("harness checks passed; no hosted model calls")
 
 

@@ -14,8 +14,9 @@ Claude marketplace used by Claude Code and Cowork. Both select the root plugin
 and the same canonical Bench skill. The portable check validates these paths,
 matching release versions, absence of automatically registered runtime services,
 and every skill/reference byte after ZIP extraction to a path with spaces.
-Six regression tests reject inconsistent releases, an incorrect marketplace
-root, absolute skill paths and symbolic links to unbundled files.
+Six regression tests cover relocation and reject inconsistent releases, an
+incorrect marketplace root, absolute skill paths and symbolic links to
+unbundled files.
 
 The installed native CLIs passed the following checks in disposable homes:
 
@@ -35,19 +36,43 @@ Bench setup does not install them.
 
 Repeat with `python3 scripts/check-harnesses.py --host-clis`. The default
 `make check-harnesses` runs portable checks without requiring any host CLI.
-The fixture proves current package installation and discovery; it does **not**
-prove that these files have been published to the public GitHub default branch,
-that Cowork's account UI has installed them, or that a native Cage boundary is
-available inside Cowork. Model access and worker execution remain separate
-checks. Earlier results below retain their original scope and versions.
+
+An additional **actual network installation** passed for both native CLIs from
+the public GitHub branch `codex/simple-harness-installs` at commit
+`a86ad27711974942e303cd4bbd1d943dc8a0555b`. This used the complete published
+repository with no Git URL rewrite. Claude Code and Codex each installed the
+plugin and discovered **exactly one** enabled/namespaced Bench skill in a fresh
+process; all installed skill/reference bytes matched that source commit.
+This also rules out accidental discovery of the repository's nested legacy
+plugins or worker procedures as extra Bench plugin skills in those hosts.
+
+The explicit network check is repeatable with:
+
+```sh
+python3 scripts/check-harnesses.py --host-clis \
+  --source-url https://github.com/patrickyoung/bench-tools.git \
+  --ref codex/simple-harness-installs
+```
+
+It compares the remote installed skills with the current checkout, so select
+matching source before running it. Omit `--ref` to check the URL's default
+branch. Network access is opt-in; the default fixture remains offline.
+
+Neither the fixture nor the successful branch installation proves that these
+files have reached the public GitHub **default branch**, that Cowork's account
+UI has installed them, or that a native Cage boundary is available inside
+Cowork. Model access and worker execution remain separate checks. Earlier
+results below retain their original scope and versions.
 
 The new `scripts/setup` command also passed a complete source build and install
 on macOS with a separate runtime prefix and setup directory. All nine version
 checks, Hire's structural verification and Cage's 13 native checks passed.
 An independent prebuilt-package install and repeat passed in paths containing
-spaces. Seven executable regression cases cover fresh-shell path recovery,
+spaces. Eleven executable regression cases cover fresh-shell path recovery,
 partial confinement failure, edited/unmanaged handoff preservation, malformed
 receipts, command collisions and refusal to switch an existing runtime record.
+They also preserve handoff/environment edits and receipt changes made while
+setup is running, and serialize competing setups for the same state directory.
 The native Cage CI jobs now exercise source setup on both Linux and macOS.
 No Ask request or worker evaluation is part of these setup checks.
 

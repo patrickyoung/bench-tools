@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Set up Bench's builder tools and a reusable harness handoff; call no model."""
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import shlex
+import stat
 import subprocess
 import sys
 
@@ -16,6 +19,17 @@ OWNER = "bench-tools/scripts/setup"
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+@contextmanager
+def state_lock(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(directory / ".setup.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    with os.fdopen(descriptor, "r+") as lock:
+        if not stat.S_ISREG(os.fstat(lock.fileno()).st_mode):
+            raise ValueError("setup lock must be a regular file")
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
 
 
 def inspect_state(directory):
@@ -44,7 +58,7 @@ def command(argv, env=None):
             "stdout": result.stdout, "stderr": result.stderr}
 
 
-def write_state(directory, source, prefix, checks, packages):
+def write_state(directory, source, prefix, checks, packages, original_receipt):
     revision = command(["git", "rev-parse", "HEAD"])
     changes = command(["git", "status", "--porcelain"])
     source_id = revision["stdout"].strip() if revision["exit"] == 0 else "unavailable (source archive)"
@@ -88,6 +102,13 @@ def write_state(directory, source, prefix, checks, packages):
               "source_dirty": dirty, "prefix": str(prefix), "checks": checks,
               "installed_sources": packages,
               "files": {name: digest(content.encode()) for name, content in files.items()}}
+    # Compilation and checks can take time. Preserve operator edits made
+    # during that interval as well as files that predated this invocation.
+    inspect_state(directory)
+    receipt = directory / "setup.json"
+    current_receipt = receipt.read_bytes() if receipt.exists() else None
+    if current_receipt != original_receipt:
+        raise ValueError("setup receipt changed during installation; preserving the current handoff")
     directory.mkdir(parents=True, exist_ok=True)
     for name, content in files.items():
         (directory / name).write_text(content)
@@ -119,30 +140,32 @@ def main(argv=None):
         prefix = prefix.resolve()
         if prefix == ROOT or ROOT in prefix.parents:
             raise ValueError("keep installed commands outside the source checkout")
-        inspect_state(state)
-        receipt = state / "setup.json"
-        if receipt.exists():
-            previous = json.loads(receipt.read_text())
-            if previous.get("prefix") != str(prefix) or previous.get("source") != str(ROOT):
-                raise ValueError("setup handoff selects a different source or prefix; use a separate --state-dir")
-        install = [sys.executable, ROOT / "scripts/install", *TOOLS, "--prefix", prefix]
-        if args.from_build:
-            install += ["--from-build", args.from_build.expanduser().resolve()]
-        subprocess.run(list(map(str, install)), cwd=ROOT, check=True)
-        env = dict(os.environ, PATH=str(prefix / "bin") + os.pathsep + os.environ.get("PATH", os.defpath))
-        # This structural probe verifies the selected pair, even if the caller
-        # has a separate HIRE_AGENT wrapper for their actual model-backed work.
-        env["HIRE_AGENT"] = str(prefix / "bin/agent")
-        checks = []
-        for argv in ([prefix / "bin" / name, "version"] for name in TOOLS):
-            checks.append(command(argv, env))
-        checks.append(command([prefix / "bin/hire", "verify", ROOT / "examples/support-reply/expert"], env))
-        checks.append(command([prefix / "bin/cage", "check"], env))
-        packages = {}
-        for name in TOOLS:
-            source = json.loads((prefix / "lib/bench-tools" / name / "package.json").read_text()).get("source", {})
-            packages[name] = {key: value for key, value in source.items() if key != "files"}
-        passed = write_state(state, ROOT, prefix, checks, packages)
+        with state_lock(state):
+            inspect_state(state)
+            receipt = state / "setup.json"
+            original_receipt = receipt.read_bytes() if receipt.exists() else None
+            if original_receipt is not None:
+                previous = json.loads(original_receipt)
+                if previous.get("prefix") != str(prefix) or previous.get("source") != str(ROOT):
+                    raise ValueError("setup handoff selects a different source or prefix; use a separate --state-dir")
+            install = [sys.executable, ROOT / "scripts/install", *TOOLS, "--prefix", prefix]
+            if args.from_build:
+                install += ["--from-build", args.from_build.expanduser().resolve()]
+            subprocess.run(list(map(str, install)), cwd=ROOT, check=True)
+            env = dict(os.environ, PATH=str(prefix / "bin") + os.pathsep + os.environ.get("PATH", os.defpath))
+            # This probe checks the selected pair even if the caller uses a
+            # separate HIRE_AGENT wrapper for their actual model-backed work.
+            env["HIRE_AGENT"] = str(prefix / "bin/agent")
+            checks = []
+            for argv in ([prefix / "bin" / name, "version"] for name in TOOLS):
+                checks.append(command(argv, env))
+            checks.append(command([prefix / "bin/hire", "verify", ROOT / "examples/support-reply/expert"], env))
+            checks.append(command([prefix / "bin/cage", "check"], env))
+            packages = {}
+            for name in TOOLS:
+                source = json.loads((prefix / "lib/bench-tools" / name / "package.json").read_text()).get("source", {})
+                packages[name] = {key: value for key, value in source.items() if key != "files"}
+            passed = write_state(state, ROOT, prefix, checks, packages, original_receipt)
         for item in checks:
             print(("ok " if item["exit"] == 0 else "FAILED ") + shlex.join(item["argv"]))
             if item["exit"]:

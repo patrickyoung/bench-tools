@@ -1,11 +1,16 @@
 """Exercise setup's public CLI, path selection, partial failure and preservation."""
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,11 +51,54 @@ class SetupTests(unittest.TestCase):
             "files": [{"path": "bin/" + name, "mode": 0o755,
                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}]}))
 
+    def setup_argv(self, *extra):
+        return [sys.executable, str(ROOT / "scripts/setup"),
+                "--prefix", str(self.prefix), "--state-dir", str(self.state),
+                "--from-build", str(self.build), *extra]
+
     def run_setup(self, *extra):
-        return subprocess.run([sys.executable, str(ROOT / "scripts/setup"),
-                               "--prefix", str(self.prefix), "--state-dir", str(self.state),
-                               "--from-build", str(self.build), *extra],
+        return subprocess.run(self.setup_argv(*extra),
                               env=self.env, text=True, capture_output=True, timeout=30)
+
+    @contextmanager
+    def paused_setup(self):
+        """Pause real CLI verification after install, with a bounded ready signal."""
+        gate = Path(tempfile.mkdtemp(prefix="verification-gate-", dir=self.work))
+        ready, release = gate / "ready", gate / "release"
+        self.package("hire")
+        path = self.build / "tools/hire/bin/hire"
+        wait = ("from pathlib import Path\nimport time\n"
+                f"Path({str(ready)!r}).touch()\n"
+                "deadline = time.monotonic() + 20\n"
+                f"while not Path({str(release)!r}).exists():\n"
+                "    if time.monotonic() >= deadline: raise SystemExit('verification gate timed out')\n"
+                "    time.sleep(0.01)\n")
+        pause = ('if [ "$1" = verify ]; then\n' +
+                 shlex.join([sys.executable, "-c", wait]) + ' || exit $?\nfi\n')
+        path.write_text(path.read_text().replace('test "$1" = verify', pause + 'test "$1" = verify'))
+        receipt = path.parent.parent / "package.json"
+        package = json.loads(receipt.read_text())
+        package["files"][0]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        receipt.write_text(json.dumps(package))
+        process = subprocess.Popen(self.setup_argv(), env=self.env, text=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   start_new_session=True)
+        try:
+            deadline = time.monotonic() + 10
+            while not ready.exists():
+                if process.poll() is not None:
+                    stdout, stderr = process.communicate()
+                    self.fail("setup exited before verification gate: " + stdout + stderr)
+                self.assertLess(time.monotonic(), deadline, "setup did not reach verification gate")
+                time.sleep(0.01)
+            yield process, release
+        finally:
+            release.touch()
+            try:
+                process.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate(timeout=5)
 
     def test_fresh_install_repeat_and_fresh_shell_recover_companions(self):
         for _ in range(2):
@@ -98,6 +146,74 @@ class SetupTests(unittest.TestCase):
         result = self.run_setup()
         self.assertEqual(result.returncode, 1)
         self.assertFalse(self.prefix.exists())
+
+    def test_handoff_created_during_setup_is_preserved(self):
+        with self.paused_setup() as (process, release):
+            self.state.mkdir(parents=True, exist_ok=True)
+            handoff = self.state / "BENCH-SETUP.md"
+            notes = b"Operator notes created while installation was running\n"
+            handoff.write_bytes(notes)
+            release.touch()
+            stdout, stderr = process.communicate(timeout=10)
+        self.assertEqual(process.returncode, 1, stdout + stderr)
+        self.assertEqual(handoff.read_bytes(), notes)
+        self.assertFalse((self.state / "env.sh").exists())
+        self.assertFalse((self.state / "setup.json").exists())
+
+    def test_handoff_and_environment_edits_during_setup_are_preserved(self):
+        self.assertEqual(self.run_setup().returncode, 0)
+        receipt = (self.state / "setup.json").read_bytes()
+        for name in ("BENCH-SETUP.md", "env.sh"):
+            with self.subTest(name=name):
+                path = self.state / name
+                original = path.read_bytes()
+                edited = original + b"\nOperator edit during installation\n"
+                with self.paused_setup() as (process, release):
+                    path.write_bytes(edited)
+                    release.touch()
+                    stdout, stderr = process.communicate(timeout=10)
+                self.assertEqual(process.returncode, 1, stdout + stderr)
+                self.assertEqual(path.read_bytes(), edited)
+                self.assertEqual((self.state / "setup.json").read_bytes(), receipt)
+                path.write_bytes(original)
+
+    def test_receipt_edits_during_setup_are_preserved(self):
+        self.assertEqual(self.run_setup().returncode, 0)
+        files = {name: (self.state / name).read_bytes() for name in ("BENCH-SETUP.md", "env.sh")}
+        receipt = self.state / "setup.json"
+        edited = receipt.read_bytes() + b"\n"
+        with self.paused_setup() as (process, release):
+            receipt.write_bytes(edited)
+            release.touch()
+            stdout, stderr = process.communicate(timeout=10)
+        self.assertEqual(process.returncode, 1, stdout + stderr)
+        self.assertEqual(receipt.read_bytes(), edited)
+        for name, data in files.items():
+            self.assertEqual((self.state / name).read_bytes(), data)
+
+    def test_concurrent_setup_cannot_switch_a_shared_state_directory(self):
+        other = self.work / "other concurrent runtime"
+        with self.paused_setup() as (first, release):
+            with (self.state / ".setup.lock").open("rb") as lock:
+                with self.assertRaises(BlockingIOError):
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            second = subprocess.Popen(self.setup_argv("--prefix", str(other)),
+                                      env=self.env, text=True, stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            try:
+                release.touch()
+                first_stdout, first_stderr = first.communicate(timeout=10)
+                second_stdout, second_stderr = second.communicate(timeout=10)
+            finally:
+                if second.poll() is None:
+                    second.kill()
+                    second.communicate(timeout=5)
+        self.assertEqual(first.returncode, 0, first_stdout + first_stderr)
+        self.assertEqual(second.returncode, 1, second_stdout + second_stderr)
+        self.assertFalse(other.exists())
+        self.assertEqual(json.loads((self.state / "setup.json").read_text())["prefix"], str(self.prefix))
+        # The released state lock must permit a normal same-runtime refresh.
+        self.assertEqual(self.run_setup().returncode, 0)
 
     def test_malformed_receipt_is_clean_error_before_install(self):
         self.state.mkdir()
