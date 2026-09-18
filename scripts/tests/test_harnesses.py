@@ -18,7 +18,8 @@ class HarnessPackages(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
         self.root = self.base / "source with spaces"
-        for name in (*CHECK["PACKAGE_FILES"], *CHECK["MARKETPLACE_FILES"], *CHECK["PLUGIN_FILES"]):
+        for name in (*CHECK["PACKAGE_FILES"], *CHECK["MARKETPLACE_FILES"], *CHECK["PLUGIN_FILES"],
+                     "LICENSE", CHECK["LEGACY_PLUGIN"]):
             destination = self.root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, destination)
@@ -34,13 +35,28 @@ class HarnessPackages(unittest.TestCase):
         CHECK["package_metadata"](self.root)
         archive, relocated = self.base / "plugin.zip", self.base / "relocated package"
         CHECK["portable_package"](self.root, archive, relocated)
-        expected = {p.relative_to(self.root): p.read_bytes()
+        expected = {Path("skills") / p.relative_to(self.root / ".agents/skills"): p.read_bytes()
                     for p in (self.root / ".agents/skills").rglob("*") if p.is_file()}
         for relative, data in expected.items():
             self.assertEqual((relocated / relative).read_bytes(), data)
         with zipfile.ZipFile(archive) as package:
             self.assertEqual(set(package.namelist()),
-                             {*CHECK["PACKAGE_FILES"], *(p.as_posix() for p in expected)})
+                             {*CHECK["PACKAGE_FILES"].values(), *(p.as_posix() for p in expected)})
+
+    def test_cowork_marketplace_cannot_select_monorepo_with_legacy_manifest(self):
+        self.change(".claude-plugin/marketplace.json", lambda value: value["plugins"][0].update(source="./"))
+        with self.assertRaisesRegex(RuntimeError, "no nested manifests"):
+            CHECK["package_metadata"](self.root)
+
+    def test_cowork_rejects_nested_manifest_only_inside_selected_plugin(self):
+        # The existing component plugin outside .agents is valid source and
+        # remains untouched; a nested plugin within .agents must be refused.
+        CHECK["package_metadata"](self.root)
+        nested = self.root / ".agents/skills/bench/.claude-plugin/plugin.json"
+        nested.parent.mkdir()
+        nested.write_text('{"name":"unexpected"}')
+        with self.assertRaisesRegex(RuntimeError, "no nested manifests"):
+            CHECK["package_metadata"](self.root)
 
     def test_mismatched_release_is_rejected(self):
         self.change("package.json", lambda value: value.update(version="0.0.0"))
@@ -52,7 +68,7 @@ class HarnessPackages(unittest.TestCase):
             original = (self.root / name).read_text()
             with self.subTest(name=name):
                 self.change(name, lambda value: value["plugins"][0].update(source="../another-plugin"))
-                with self.assertRaisesRegex(RuntimeError, "repository root plugin"):
+                with self.assertRaisesRegex(RuntimeError, "inside the repository"):
                     CHECK["package_metadata"](self.root)
             (self.root / name).write_text(original)
 

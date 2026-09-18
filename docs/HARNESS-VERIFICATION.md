@@ -9,16 +9,18 @@ existing installer still installs programs, Hire builds, and Agent runs.
 
 ## Git marketplace installation on 2026-09-17
 
-The **0.4.0** package now declares a Git marketplace for Codex and a separate
-Claude marketplace used by Claude Code and Cowork. Both select the root plugin
-and the same canonical Bench skill. The portable check validates these paths,
+The **0.4.1** package declares a Git marketplace for Codex and a separate
+Claude marketplace used by Claude Code and Cowork. Codex selects the repository
+root; Claude selects the isolated `.agents` directory. Both use the single
+canonical Bench skill. The portable check validates these paths,
 matching release versions, absence of automatically registered runtime services,
 and every skill/reference byte after ZIP extraction to a path with spaces.
-Six regression tests cover relocation and reject inconsistent releases, an
-incorrect marketplace root, absolute skill paths and symbolic links to
-unbundled files.
+Eight regression tests cover relocation and reject inconsistent releases, an
+incorrect marketplace root, absolute skill paths, symbolic links to unbundled
+files and nested Claude plugin manifests inside the selected Cowork source.
 
-The installed native CLIs passed the following checks in disposable homes:
+The installed native CLIs passed the following checks for **0.4.1** in
+disposable homes:
 
 | Host | Version | Observed result |
 | --- | --- | --- |
@@ -37,14 +39,16 @@ Bench setup does not install them.
 Repeat with `python3 scripts/check-harnesses.py --host-clis`. The default
 `make check-harnesses` runs portable checks without requiring any host CLI.
 
-An additional **actual network installation** passed for both native CLIs from
+An additional **actual network installation of 0.4.0** passed for both native CLIs from
 the public GitHub branch `codex/simple-harness-installs` at commit
 `a86ad27711974942e303cd4bbd1d943dc8a0555b`. This used the complete published
 repository with no Git URL rewrite. Claude Code and Codex each installed the
 plugin and discovered **exactly one** enabled/namespaced Bench skill in a fresh
 process; all installed skill/reference bytes matched that source commit.
-This also rules out accidental discovery of the repository's nested legacy
-plugins or worker procedures as extra Bench plugin skills in those hosts.
+The same check subsequently passed against the plain default-branch GitHub URL
+at merge commit `fbc52833cd051ac02d37de358c907fd5b3f4a7f5`, without `--ref`.
+Those native CLIs did not expose nested legacy plugins or worker procedures as
+extra Bench skills. Cowork applies a different packaging check, described below.
 
 The explicit network check is repeatable with:
 
@@ -58,11 +62,36 @@ It compares the remote installed skills with the current checkout, so select
 matching source before running it. Omit `--ref` to check the URL's default
 branch. Network access is opt-in; the default fixture remains offline.
 
-Neither the fixture nor the successful branch installation proves that these
-files have reached the public GitHub **default branch**, that Cowork's account
-UI has installed them, or that a native Cage boundary is available inside
-Cowork. Model access and worker execution remain separate checks. Earlier
-results below retain their original scope and versions.
+### Cowork exposed a packaging failure
+
+Cowork's account UI rejected the published **0.4.0** marketplace even though
+both native CLIs installed it. Its sync diagnostic identified
+`marketplace_sync_multiple_manifests`: selecting the entire repository included
+the existing legacy manifest at
+`tools/agent/plugins/bench-system-builder/.claude-plugin/plugin.json`.
+The generic UI error did not explain that nested-manifest restriction.
+
+A controlled upload of the minimal **0.4.0** ZIP then succeeded and showed
+`bench-tools@My Uploads`, version 0.4.0, with one skill. That archive retained
+the custom `.agents/skills` path, confirming that path was accepted. This was
+an account upload/discovery result, not a successful GitHub marketplace sync
+or Bench runtime execution.
+
+The **0.4.1** correction selects `./.agents` from the Claude marketplace and
+adds its own `.claude-plugin/plugin.json` and license there. Its conventional
+`skills/bench` path points at the existing canonical skill; no skill copy was
+added and the legacy component plugin remains unchanged. The portable ZIP
+uses that isolated plugin layout. The local Git fixture now includes all
+competing manifests, so it cannot conceal the earlier root-selection error.
+Checks reject any nested plugin manifest inside the selected Cowork source
+while permitting independent component plugins elsewhere in the repository.
+
+The corrected **0.4.1** source passes isolated native installation, exact
+skill/reference preservation, one-skill discovery and all eight package tests.
+Its actual published GitHub Cowork sync still needs verification; these local
+results do not establish it. Native Cage availability inside Cowork, model
+access and worker execution remain separate checks. Earlier results below
+retain their original scope and versions.
 
 The new `scripts/setup` command also passed a complete source build and install
 on macOS with a separate runtime prefix and setup directory. All nine version
@@ -124,11 +153,12 @@ in offline RPC mode. No probe sends a model prompt.
 
 ## What this evidence does not establish
 
-Cowork's account plugin upload and execution environment have **not** been
-exercised here. Its [setup reference](../.agents/skills/bench/references/cowork.md)
-uses the documented account plugin route and requires checking actual command
-access, persistence, and remote connector reachability. The ZIP is tested as a
-Claude plugin; that is not a Cowork installation result.
+Cowork's **0.4.0** account upload was exercised as described above, after its
+GitHub marketplace sync failed. Its corrected **0.4.1** GitHub sync and complete
+runtime setup remain unverified. The
+[setup reference](../.agents/skills/bench/references/cowork.md) requires checking
+actual command access, persistence and remote connector reachability. A plugin
+upload or a passing native CLI probe does not establish those properties.
 
 OpenClaw had **not** been exercised in the 2026-09-13 setup checks. Its
 [setup reference](../.agents/skills/bench/references/openclaw.md) uses the

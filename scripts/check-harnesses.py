@@ -17,9 +17,10 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 replay_support = runpy.run_path(str(ROOT / "scripts/check-integration.py"))
-PLUGIN_FILES = (".claude-plugin/plugin.json", ".codex-plugin/plugin.json")
-PACKAGE_FILES = (PLUGIN_FILES[0], "LICENSE")
+PLUGIN_FILES = (".claude-plugin/plugin.json", ".codex-plugin/plugin.json", ".agents/.claude-plugin/plugin.json")
+PACKAGE_FILES = {".agents/.claude-plugin/plugin.json": ".claude-plugin/plugin.json", ".agents/LICENSE": "LICENSE"}
 MARKETPLACE_FILES = (".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json", "package.json")
+LEGACY_PLUGIN = "tools/agent/plugins/bench-system-builder/.claude-plugin/plugin.json"
 
 
 def require(ok, message):
@@ -27,9 +28,9 @@ def require(ok, message):
         raise RuntimeError(message)
 
 
-def skill_files(root):
+def skill_files(root, relative=".agents/skills"):
     """Read the complete source skill, refusing links to unpackaged host files."""
-    directory = root / ".agents/skills"
+    directory = root / relative
     require(directory.is_dir() and not directory.is_symlink() and
             directory.resolve().is_relative_to(root.resolve()), "missing or linked skill directory")
     files = {}
@@ -41,17 +42,31 @@ def skill_files(root):
     return files
 
 
+def plugin_skill_files(root, manifest_name=".claude-plugin/plugin.json"):
+    manifest = json.loads((root / manifest_name).read_text())
+    return skill_files(root, manifest["skills"])
+
+
+def cowork_package(root):
+    """Cowork rejects nested manifests anywhere inside the selected plugin root."""
+    manifests = sorted(path.relative_to(root).as_posix()
+                       for path in root.rglob(".claude-plugin/plugin.json"))
+    require(manifests == [".claude-plugin/plugin.json"],
+            "Cowork plugin root must contain one top-level manifest and no nested manifests: " + str(manifests))
+
+
 def package_metadata(root):
     """Catch Git marketplace routes that do not load the shared, relocatable skill."""
     manifests = [json.loads((root / name).read_text()) for name in PLUGIN_FILES]
     pi = json.loads((root / "package.json").read_text())
     require(len({m["version"] for m in [*manifests, pi]}) == 1,
             "Claude, Codex and Pi skill package versions disagree")
-    for manifest in manifests:
+    for name, manifest in zip(PLUGIN_FILES, manifests):
+        plugin_root = (root / name).parent.parent
         require(manifest["name"] == "bench-tools", "unexpected plugin name")
         require(not Path(manifest["skills"]).is_absolute() and ".." not in Path(manifest["skills"]).parts,
                 "plugin skill path must be relative and relocatable")
-        require((root / manifest["skills"]).resolve() == (root / ".agents/skills").resolve(),
+        require((plugin_root / manifest["skills"]).resolve() == (root / ".agents/skills").resolve(),
                 "plugin does not use the canonical skills directory")
         require(not any(name in manifest for name in ("hooks", "mcpServers", "apps")),
                 "Bench knowledge installation must not register runtime hooks or services")
@@ -65,7 +80,17 @@ def package_metadata(root):
         if isinstance(source, dict):
             require(source["source"] == "local", "Codex marketplace must use its bundled plugin")
             source = source["path"]
-        require(source == "./", "marketplace must resolve the repository root plugin")
+        require(isinstance(source, str) and source.startswith("./") and ".." not in Path(source).parts,
+                "marketplace must resolve a plugin inside the repository")
+        plugin_root = (root / source).resolve()
+        require(plugin_root.is_relative_to(root.resolve()), "marketplace plugin escapes the repository")
+        if name == ".claude-plugin/marketplace.json":
+            cowork_package(plugin_root)
+            require(plugin_skill_files(plugin_root) == skill_files(root), "Claude marketplace changed the canonical skill")
+        else:
+            require(source == "./", "Codex marketplace must resolve the repository root plugin")
+    require((root / ".agents/LICENSE").read_bytes() == (root / "LICENSE").read_bytes(),
+            "standalone Claude plugin license differs from the source license")
     skill_files(root)
     return manifests[0]["version"]
 
@@ -74,22 +99,24 @@ def portable_package(root, archive, destination):
     """Build the documented upload ZIP and verify every relocated knowledge byte."""
     expected = skill_files(root)
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as target:
-        for name in PACKAGE_FILES:
-            target.write(root / name, name)
+        for source, target_name in PACKAGE_FILES.items():
+            target.write(root / source, target_name)
         for relative in expected:
-            path = Path(".agents/skills") / relative
-            target.write(root / path, path)
+            target.write(root / ".agents/skills" / relative, Path("skills") / relative)
     with zipfile.ZipFile(archive) as source:
         source.extractall(destination)
-    require(skill_files(destination) == expected, "relocated plugin lost or changed supporting skill files")
+    cowork_package(destination)
+    require(plugin_skill_files(destination) == expected, "relocated plugin lost or changed supporting skill files")
     return destination
 
 
-def marketplace_fixture(work, env, package):
+def marketplace_fixture(work, env):
     """Exercise Git URL loading without publishing source or contacting a service."""
     source = work / "marketplace source"
-    shutil.copytree(package, source)
-    for name in (*MARKETPLACE_FILES, PLUGIN_FILES[1]):
+    shutil.copytree(ROOT / ".agents/skills", source / ".agents/skills")
+    # Keep the actual competing manifests in the fixture. A tiny root-only
+    # plugin fixture would hide Cowork's rejection of the full monorepo.
+    for name in (*MARKETPLACE_FILES, *PLUGIN_FILES, *PACKAGE_FILES, "LICENSE", LEGACY_PLUGIN):
         path = source / name
         path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, path)
@@ -173,7 +200,7 @@ def native_hosts(work, env, bins, package, source_url=None, source_ref=None):
         url = source_url
         print("Checking published marketplace: " + url + (" at " + source_ref if source_ref else ""), flush=True)
     else:
-        url, env = marketplace_fixture(work, env, package)
+        url, env = marketplace_fixture(work, env)
 
     # A package contains only its declared skill and manifest, so project
     # CLAUDE.md instructions cannot accidentally become plugin instructions.
@@ -185,7 +212,8 @@ def native_hosts(work, env, bins, package, source_url=None, source_ref=None):
     installed = json.loads(run([programs["claude"], "plugin", "list", "--json"], work, env))
     plugin = next((p for p in installed if p["id"] == "bench-tools@bench-tools"), None)
     require(plugin is not None and plugin["enabled"], "Claude marketplace plugin was not enabled")
-    require(skill_files(Path(plugin["installPath"])) == skill_files(package),
+    cowork_package(Path(plugin["installPath"]))
+    require(plugin_skill_files(Path(plugin["installPath"])) == plugin_skill_files(package),
             "Claude marketplace installation changed the shared skill")
     # The SDK's control initialization lists commands without a user/model turn.
     initialized = run([programs["claude"], "-p", "--input-format", "stream-json",
@@ -213,7 +241,7 @@ def native_hosts(work, env, bins, package, source_url=None, source_ref=None):
          *(["--ref", source_ref] if source_ref else [])], work, env, timeout=180)
     installed = json.loads(run([programs["codex"], "plugin", "add", "bench-tools@bench-tools", "--json"], work, env))
     codex_package = Path(installed["installedPath"])
-    require(skill_files(codex_package) == skill_files(package), "Codex marketplace installation changed the shared skill")
+    require(skill_files(codex_package) == plugin_skill_files(package), "Codex marketplace installation changed the shared skill")
     listed = json.loads(run([programs["codex"], "plugin", "list", "--marketplace", "bench-tools", "--json"], work, env))
     require(any(p["pluginId"] == "bench-tools@bench-tools" and p["enabled"] for p in listed["installed"]),
             "Codex marketplace plugin was not enabled")

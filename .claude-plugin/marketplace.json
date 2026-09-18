@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "bench-tools",
-      "source": "./",
+      "source": "./.agents",
       "description": "Find, build, teach, evaluate and run reusable Bench workers and teams.",
       "category": "productivity",
       "tags": ["workers", "teams", "automation"]

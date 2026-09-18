@@ -8,5 +8,5 @@
   "homepage": "https://github.com/patrickyoung/bench-tools/blob/main/START-HERE.md",
   "repository": "https://github.com/patrickyoung/bench-tools",
   "license": "MIT",
-  "skills": "./.agents/skills/"
+  "skills": "./skills/"
 }
