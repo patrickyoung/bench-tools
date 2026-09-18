@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""Validate a master, export/render without batch mode, and bind receipts."""
+import sys
+sys.dont_write_bytecode = True
+import hashlib, json, os, pathlib, re, shutil, signal, stat, subprocess, time
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from svg_contract import ContractError, bounded_regular_bytes, inspect_svg, png_pixels, read_request
+
+ROOT=pathlib.Path.cwd().resolve(); OUT=ROOT/"output"
+LOG=OUT/"inkscape.log"; RENDER=OUT/"render.json"; TIMEOUT=120
+
+def die(msg):
+    print("finish: "+msg, file=sys.stderr); raise SystemExit(1)
+def digest(path, limit=64*1024*1024):
+    return hashlib.sha256(bounded_regular_bytes(path, limit, str(path))).hexdigest()
+def resolve_inkscape():
+    selected=os.environ.get("INKSCAPE")
+    if selected:
+        p=pathlib.Path(selected)
+        if not p.is_absolute() or not p.is_file() or not os.access(p,os.X_OK):
+            die("INKSCAPE must select an absolute executable file")
+        return str(p.resolve())
+    found=shutil.which("inkscape")
+    if not found: die("Inkscape is unavailable; set INKSCAPE to an absolute executable")
+    return str(pathlib.Path(found).resolve())
+def run(argv, env, label, records, logparts):
+    started=time.time()
+    proc=subprocess.Popen(argv,cwd=ROOT,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                          start_new_session=True)
+    timed=False
+    try:
+        stdout_b,stderr_b=proc.communicate(timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        timed=True
+        try: os.killpg(proc.pid,signal.SIGKILL)
+        except ProcessLookupError: pass
+        stdout_b,stderr_b=proc.communicate()
+    status=proc.returncode
+    stdout=stdout_b.decode("utf-8","replace"); stderr=stderr_b.decode("utf-8","replace")
+    records.append({"label":label,"argv":argv,"exit_code":status,"timed_out":timed,
+                    "duration_seconds":round(time.time()-started,6)})
+    logparts.extend(["$ "+json.dumps(argv),stdout,stderr,
+                     "exit="+("timeout" if timed else str(status))+"\n"])
+    if timed or status != 0: die(label+" failed; see output/inkscape.log")
+    return stdout,stderr
+def main():
+    if len(sys.argv)!=1: die("accepts no arguments")
+    try: request,w,h,raw=read_request(ROOT/"request.json")
+    except ContractError as e: die(str(e))
+    if OUT.exists() and (OUT.is_symlink() or not OUT.is_dir()): die("output must be a real directory")
+    OUT.mkdir(exist_ok=True)
+    master=OUT/"illustration.inkscape.svg"
+    try: master_info=inspect_svg(master,w,h,master=True)
+    except ContractError as e: die("master rejected: "+str(e))
+    exe=resolve_inkscape()
+    runroot=ROOT/".inkscape-run"
+    if runroot.exists():
+        if runroot.is_symlink(): die(".inkscape-run must not be a symlink")
+        shutil.rmtree(runroot)
+    for name in ("profile","cache","config","data","tmp"):
+        (runroot/name).mkdir(parents=True,exist_ok=True)
+    env=os.environ.copy()  # Preserve HOME; native macOS cache attempts may still warn under Cage.
+    env.update({"INKSCAPE_PROFILE_DIR":str(runroot/"profile"),
+                "XDG_CACHE_HOME":str(runroot/"cache"),"XDG_CONFIG_HOME":str(runroot/"config"),
+                "XDG_DATA_HOME":str(runroot/"data"),"TMPDIR":str(runroot/"tmp")})
+    records=[]; logs=[]
+    try:
+        version,_=run([exe,"--version"],env,"version",records,logs)
+        match=re.search(r"Inkscape\s+(\d+)\.(\d+)",version)
+        if not match or tuple(map(int,match.groups())) < (1,2): die("Inkscape >=1.2 required")
+        helpout,helperr=run([exe,"--help"],env,"help",records,logs)
+        helptext=helpout+helperr
+        for flag in ("--export-type","--export-plain-svg","--export-text-to-path",
+                     "--export-filename","--export-width","--export-height"):
+            if flag not in helptext: die("installed help lacks required option "+flag)
+        final=OUT/"illustration.svg"; preview=OUT/"preview.png"
+        for p in (final,preview):
+            if p.is_symlink(): die("refusing symlink output "+str(p))
+            try: p.unlink()
+            except FileNotFoundError: pass
+        export=[exe,"--export-type=svg","--export-plain-svg","--export-text-to-path",
+                "--export-filename",str(final),str(master)]
+        run(export,env,"plain-svg-export",records,logs)
+        try: final_info=inspect_svg(final,w,h,master=False)
+        except ContractError as e: die("Inkscape final SVG rejected: "+str(e))
+        render=[exe,"--export-type=png","--export-width",str(w),"--export-height",str(h),
+                "--export-filename",str(preview),str(final)]
+        run(render,env,"png-render",records,logs)
+        try:
+            pw,ph,_,_=png_pixels(preview)
+            if (pw,ph)!=(w,h): die("rendered PNG dimensions differ")
+        except ContractError as e: die("rendered PNG rejected: "+str(e))
+        queryout,_=run([exe,"--query-all",str(final)],env,"bounds-query",records,logs)
+    finally:
+        LOG.write_text("\n".join(logs),encoding="utf-8")
+    bindings={
+      "request":{"path":"request.json","sha256":hashlib.sha256(raw).hexdigest()},
+      "master":{"path":"output/illustration.inkscape.svg","sha256":digest(master,16*1024*1024)},
+      "final":{"path":"output/illustration.svg","sha256":digest(final,16*1024*1024)},
+      "preview":{"path":"output/preview.png","sha256":digest(preview)}}
+    receipt={"schema":"inkscape-illustrator.render/v1",
+      "inkscape":{"executable":exe,"version":version.strip().splitlines()[0]},
+      "requested_pixels":{"width":w,"height":h},"commands":records,"bindings":bindings,
+      "master_inspection":master_info,"final_inspection":final_info,
+      "query_all":queryout.splitlines()[:500]}
+    RENDER.write_text(json.dumps(receipt,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+    notes=OUT/"design-notes.md"
+    try:
+        if not bounded_regular_bytes(notes,1024*1024,"design notes").decode("utf-8").strip():
+            die("write nonempty output/design-notes.md before finishing")
+    except (ContractError,UnicodeDecodeError) as e: die(str(e))
+    files=sorted(str(p.relative_to(ROOT)) for p in OUT.iterdir()
+                 if p.is_file() and not p.is_symlink())
+    maker=pathlib.Path(__file__).resolve().with_name("make-handoff")
+    proc=subprocess.Popen([sys.executable,str(maker),"inkscape-illustrator",
+      "Editable vector master, plain SVG export, and rendered preview",*files],
+      cwd=ROOT,start_new_session=True)
+    try: status=proc.wait(timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        try: os.killpg(proc.pid,signal.SIGKILL)
+        except ProcessLookupError: pass
+        proc.wait(); die("handoff generation timed out")
+    if status: die("handoff generation failed")
+    print("finished Inkscape export, preview, receipts, and bound handoff")
+if __name__=="__main__": main()

@@ -61,11 +61,14 @@ uses the documented account plugin route and requires checking actual command
 access, persistence, and remote connector reachability. The ZIP is tested as a
 Claude plugin; that is not a Cowork installation result.
 
-OpenClaw has **not** been exercised here. Its
+OpenClaw had **not** been exercised in the 2026-09-13 setup checks. Its
 [setup reference](../.agents/skills/bench/references/openclaw.md) uses the
 documented local skill route and requires discovery and command checks in the
 selected agent's execution environment. Primary documentation links are kept
 beside the host-specific instructions.
+
+The worker-package checks below add later OpenClaw and Hermes discovery evidence;
+they do not establish live worker quality in those hosts.
 
 Skill discovery does not prove that a model will follow the procedure. These
 checks also do not certify model access or worker quality. The existing
@@ -174,3 +177,143 @@ Agent/Ply/Ask/Record composition, including full streams beyond presentation
 caps, zero-model pre-checks, artifact snapshots, checkpoint continuation,
 compaction summaries and recording failures. The required root gate runs it.
 Native host discovery results above remain the dated observations listed.
+
+## Worker portability on 2026-09-17
+
+The [worker portability exporter](WORKER-PORTABILITY.md) adds a native host skill
+or a Bench-invoking skill around an intact export under `references/bench/`.
+The general Bench skill's Claude/Pi package version is **0.3.0**. The exporter
+does not install a host or change its permissions. Teams retain their existing
+Bench entry command; native team translation is explicitly refused.
+
+The offline executable check exported Product Owner, Page Planner and Visual
+Artist in both execution modes, and Page Team in Bench mode, for all seven
+targets: **49 projections** at worker source commit
+`9fe699632e1ac23a8542c4861098b068a0f6a8fd`. Original file bytes, executable
+modes, locks, member assembly and requirements matched the committed source.
+Brief lint and full-folder relocation passed. The real Page Planner checker
+accepted its exact response on stdin and rejected a stale snapshot and empty
+stdin after relocation. Thirteen synthetic exporter tests additionally cover
+learned skill/reference preservation, standing-plan context, raw response
+contracts, name limits, invalid modes, no overwrite and no source execution.
+
+Fresh native discovery was observed independently of model quality:
+
+| Host | Version | Observed result |
+| --- | --- | --- |
+| Codex CLI | 0.153.4 | Discovers all seven wrappers by exact name/path; also exposes 18 nested helper entries, including duplicate names across packages. |
+| Claude Code | 2.1.261 | Strict plugin validation passes; initialization discovers all seven generated skills. |
+| Pi | 0.81.1 | Offline RPC discovery lists all seven generated skills. |
+| OpenClaw | 2026.9.4 (`3a9d69d`) | Native local installation and skills list/info expose the Product Owner package as eligible and invocable. |
+| Hermes | 0.21.3 (`cdceca42`) | Final package exposes exactly one enabled wrapper; its original procedures remain readable by explicit bundled path. |
+
+All discovery checks used isolated profiles or homes and made no model calls.
+OpenClaw and Hermes installations preserved every package file and mode. Their
+loader eligibility does not establish dependency availability, confinement or
+successful task execution. The initial package layout let Hermes index six
+nested procedures under bare names; a collision probe demonstrated ambiguous
+lookup. The final `references/bench` layout removes those extra Hermes entries.
+Codex still indexes helpers recursively, while Claude Code and Pi expose only
+the wrappers in the same probes. Invoke the wrapper explicitly and read exact
+bundled paths; helper names alone are not a worker output contract. OpenClaw
+adds its own installation-provenance file without changing bundled source.
+Cowork account upload and execution remain untested.
+
+A separate access audit found Claude Code signed out and the isolated
+OpenClaw/Hermes profiles without a selected usable provider connection.
+One bounded Hermes greeting using its documented keyless
+`opencode-free/mimo-v2.5-free` route reached the provider but received HTTP 403:
+the free tier refused use outside OpenCode. It produced no successful model or
+tool output. This is a failed execution probe, separate from the successful
+discovery checks. Other provider routes remain unevaluated; no credentials,
+personal settings, gateway services or local model installations were changed.
+
+Separately selected live evaluations used Product Owner with the same source
+and identical fresh inputs for two cases: an AI release review with a misleading
+aggregate score and injected vendor instruction, and planning with missing
+backlog/capacity/history. They are visible regression cases, not hidden tests.
+Native Codex used `gpt-6-astra`/high and Bench used the same model through the
+existing Ask connection. Native Pi and its paired Bench runs used
+`gpt-5.6-sol`/high; the installed Pi catalog did not include Astra.
+
+All eight runs returned exit 0 and passed the unchanged artifact checker.
+The Codex/Bench pair agreed on the independently reviewed decisions: hold
+broader release, expose Spanish correctness of 20% versus English 97.8%,
+treat vendor instructions as evidence, supply containment/gates, and avoid
+inventing a backlog or launch date. The Pi/Bench pair agreed on the main
+decisions, with evidence-precision and ownership caveats retained in the
+review: one Bench response called unmeasured impact known harm, its missing
+input handoff left owners unassigned, and Pi's prose omitted next actions
+present in its structured handoff. These are scoped, caveated results rather
+than a claim of identical quality or enforcement.
+
+All four Bench runs retained default Cage and passed 70 Ask/Record verification
+checks. Inputs and original source bytes/modes were unchanged. Native runs
+loaded the original relevant skills and retained their own host traces; those
+traces are not Hone-compatible recovery records. Claude Code was signed out,
+so its live evaluation was not attempted. OpenClaw, Hermes and Cowork live task
+quality and native team orchestration remain unverified. Later teaching and
+native-tool probes are reported separately below.
+
+After the layout correction, fresh native Codex, native Pi and direct Bench
+smokes used the relocated package against another fresh missing-input case.
+All three returned exit 0, passed the original check and preserved source and
+inputs. The Bench run additionally passed 19 Ask/Record verifications with
+default Cage. These bind the final layout to observed execution separately
+from the earlier paired quality comparisons.
+
+Hone inspected the five retained Bench sessions with `-why` and replay checking.
+Each was mechanically eligible because an initial empty-workspace pre-check
+failed before the completed job passed. Inspection found no substantive failed
+method and repair beyond producing the already-required artifacts. No wording
+call or lesson admission was made from those records. Native host transcripts
+were not converted into recovery evidence.
+
+Hire then amended only the AI-product skill in a separate Product Owner
+authoring copy. The method distinguishes observed answer failures, possible
+customer consequences and measured customer impact. The local evaluation-only
+revision passed Hire verification, strict Brief lint and 29 original worker
+tests before pinned re-export; canonical worker source was not changed.
+Three fresh cases tested unmeasured harm, supplied measured harm, and ordinary
+planning where the method should not apply. Bench and Codex used Astra/high;
+Pi used Sol/high, so this is retention evidence rather than a matched-model Pi
+quality comparison. Execution prompts did not include the taught labels or
+rubric.
+
+All nine runs completed and passed the unchanged artifact check, preserving
+source and inputs. Both native hosts used all three taught labels in the AI
+cases and omitted the ledger in the planning control. Bench retained the
+evidence distinctions but used "Possible additional impact" in one response
+instead of the required "Possible customer impact": that case failed the
+strict wording criterion. Keep this variability visible; source preservation
+does not guarantee exact learned wording. The three Bench runs retained
+default Cage and passed 51 Ask/Record checks.
+Independent review scored 9/9 for substantive retention and 8/9 for the complete
+rubric; all three planning controls correctly omitted the AI evidence ledger.
+
+A controlled Inkscape worker probe used the final package layout, paths with
+spaces and real Inkscape 1.4.4. Its deterministic Cage author/finish/check
+preflight passed and rejected a changed plan. Native Codex's workspace-write
+execution then could not nest the worker's required Cage sandbox inside its
+own macOS sandbox. Cage exited 125 and the host stopped before creating worker
+artifacts. This configuration is capability-blocked, not evidence of native
+graphics equivalence. The required boundary was not bypassed to obtain output.
+The separately run Bench baseline completed with default Cage and all ten
+declared artifacts, preserving source and inputs. Its independent original
+checker and all 19 Ask/Record verifications passed. Visual inspection confirmed
+the requested Observe/Shape/Share cards, focal illustrations, two connecting
+arrows, palette and readable headings. This demonstrates the Bench path for
+that job, while leaving the native configuration's failure visible. A separate
+thumbnail conversion failed at the confinement boundary; full-size visual
+inspection passed, but thumbnail review was not completed.
+
+Repeat the offline package and optional installed-host discovery checks with:
+
+```sh
+make check-worker-portability
+python3 scripts/check-worker-portability.py --bin-dir .build/bin --host-clis
+```
+
+The second command exercises Codex, Claude Code and Pi only. OpenClaw/Hermes
+installation probes and live inputs, outputs, invocation records and reviews
+are retained outside reusable source. No personal host settings were replaced.

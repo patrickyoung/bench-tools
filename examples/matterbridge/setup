@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Prepare one Matterbridge chat host from environment settings and pinned source."""
+import argparse
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+MATTERBRIDGE_REF = 'c4157a4d5b49fce79c80a30730dc7c404bacd663'
+ROOT = Path(__file__).resolve().parent
+
+
+def main():
+    os.umask(0o077)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--state', type=Path, required=True)
+    parser.add_argument('--ref', required=True, help='full reviewed Bench commit')
+    parser.add_argument('--matterbridge', type=Path, help='use an existing compatible binary; otherwise build the pinned source')
+    args = parser.parse_args()
+    if not args.state.is_absolute():
+        raise ValueError('--state must be absolute')
+    state = args.state.resolve()
+    for name in ('TELEGRAM_BOT_TOKEN', 'MATTERBRIDGE_API_TOKEN', 'TELEGRAM_CHAT_ID', 'TELEGRAM_ALLOWED_USERS', 'ASK_MODEL'):
+        if not os.environ.get(name):
+            raise ValueError('set ' + name + ' in the service environment')
+    executable = args.matterbridge or state / 'bin/matterbridge'
+    if not executable.is_absolute():
+        raise ValueError('--matterbridge must be absolute')
+    cfg = {'bench_source': str(ROOT.parents[1]), 'bench_ref': args.ref,
+           'matterbridge': str(executable), 'api_url': os.environ.get('MATTERBRIDGE_API_URL', 'http://127.0.0.1:4242'),
+           'telegram_token_env': 'TELEGRAM_BOT_TOKEN', 'api_token_env': 'MATTERBRIDGE_API_TOKEN',
+           'telegram_chat_id': os.environ['TELEGRAM_CHAT_ID'],
+           'allowed_user_ids': [v.strip() for v in os.environ['TELEGRAM_ALLOWED_USERS'].split(',')],
+           'provider_env': ['ASK_MODEL', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_BASE_URL', 'ANTHROPIC_BASE_URL']}
+    if os.environ.get('TELEGRAM_BUILDER_TOPIC_ID'):
+        cfg['builder_topic_id'] = int(os.environ['TELEGRAM_BUILDER_TOPIC_ID'])
+    if (state / 'config.json').exists():
+        if json.loads((state / 'config.json').read_text()) != cfg:
+            raise ValueError('existing instance has different settings; select a new state directory')
+    else:
+        subprocess.run([str(ROOT / 'bridge'), '--state', str(state), 'init'],
+                       input=json.dumps(cfg).encode(), check=True)
+    if not executable.exists():
+        if args.matterbridge:
+            raise ValueError('selected Matterbridge binary does not exist')
+        if not shutil.which('go'):
+            raise ValueError('Go is required to build Matterbridge')
+        executable.parent.mkdir(exist_ok=True)
+        subprocess.run(['go', 'install', '-tags', 'nomsteams',
+                        'github.com/42wim/matterbridge@' + MATTERBRIDGE_REF],
+                       env=dict(os.environ, GOBIN=str(executable.parent), GOWORK='off'), check=True)
+    subprocess.run([str(ROOT / 'bridge'), '--state', str(state), 'bootstrap'], check=True)
+    print('Prepared. Run under your process supervisor:')
+    print(str(ROOT / 'bridge') + ' --state ' + str(state) + ' run')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print('chat setup: ' + str(error), file=sys.stderr)
+        sys.exit(2)

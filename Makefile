@@ -5,7 +5,7 @@ PYTHON ?= python3
 TOOLS ?=
 PREFIX ?= $(HOME)/.local
 
-.PHONY: help build test check check-docs check-examples check-harnesses install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability install uninstall list
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -14,6 +14,7 @@ help:
 	@echo 'make check-docs            Check guide links and heading anchors'
 	@echo 'make check-examples        Build starter tools and run offline examples'
 	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
+	@echo 'make check-worker-portability Verify worker skill exports and original checks'
 	@echo 'make install               Build and install under ~/.local'
 	@echo 'make uninstall             Remove verified installs made here'
 	@echo 'make list                  List components and public commands'
@@ -29,7 +30,7 @@ build:
 test:
 	@$(PYTHON) scripts/check --quick $(TOOLS)
 
-check: check-docs
+check: check-docs check-worker-portability
 	@$(PYTHON) -m unittest discover -s scripts/tests -v
 	@$(PYTHON) scripts/check $(TOOLS)
 
@@ -43,6 +44,10 @@ check-examples:
 check-harnesses:
 	@$(PYTHON) scripts/build brief mcp
 	@$(PYTHON) scripts/check-harnesses.py --bin-dir .build/bin
+
+check-worker-portability:
+	@$(PYTHON) scripts/build brief
+	@$(PYTHON) scripts/check-worker-portability.py --bin-dir .build/bin
 
 install:
 	@$(PYTHON) scripts/install $(TOOLS) --prefix "$(PREFIX)"

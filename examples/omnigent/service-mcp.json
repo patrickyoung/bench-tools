@@ -1,0 +1,112 @@
+{
+  "name": "bench-service",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "submit_job",
+      "description": "Queue one job. Preserve session and key across network retries with identical inputs. A new key starts new work. Returns immediately; use get_job for its outcome.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "request": {
+            "type": "string"
+          },
+          "files": {
+            "type": "object",
+            "description": "Relative file paths to base64 bytes (8 MiB total).",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "session",
+          "key",
+          "request"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_job",
+      "description": "Read owned job status and bounded output. Unknown requires operator recovery.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_jobs",
+      "description": "Read this client's jobs, optionally within a session. Sessions group and serialize jobs; they do not automatically share files or model history.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "cancel_job",
+      "description": "Request cancellation. This cannot undo effects; started work may become unknown.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Read up to 1 MiB of an owned job file beneath work/ or team/, as base64. Live files may change between reads.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job",
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

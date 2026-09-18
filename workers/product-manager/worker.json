@@ -1,0 +1,37 @@
+{
+  "id": "product-manager",
+  "description": "SAFe-informed product strategy, outcome-led option evaluation and executive synthesis of checked specialist evidence, with economic and lifecycle judgment.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library on macOS or Linux",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "review": "Independent review of product judgment; checks validate schema, byte bindings and framework arithmetic"
+  },
+  "files": [
+    "workers/product-manager/expert/AGENTS.md",
+    "workers/product-manager/expert/CONTRACT.md",
+    "workers/product-manager/expert/LICENSE",
+    "workers/product-manager/expert/PROVENANCE.md",
+    "workers/product-manager/expert/README.md",
+    "workers/product-manager/expert/bin/check",
+    "workers/product-manager/expert/skills/business-outcomes/SKILL.md",
+    "workers/product-manager/expert/skills/evidence-discovery/SKILL.md",
+    "workers/product-manager/expert/skills/finops/SKILL.md",
+    "workers/product-manager/expert/skills/product-capabilities/SKILL.md",
+    "workers/product-manager/expert/skills/product-management/SKILL.md"
+  ]
+}

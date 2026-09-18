@@ -1,0 +1,11 @@
+#!/bin/sh
+# This image is run ONLY inside the enclosing Docker sandbox. Team commands
+# retain Agent's argv and outcome contract, with the host boundary selected.
+case "${1:-}" in
+  run|tick)
+    mode=$1
+    shift
+    exec /opt/bench/bin/agent "$mode" -no-cage "$@"
+    ;;
+  *) exec /opt/bench/bin/agent "$@" ;;
+esac

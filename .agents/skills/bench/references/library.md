@@ -54,6 +54,15 @@ configure selectors, and install the root browser dependencies and Visual
 Artist's own pinned packages. Configure optional native tools only for jobs
 that require them. Follow [operate](operate.md) for actual execution.
 
+## Export for another harness
+
+For an individual worker used inside another host's own model/tool loop, read
+`docs/WORKER-PORTABILITY.md` in the selected checkout. Add `--target HOST
+--execution native` to the same pinned export. Use `--execution bench` to expose
+the unchanged Bench worker or team command as a host skill. Keep the entire
+package, including original expert and lock. Native teams are rejected; shared
+role descriptions alone do not preserve their controllers and handoffs.
+
 ## Assemble or adapt
 
 If an existing team fits, export it directly; assembly makes no model call.

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+export PYTHONDONTWRITEBYTECODE=1
+exec "${POLARS_PYTHON:-python3}" "$(CDPATH= cd -- "$(dirname "$0")/../tools" && pwd)/analyze.py" check

@@ -70,6 +70,41 @@ tools from the same intended installation together on PATH.
 The equivalent Make commands are `make install`, or
 `make install TOOLS="ask brief ply" PREFIX="$HOME/bench-local"`.
 
+## Deploy only the runtime
+
+An already built worker needs no Hire, Draft or Hone to run. Install Agent's
+runtime companions into a fresh prefix:
+
+```sh
+python3 scripts/install agent ask brief ply cage record --prefix /absolute/runtime
+```
+
+Export the worker or assembled team on the authoring machine with
+`scripts/workers`, then transfer that definition and the installed prefix to
+a compatible host (same OS and architecture). The installed programs run
+without the source checkout, Go compiler, exporter or authoring tools.
+Alternatively transfer selected build packages and use the installer's
+`--from-build` option on the target; that installation step needs Python.
+
+Agent loads skills through Brief, runs the action/check loop through Ply,
+calls models through Ask, and retains execution evidence through Record.
+Cage supplies the default action boundary; Linux also needs Bubblewrap.
+Ply remains necessary when a worker produces documents or edits job files.
+Keep definitions separate from writable work, state and evidence, and
+configure the model on the host.
+
+Teams retain their existing entry commands and dependencies. Add Tend and
+Weave where used; the page team also needs its separately pinned Bench Manage
+and browser setup. Specialty tools, Python/Node packages, connectors and
+credentials still come from the selected worker/team README. Catalog
+`requires` lists currently include authoring/setup tools as well as runtime
+requirements; they are not an automatic minimal dependency resolver.
+External effect controllers need their own Action/May setup where applicable.
+
+The [Omnigent deployment](../examples/omnigent/README.md) follows the same split:
+worker and team images omit Hire; only an explicitly packaged builder includes
+it. Its enclosing Docker boundary replaces Cage for those jobs.
+
 ## Try without installing
 
 ```sh

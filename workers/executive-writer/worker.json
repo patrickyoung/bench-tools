@@ -1,0 +1,40 @@
+{
+  "id": "executive-writer",
+  "description": "Transform reviewed expert findings into a sustained executive argument in Word, PDF and Markdown.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 for contracts; selected bundled Python 3.12 for production and PDF checks",
+    "model": "Explicit operator-selected Ask model and credentials; no secrets bundled",
+    "production": "PUBLICATION_* selectors: bundled Artifact Tool Node/Python/LibreOffice, Poppler, document/presentation skill helpers; separate matplotlib 3.11.2 runtime for information design",
+    "review": "Independent actual-image Ask review plus a separate semantic Agent review; model judgment, not certification"
+  },
+  "files": [
+    "workers/executive-writer/expert/AGENTS.md",
+    "workers/executive-writer/expert/CONTRACT.md",
+    "workers/executive-writer/expert/LICENSE",
+    "workers/executive-writer/expert/PROVENANCE.md",
+    "workers/executive-writer/expert/README.md",
+    "workers/executive-writer/expert/bin/check",
+    "workers/executive-writer/expert/lib/publication_contract.py",
+    "workers/executive-writer/expert/lib/render.py",
+    "workers/executive-writer/expert/lib/render_document.py",
+    "workers/executive-writer/expert/lib/render_graphics.py",
+    "workers/executive-writer/expert/role.json",
+    "workers/executive-writer/expert/skills/executive-argument/SKILL.md",
+    "workers/executive-writer/expert/tools/render"
+  ]
+}

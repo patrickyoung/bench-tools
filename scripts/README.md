@@ -24,6 +24,8 @@ python3 scripts/check-docs.py              # local guide links and anchors
 python3 scripts/check-examples.py --bin-dir .build/bin  # copied starters, local fixtures
 python3 scripts/check-harnesses.py --bin-dir .build/bin # portable skill + real MCP calls
 python3 scripts/check-harnesses.py --host-clis          # optional installed Codex/Claude/Pi discovery
+python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
+python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
 ```
 
 Builds require Go 1.26+, Python 3.9+, Git, and sh. The test runner selects its
@@ -176,6 +178,18 @@ for observed versions and the limits of that evidence.
 
 ## Worker source library
 
+`workers export` and `export-team` accept optional `--target HOST --execution
+native|bench` to wrap an intact export under `references/bench/` in a host skill
+without changing any original definition or lock bytes. `worker_portability.py` writes packaging instructions, never an
+execution loop. [Worker portability](../docs/WORKER-PORTABILITY.md) explains the
+supported hosts, explicit fidelity limits and teaching/re-export workflow.
+
+`make check-worker-portability` builds Brief and exercises real pinned worker
+and team exports, relocation, skill lint, and original response-check streams.
+It is also part of `make check`. Add `--host-clis` to the Python script for
+fresh Codex, Claude Code and Pi discovery in disposable homes. These checks use
+no live model; paired job evaluations remain separately selected evidence.
+
 `python3 scripts/workers list --all` reads catalog metadata; `check` inspects
 source and approved export inventories. `export ID DEST --ref FULL_COMMIT`
 uses Git to write only committed, explicitly approved source into a new folder
@@ -187,6 +201,28 @@ deprecated and retired entries cannot be exported at that selected revision.
 This is a repository utility, not an installed Bench command or runtime. See
 [the library guide](../docs/WORKER-LIBRARY.md) for content exclusions, source
 pins, authoring, checks and lifecycle policy.
+
+`python3 scripts/deploy-omnigent worker ID DEST --ref FULL_COMMIT` packages a
+clean export, pinned toolkit source and the [Omnigent deployment adapter](../examples/omnigent/README.md).
+Use `team` instead of `worker` to assemble a team. The resulting directory can
+be installed locally or transferred to an SSH host before installation. Each
+job uses a Docker sandbox; the repository script only packages source and
+never starts a model or server. Experimental exports still require explicit
+`--allow-experimental`.
+The bundle also includes an optional [SSH/MCP service](../examples/omnigent/SERVICE.md)
+for client identities, session serialization, durable Tend jobs and explicit
+recovery. Its workers are supervised separately from client connections.
+
+`deploy-omnigent builder builder DEST --ref FULL_COMMIT` packages a sandboxed
+Hire authoring service with a pinned read-only library snapshot. An explicit
+`--candidate FILE` packages a bounded generated source snapshot instead of a
+catalog export; worker and team candidates use the ordinary root Agent entry.
+Generated code never runs on the packaging host. The installed bundle accepts
+`./install --without-chat` to omit Omnigent and its Python environment.
+The optional [Matterbridge application](../examples/matterbridge/README.md)
+composes these commands for persistent build conversations, explicit deployment,
+smoke verification and dedicated Telegram topics. Its small process supervisor
+belongs to that application, not the Bench tools.
 
 Replay verification includes the required Record/Ask executable contract and
 Record/Ply interpreter fixture. See [the replay scope](../docs/REPLAY.md) for

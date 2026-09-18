@@ -10,12 +10,22 @@ selected by a team. Status, owner, requirements and approved files live in its
 
 | Worker | Purpose |
 | --- | --- |
+| [Product Manager](product-manager/expert/README.md) | Frame SAFe-informed product strategy and evaluations, then synthesize checked evidence into business decisions with explicit economic and lifecycle tradeoffs. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
+| [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
+| [Vendor comparison](vendor-comparison/expert/README.md) | Produce evidence-linked technical comparisons with business weights, anchored scores, mandatory gates and visible uncertainty. |
+| [Editorial Director](editorial-director/expert/README.md) | Own one audience-specific argument, message map and visual direction across publications. |
+| [Information Designer](information-designer/expert/README.md) | Design factual charts, explanatory infographics and complete auditable Excel tables. |
+| [Executive Writer](executive-writer/expert/README.md) | Transform expert evidence into sustained Word reports and executive summaries. |
+| [Presentation Designer](presentation-designer/expert/README.md) | Pace executive PowerPoint narratives with native editable charts, tables and text. |
+| [Publication Reviewer](publication-reviewer/expert/README.md) | Audit evidence fidelity, writing, design and cross-format coherence using current rendered-image critiques. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |
 | [Blender artist](blender-artist/expert/README.md) | Produce editable Blender sources, a preview and a web asset. |
+| [Inkscape illustrator](inkscape-illustrator/expert/README.md) | Create editable vector illustrations from a description and optional style; export portable SVG and an Inkscape-rendered preview. |
+| [Inkscape-controlled illustrator](inkscape-controlled-illustrator/expert/README.md) | Create editable vector illustrations through a bounded drawing plan, trusted document adapter, and native Inkscape export. |
 | [Image editor](image-editor/expert/README.md) | Preserve originals and produce an editable GIMP master and optimized export. |
 | [Image concept](image-concept/expert/README.md) | Prepare a checked image request and composition notes for a separately selected generator. |
 | [Page planner](page-planner/expert/README.md) | Propose bounded tasks against an explicitly supplied Bench Manage snapshot. |

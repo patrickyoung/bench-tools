@@ -150,6 +150,12 @@ runtime memory or the entire teaching workspace. Preserve the old lock and pin:
 existing exports do not update automatically. Revise the selected worker/team
 pin when adopting the new version, and record the exact next-run invocation.
 
+If this worker also has native host packages, regenerate them from the reviewed
+source commit using the targeted export in `docs/WORKER-PORTABILITY.md`. Preserve
+the entire learned skill and its relative references. Evaluate a fresh retention
+case both through Bench and each selected native host; discovery alone does not
+prove retention. Native host transcripts cannot be converted into Hone receipts.
+
 Report separately what was proposed, applied, evaluated and committed/published.
 Name where the knowledge lives and how the next run will load it. A source
 revert and re-export can retire a bad lesson; Hone also supports forgetting a

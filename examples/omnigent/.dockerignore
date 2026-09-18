@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!bench-source.tar
+!build-tools.py
+!sandbox-agent
+!sandbox-builder.py
+!definition/
+!definition/**

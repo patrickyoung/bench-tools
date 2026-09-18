@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import json,sys,os
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"lib"))
+from publication_contract import validate
+try:
+ role=json.loads((Path(__file__).resolve().parents[1]/"role.json").read_text())["role"]
+ request=json.loads((Path.cwd()/"request.json").read_text())
+ authoring=os.environ.get("PUBLICATION_AUTHORING_ONLY")=="1" and request.get("production")=="controller"
+ validate(Path.cwd(),role,require_artifacts=not authoring)
+ print("valid bound "+role+(" authored spec" if authoring else " publication package"))
+except Exception as e:
+ print(str(e),file=sys.stderr);sys.exit(1)
