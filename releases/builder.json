@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "artifacts": {
+    "linux-amd64": {
+      "schema": 1,
+      "repository": "https://github.com/patrickyoung/bench-tools",
+      "revision": "d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782",
+      "platform": "linux-amd64",
+      "tools": [
+        "hire",
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record",
+        "trail",
+        "hone"
+      ],
+      "packages": {
+        "hire": "cc10d8332b8601add0233237ec3fcb86b10c21efdb196e5f97ac880f2c2bb373",
+        "agent": "e089f86ae2ee8677fb1abbda57cd1763bcbf010638044ec5d9fb67f235eb88c7",
+        "ask": "5cff11209f2f6d74a24002410bd266b91a6c7e9484a266a5895cf60b5959cf2f",
+        "brief": "c43faad00624cc9657fd26b4c6ad8e4523955400dc63744c4c4e4e6473b27754",
+        "ply": "7911474e4950f302c0e70c869a1b6eb07a347448c67e373d96f5f80c43dc729a",
+        "cage": "747b1a1fca54a386c83bcd5d8440b7a8360aa38a83e7f2d5e382fcad98a7db54",
+        "record": "e7f9a9af7205e6bda744ba666f611f429e5c1d7dba7a4a6109339ad3e61ebadb",
+        "trail": "9c1b13ba108b4e9363ee9e8db914e87cf21532d5ddade33c64b1716f1437d7fc",
+        "hone": "4930eed6044459c4c2eec8058e700f716e04a97672d604f258fcd6ab7da0b3a3"
+      },
+      "sources": {
+        "hire": "969b114d4dea9c5a96d4c51f6d0660a8cc60fd6d4fa23536fe276519784a5b24",
+        "agent": "4daebb33426cf2e3f3c42fe79b58f81e5ab8454517edbed2a13697c4677c3a84",
+        "ask": "714be88d2de49477b413afdde29dfbc74169884b304b799a61362fda09dc89d1",
+        "brief": "687c8420d280347967764acf38c832ac6c0fdad00ca735d58f36deaab50be019",
+        "ply": "a3b8b2e7b000d69e8a05d496400f990711b133356836157b4232d03ad0037cdb",
+        "cage": "4ce06107911fc45d194c2a5e1337dec98826dcd3175e0ad8c2d80f9f28b404c4",
+        "record": "9bcc5b5f22f2028c5fe9dc0db34b890136303afb99b271ab3717798c5c56b8c6",
+        "trail": "392b512c5c09451280bc9d1e3d57b9f71f2797b2249087576820ae3255e52d7c",
+        "hone": "29de34c26021d33b2da3ee01ba1c32b9e31b59b6f26541be400433378f21c260"
+      },
+      "sha256": "c8ec1421081452e85f74dea58ace57ea0fa4a6f6629a2511349bad5178b95b3f",
+      "size": 38370645,
+      "url": "https://github.com/patrickyoung/bench-tools/releases/download/builder-d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782/bench-builder-linux-amd64.tar.gz"
+    },
+    "linux-arm64": {
+      "schema": 1,
+      "repository": "https://github.com/patrickyoung/bench-tools",
+      "revision": "d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782",
+      "platform": "linux-arm64",
+      "tools": [
+        "hire",
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record",
+        "trail",
+        "hone"
+      ],
+      "packages": {
+        "hire": "f2e1207d7051a5b5d1c6e1b78994f95d2548a591c452f8035bdd3eea46d9ac73",
+        "agent": "002a76f1d41599be4c4f055cad38d17e88b78a0f449a4f62f8d4e0064f640226",
+        "ask": "8406a87b791c251b8d0213d39ac2c0c8f0c9c31d7781a650fc11dc9aa0579041",
+        "brief": "f43c8a0c35df3ee410a05abf20f7dcbb60f4d3170f8d38ced7d16aa7a0cdde4d",
+        "ply": "7493c5ddc2cc97eb2db4974faf387bc59634d03930bee9d97d42b3cd2490515b",
+        "cage": "622e09f4ad57c2a30df332e89c9b5fdac3fc36f5ed770f0e07e06ccf96a10dd8",
+        "record": "68b326467368f974e3723a0467ac84d2f453b4fb8c161dc50ad4da4ac4d29511",
+        "trail": "55f87d184ee31eb33fb53b94efcf2df3ddb05b9b07bbcd428071043f30ce5632",
+        "hone": "b89b3f176ee3fe8e9da29a722f3f12f1ac687cb3d8549134fb7ebdb7c478492e"
+      },
+      "sources": {
+        "hire": "969b114d4dea9c5a96d4c51f6d0660a8cc60fd6d4fa23536fe276519784a5b24",
+        "agent": "4daebb33426cf2e3f3c42fe79b58f81e5ab8454517edbed2a13697c4677c3a84",
+        "ask": "714be88d2de49477b413afdde29dfbc74169884b304b799a61362fda09dc89d1",
+        "brief": "687c8420d280347967764acf38c832ac6c0fdad00ca735d58f36deaab50be019",
+        "ply": "a3b8b2e7b000d69e8a05d496400f990711b133356836157b4232d03ad0037cdb",
+        "cage": "4ce06107911fc45d194c2a5e1337dec98826dcd3175e0ad8c2d80f9f28b404c4",
+        "record": "9bcc5b5f22f2028c5fe9dc0db34b890136303afb99b271ab3717798c5c56b8c6",
+        "trail": "392b512c5c09451280bc9d1e3d57b9f71f2797b2249087576820ae3255e52d7c",
+        "hone": "29de34c26021d33b2da3ee01ba1c32b9e31b59b6f26541be400433378f21c260"
+      },
+      "sha256": "a7ca0eee27fbeb3d6d120f01689177fb690f84a8c838d73a5abe9ea5e614337b",
+      "size": 35803060,
+      "url": "https://github.com/patrickyoung/bench-tools/releases/download/builder-d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782/bench-builder-linux-arm64.tar.gz"
+    }
+  }
+}

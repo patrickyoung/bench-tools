@@ -9,7 +9,7 @@ existing installer still installs programs, Hire builds, and Agent runs.
 
 ## Git marketplace installation on 2026-09-17
 
-The **0.4.1** package declares a Git marketplace for Codex and a separate
+Since **0.4.1**, the package declares a Git marketplace for Codex and a separate
 Claude marketplace used by Claude Code and Cowork. Codex selects the repository
 root; Claude selects the isolated `.agents` directory. Both use the single
 canonical Bench skill. The portable check validates these paths,
@@ -39,30 +39,30 @@ Bench setup does not install them.
 Repeat with `python3 scripts/check-harnesses.py --host-clis`. The default
 `make check-harnesses` runs portable checks without requiring any host CLI.
 
-An additional **actual network installation of 0.4.0** passed for both native CLIs from
-the public GitHub branch `codex/simple-harness-installs` at commit
-`a86ad27711974942e303cd4bbd1d943dc8a0555b`. This used the complete published
+An **actual network installation of 0.4.2** passed for both native CLIs from
+the public GitHub branch `codex/prebuilt-setup` at commit
+`497fda761abe1d7c215b051f4bb8d030db62732c`. This used the complete published
 repository with no Git URL rewrite. Claude Code and Codex each installed the
 plugin and discovered **exactly one** enabled/namespaced Bench skill in a fresh
 process; all installed skill/reference bytes matched that source commit.
-The same check subsequently passed against the plain default-branch GitHub URL
-at merge commit `fbc52833cd051ac02d37de358c907fd5b3f4a7f5`, without `--ref`.
-Those native CLIs did not expose nested legacy plugins or worker procedures as
-extra Bench skills. Cowork applies a different packaging check, described below.
+The plain default-branch URL was previously verified for both native CLIs at
+`fbc52833cd051ac02d37de358c907fd5b3f4a7f5` with **0.4.0**, without `--ref`.
+These are distinct source revisions; the newer branch result does not establish
+that 0.4.2 has reached the default branch.
 
 The explicit network check is repeatable with:
 
 ```sh
 python3 scripts/check-harnesses.py --host-clis \
   --source-url https://github.com/patrickyoung/bench-tools.git \
-  --ref codex/simple-harness-installs
+  --ref codex/prebuilt-setup
 ```
 
 It compares the remote installed skills with the current checkout, so select
 matching source before running it. Omit `--ref` to check the URL's default
 branch. Network access is opt-in; the default fixture remains offline.
 
-### Cowork exposed a packaging failure
+### Corrected Cowork marketplace verified
 
 Cowork's account UI rejected the published **0.4.0** marketplace even though
 both native CLIs installed it. Its sync diagnostic identified
@@ -71,11 +71,8 @@ the existing legacy manifest at
 `tools/agent/plugins/bench-system-builder/.claude-plugin/plugin.json`.
 The generic UI error did not explain that nested-manifest restriction.
 
-A controlled upload of the minimal **0.4.0** ZIP then succeeded and showed
-`bench-tools@My Uploads`, version 0.4.0, with one skill. That archive retained
-the custom `.agents/skills` path, confirming that path was accepted. This was
-an account upload/discovery result, not a successful GitHub marketplace sync
-or Bench runtime execution.
+A controlled upload of the minimal **0.4.0** ZIP succeeded with one skill while
+retaining the custom `.agents/skills` path, confirming that path was accepted.
 
 The **0.4.1** correction selects `./.agents` from the Claude marketplace and
 adds its own `.claude-plugin/plugin.json` and license there. Its conventional
@@ -86,12 +83,20 @@ competing manifests, so it cannot conceal the earlier root-selection error.
 Checks reject any nested plugin manifest inside the selected Cowork source
 while permitting independent component plugins elsewhere in the repository.
 
-The corrected **0.4.1** source passes isolated native installation, exact
-skill/reference preservation, one-skill discovery and all eight package tests.
-Its actual published GitHub Cowork sync still needs verification; these local
-results do not establish it. Native Cage availability inside Cowork, model
-access and worker execution remain separate checks. Earlier results below
-retain their original scope and versions.
+After PR #17 reached main at
+`4d2a8346daf8fc5152400914bc93852d59068986`, Cowork successfully synced the
+canonical URL `https://github.com/patrickyoung/bench-tools`. The actual account
+UI showed source `bench-tools`, version **0.4.1**, and **one skill**. Adding it
+completed with the plugin installed and enabled. A fresh New task draft showed
+exactly one Bench tools group and one `bench` slash-menu item. The draft was
+cleared without submitting a model turn.
+
+The temporary **0.4.0** My Uploads copy was removed before this marketplace
+installation; unrelated plugins were preserved. This plugin remains **0.4.1**;
+refresh to **0.4.2** is not yet verified. The separate runtime setup below proves
+command availability and confinement in the tested Cowork session.
+
+### Runtime package and source setup
 
 The new `scripts/setup` command also passed a complete source build and install
 on macOS with a separate runtime prefix and setup directory. All nine version
@@ -104,6 +109,63 @@ They also preserve handoff/environment edits and receipt changes made while
 setup is running, and serialize competing setups for the same state directory.
 The native Cage CI jobs now exercise source setup on both Linux and macOS.
 No Ask request or worker evaluation is part of these setup checks.
+
+At source commit `d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782`, the
+[Builder packages run](https://github.com/patrickyoung/bench-tools/actions/runs/35295980893)
+passed all four native Linux/macOS amd64/arm64 jobs. These jobs build, package,
+extract, install and verify the distributed independent packages before signing
+their archives with GitHub build attestations. The downloaded archives were
+also independently verified with `gh attestation verify`, enforcing the exact
+repository, the `packages.yml` workflow identity at
+`refs/heads/codex/prebuilt-setup`, matching source and signer commit IDs, and
+GitHub-hosted runners.
+
+These signatures establish GitHub Actions provenance. They are not Apple
+Developer ID signatures or notarization. Automatic published packages are
+limited to Linux; macOS defaults to source
+builds even if a matching Mac pin is present. Explicit caller-selected local
+packages remain supported. Twelve prebuilt acceptance tests cover that policy,
+Linux selection without Go, preservation of checkout and binary source pins,
+changed-source fallback and rejection of damaged or unsafe archives before
+program execution. The installer verifies checked-in SHA-256/source pins;
+signature verification is performed before publication, as described in
+[the release procedure](RELEASES.md#published-builder-packages).
+
+A real default macOS setup at the same `d5150f4` source passed all nine version
+checks, Hire verification and native Cage checks. Its evidence is outside the
+checkout under `bench-mac-source-default-fqtjgwnv`. The
+[complete source CI run](https://github.com/patrickyoung/bench-tools/actions/runs/35295985305)
+passed all 50 checks. The attested Linux archives were then
+[published from that source](https://github.com/patrickyoung/bench-tools/releases/tag/builder-d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782).
+The default downloader fetched the public Linux amd64 archive, verified its
+checksum, safely extracted it and verified every independent package. Both
+Linux pins also matched a fresh committed checkout. These read/verification
+checks on macOS did not execute Linux binaries.
+
+### Cowork default package setup verified
+
+In the [observed Cowork task](https://claude.ai/cowork/cse_01UHt8EhuNhPa8WPGPARyt3G),
+default `python3 scripts/setup` from clean checkout
+`80da98b4c1c805c333eb348fe84320bd0f503fd8` downloaded the published Linux amd64
+archive from release `builder-d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782`.
+Its SHA-256 was
+`c8ec1421081452e85f74dea58ace57ea0fa4a6f6629a2511349bad5178b95b3f`
+and its size was **38,370,645 bytes**. A rejecting `/tmp/no-go-bin/go` was never
+invoked. All nine version checks, Hire's structural verification and Cage's
+13 native probes passed: all **11 setup checks exited 0**. All nine installed
+package receipts matched the checked-in pins.
+
+Cage allowed workspace and temporary writes, denied outside and read-only
+writes, allowed an explicit writable path, and verified that explicit writable
+paths replace the implicit workspace grant. It preserved stdin, stdout/stderr,
+exit 42 and signal status 143; denied network by default; allowed deliberate
+`-net`; and failed closed when its backend was unavailable.
+
+A fresh `env -i` shell sourced `env.sh`, resolved all nine commands under
+`/root/.local/share/bench/runtime/bin`, and ran their version commands with Go
+absent. The runtime and `BENCH-SETUP.md`, `env.sh`, and `setup.json` under
+`/root/.local/share/bench` are session-local. This proof does not establish
+persistence across Cowork sessions, model access or worker execution.
 
 ## Observed native checks
 
@@ -153,12 +215,13 @@ in offline RPC mode. No probe sends a model prompt.
 
 ## What this evidence does not establish
 
-Cowork's **0.4.0** account upload was exercised as described above, after its
-GitHub marketplace sync failed. Its corrected **0.4.1** GitHub sync and complete
-runtime setup remain unverified. The
+Cowork's corrected **0.4.1** canonical GitHub marketplace installation and fresh
+skill discovery and the default package runtime setup passed as described above.
+Persistence across Cowork sessions, remote connector reachability, model access
+and worker execution remain unverified. The
 [setup reference](../.agents/skills/bench/references/cowork.md) requires checking
-actual command access, persistence and remote connector reachability. A plugin
-upload or a passing native CLI probe does not establish those properties.
+these properties in the selected session; the observed local checks do not
+establish them for another execution environment.
 
 OpenClaw had **not** been exercised in the 2026-09-13 setup checks. Its
 [setup reference](../.agents/skills/bench/references/openclaw.md) uses the
@@ -316,7 +379,8 @@ Codex still indexes helpers recursively, while Claude Code and Pi expose only
 the wrappers in the same probes. Invoke the wrapper explicitly and read exact
 bundled paths; helper names alone are not a worker output contract. OpenClaw
 adds its own installation-provenance file without changing bundled source.
-Cowork account upload and execution remain untested.
+Cowork account upload and execution of these exported worker packages remain
+untested.
 
 A separate access audit found Claude Code signed out and the isolated
 OpenClaw/Hermes profiles without a selected usable provider connection.

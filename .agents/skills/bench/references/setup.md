@@ -41,10 +41,18 @@ the current Hire/Agent split.
 
 ## Finish setup with one command
 
-Check `go version`, `python3 --version`, and `git --version`. Source builds need
-Go 1.26+, Python 3.9+, and Git. If a prerequisite is absent, use the host's
-documented package installation process within the user's authorization, or
-name the exact missing prerequisite. Do not fabricate a working installation.
+Check `python3 --version` and `git --version`. Setup needs Python 3.9+ and Git.
+For Linux on Intel/AMD or ARM64, it downloads the GitHub release
+packages pinned by this checkout when their component sources match. Go is not
+needed for that route. Mac installs build locally and need Go 1.26+; automatic
+Mac binary downloads are deferred until Developer ID signing is available.
+Other hosts or changed component sources also build locally. Use `--from-source`
+to choose compilation explicitly.
+
+Linux also needs the system Bubblewrap package for Cage; macOS uses its native
+backend. If a prerequisite is absent, use the host's documented package
+installation process within the user's authorization, or name the exact missing
+prerequisite. Do not change host security or network policy to make setup pass.
 
 For “set up Bench,” run:
 
@@ -54,7 +62,7 @@ python3 scripts/setup
 . "$HOME/.local/share/bench/env.sh"
 ```
 
-This source setup helper composes the existing installer. It installs Hire,
+This setup helper composes the existing installer. It installs Hire,
 Agent, Ask, Brief, Ply, Cage, Record, Trail and Hone into
 `~/.local/share/bench/runtime`, checks command versions, verifies a sample
 definition's structure and runs Cage's native proof. It writes the absolute
@@ -62,6 +70,9 @@ paths, source pin and observed checks to `~/.local/share/bench/BENCH-SETUP.md`,
 plus `env.sh` and `setup.json`. It makes no model call and edits no host settings,
 shell profiles or credentials. The separate prefix avoids unrelated command
 collisions; loading `env.sh` keeps the selected companion programs on PATH.
+Published packages retain each tool's own receipt, license and source digest.
+Setup verifies the download hash against the checked-in pin, compares component
+sources, verifies package contents, and then runs the installed commands.
 
 For a user-selected location, pass `--prefix /absolute/runtime` and
 `--state-dir /absolute/setup-records`, then load that directory's `env.sh`.

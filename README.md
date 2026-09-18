@@ -32,9 +32,11 @@ You can also add the GitHub URL directly through your app's plugin installer:
 | Claude Cowork | **Customize → Plugins → Add → Add marketplace → Add from a repository**. Paste the URL, sync, then install **bench-tools**. |
 
 Start a fresh task and ask **“Use Bench to finish setup.”** The plugin supplies
-the skill; its first setup installs the separate Unix programs. Commands need
-macOS, Linux or WSL, Python 3.9+, Git and Go 1.26+. The app checks prerequisites
-in its execution environment; a mounted folder alone is not a host shell.
+the skill; its first setup installs the separate Unix programs. Setup needs
+macOS, Linux or WSL, Python 3.9+ and Git. Linux uses verified GitHub packages on
+supported Intel/AMD and ARM64 hosts and needs system Bubblewrap. Mac installs
+build from source and need Go 1.26+. The app checks its actual execution environment;
+a mounted folder alone is not a host shell.
 Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-connect-a-model).
 [Host details and verification](START-HERE.md#your-harnesss-setup-instructions).
 

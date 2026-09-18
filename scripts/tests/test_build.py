@@ -144,6 +144,16 @@ class BuildWorkflowTests(unittest.TestCase):
         self.assertEqual(subprocess.check_output([str(self.output / "bin/one")], text=True), "original-one")
         self.assertEqual(subprocess.check_output([str(self.output / "bin/two")], text=True), "original-two")
 
+    def test_explicit_no_cgo_build_records_and_applies_the_compiler_choice(self):
+        self.build("one")
+        receipt = self.output / "tools/one/package.json"
+        self.assertNotIn("build_environment", json.loads(receipt.read_text())["source"])
+        self.build("one", "--no-cgo")
+        self.assertEqual(json.loads(receipt.read_text())["source"]["build_environment"], {"CGO_ENABLED": "0"})
+        metadata = subprocess.check_output(["go", "version", "-m", str(self.output / "bin/one")], text=True)
+        self.assertIn("\tbuild\tCGO_ENABLED=0\n", metadata)
+        self.assertEqual(subprocess.check_output([str(self.output / "bin/one")], text=True), "original-one")
+
     def test_compiler_receives_an_export_without_the_checkout_or_sibling(self):
         # Observe the real compiler boundary rather than inferring isolation
         # from the receipt that the builder later writes about that boundary.

@@ -15,10 +15,16 @@ its supported UI rather than copying files into `~/.claude/skills`.
 [Claude's plugin and marketplace instructions](https://support.claude.com/en/articles/13837440-use-plugins-in-claude).
 
 The repository includes both the marketplace and its plugin. The installed
-skill follows [common setup](setup.md), locates a stable source checkout, runs
+skill follows [common setup](setup.md), locates or creates a source checkout, runs
 `python3 scripts/setup` in its available execution environment, and records the
 result in `BENCH-SETUP.md`. Setup makes no paid model call. Installing the plugin
 adds knowledge; it does not establish an execution boundary or a model account.
+
+Setup prefers source-matched packages from this repository's pinned GitHub
+release. It does not need a Go compiler or access to Go module servers on that
+route. Install the system Bubblewrap package if the Linux environment lacks it,
+using the environment's normal package manager. Complete the actual Cage check;
+namespace availability alone does not prove that it works inside Cowork.
 
 This is the personal marketplace route. Organization administrators use a
 different distribution flow with their own repository and policy requirements.
@@ -31,17 +37,24 @@ reporting that future-session plugin discovery is not yet verified.
 
 Inspect OS, available commands, writable roots, outbound access, and persistence.
 Do not assume a mounted folder provides a host shell, host Go installation,
-credentials, or the same sandbox backend. If source builds and native Cage work
+credentials, or the same sandbox backend. If package installation and native Cage work
 there, complete common setup in that environment and run the requested tests.
-Record whether the installation survives a fresh task; repeat setup when it does
-not. Keep the setup record in a user-selected persistent folder accessible to
-the next task; record the execution environment as well as absolute paths.
+Cloud Cowork gives each session a temporary sandbox that does not share its
+runtime filesystem with another session. Its home directory, source checkout
+and installed executables are session-local. Repeat setup and Cage verification
+in a new sandbox; the installed desktop plugin remains available as knowledge.
+[Cowork architecture](https://support.claude.com/en/articles/14479288-claude-cowork-architecture-overview).
+
+Keep a copy of the setup record in a user-selected connected folder or project
+files when continuity matters. Record the session environment, source/release
+pins and checks as well as absolute paths. A fresh task can use that record to
+select the same source, but must verify paths and install/check its own runtime.
 Do not claim a one-task installation is permanent or use the laptop's paths
 as proof that programs exist inside Cowork.
 
 If that environment cannot execute Bench, use an explicitly available remote
 execution connection to a selected Linux/macOS host. Run the same source
-installer and verification there. When no such connection exists, prepare the
+setup and verification there. When no such connection exists, prepare the
 expert definition, cases, and exact host setup/run commands; report the specific
 unexecuted step. Do not silently use the user's laptop or disable Cage.
 

@@ -11,6 +11,9 @@ import shlex
 import stat
 import subprocess
 import sys
+import tempfile
+
+from prebuilt_support import prepare_prebuilt
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ("hire", "agent", "ask", "brief", "ply", "cage", "record", "trail", "hone")
@@ -122,7 +125,9 @@ def main(argv=None):
                         help="tool prefix (default: ~/.local/share/bench/runtime)")
     parser.add_argument("--state-dir", type=Path, default=Path.home() / ".local/share/bench",
                         help="setup handoff directory (default: ~/.local/share/bench)")
-    parser.add_argument("--from-build", type=Path, help="use existing verified packages; no compiler required")
+    route = parser.add_mutually_exclusive_group()
+    route.add_argument("--from-build", type=Path, help="use existing verified packages; no compiler required")
+    route.add_argument("--from-source", action="store_true", help="build locally instead of using pinned published packages")
     args = parser.parse_args(argv)
     try:
         repository = command(["git", "rev-parse", "--show-toplevel"])
@@ -149,9 +154,13 @@ def main(argv=None):
                 if previous.get("prefix") != str(prefix) or previous.get("source") != str(ROOT):
                     raise ValueError("setup handoff selects a different source or prefix; use a separate --state-dir")
             install = [sys.executable, ROOT / "scripts/install", *TOOLS, "--prefix", prefix]
-            if args.from_build:
-                install += ["--from-build", args.from_build.expanduser().resolve()]
-            subprocess.run(list(map(str, install)), cwd=ROOT, check=True)
+            with tempfile.TemporaryDirectory(prefix="bench-setup-packages-") as scratch:
+                packages = args.from_build.expanduser().resolve() if args.from_build else None
+                if not args.from_build and not args.from_source:
+                    packages = prepare_prebuilt(ROOT, TOOLS, Path(scratch))
+                if packages:
+                    install += ["--from-build", packages]
+                subprocess.run(list(map(str, install)), cwd=ROOT, check=True)
             env = dict(os.environ, PATH=str(prefix / "bin") + os.pathsep + os.environ.get("PATH", os.defpath))
             # This probe checks the selected pair even if the caller uses a
             # separate HIRE_AGENT wrapper for their actual model-backed work.

@@ -10,7 +10,9 @@ then follow [common setup](.agents/skills/bench/references/setup.md). Complete
 both within the user's existing authorization. The default setup command is
 `python3 scripts/setup`: it installs the builder tools to a dedicated user
 prefix, checks them, and writes `~/.local/share/bench/BENCH-SETUP.md` with an
-environment file the next session can load. No manual PATH edit or demo MCP
+environment file the next session can load. Supported Linux hosts use
+source-matched GitHub packages without a Go compiler; Macs build locally with
+Go 1.26+. No manual PATH edit or demo MCP
 server is needed. A plugin cache is not the stable writable source checkout.
 
 Give your harness this request:

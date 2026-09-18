@@ -80,7 +80,7 @@ and use its command tool. Complete authorized setup rather than merely giving
 instructions. Preserve unrelated settings and existing local changes.
 
 For a fresh setup, run `python3 "$BENCH_SOURCE/scripts/setup"` to install the builder
-commands, verifies them and leaves the persistent handoff. Use the host's
+commands, verify them and leave the persistent handoff. Use the host's
 GitHub plugin route for knowledge across sessions; avoid adding a second copy
 when this skill already comes from an installed plugin. Do not add demo MCP
 servers or make model calls for an installation-only request.
