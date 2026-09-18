@@ -1,0 +1,27 @@
+{
+  "name": "bench-tools",
+  "version": "0.4.0",
+  "description": "Find, build, teach, evaluate and run reusable Bench workers and teams.",
+  "author": {
+    "name": "Patrick Young",
+    "url": "https://github.com/patrickyoung"
+  },
+  "homepage": "https://github.com/patrickyoung/bench-tools",
+  "repository": "https://github.com/patrickyoung/bench-tools",
+  "license": "MIT",
+  "skills": "./.agents/skills",
+  "interface": {
+    "displayName": "Bench",
+    "shortDescription": "Build and use reusable workers and teams",
+    "longDescription": "Find existing expertise, build missing workers with Hire, and run repeatable jobs with Agent and independent Unix tools.",
+    "developerName": "Patrick Young",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/patrickyoung/bench-tools",
+    "defaultPrompt": [
+      "Set up Bench in this environment.",
+      "Find a reusable Bench worker or team for my task.",
+      "Teach a Bench worker and verify what it learned."
+    ]
+  }
+}

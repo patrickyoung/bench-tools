@@ -17,11 +17,90 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 replay_support = runpy.run_path(str(ROOT / "scripts/check-integration.py"))
+PLUGIN_FILES = (".claude-plugin/plugin.json", ".codex-plugin/plugin.json")
+PACKAGE_FILES = (PLUGIN_FILES[0], "LICENSE")
+MARKETPLACE_FILES = (".claude-plugin/marketplace.json", ".agents/plugins/marketplace.json", "package.json")
 
 
 def require(ok, message):
     if not ok:
         raise RuntimeError(message)
+
+
+def skill_files(root):
+    """Read the complete source skill, refusing links to unpackaged host files."""
+    directory = root / ".agents/skills"
+    require(directory.is_dir() and not directory.is_symlink() and
+            directory.resolve().is_relative_to(root.resolve()), "missing or linked skill directory")
+    files = {}
+    for path in sorted(directory.rglob("*")):
+        require(not path.is_symlink(), f"skill package contains a symbolic link: {path}")
+        if path.is_file():
+            files[path.relative_to(directory)] = path.read_bytes()
+    require(Path("bench/SKILL.md") in files, "canonical Bench skill missing")
+    return files
+
+
+def package_metadata(root):
+    """Catch Git marketplace routes that do not load the shared, relocatable skill."""
+    manifests = [json.loads((root / name).read_text()) for name in PLUGIN_FILES]
+    pi = json.loads((root / "package.json").read_text())
+    require(len({m["version"] for m in [*manifests, pi]}) == 1,
+            "Claude, Codex and Pi skill package versions disagree")
+    for manifest in manifests:
+        require(manifest["name"] == "bench-tools", "unexpected plugin name")
+        require(not Path(manifest["skills"]).is_absolute() and ".." not in Path(manifest["skills"]).parts,
+                "plugin skill path must be relative and relocatable")
+        require((root / manifest["skills"]).resolve() == (root / ".agents/skills").resolve(),
+                "plugin does not use the canonical skills directory")
+        require(not any(name in manifest for name in ("hooks", "mcpServers", "apps")),
+                "Bench knowledge installation must not register runtime hooks or services")
+    require(pi["pi"]["skills"] == ["./.agents/skills"], "Pi does not use the canonical skills")
+    for name in MARKETPLACE_FILES[:2]:
+        marketplace = json.loads((root / name).read_text())
+        require(marketplace["name"] == "bench-tools", "unexpected marketplace name")
+        plugins = [p for p in marketplace["plugins"] if p["name"] == "bench-tools"]
+        require(len(plugins) == 1, "marketplace must contain exactly one Bench entry")
+        source = plugins[0]["source"]
+        if isinstance(source, dict):
+            require(source["source"] == "local", "Codex marketplace must use its bundled plugin")
+            source = source["path"]
+        require(source == "./", "marketplace must resolve the repository root plugin")
+    skill_files(root)
+    return manifests[0]["version"]
+
+
+def portable_package(root, archive, destination):
+    """Build the documented upload ZIP and verify every relocated knowledge byte."""
+    expected = skill_files(root)
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as target:
+        for name in PACKAGE_FILES:
+            target.write(root / name, name)
+        for relative in expected:
+            path = Path(".agents/skills") / relative
+            target.write(root / path, path)
+    with zipfile.ZipFile(archive) as source:
+        source.extractall(destination)
+    require(skill_files(destination) == expected, "relocated plugin lost or changed supporting skill files")
+    return destination
+
+
+def marketplace_fixture(work, env, package):
+    """Exercise Git URL loading without publishing source or contacting a service."""
+    source = work / "marketplace source"
+    shutil.copytree(package, source)
+    for name in (*MARKETPLACE_FILES, PLUGIN_FILES[1]):
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, path)
+    run(["git", "init", "-q"], source, env)
+    run(["git", "add", "."], source, env)
+    run(["git", "-c", "user.name=Bench fixture", "-c", "user.email=fixture@example.invalid",
+         "-c", "commit.gpgsign=false", "commit", "-qm", "Current Bench package fixture"], source, env)
+    url = "https://bench-install.invalid/bench-tools.git"
+    git_env = dict(env, GIT_CONFIG_COUNT="2", GIT_CONFIG_KEY_0="url." + source.as_uri() + ".insteadOf",
+                   GIT_CONFIG_VALUE_0=url, GIT_CONFIG_KEY_1="protocol.file.allow", GIT_CONFIG_VALUE_1="always")
+    return url, git_env
 
 
 def run(argv, cwd, env, data=None, code=0):
@@ -90,14 +169,23 @@ def native_hosts(work, env, bins, package):
     for name, executable in programs.items():
         print(run([executable, "--version"], work, env).decode().strip(), flush=True)
 
+    url, env = marketplace_fixture(work, env, package)
+
     # A package contains only its declared skill and manifest, so project
     # CLAUDE.md instructions cannot accidentally become plugin instructions.
     validated = json.loads(run([programs["claude"], "plugin", "validate", package, "--strict", "--json"], work, env))
     require(validated["success"], "Claude rejected the portable plugin")
+    run([programs["claude"], "plugin", "marketplace", "add", url], work, env)
+    run([programs["claude"], "plugin", "install", "bench-tools@bench-tools"], work, env)
+    installed = json.loads(run([programs["claude"], "plugin", "list", "--json"], work, env))
+    plugin = next((p for p in installed if p["id"] == "bench-tools@bench-tools"), None)
+    require(plugin is not None and plugin["enabled"], "Claude marketplace plugin was not enabled")
+    require(skill_files(Path(plugin["installPath"])) == skill_files(package),
+            "Claude marketplace installation changed the shared skill")
     # The SDK's control initialization lists commands without a user/model turn.
     initialized = run([programs["claude"], "-p", "--input-format", "stream-json",
                        "--output-format", "stream-json", "--verbose", "--no-session-persistence",
-                       "--setting-sources", "", "--strict-mcp-config", "--plugin-dir", package],
+                       "--setting-sources", "user", "--strict-mcp-config"],
                       work, env, json.dumps({"type": "control_request", "request_id": "bench-discovery",
                                              "request": {"subtype": "initialize"}}).encode() + b"\n")
     responses = [json.loads(line).get("response", {}) for line in initialized.splitlines()]
@@ -112,26 +200,31 @@ def native_hosts(work, env, bins, package):
     run([programs["claude"], "mcp", "add", "--scope", "local", "bench-fixture", "--", *server], work, env)
     connection = run([programs["claude"], "mcp", "get", "bench-fixture"], work, env).decode()
     require("Connected" in connection, "Claude did not connect to MCPserve: " + connection)
-    print("ok Claude: extracted plugin validates; fresh session discovers skill; native MCP registration connects", flush=True)
+    print("ok Claude: Git marketplace install preserves skill; fresh session discovers installed plugin; MCP connects", flush=True)
 
-    personal = Path(env["HOME"]) / ".agents/skills/bench"
-    personal.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(ROOT / ".agents/skills/bench", personal)
+    run([programs["codex"], "plugin", "marketplace", "add", url, "--json"], work, env)
+    installed = json.loads(run([programs["codex"], "plugin", "add", "bench-tools@bench-tools", "--json"], work, env))
+    codex_package = Path(installed["installedPath"])
+    require(skill_files(codex_package) == skill_files(package), "Codex marketplace installation changed the shared skill")
+    listed = json.loads(run([programs["codex"], "plugin", "list", "--marketplace", "bench-tools", "--json"], work, env))
+    require(any(p["pluginId"] == "bench-tools@bench-tools" and p["enabled"] for p in listed["installed"]),
+            "Codex marketplace plugin was not enabled")
     run([programs["codex"], "mcp", "add", "bench-fixture", "--", *server], work, env)
     with peer([programs["codex"], "app-server"], work, env) as call:
         call({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "bench-fixture", "version": "1"}}})
         call({"method": "initialized"})
         listed = call({"id": 2, "method": "skills/list", "params": {"cwds": [str(work)], "forceReload": True}})
         skills = [skill for item in listed["result"]["data"] for skill in item["skills"]]
-        require(any(skill["name"] == "bench" and Path(skill["path"]).resolve() == (personal / "SKILL.md").resolve()
+        require(any(skill["name"] == "bench-tools:bench" and skill.get("pluginId") == "bench-tools@bench-tools"
+                    and skill.get("enabled") and Path(skill["path"]).resolve() ==
+                    (codex_package / ".agents/skills/bench/SKILL.md").resolve()
                     for skill in skills), "Codex did not discover the installed Bench skill")
         status = call({"id": 3, "method": "mcpServerStatus/list", "params": {}})
         servers = status["result"]["data"]
         require(any(item["name"] == "bench-fixture" and item.get("tools") for item in servers),
                 "Codex did not discover the MCP tool: " + str(status))
-    print("ok Codex: fresh app-server discovers copied skill and registered MCP tool", flush=True)
+    print("ok Codex: Git marketplace install preserves skill; fresh app-server discovers installed plugin and MCP tool", flush=True)
 
-    shutil.rmtree(personal)  # Pi must discover the package, not Codex's copied skill.
     run([programs["pi"], "install", ROOT], work, env)
     with peer([programs["pi"], "--offline", "--mode", "rpc", "--no-session", "--no-extensions",
                "--no-prompt-templates", "--no-themes", "--no-context-files"], work, env) as call:
@@ -160,27 +253,13 @@ def main():
                "DISABLE_AUTOUPDATER": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
         env.update({k:os.environ[k] for k in ("BENCH_REPLAY_RECORD_DIR","BENCH_REPLAY_BIN_DIR") if k in os.environ})
         run([bins / "brief", "lint", "-strict", ROOT / ".agents/skills/bench"], work, env)
-        archive = work / "bench-tools.zip"
-        files = [ROOT / ".claude-plugin/plugin.json", ROOT / "LICENSE"]
-        files += sorted((ROOT / ".agents/skills").rglob("*"))
-        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as target:
-            for path in files:
-                if path.is_file():
-                    target.write(path, path.relative_to(ROOT))
-        package = work / "extracted"
-        with zipfile.ZipFile(archive) as source:
-            source.extractall(package)
+        version = package_metadata(ROOT)
+        package = portable_package(ROOT, work / "bench-tools.zip", work / "extracted package")
         manifest = json.loads((package / ".claude-plugin/plugin.json").read_text())
         skills = (package / manifest["skills"]).resolve()
         require(skills.is_relative_to(package), "plugin skills escaped package")
         run([bins / "brief", "lint", "-strict", skills / "bench"], work, env)
-        require((skills / "bench/SKILL.md").read_bytes() == (ROOT / ".agents/skills/bench/SKILL.md").read_bytes(),
-                "packaging changed the canonical skill")
-        expected = {p.relative_to(ROOT / ".agents/skills"): p.read_bytes()
-                    for p in (ROOT / ".agents/skills").rglob("*") if p.is_file()}
-        actual = {p.relative_to(skills): p.read_bytes() for p in skills.rglob("*") if p.is_file()}
-        require(actual == expected, "relocated plugin lost or changed supporting skill files")
-        print("ok skill: standalone strict lint and relocated plugin ZIP with complete references", flush=True)
+        print(f"ok skill {version}: both marketplaces resolve the shared skill; strict lint and relocated ZIP preserve all references", flush=True)
 
         server = [bins / "mcpserve", ROOT / "tools/mcp/examples/filter-server/manifest.json", "--",
                   ROOT / "tools/mcp/examples/filter-server/dispatch"]

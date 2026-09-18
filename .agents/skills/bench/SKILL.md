@@ -13,7 +13,9 @@ add ordinary code only for a missing input/output contract or deterministic task
 
 ## Start with the right source
 
-Read existing `BENCH-SETUP.md` records when available. Locate the authoritative
+Read the user's existing `BENCH-SETUP.md`, or check the default
+`~/.local/share/bench/BENCH-SETUP.md`. Load its adjacent `env.sh` in a command
+shell to recover the source and command paths. Locate the authoritative
 checkout using [setup](references/setup.md); persist its absolute `BENCH_SOURCE`
 path, revision and installed command paths outside reusable source. A copied
 skill is knowledge, not the worker catalog or the binaries. Resolve Markdown
@@ -76,6 +78,12 @@ Follow the current host's reference when installation or discovery is needed:
 Another host can read this skill directly
 and use its command tool. Complete authorized setup rather than merely giving
 instructions. Preserve unrelated settings and existing local changes.
+
+For a fresh setup, run `python3 "$BENCH_SOURCE/scripts/setup"` to install the builder
+commands, verifies them and leaves the persistent handoff. Use the host's
+GitHub plugin route for knowledge across sessions; avoid adding a second copy
+when this skill already comes from an installed plugin. Do not add demo MCP
+servers or make model calls for an installation-only request.
 
 Verify actual command paths, execution boundaries and model access separately.
 Ask uses its own provider setup. A harness login does not establish that access.

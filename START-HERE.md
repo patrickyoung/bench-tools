@@ -1,5 +1,18 @@
 # Create and use workers and teams with Bench
 
+For installation, give your harness this request:
+
+> Install and set up Bench from https://github.com/patrickyoung/bench-tools.
+> Read START-HERE.md and complete setup for this environment.
+
+Install the shared knowledge through the [host's plugin route](#your-harnesss-setup-instructions),
+then follow [common setup](.agents/skills/bench/references/setup.md). Complete
+both within the user's existing authorization. The default setup command is
+`python3 scripts/setup`: it installs the builder tools to a dedicated user
+prefix, checks them, and writes `~/.local/share/bench/BENCH-SETUP.md` with an
+environment file the next session can load. No manual PATH edit or demo MCP
+server is needed. A plugin cache is not the stable writable source checkout.
+
 Give your harness this request:
 
 > Read START-HERE.md. Use Bench to create and evaluate a worker or team for
@@ -55,18 +68,19 @@ files are never default inputs to another job or part of a reusable export.
 
 | Harness | Install its Bench knowledge and verify access |
 | --- | --- |
-| Codex | [Repository discovery, personal skill, and MCP registration](.agents/skills/bench/references/codex.md) |
-| Claude Code | [Personal skill or plugin, and MCP registration](.agents/skills/bench/references/claude-code.md) |
-| Claude Cowork | [Account skill/plugin, execution environment, and remote connectors](.agents/skills/bench/references/cowork.md) |
+| Codex | [GitHub plugin installation and command setup](.agents/skills/bench/references/codex.md) |
+| Claude Code | [GitHub plugin installation and command setup](.agents/skills/bench/references/claude-code.md) |
+| Claude Cowork | [GitHub marketplace installation and execution environment](.agents/skills/bench/references/cowork.md) |
 | Pi | [Skill discovery or Git package, and ordinary command tools](.agents/skills/bench/references/pi.md) |
 | OpenClaw | [Workspace skill and gateway/sandbox execution](.agents/skills/bench/references/openclaw.md) |
 | Hermes | [Profile skills, trusted projects and terminal backend](.agents/skills/bench/references/hermes.md) |
 | Another harness | Read the skill directly; use the host's supported skill discovery and command tool. |
 
-If Bench is already installed, refresh the copied skill from the selected
-checkout after comparing local changes, then verify discovery in a fresh
-session. Updating binaries or pulling the source does not refresh a separate
-personal/account skill copy. The host references explain each installation route.
+If Bench is already installed, reuse its setup record and installed plugin.
+Update knowledge through the host's plugin controls when requested, then verify
+discovery in a fresh session. For an older copied skill, compare local changes
+before refreshing it. Updating binaries or pulling source does not refresh a
+separate skill copy. The host references explain each installation route.
 
 A skill installs knowledge; the source installer installs programs. The host
 supplies execution permissions. Ask uses its own model connection; a harness

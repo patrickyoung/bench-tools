@@ -119,6 +119,12 @@ jobs:
           fi
       - name: Prove native confinement, failing if the host cannot supply it
         run: python3 scripts/check --component cage --native-cage
+      - name: Install the builder setup and verify the persistent handoff
+        run: |
+          python3 scripts/setup --prefix "$RUNNER_TEMP/bench-runtime" --state-dir "$RUNNER_TEMP/bench-setup"
+          . "$RUNNER_TEMP/bench-setup/env.sh"
+          hire verify "$BENCH_SOURCE/examples/support-reply/expert"
+          test -s "$RUNNER_TEMP/bench-setup/BENCH-SETUP.md"
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
