@@ -1,28 +1,60 @@
 # Set Claude Code up with Bench
 
-Perform [common setup](setup.md) in Claude Code's actual shell environment.
-The root `CLAUDE.md` routes a checkout session here; it does not install binaries.
-Use a personal skill for availability in other projects:
+## Install from GitHub
 
 ```sh
-skill_target="$HOME/.claude/skills/bench"
-mkdir -p "$HOME/.claude/skills"
-test ! -e "$skill_target" && cp -R "$BENCH_SOURCE/.agents/skills/bench" "$skill_target"
+claude plugin marketplace add https://github.com/patrickyoung/bench-tools
+claude plugin install bench-tools@bench-tools
 ```
 
-Compare an existing destination and preserve local changes. Invoke `/bench`
-in a fresh session to verify discovery. Personal and project skill locations
-are documented in [Claude skills](https://code.claude.com/docs/en/skills).
+These use Claude Code's default user scope, so Bench is available across
+projects. Inside an interactive Claude session, the same commands start with
+`/plugin` instead of `claude plugin`. Add the repository URL above, not a raw
+URL to its `marketplace.json`: the skill and references must be fetched together.
+[Claude marketplace installation](https://code.claude.com/docs/en/plugin-marketplaces).
 
-Alternatively, load this repository as a plugin for one session:
+Start a fresh Claude Code session and invoke:
+
+```text
+/bench-tools:bench Set up Bench for this environment.
+```
+
+Then give Bench the job you want done. The plugin supplies the shared skill;
+the setup request authorizes the skill to follow [common setup](setup.md),
+locate a stable source checkout, run `python3 scripts/setup`, and verify the
+installed commands. It leaves `BENCH-SETUP.md` for the next session. Setup makes
+no paid model call. Plugin installation itself does not run a shell hook or
+install programs. Missing prerequisites or unavailable execution permissions
+are reported specifically, with independent setup completed first.
+
+Do runtime setup in Claude Code's actual shell environment. A plugin cache is
+managed by Claude and can change during updates: keep the source checkout,
+runtime prefix and setup record in the locations selected by common setup.
+An existing personal `/bench` skill is a separate copy; compare it before
+removing or refreshing it, and use the namespaced plugin skill above to avoid
+ambiguity. [Claude skills](https://code.claude.com/docs/en/skills).
+
+## Update, remove or develop
+
+To refresh the installed knowledge:
 
 ```sh
-claude --plugin-dir "$BENCH_SOURCE"
+claude plugin marketplace update bench-tools
+claude plugin update bench-tools@bench-tools
 ```
 
-Invoke `/bench-tools:bench`. The plugin manifest points to the same skill;
-install one route to avoid duplicate menu entries. Plugin setup is documented
-in [Claude plugins](https://code.claude.com/docs/en/plugins).
+Start a fresh session and ask Bench to update the runtime if that is also
+wanted. A plugin update does not change a solution's pinned source or binaries.
+Remove the plugin with `claude plugin uninstall bench-tools@bench-tools`;
+remove the catalog with `claude plugin marketplace remove bench-tools`.
+Runtime removal follows [common setup](setup.md).
+
+For checkout development, `claude --plugin-dir "$BENCH_SOURCE"` exposes the
+same `/bench-tools:bench` skill for one session. The root `CLAUDE.md` routes a
+checkout session to Bench; Claude does not load that file from an installed
+plugin, so the plugin carries all required entry instructions in its skill.
+
+## Optional MCP connection
 
 After installing `mcp` and testing its local hello server, register it using
 Claude Code's command, preserving any existing entry of that name:

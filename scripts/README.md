@@ -9,6 +9,7 @@ From the repository root:
 ```sh
 scripts/build                              # all 24 commands under .build/bin
 scripts/build ask ply                      # only selected components
+python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
 scripts/install --from-build .build --prefix /tmp/bench-preview
 scripts/uninstall --prefix /tmp/bench-preview
@@ -27,6 +28,17 @@ python3 scripts/check-harnesses.py --host-clis          # optional installed Cod
 python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
 python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
 ```
+
+`setup` composes the existing installer for Hire, Agent and their builder
+companions. It defaults to `~/.local/share/bench/runtime` and writes
+`BENCH-SETUP.md`, `env.sh` and `setup.json` under `~/.local/share/bench`.
+`--prefix` and `--state-dir` select other absolute locations; `--from-build`
+uses verified existing packages without a compiler and records their source
+receipts separately from the checkout revision. Runbook checks include native
+Cage; a failed check returns nonzero without disguising a partial setup.
+It preserves edited handoffs and unmanaged binaries, and does not configure
+host plugins, credentials, services or shell profiles. Keep personal notes in
+a separate file and load the generated environment in each harness shell.
 
 Builds require Go 1.26+, Python 3.9+, Git, and sh. The test runner selects its
 prerequisites for the requested plan: Perl for Draft shell tests, a C compiler
@@ -168,8 +180,9 @@ inside public-process integration on Linux and macOS. `make check-harnesses`
 builds its two required components and runs it on its own.
 
 The optional `--host-clis` path also requires installed Codex, Claude Code, and
-Pi. It validates and discovers the extracted Claude plugin, connects Claude to MCP, asks a
-fresh Codex app-server to discover the installed skill and MCP tool, and asks
+Pi. It installs the current Claude and Codex package through their Git marketplace
+commands in isolated homes, checks every installed skill byte, and verifies fresh
+discovery of the enabled plugins. It also connects Claude and Codex to MCP and asks
 a fresh Pi RPC session to discover its installed package. All configuration
 is in temporary homes; no model turn or personal profile change is requested.
 These host checks are separate from CI because those CLIs are optional external

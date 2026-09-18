@@ -6,6 +6,21 @@ For a harness to set itself up, use [the harness entry point](../START-HERE.md).
 It includes each host's skill installation and discovery instructions, followed
 by this same source installer and verification.
 
+For the standard worker-building setup, once the checkout below is available:
+
+```sh
+python3 scripts/setup
+. "$HOME/.local/share/bench/env.sh"
+```
+
+This installs the builder commands into `~/.local/share/bench/runtime`, verifies
+versions, structure and native confinement, and writes
+`~/.local/share/bench/BENCH-SETUP.md` for future sessions. It calls no model and
+changes no shell or host settings. Use `--prefix` and `--state-dir` for selected
+locations. A nonzero result means setup is incomplete; inspect the recorded
+failure before running workers. Keep personal notes outside generated files.
+The component installer below remains available for a smaller selection.
+
 Use the shared source installer for the Bench tools toolkit. You need Go 1.26+,
 Python 3.9+, Git, and a Unix shell on macOS, Linux, or WSL. Go may download
 pinned dependencies on the first build. Make is optional.

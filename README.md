@@ -11,6 +11,33 @@ provide model access, correction loops, skills, evidence and durable execution.
 Workers cooperate through explicit inputs, checked files, streams and exit
 status. The monorepo keeps their source and team rosters together in Git.
 
+## Install with your AI app
+
+Give Claude Code, Codex or Claude Cowork this request:
+
+> Install and set up Bench from https://github.com/patrickyoung/bench-tools.
+> Read START-HERE.md and complete setup for this environment.
+
+The app follows its native plugin route, installs the commands where it can
+run them, checks the installation and saves a setup record for future tasks.
+It preserves existing settings and makes no additional model calls for setup.
+Then ask it to find, build or run a worker for your job.
+
+You can also add the GitHub URL directly through your app's plugin installer:
+
+| App | Install Bench |
+| --- | --- |
+| Claude Code | `claude plugin marketplace add https://github.com/patrickyoung/bench-tools`, then `claude plugin install bench-tools@bench-tools` |
+| Codex | `codex plugin marketplace add https://github.com/patrickyoung/bench-tools`, then `codex plugin add bench-tools@bench-tools` |
+| Claude Cowork | **Customize → Plugins → Add → Add marketplace → Add from a repository**. Paste the URL, sync, then install **bench-tools**. |
+
+Start a fresh task and ask **“Use Bench to finish setup.”** The plugin supplies
+the skill; its first setup installs the separate Unix programs. Commands need
+macOS, Linux or WSL, Python 3.9+, Git and Go 1.26+. The app checks prerequisites
+in its execution environment; a mounted folder alone is not a host shell.
+Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-connect-a-model).
+[Host details and verification](START-HERE.md#your-harnesss-setup-instructions).
+
 ## Start with workers and teams
 
 | You want to… | Start here |

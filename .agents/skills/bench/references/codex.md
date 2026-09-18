@@ -1,13 +1,55 @@
 # Set Codex up with Bench
 
-Perform [common setup](setup.md) in the environment where Codex's command
-tool runs. Use the requested project and existing permission policy. A local
-desktop task, worktree, and cloud task may have different files and tools.
+Give Codex the repository URL and ask it to finish setup:
 
-Codex discovers this repo's `.agents/skills/bench` when working in the checkout.
-For use across projects, copy the same complete skill into its personal skills
-directory. These locations are documented in
-[Build skills](https://learn.chatgpt.com/docs/build-skills).
+> Set up Bench from https://github.com/patrickyoung/bench-tools. Read
+> START-HERE.md and complete the Codex setup in this environment.
+
+The harness should complete [common setup](setup.md), which installs the
+independent commands and records their paths. Use the requested project and
+existing permission policy. A desktop task, worktree and cloud task can have
+different files and tools.
+
+## Install from GitHub
+
+For Bench knowledge across projects, use Codex's native plugin installer:
+
+```sh
+codex plugin marketplace add https://github.com/patrickyoung/bench-tools
+codex plugin add bench-tools@bench-tools
+```
+
+Start a fresh Codex session and ask **Use Bench to finish setup**. The installed
+`bench-tools` plugin exposes `bench-tools:bench`, containing the same skill
+and references as this repository. Installation requires no MCP server or
+account connection. Check it with
+`codex plugin list --marketplace bench-tools --json`; successful setup
+also verifies that a fresh session discovers the skill.
+
+The plugin installs the workflow knowledge. Follow [common setup](setup.md) to
+install the commands in the environment where Codex's command tool runs. Keep
+the source checkout separate from the host-managed plugin cache. Installing
+and starting a new session are described in the official
+[OpenAI plugin documentation](https://learn.chatgpt.com/docs/plugins).
+
+To refresh the Git source and installed plugin:
+
+```sh
+codex plugin marketplace upgrade bench-tools
+codex plugin add bench-tools@bench-tools
+```
+
+Then start a new session. To remove it, run
+`codex plugin remove bench-tools@bench-tools`, followed by
+`codex plugin marketplace remove bench-tools` if the source is no longer
+needed. This leaves separately installed commands and user work intact.
+
+## Existing checkouts and older Codex versions
+
+Codex discovers `.agents/skills/bench` automatically inside the checkout. For
+current work, read `SKILL.md` directly and continue; discovery never needs to
+block setup. If this Codex version lacks `plugin marketplace`, either update
+Codex or copy the complete skill to its personal skills directory:
 
 ```sh
 skill_target="$HOME/.agents/skills/bench"
@@ -15,10 +57,13 @@ mkdir -p "$HOME/.agents/skills"
 test ! -e "$skill_target" && cp -R "$BENCH_SOURCE/.agents/skills/bench" "$skill_target"
 ```
 
-If it already exists, compare the files; reuse an identical installation and
-preserve user changes. Start a fresh Codex session and invoke `$bench` to
-verify discovery. For the current session, read `SKILL.md` directly and continue
-the requested setup/build; a restart need not block useful work.
+If it already exists, compare files, reuse an identical copy and preserve user
+changes. Start a fresh session and invoke `$bench` to verify discovery. Use
+one installation route; a separate personal copy will not update with the
+plugin. These locations are documented in
+[Build skills](https://learn.chatgpt.com/docs/build-skills).
+
+## Optional MCP connection
 
 For a tested local MCP tool, use Codex's own registration command. The included
 hello example can verify the connection without a model in the server:
