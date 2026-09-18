@@ -1,7 +1,7 @@
 """Verified, reversible user-prefix installation of independent tool packages."""
 
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import fcntl
 import hashlib
 import json
@@ -342,7 +342,9 @@ def install_main(argv=None):
     parser = argparse.ArgumentParser(description="Build and install independent tools into a user-owned prefix.")
     parser.add_argument("tools", nargs="*", metavar="TOOL", help="components to install (default: all)")
     parser.add_argument("--prefix", default="~/.local", help="installation prefix (default: ~/.local)")
-    parser.add_argument("--from-build", type=Path, metavar="DIR", help="install verified packages from DIR without building")
+    route = parser.add_mutually_exclusive_group()
+    route.add_argument("--from-build", type=Path, metavar="DIR", help="install verified packages from DIR without building")
+    route.add_argument("--from-release", action="store_true", help="install pinned Linux release packages without building")
     args = parser.parse_args(argv)
     try:
         components = component_names()
@@ -350,18 +352,27 @@ def install_main(argv=None):
         unknown = sorted(set(selected) - set(components))
         if unknown:
             raise InstallError(f"unknown tool(s): {', '.join(unknown)}; available: {', '.join(components)}")
-        build = args.from_build.expanduser().resolve() if args.from_build else ROOT / ".build"
-        if args.from_build is None:
-            subprocess.run([sys.executable, str(ROOT / "scripts/build"), *selected, "--output", str(build)], check=True)
-        sources = {name: build / "tools" / name for name in selected}
-        for name, source in sources.items():
-            if (build / "tools").is_symlink():
-                raise InstallError(f"build tools directory must not be a symlink: {build / 'tools'}")
-            receipt = verify_package(source, name)
-            if receipt["commands"] != [entry["name"] for entry in components[name]["commands"]]:
-                raise InstallError(f"package command inventory does not match components.json: {name}")
-        prefix = prepare_prefix(args.prefix)
-        transact(prefix, sources)
+        with ExitStack() as stack:
+            if args.from_release:
+                from prebuilt_support import prepare_prebuilt
+                scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="bench-release-install-")))
+                build = prepare_prebuilt(ROOT, selected, scratch)
+                if build is None:
+                    raise InstallError("no matching published Linux packages for the selected tools and source; "
+                                       "omit --from-release to build from source")
+            else:
+                build = args.from_build.expanduser().resolve() if args.from_build else ROOT / ".build"
+                if args.from_build is None:
+                    subprocess.run([sys.executable, str(ROOT / "scripts/build"), *selected, "--output", str(build)], check=True)
+            sources = {name: build / "tools" / name for name in selected}
+            for name, source in sources.items():
+                if (build / "tools").is_symlink():
+                    raise InstallError(f"build tools directory must not be a symlink: {build / 'tools'}")
+                receipt = verify_package(source, name)
+                if receipt["commands"] != [entry["name"] for entry in components[name]["commands"]]:
+                    raise InstallError(f"package command inventory does not match components.json: {name}")
+            prefix = prepare_prefix(args.prefix)
+            transact(prefix, sources)
         print(f"Installed {', '.join(selected)} into {prefix}")
         print("Add the commands to this shell:")
         print(f"  export PATH={shlex.quote(str(prefix / 'bin'))}:\"$PATH\"")
@@ -371,7 +382,7 @@ def install_main(argv=None):
                   '"${BRIEF_PATH:-.claude/skills:$HOME/.claude/skills:$HOME/.brief/skills}"')
             print("  draft sync")
         return 0
-    except (InstallError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"install: {error}", file=sys.stderr)
         return 1
 

@@ -11,6 +11,8 @@ scripts/build                              # all 24 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
+scripts/install oauth --from-release      # selected pinned Linux package, no compiler
+scripts/install --from-release            # all published Linux tool packages
 scripts/install --from-build .build --prefix /tmp/bench-preview
 scripts/uninstall --prefix /tmp/bench-preview
 scripts/check --quick                      # everyday checks, no integration/race/supplemental suites
@@ -79,6 +81,14 @@ Python and completed packages; normal installation first runs the builder.
 Default installation is user-owned under `~/.local`; no privileged setup or
 shell startup edits occur automatically. Runtime dependencies remain separate
 programs on PATH, and provider configuration remains each tool's responsibility.
+
+`--from-release` downloads the Linux archive pinned in `releases/builder.json`,
+verifies all its packages and the selected components' source identities, then
+installs only those selected components. With no names it installs all components.
+It never compiles or falls back to source. Mac installs continue building locally.
+The release inventory comes from `components.json`, independently of the nine
+tools selected by `scripts/setup`. `--from-release` and `--from-build` cannot
+be combined.
 
 Draft's `skills/draft/references/tools.md` is a declared generated file. Its
 contents may change through `draft sync`; updates preserve it along with any

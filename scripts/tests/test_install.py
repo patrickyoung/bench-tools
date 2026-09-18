@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -10,6 +11,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -92,6 +95,28 @@ class InstallTests(unittest.TestCase):
         self.install("rules")
         self.assertEqual(sorted(path.name for path in (self.prefix / "bin").iterdir()), ["rules"])
         self.assertFalse((self.prefix / "lib/bench-tools/ask").exists())
+
+    def test_release_unavailable_or_corrupt_never_builds_or_creates_prefix(self):
+        for outcome in (None, ValueError("published package checksum mismatch")):
+            with self.subTest(outcome=outcome):
+                def prepare(*args):
+                    if isinstance(outcome, Exception):
+                        raise outcome
+                    return outcome
+                provider = SimpleNamespace(prepare_prebuilt=prepare)
+                error = io.StringIO()
+                with patch.dict(sys.modules, {"prebuilt_support": provider}), \
+                        patch.object(INSTALL.subprocess, "run") as build, redirect_stderr(error):
+                    result = INSTALL.install_main(["oauth", "--from-release", "--prefix", str(self.prefix)])
+                self.assertEqual(result, 1)
+                build.assert_not_called()
+                self.assertFalse(self.prefix.exists())
+                self.assertIn("no matching published" if outcome is None else "checksum mismatch", error.getvalue())
+
+    def test_release_and_local_build_are_mutually_exclusive(self):
+        result = self.command("install", "oauth", "--from-release", "--from-build", str(self.build), ok=False)
+        self.assertIn("not allowed with argument", result.stderr)
+        self.assertFalse(self.prefix.exists())
 
     def test_unmanaged_command_blocks_whole_install(self):
         self.package("rules")

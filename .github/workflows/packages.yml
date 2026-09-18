@@ -59,9 +59,9 @@ jobs:
       - name: Build independent packages from the selected source
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            python3 scripts/build hire agent ask brief ply cage record trail hone --no-cgo
+            python3 scripts/build --no-cgo
           else
-            python3 scripts/build hire agent ask brief ply cage record trail hone
+            python3 scripts/build
           fi
       - name: Package native commands with their original receipts
         env:
@@ -87,7 +87,49 @@ jobs:
           extract(archive, root / 'unpacked', metadata['tools'])
           verify_extracted(root / 'unpacked', metadata, metadata['tools'])
           PY
+          python3 scripts/check-install.py --build-dir "$RUNNER_TEMP/unpacked"
           python3 scripts/setup --from-build "$RUNNER_TEMP/unpacked" --prefix "$RUNNER_TEMP/runtime" --state-dir "$RUNNER_TEMP/setup"
+      - name: Verify the published full release without a compiler
+        if: runner.os == 'Linux'
+        run: |
+          python3 - <<'PY'
+          import json, os, shlex, subprocess, sys, tempfile
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from prebuilt_support import select_artifact
+          root = Path.cwd()
+          components = json.loads((root / 'components.json').read_text())['components']
+          tools = [component['name'] for component in components]
+          artifact = select_artifact(root, tools)
+          if artifact is None:
+              print('No matching complete published release yet; skipping published-release proof.', flush=True)
+              raise SystemExit(0)
+          with tempfile.TemporaryDirectory(prefix='bench-published-release-', dir=os.environ['RUNNER_TEMP']) as temporary:
+              work = Path(temporary)
+              guard, prefix, marker = work / 'compiler-guard', work / 'runtime', work / 'compiler-invoked'
+              guard.mkdir()
+              compiler = guard / 'go'
+              compiler.write_text('#!/bin/sh\n: > ' + shlex.quote(str(marker)) +
+                                  '\necho "Published release unexpectedly invoked Go" >&2\nexit 97\n')
+              compiler.chmod(0o755)
+              env = dict(os.environ, PATH=str(guard) + os.pathsep + os.environ['PATH'])
+              subprocess.run([sys.executable, root / 'scripts/install', '--from-release', '--prefix', prefix],
+                             env=env, check=True)
+              commands = [command['name'] for component in components for command in component['commands']]
+              if {path.name for path in (prefix / 'bin').iterdir()} != set(commands):
+                  raise RuntimeError('published release installed an incomplete command inventory')
+              env['PATH'] = str(prefix / 'bin') + os.pathsep + env['PATH']
+              for command in commands:
+                  for option in ('version', 'help'):
+                      result = subprocess.run([prefix / 'bin' / command, option], env=env, check=True,
+                                              capture_output=True, text=True, timeout=30)
+                      if not (result.stdout or result.stderr).strip():
+                          raise RuntimeError('empty ' + option + ' output from ' + command)
+              if marker.exists():
+                  raise RuntimeError('published release verification invoked Go')
+              print('Published release check passed: ' + str(len(commands)) + ' commands installed from ' +
+                    artifact['url'] + ' without invoking Go.', flush=True)
+          PY
       - name: Attest the checked archive
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4

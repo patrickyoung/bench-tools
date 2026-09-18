@@ -16,6 +16,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ("hire", "agent", "ask", "brief", "ply", "cage", "record", "trail", "hone")
+COMPONENTS = tuple(entry["name"] for entry in json.loads((ROOT / "components.json").read_text())["components"])
 REPOSITORY = "https://github.com/patrickyoung/bench-tools"
 URL = REPOSITORY + "/releases/download/runtime-fixture/builder.tar.gz"
 
@@ -46,7 +47,7 @@ class PrebuiltSetup(unittest.TestCase):
         self.state = self.base / "setup handoff"
         self.archive = self.base / "release.tar.gz"
         components = []
-        for name in TOOLS:
+        for name in COMPONENTS:
             leaf = self.root / "tools" / name
             leaf.mkdir(parents=True)
             (leaf / "README.md").write_text("Synthetic independent source for " + name + "\n")
@@ -64,8 +65,8 @@ class PrebuiltSetup(unittest.TestCase):
             records = check["export_source"](self.root, component, self.base / "export" / component["name"])
             self.sources[component["name"]] = sha256(json.dumps(records, sort_keys=True).encode())
 
-        self.files, packages = [], {}
-        for name in TOOLS:
+        self.all_files, self.all_packages = [], {}
+        for name in COMPONENTS:
             # Setup's complete verification uses these fixtures, never a model.
             command = ("#!/bin/sh\n"
                        'printf "%s\\n" "' + name + ':$1" >> ' + shlex.quote(str(self.executed)) + '\n'
@@ -84,17 +85,15 @@ class PrebuiltSetup(unittest.TestCase):
                                   "path": "tools/" + name, "files_sha256": self.sources[name]},
                        "files": [{"path": "bin/" + name, "mode": 0o755, "sha256": sha256(data)}]}
             raw = (json.dumps(receipt, indent=2) + "\n").encode()
-            packages[name] = sha256(raw)
-            self.files += [("tools/" + name + "/bin/" + name, data, 0o755),
-                           ("tools/" + name + "/package.json", raw, 0o644)]
+            self.all_packages[name] = sha256(raw)
+            self.all_files += [("tools/" + name + "/bin/" + name, data, 0o755),
+                              ("tools/" + name + "/package.json", raw, 0o644)]
         # Exercise Linux selection on every CI host; the payloads are portable
         # shell fixtures, while package-runtime checks real binary platforms.
         self.target = "linux-amd64"
         self.metadata = {"schema": 1, "repository": REPOSITORY, "revision": self.revision,
-                         "platform": self.target, "tools": list(TOOLS),
-                         "sources": self.sources, "packages": packages}
-        self.make_archive()
-        self.write_pin()
+                         "platform": self.target}
+        self.publish_inventory(TOOLS)
         self.git("add", "releases/builder.json")
         self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
                  "-c", "commit.gpgsign=false", "commit", "-qm", "Pin unchanged component packages")
@@ -111,10 +110,11 @@ class PrebuiltSetup(unittest.TestCase):
             f"    assert request.full_url == {URL!r}, request.full_url\n"
             f"    pathlib.Path({str(self.downloaded)!r}).write_text(request.full_url)\n"
             f"    return Response(pathlib.Path({str(self.archive)!r}).read_bytes())\n"
-            f"sys.argv = [{str(scripts / 'setup')!r}, *sys.argv[1:]]\n"
+            f"entrypoint = pathlib.Path({str(scripts)!r}) / os.environ.get('BENCH_TEST_ENTRYPOINT', 'setup')\n"
+            "sys.argv = [str(entrypoint), *sys.argv[1:]]\n"
             "with patch.object(urllib.request, 'urlopen', download), "
             "patch('prebuilt_support.host_platform', return_value=os.environ['BENCH_TEST_PLATFORM']):\n"
-            f"    runpy.run_path({str(scripts / 'setup')!r}, run_name='__main__')\n")
+            "    runpy.run_path(str(entrypoint), run_name='__main__')\n")
         runtime_bin = self.base / "system-bin"
         runtime_bin.mkdir()
         for name in ("git", "sh"):
@@ -128,6 +128,14 @@ class PrebuiltSetup(unittest.TestCase):
     def git(self, *args):
         return subprocess.check_output(["git", "-C", str(self.root), *args],
                                        stderr=subprocess.PIPE, text=True).strip()
+
+    def publish_inventory(self, inventory):
+        self.metadata.update(tools=list(inventory),
+                             sources={name: self.sources[name] for name in inventory},
+                             packages={name: self.all_packages[name] for name in inventory})
+        self.files = [entry for entry in self.all_files if entry[0].split('/')[1] in inventory]
+        self.make_archive()
+        self.write_pin()
 
     def make_archive(self, extra=None):
         with tarfile.open(self.archive, "w:gz") as archive:
@@ -151,6 +159,12 @@ class PrebuiltSetup(unittest.TestCase):
     def setup(self, *args):
         return subprocess.run([sys.executable, str(self.driver), "--prefix", str(self.prefix),
                                "--state-dir", str(self.state), *args], env=self.env,
+                              capture_output=True, text=True, timeout=30)
+
+    def install_release(self, *tools):
+        return subprocess.run([sys.executable, str(self.driver), *tools, "--from-release",
+                               "--prefix", str(self.prefix)],
+                              env=dict(self.env, BENCH_TEST_ENTRYPOINT="install"),
                               capture_output=True, text=True, timeout=30)
 
     def assert_no_install(self, result):
@@ -192,6 +206,65 @@ class PrebuiltSetup(unittest.TestCase):
         self.assertTrue(self.source_route.exists())
         self.assertFalse(self.downloaded.exists())
 
+    def test_larger_release_installs_only_setup_subset_without_go(self):
+        self.publish_inventory(COMPONENTS)
+        result = self.setup()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual({path.name for path in (self.prefix / "bin").iterdir()}, set(TOOLS))
+        self.assertEqual(set(json.loads((self.state / "setup.json").read_text())["installed_sources"]), set(TOOLS))
+        self.assertFalse((self.prefix / "lib/bench-tools/oauth").exists())
+        self.assertFalse(self.source_route.exists())
+
+    def test_installer_selects_oauth_from_release_without_go(self):
+        self.publish_inventory(COMPONENTS)
+        result = self.install_release("oauth")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.downloaded.read_text(), URL)
+        self.assertEqual({path.name for path in (self.prefix / "bin").iterdir()}, {"oauth"})
+        self.assertFalse(self.executed.exists())
+        self.assertFalse(self.source_route.exists())
+        result = subprocess.run([str(self.prefix / "bin/oauth"), "version"], env=self.env,
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual((result.returncode, result.stdout.strip()), (0, "oauth fixture"))
+        receipt = json.loads((self.prefix / "lib/bench-tools/oauth/package.json").read_text())
+        self.assertEqual(receipt["source"]["repository_revision"], self.revision)
+
+    def test_old_release_missing_requested_tool_fails_without_source_retry(self):
+        result = self.install_release("oauth")
+        self.assert_no_install(result)
+        self.assertIn("do not include requested tools: oauth", result.stdout)
+        self.assertFalse(self.source_route.exists())
+        self.assertFalse(self.downloaded.exists())
+
+    def test_unrequested_source_edits_do_not_block_selected_release_tools(self):
+        self.publish_inventory(COMPONENTS)
+        (self.root / "tools/ask/README.md").write_text("Unselected component changed\n")
+        result = self.install_release("oauth")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual({path.name for path in (self.prefix / "bin").iterdir()}, {"oauth"})
+        self.assertFalse(self.source_route.exists())
+
+    def test_changed_requested_source_fails_release_without_source_retry(self):
+        self.publish_inventory(COMPONENTS)
+        (self.root / "tools/oauth/README.md").write_text("Selected component changed\n")
+        result = self.install_release("oauth")
+        self.assert_no_install(result)
+        self.assertIn("do not match current component sources", result.stdout)
+        self.assertFalse(self.source_route.exists())
+        self.assertFalse(self.downloaded.exists())
+
+    def test_corrupt_unrequested_payload_blocks_subset_install(self):
+        self.publish_inventory(COMPONENTS)
+        index = next(i for i, entry in enumerate(self.files) if entry[0] == "tools/weave/bin/weave")
+        name, raw, mode = self.files[index]
+        self.files[index] = (name, raw + b"# corrupted unrequested binary\n", mode)
+        self.make_archive()
+        self.write_pin()
+        result = self.install_release("oauth")
+        self.assert_no_install(result)
+        self.assertIn("file checksum mismatch", result.stderr)
+        self.assertFalse(self.source_route.exists())
+
     def test_macos_defaults_to_source_even_with_matching_published_packages(self):
         for target in ("darwin-amd64", "darwin-arm64"):
             with self.subTest(target=target):
@@ -200,7 +273,7 @@ class PrebuiltSetup(unittest.TestCase):
                 self.write_pin()
                 result = self.setup()
                 self.assert_no_install(result)
-                self.assertIn("macOS setup builds from source", result.stdout)
+                self.assertIn("No automatic prebuilt packages for macOS", result.stdout)
                 self.assertTrue(self.source_route.exists())
                 self.assertFalse(self.downloaded.exists())
 
@@ -231,6 +304,7 @@ class PrebuiltSetup(unittest.TestCase):
                            ("tools/ask/../../escaped", tarfile.REGTYPE),
                            ("tools/ask/link", tarfile.SYMTYPE),
                            ("tools/ask/hardlink", tarfile.LNKTYPE),
+                           ("tools/unadvertised/bin/command", tarfile.REGTYPE),
                            ("runtime.json", tarfile.REGTYPE)):
             with self.subTest(name=name, kind=kind):
                 info = tarfile.TarInfo(name)
@@ -264,13 +338,44 @@ class PrebuiltSetup(unittest.TestCase):
 
     def test_inconsistent_pin_identity_fails_before_download(self):
         for overrides in ({"schema": 2}, {"repository": "https://example.invalid/other"},
-                          {"platform": "other-platform"}, {"tools": list(reversed(TOOLS))}):
+                          {"platform": "other-platform"}):
             with self.subTest(overrides=overrides):
                 self.write_pin(**overrides)
                 result = self.setup()
                 self.assert_no_install(result)
                 self.assertIn("invalid published package identity", result.stderr)
                 self.assertFalse(self.downloaded.exists())
+
+    def test_invalid_advertised_inventory_fails_before_download(self):
+        for inventory in ([], "oauth", ["unknown"], ["oauth", "oauth"], [None], [{}]):
+            with self.subTest(inventory=inventory):
+                self.write_pin(tools=inventory)
+                result = self.install_release("oauth")
+                self.assert_no_install(result)
+                self.assertIn("invalid published package tool inventory", result.stderr)
+                self.assertFalse(self.downloaded.exists())
+
+    def test_pin_digest_maps_must_match_complete_advertised_inventory(self):
+        self.publish_inventory(COMPONENTS)
+        for key in ("sources", "packages"):
+            for missing in (True, False):
+                with self.subTest(key=key, missing=missing):
+                    values = dict(self.metadata[key])
+                    if missing:
+                        del values["weave"]
+                    else:
+                        values["unknown"] = "0" * 64
+                    self.write_pin(**{key: values})
+                    result = self.install_release("oauth")
+                    self.assert_no_install(result)
+                    self.assertIn("invalid published package " + key, result.stderr)
+                    self.assertFalse(self.downloaded.exists())
+
+    def test_archive_inventory_must_match_pin_even_for_valid_reordering(self):
+        self.write_pin(tools=list(reversed(TOOLS)))
+        result = self.setup()
+        self.assert_no_install(result)
+        self.assertIn("metadata does not match", result.stderr)
 
     def test_truncated_archive_is_rejected_cleanly_before_install(self):
         contents = self.archive.read_bytes()

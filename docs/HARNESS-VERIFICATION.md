@@ -129,7 +129,7 @@ Linux selection without Go, preservation of checkout and binary source pins,
 changed-source fallback and rejection of damaged or unsafe archives before
 program execution. The installer verifies checked-in SHA-256/source pins;
 signature verification is performed before publication, as described in
-[the release procedure](RELEASES.md#published-builder-packages).
+[the release procedure](RELEASES.md#published-tool-packages).
 
 A real default macOS setup at the same `d5150f4` source passed all nine version
 checks, Hire verification and native Cage checks. Its evidence is outside the

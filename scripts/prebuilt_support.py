@@ -1,4 +1,4 @@
-"""Fetch source-matched independent packages for the source setup helper."""
+"""Fetch pinned independent packages matching the requested component sources."""
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
@@ -40,24 +40,30 @@ def select_artifact(root, tools):
     # Until macOS releases have Developer ID signing, prefer local builds even
     # if a checkout contains an older macOS package pin.
     if target and target.startswith("darwin-"):
-        print("macOS setup builds from source; automatic prebuilt installs are limited to Linux.", flush=True)
+        print("No automatic prebuilt packages for macOS; source builds remain available.", flush=True)
         return None
     path = root / "releases/builder.json"
     if not path.exists():
-        print("No published package pin in this checkout; building from source.", flush=True)
+        print("No published package pin in this checkout.", flush=True)
         return None
     record = json.loads(path.read_text())
     if not isinstance(record, dict) or record.get("schema") != 1 or not isinstance(record.get("artifacts"), dict):
         raise ValueError("invalid releases/builder.json")
     artifact = record["artifacts"].get(target)
     if artifact is None:
-        print("No published packages for this host; building from source.", flush=True)
+        print("No published packages for this host.", flush=True)
         return None
     if not isinstance(artifact, dict):
         raise ValueError("invalid published package entry")
-    identity = {"schema": 1, "repository": REPOSITORY, "platform": target, "tools": list(tools)}
+    identity = {"schema": 1, "repository": REPOSITORY, "platform": target}
     if any(artifact.get(key) != value for key, value in identity.items()):
         raise ValueError("invalid published package identity")
+    known = {entry["name"] for entry in json.loads((root / "components.json").read_text())["components"]}
+    inventory = artifact.get("tools")
+    if (not isinstance(inventory, list) or not inventory or
+            any(not isinstance(name, str) or name not in known for name in inventory) or
+            len(inventory) != len(set(inventory))):
+        raise ValueError("invalid published package tool inventory")
     for name, pattern in (("sha256", SHA256), ("revision", REVISION), ("url", ASSET_URL)):
         if not isinstance(artifact.get(name), str) or not pattern.fullmatch(artifact[name]):
             raise ValueError("invalid published package " + name)
@@ -65,11 +71,16 @@ def select_artifact(root, tools):
         raise ValueError("invalid published package size")
     for key in ("sources", "packages"):
         values = artifact.get(key)
-        if not isinstance(values, dict) or set(values) != set(tools) or any(
+        if not isinstance(values, dict) or set(values) != set(inventory) or any(
                 not isinstance(value, str) or not SHA256.fullmatch(value) for value in values.values()):
             raise ValueError("invalid published package " + key)
-    if current_sources(root, tools) != artifact["sources"]:
-        print("Published packages do not match current component sources; building from source.", flush=True)
+    missing = set(tools) - set(inventory)
+    if missing:
+        print("Published packages do not include requested tools: " + ", ".join(sorted(missing)) +
+              "; no matching release is available.", flush=True)
+        return None
+    if current_sources(root, tools) != {name: artifact["sources"][name] for name in tools}:
+        print("Published packages do not match current component sources.", flush=True)
         return None
     return dict(artifact, platform=target)
 
@@ -126,13 +137,16 @@ def extract(archive, destination, tools):
 
 
 def verify_extracted(directory, artifact, tools):
+    inventory = artifact["tools"]
+    if not set(tools).issubset(inventory):
+        raise ValueError("published packages do not include requested tools")
     metadata = json.loads((directory / "runtime.json").read_text())
     expected = {"schema": 1, "repository": REPOSITORY, "revision": artifact["revision"],
-                "platform": artifact["platform"], "tools": list(tools),
+                "platform": artifact["platform"], "tools": inventory,
                 "sources": artifact["sources"], "packages": artifact["packages"]}
     if metadata != expected:
         raise ValueError("published package metadata does not match the checked-in pin")
-    for name in tools:
+    for name in inventory:
         package = directory / "tools" / name
         if digest(package / "package.json") != artifact["packages"][name]:
             raise ValueError("published package receipt mismatch: " + name)
@@ -152,7 +166,7 @@ def prepare_prebuilt(root, tools, work):
     archive, packages = work / "packages.tar.gz", work / "packages"
     try:
         download(artifact, archive)
-        extract(archive, packages, tools)
+        extract(archive, packages, artifact["tools"])
         verify_extracted(packages, artifact, tools)
     except (OSError, ValueError, EOFError, tarfile.TarError) as error:
         raise ValueError("cannot install the pinned packages: " + str(error) +
