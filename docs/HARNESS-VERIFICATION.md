@@ -92,10 +92,9 @@ exactly one Bench tools group and one `bench` slash-menu item. The draft was
 cleared without submitting a model turn.
 
 The temporary **0.4.0** My Uploads copy was removed before this marketplace
-installation; unrelated plugins were preserved. Complete Bench runtime setup
-inside Cowork is still pending. This proves the canonical plugin installation
-and fresh discovery, not installed command availability, Cage confinement,
-model access or worker execution there.
+installation; unrelated plugins were preserved. This plugin remains **0.4.1**;
+refresh to **0.4.2** is not yet verified. The separate runtime setup below proves
+command availability and confinement in the tested Cowork session.
 
 ### Runtime package and source setup
 
@@ -141,8 +140,32 @@ passed all 50 checks. The attested Linux archives were then
 The default downloader fetched the public Linux amd64 archive, verified its
 checksum, safely extracted it and verified every independent package. Both
 Linux pins also matched a fresh committed checkout. These read/verification
-checks on macOS did not execute Linux binaries. Complete command setup inside
-Cowork remains pending and is not counted as a successful result.
+checks on macOS did not execute Linux binaries.
+
+### Cowork default package setup verified
+
+In the [observed Cowork task](https://claude.ai/cowork/cse_01UHt8EhuNhPa8WPGPARyt3G),
+default `python3 scripts/setup` from clean checkout
+`80da98b4c1c805c333eb348fe84320bd0f503fd8` downloaded the published Linux amd64
+archive from release `builder-d5150f4ebccdf7f2270b2c1a087c1cd7e2cc5782`.
+Its SHA-256 was
+`c8ec1421081452e85f74dea58ace57ea0fa4a6f6629a2511349bad5178b95b3f`
+and its size was **38,370,645 bytes**. A rejecting `/tmp/no-go-bin/go` was never
+invoked. All nine version checks, Hire's structural verification and Cage's
+13 native probes passed: all **11 setup checks exited 0**. All nine installed
+package receipts matched the checked-in pins.
+
+Cage allowed workspace and temporary writes, denied outside and read-only
+writes, allowed an explicit writable path, and verified that explicit writable
+paths replace the implicit workspace grant. It preserved stdin, stdout/stderr,
+exit 42 and signal status 143; denied network by default; allowed deliberate
+`-net`; and failed closed when its backend was unavailable.
+
+A fresh `env -i` shell sourced `env.sh`, resolved all nine commands under
+`/root/.local/share/bench/runtime/bin`, and ran their version commands with Go
+absent. The runtime and `BENCH-SETUP.md`, `env.sh`, and `setup.json` under
+`/root/.local/share/bench` are session-local. This proof does not establish
+persistence across Cowork sessions, model access or worker execution.
 
 ## Observed native checks
 
@@ -193,11 +216,12 @@ in offline RPC mode. No probe sends a model prompt.
 ## What this evidence does not establish
 
 Cowork's corrected **0.4.1** canonical GitHub marketplace installation and fresh
-skill discovery passed as described above. Its complete runtime setup remains
-unverified. The
+skill discovery and the default package runtime setup passed as described above.
+Persistence across Cowork sessions, remote connector reachability, model access
+and worker execution remain unverified. The
 [setup reference](../.agents/skills/bench/references/cowork.md) requires checking
-actual command access, persistence and remote connector reachability. A plugin
-upload or a passing native CLI probe does not establish those properties.
+these properties in the selected session; the observed local checks do not
+establish them for another execution environment.
 
 OpenClaw had **not** been exercised in the 2026-09-13 setup checks. Its
 [setup reference](../.agents/skills/bench/references/openclaw.md) uses the
