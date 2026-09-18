@@ -161,6 +161,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tools", nargs="*", help="component names (default: all)")
     parser.add_argument("--output", type=Path, default=ROOT / ".build", help="build directory (default: .build)")
+    parser.add_argument("--no-cgo", action="store_true", help="compile with CGO_ENABLED=0 for portable release binaries")
     parser.add_argument("--list", action="store_true", help="list components and their commands")
     args = parser.parse_args(argv)
     components = json.loads((ROOT / "components.json").read_text())["components"]
@@ -217,6 +218,8 @@ def main(argv=None):
             print("Checking source boundaries", flush=True)
             subprocess.run([sys.executable, str(ROOT / "scripts/check-boundaries.py")], cwd=ROOT, env=env, check=True)
             build_env = compiler_environment(env)
+            if args.no_cgo:
+                build_env["CGO_ENABLED"] = "0"
             revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
             staged = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix=".staging-", dir=output)))
             (staged / "tools").mkdir(); (staged / "bin").mkdir()
@@ -228,6 +231,8 @@ def main(argv=None):
                               "original_import": component["source"], "compiler": version,
                               "build_flags": ["-mod=readonly", "-trimpath", "-buildvcs=false"],
                               "files_sha256": digest(json.dumps(records, sort_keys=True).encode()), "files": records}
+                if args.no_cgo:
+                    provenance["build_environment"] = {"CGO_ENABLED": "0"}
                 build_package(component, source, staged / "tools" / component["name"], build_env, compiler, provenance)
             publish(output, staged, selected)
         print("Built " + str(sum(len(c["commands"]) for c in selected)) + " commands in " + str(output / "bin"))

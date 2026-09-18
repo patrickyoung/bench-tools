@@ -4,7 +4,7 @@
 
 For a harness to set itself up, use [the harness entry point](../START-HERE.md).
 It includes each host's skill installation and discovery instructions, followed
-by this same source installer and verification.
+by this same installer and verification.
 
 For the standard worker-building setup, once the checkout below is available:
 
@@ -20,6 +20,16 @@ changes no shell or host settings. Use `--prefix` and `--state-dir` for selected
 locations. A nonzero result means setup is incomplete; inspect the recorded
 failure before running workers. Keep personal notes outside generated files.
 The component installer below remains available for a smaller selection.
+
+Setup needs Python 3.9+ and Git. It prefers prebuilt packages for macOS and Linux
+on amd64 or arm64, pinned by `releases/builder.json`. The download checksum and
+every component's current source digest must match before installation. These
+packages retain the independent programs, licenses and original build receipts;
+the normal installer verifies and owns the installed files. Linux still needs
+system Bubblewrap for Cage. Use `--from-source` to compile locally, or
+`--from-build DIR` for your own previously built packages. A host without a
+matching published package falls back to a source build; a failed download or
+integrity check stops with the exact error.
 
 Use the shared source installer for the Bench tools toolkit. You need Go 1.26+,
 Python 3.9+, Git, and a Unix shell on macOS, Linux, or WSL. Go may download

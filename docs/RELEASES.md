@@ -11,7 +11,8 @@ integration checks can change in one commit.
 
 | What you want | Installation route |
 | --- | --- |
-| Build scripts, workers, or applications with these tools | Clone this repository and use `python3 scripts/install`, selecting the components you need |
+| Set up a harness to build workers and teams | Clone this repository and use `python3 scripts/setup`; it prefers source-matched published builder packages |
+| Build scripts or applications with selected tools | Clone this repository and use `python3 scripts/install`, selecting the components you need |
 | Work on a single independent program | Build its `tools/NAME` directory, or use the standalone repository instructions in its README |
 | Use the Bench interactive application | Follow the [Bench application installer](https://github.com/patrickyoung/bench#install), which selects its own pinned suite |
 | Build expert folders with headless Hire | Install `hire agent ask brief ply cage record` from this monorepo; see [Hire](../tools/hire/README.md) |
@@ -56,9 +57,50 @@ documentation or packaging commits. `components.json` retains the original
 import commits and trees for historical provenance; it is not a current
 dependency lock or a toolkit version number.
 
+## Published builder packages
+
+`releases/builder.json` pins GitHub release assets by SHA-256, size, source
+revision, platform and the independent packages' source and receipt digests.
+Setup uses them only when the current component sources match. Root-only
+documentation or skill changes may therefore reuse a tested package without
+pretending its build came from the later commit. Changed component source uses
+the ordinary source build. `scripts/install` remains a source installer unless
+the caller selects `--from-build`; individual tools keep their own versions.
+
+The [Builder packages workflow](../.github/workflows/packages.yml) builds and
+tests native amd64/arm64 packages on Linux and macOS. It verifies installed
+commands, Hire's structural check and Cage before retaining an artifact. The
+Linux packages use `scripts/build --no-cgo` to avoid a distribution-specific
+glibc dependency; that compiler selection is retained in the package receipt.
+The archive contains each selected tool's unchanged package and receipt, plus
+`runtime.json` describing the transport bundle. It is not a shared executable,
+daemon, state directory or new component version.
+
+To refresh the published packages:
+
+1. Select a clean, checked source commit and run the Builder packages workflow
+   for that exact ref. Require its four native jobs and the ordinary component
+   and integration checks to pass.
+2. Download its four `builder-PLATFORM` artifacts. Verify each adjacent JSON
+   file's source revision, archive size and SHA-256. Publish the archives and
+   their JSON/checksum files as a new GitHub release tagged `builder-COMMIT`,
+   targeting that full commit. Do not replace assets of an existing pin.
+3. Update `releases/builder.json` from that metadata, adding each exact release
+   asset URL. Preserve `revision`, `sources`, `packages`, `sha256` and `size` for
+   each platform. Commit the pin so it is reviewed alongside installer source.
+4. Exercise `scripts/setup` from the published URL on the target environments
+   before claiming those routes verified.
+
+`python3 scripts/package-runtime --from-build DIR --output FILE.tar.gz` is the
+source packaging helper used by the workflow. It checks package source and
+native executable identity and writes deterministic archives and metadata.
+Checksums pinned in Git detect changed download bytes; these are not separate
+release signatures. System Bubblewrap remains a Linux host prerequisite.
+
 ## Publication boundaries
 
-This public repository provides source installation. Publishing it does not
+This public repository provides source installation and pinned builder packages.
+Publishing it does not
 replace the Bench or legacy Hire application releases, change their pins, or redirect
 existing `go install github.com/patrickyoung/TOOL@...` module paths. Those routes
 continue to use their independent repositories. Changes here are not

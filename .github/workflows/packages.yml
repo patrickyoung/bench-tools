@@ -1,0 +1,90 @@
+name: Builder packages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/packages.yml'
+      - 'scripts/package-runtime'
+      - 'scripts/prebuilt_support.py'
+      - 'scripts/setup'
+      - 'releases/builder.json'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-amd64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+          - os: macos-15-intel
+            platform: darwin-amd64
+          - os: macos-15
+            platform: darwin-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: tools/ask/go.mod
+          cache: false
+      - name: Install the documented Linux confinement backend
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap apparmor
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo tee /etc/apparmor.d/bench-tools-bwrap > /dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bench-tools-bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          PROFILE
+            sudo apparmor_parser -r /etc/apparmor.d/bench-tools-bwrap
+          fi
+      - name: Build independent packages from the selected source
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            python3 scripts/build hire agent ask brief ply cage record trail hone --no-cgo
+          else
+            python3 scripts/build hire agent ask brief ply cage record trail hone
+          fi
+      - name: Package native commands with their original receipts
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/packages"
+          python3 scripts/package-runtime --from-build .build --output "$RUNNER_TEMP/packages/bench-builder-$TARGET_PLATFORM.tar.gz"
+      - name: Extract, verify and install the distributed bytes
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from prebuilt_support import digest, extract, host_platform, verify_extracted
+          root = Path(os.environ['RUNNER_TEMP'])
+          archive = root / 'packages' / ('bench-builder-' + os.environ['TARGET_PLATFORM'] + '.tar.gz')
+          metadata = json.loads(Path(str(archive) + '.json').read_text())
+          assert metadata['platform'] == host_platform() == os.environ['TARGET_PLATFORM']
+          assert metadata['sha256'] == digest(archive) and metadata['size'] == archive.stat().st_size
+          extract(archive, root / 'unpacked', metadata['tools'])
+          verify_extracted(root / 'unpacked', metadata, metadata['tools'])
+          PY
+          python3 scripts/setup --from-build "$RUNNER_TEMP/unpacked" --prefix "$RUNNER_TEMP/runtime" --state-dir "$RUNNER_TEMP/setup"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: builder-${{ matrix.platform }}
+          path: ${{ runner.temp }}/packages/
+          if-no-files-found: error

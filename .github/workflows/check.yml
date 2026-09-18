@@ -121,7 +121,7 @@ jobs:
         run: python3 scripts/check --component cage --native-cage
       - name: Install the builder setup and verify the persistent handoff
         run: |
-          python3 scripts/setup --prefix "$RUNNER_TEMP/bench-runtime" --state-dir "$RUNNER_TEMP/bench-setup"
+          python3 scripts/setup --from-source --prefix "$RUNNER_TEMP/bench-runtime" --state-dir "$RUNNER_TEMP/bench-setup"
           . "$RUNNER_TEMP/bench-setup/env.sh"
           hire verify "$BENCH_SOURCE/examples/support-reply/expert"
           test -s "$RUNNER_TEMP/bench-setup/BENCH-SETUP.md"
