@@ -1,0 +1,21 @@
+[Unit]
+Description=Bench chat through Matterbridge
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bench
+WorkingDirectory=/srv/bench-tools
+# Supply the variables in environment.example through your service manager or
+# secret store. An operator-owned mode-0600 EnvironmentFile is one option:
+# EnvironmentFile=/srv/private/bench-chat.env
+ExecStart=/srv/bench-tools/examples/matterbridge/bridge --state /srv/bench-chat run
+Restart=on-failure
+RestartSec=10
+UMask=0077
+KillMode=control-group
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Find, build, teach, improve, evaluate and run reusable Bench workers and teams. Use when asked to teach a worker, learn from a Bench run, remember knowledge for a worker, assemble experts, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
+description: Find, build, teach, improve, evaluate, export and run reusable Bench workers and teams. Use when asked to teach a worker, learn from a Bench run, remember knowledge for a worker, assemble experts, port workers to another harness, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
 license: MIT
 ---
 
@@ -71,8 +71,9 @@ briefs into new assemblies. Promote generalized learning only as reviewed source
 
 Follow the current host's reference when installation or discovery is needed:
 [Codex](references/codex.md), [Claude Code](references/claude-code.md),
-[Cowork](references/cowork.md), [Pi](references/pi.md), or
-[OpenClaw](references/openclaw.md). Another host can read this skill directly
+[Cowork](references/cowork.md), [Pi](references/pi.md),
+[OpenClaw](references/openclaw.md), or [Hermes](references/hermes.md).
+Another host can read this skill directly
 and use its command tool. Complete authorized setup rather than merely giving
 instructions. Preserve unrelated settings and existing local changes.
 

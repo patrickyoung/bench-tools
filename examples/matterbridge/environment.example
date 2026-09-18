@@ -1,0 +1,12 @@
+# Inject these into setup/bootstrap/run through your service manager or secret store.
+# This file contains names and placeholders only; never commit populated secrets.
+TELEGRAM_BOT_TOKEN=replace-with-bot-token
+MATTERBRIDGE_API_TOKEN=replace-with-random-api-token
+TELEGRAM_CHAT_ID=-1001234567890
+TELEGRAM_ALLOWED_USERS=123456789
+ASK_MODEL=openai/YOUR_MODEL
+OPENAI_API_KEY=replace-with-provider-key
+# Optional:
+# TELEGRAM_BUILDER_TOPIC_ID=123
+# MATTERBRIDGE_API_URL=http://127.0.0.1:4242
+# ANTHROPIC_API_KEY=replace-with-provider-key

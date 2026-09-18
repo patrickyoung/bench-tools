@@ -208,6 +208,12 @@ def export_definition(args):
         raise ValueError('--ref requires a full commit ID')
     commit = git('rev-parse', '--verify', args.ref + '^{commit}').decode().strip()
     kind = 'team' if args.command == 'export-team' else 'worker'
+    host_target = getattr(args, 'target', None)
+    execution = getattr(args, 'execution', None)
+    if bool(host_target) != bool(execution):
+        raise ValueError('--target and --execution must be selected together')
+    if host_target and kind == 'team' and execution == 'native':
+        raise ValueError('native team translation is not supported; use --execution bench to preserve team handoffs and execution')
     remote = git('remote', 'get-url', 'origin').decode().strip()
     parsed = urlsplit(remote)
     if parsed.scheme in ('http', 'https') and (parsed.username or parsed.password or parsed.query or parsed.fragment):
@@ -247,6 +253,10 @@ def export_definition(args):
             members[slot]['adapter'] = {'source': source, 'destination': target}
     if len(assembled) > 4096 or sum(len(data) for data, _ in assembled.values()) > 64 * 1024 * 1024:
         raise ValueError('assembled source exceeds inventory limits')
+    projection = {}
+    if host_target:
+        from worker_portability import project
+        projection = project(kind, value, assembled, host_target, execution)
     dest = Path(args.destination).absolute()
     physical = dest.resolve()
     if physical == ROOT.resolve() or ROOT.resolve() in physical.parents:
@@ -255,9 +265,11 @@ def export_definition(args):
     # mkdir refuses even an existing empty folder or dangling symlink.
     dest.mkdir()
     try:
+        source_dest = dest / 'references/bench' if host_target else dest
+        source_dest.mkdir(parents=True, exist_ok=True)
         files = {}
         for relative_path, (data, mode) in sorted(assembled.items()):
-            target = dest / relative_path
+            target = source_dest / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
             target.chmod(0o755 if mode == '100755' else 0o644)
@@ -268,12 +280,18 @@ def export_definition(args):
                 'files': files, 'adaptations': []}
         if kind == 'team':
             lock['members'] = members
-        (dest / (kind + '.lock.json')).write_text(json.dumps(lock, indent=2) + '\n')
+        (source_dest / (kind + '.lock.json')).write_text(json.dumps(lock, indent=2) + '\n')
+        for name, data in projection.items():
+            (dest / name).write_bytes(data)
+            (dest / name).chmod(0o644)
     except BaseException:
         shutil.rmtree(dest)
         raise
-    print(json.dumps({kind: args.name, 'directory': str(dest), 'commit': commit,
-                      'files': len(files)}))
+    result = {kind: args.name, 'directory': str(dest), 'commit': commit, 'files': len(files)}
+    if host_target:
+        result.update(target=host_target, execution=execution,
+                      skill=json.loads(projection['portability.json'])['name'])
+    print(json.dumps(result))
 
 
 def main():
@@ -289,6 +307,10 @@ def main():
         export.add_argument('destination')
         export.add_argument('--ref', required=True)
         export.add_argument('--allow-experimental', action='store_true')
+        export.add_argument('--target', choices=('skill', 'codex', 'claude-code', 'cowork', 'pi', 'openclaw', 'hermes'),
+                            help='also package this unchanged export as a host skill')
+        export.add_argument('--execution', choices=('native', 'bench'),
+                            help='native worker expertise or existing Bench execution; required with --target')
     args = parser.parse_args()
     try:
         if args.command in ('export', 'export-team'):

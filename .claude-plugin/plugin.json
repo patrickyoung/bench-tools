@@ -1,6 +1,6 @@
 {
   "name": "bench-tools",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Build, teach, evaluate and run reusable Bench workers with the existing independent Unix commands.",
   "author": {
     "name": "Patrick Young"

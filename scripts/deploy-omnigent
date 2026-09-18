@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""Package a pinned Bench worker/team for Omnigent on macOS or Linux."""
+import argparse
+import base64
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import re
+
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATE = ROOT / 'examples/omnigent'
+
+
+def candidate_export(candidate, destination, kind):
+    """Copy an explicit source snapshot; never execute generated host code."""
+    if candidate.stat().st_size > 12 * 1024 * 1024:
+        raise ValueError('candidate exceeds 12 MiB')
+    value = json.loads(candidate.read_text())
+    files = value.get('files')
+    if value.get('schema') != 'bench.candidate/v1' or value.get('kind') != kind:
+        raise ValueError('candidate schema/kind mismatch')
+    if not isinstance(files, dict) or not 1 <= len(files) <= 64:
+        raise ValueError('candidate requires 1-64 source files')
+    prepared, total = {}, 0
+    for name, entry in files.items():
+        parts = name.split('/')
+        if (len(parts) > 16 or any(not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}', p)
+                                  or p in ('.', '..') or p.startswith('.') for p in parts)):
+            raise ValueError('candidate contains an invalid source path')
+        if any(p in {'node_modules', '__pycache__', 'runs', 'evidence'} for p in parts):
+            raise ValueError('candidate contains runtime files')
+        mode = entry['mode']
+        if type(mode) is not int or mode not in (0o644, 0o755):
+            raise ValueError('candidate modes must be 0644 or 0755')
+        data = base64.b64decode(entry['base64'], validate=True)
+        total += len(data)
+        if total > 8 * 1024 * 1024:
+            raise ValueError('candidate source exceeds 8 MiB')
+        prepared[name] = (data, mode)
+    if not {'AGENTS.md', 'README.md', 'bin/check'} <= set(prepared):
+        raise ValueError('candidate is missing its instructions, README or check')
+    if prepared['bin/check'][1] != 0o755:
+        raise ValueError('candidate check must be executable')
+    for name in prepared:
+        if any('/'.join(name.split('/')[:i]) in prepared for i in range(1, len(name.split('/')))):
+            raise ValueError('candidate source paths overlap')
+    lock = {'schema': 'bench.candidate-lock/v1', 'files': {},
+            'candidate_sha256': hashlib.sha256(candidate.read_bytes()).hexdigest()}
+    for name, (data, mode) in prepared.items():
+        path = destination / 'expert' / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        path.chmod(mode)
+        lock['files']['expert/' + name] = {'sha256': hashlib.sha256(data).hexdigest(), 'mode': mode}
+    (destination / (kind + '.lock.json')).write_text(json.dumps(lock, indent=2) + '\n')
+
+
+def builder_export(destination, ref):
+    expert = destination / 'expert'
+    (expert / 'bin').mkdir(parents=True)
+    (expert / 'AGENTS.md').write_text('This package runs Hire through sandbox-builder.py.\n')
+    (expert / 'README.md').write_text('Sandboxed Hire authoring with explicitly supplied prior source.\n')
+    (expert / 'bin/check').write_text('#!/bin/sh\nexit 1\n')
+    (expert / 'bin/check').chmod(0o755)
+    library = destination / 'library'
+    library.mkdir()
+    archive = subprocess.run(['git', '-C', str(ROOT), 'archive', ref,
+                              'workers', 'teams', 'docs', '.agents', 'START-HERE.md'],
+                             capture_output=True, check=True).stdout
+    subprocess.run(['tar', '-xf', '-', '-C', str(library)], input=archive, check=True)
+    files = {str(p.relative_to(destination)): {'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+             for p in destination.rglob('*') if p.is_file()}
+    (destination / 'worker.lock.json').write_text(json.dumps({'files': files}) + '\n')
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('kind', choices=['worker', 'team', 'builder'])
+    p.add_argument('name')
+    p.add_argument('destination', type=Path)
+    p.add_argument('--ref', required=True, help='full reviewed Bench commit')
+    p.add_argument('--allow-experimental', action='store_true')
+    p.add_argument('--candidate', type=Path, help='explicit Hire candidate snapshot; runs through Agent')
+    a = p.parse_args()
+    dest = a.destination.expanduser().resolve()
+    if dest == ROOT or ROOT in dest.parents or dest in ROOT.parents:
+        p.error('deployment must be outside the source checkout')
+    if not re.fullmatch(r'[a-z][a-z0-9-]{0,47}', a.name):
+        p.error('name must be 1-48 lowercase letters, digits or hyphens')
+    if not re.fullmatch(r'[0-9a-f]{40}', a.ref):
+        p.error('--ref must be a full commit')
+    if a.kind == 'builder' and a.candidate:
+        p.error('builder does not accept --candidate')
+    if a.kind == 'team' and not a.candidate and a.name not in {
+            'page-team', 'vendor-comparison-team', 'vendor-decision-studio'}:
+        p.error('team needs an explicit entry-command mapping in the deployment adapter')
+    dest.mkdir(parents=True, exist_ok=False)
+    try:
+        cmd = [sys.executable, str(ROOT / 'scripts/workers'),
+               'export' if a.kind == 'worker' else 'export-team', a.name,
+               str(dest / 'definition'), '--ref', a.ref]
+        if a.allow_experimental:
+            cmd.append('--allow-experimental')
+        if a.candidate:
+            candidate_export(a.candidate, dest / 'definition', a.kind)
+        elif a.kind == 'builder':
+            builder_export(dest / 'definition', a.ref)
+        else:
+            subprocess.run(cmd, check=True)
+        # Source packaging only: each tool still builds independently on the target.
+        with (dest / 'bench-source.tar').open('wb') as out:
+            subprocess.run(['git', '-C', str(ROOT), 'archive', a.ref,
+                            'components.json', 'scripts', 'tools', 'LICENSE'],
+                           stdout=out, check=True)
+        names = ['install', 'chat', 'run', 'serve', 'dispatch', 'runtime.py', 'README.md',
+                 'Dockerfile', '.dockerignore', 'build-tools.py', 'sandbox-agent',
+                 'service', 'service.py', 'service-worker', 'SERVICE.md', 'contracts.py',
+                 'service-mcp', 'service_mcp.py', 'service-mcp.json', 'service-chat',
+                 'sandbox-job', 'sandbox.py', 'sandbox-builder.py', 'DESIGN.md']
+        hashes = {}
+        for name in names:
+            shutil.copy2(TEMPLATE / name, dest / name)
+            hashes[name] = hashlib.sha256((dest / name).read_bytes()).hexdigest()
+        config = {'schema': 'bench.omnigent-deployment/v1', 'kind': 'worker' if a.kind == 'builder' else a.kind,
+                  'name': a.name, 'bench_commit': a.ref, 'omnigent_version': '0.14.0',
+                  'sandbox': 'docker', 'agent_action_boundary': 'enclosing-container',
+                  'source_sha256': hashlib.sha256((dest / 'bench-source.tar').read_bytes()).hexdigest(),
+                  'adapter_sha256': hashes}
+        if a.kind == 'builder':
+            config['entry'] = 'hire'
+        elif a.candidate:
+            config['entry'] = 'agent'
+        (dest / 'deployment.json').write_text(json.dumps(config, indent=2) + '\n')
+        (dest / 'inputs').mkdir()
+        print(f'Deployment prepared: {dest}\nNext: {dest / "install"}')
+    except BaseException:
+        shutil.rmtree(dest)
+        raise
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, subprocess.CalledProcessError) as e:
+        sys.exit(f'deploy-omnigent: {e}')

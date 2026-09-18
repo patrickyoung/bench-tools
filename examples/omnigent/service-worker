@@ -1,0 +1,12 @@
+#!/bin/sh
+# The shell supplies repetition; Tend owns every queue transition.
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 2
+while :; do
+    "$ROOT/service" "$@" work
+    status=$?
+    case "$status" in
+        0) ;;
+        1) sleep 1 ;;
+        *) exit "$status" ;;
+    esac
+done

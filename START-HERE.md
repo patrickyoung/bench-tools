@@ -8,7 +8,7 @@ Give your harness this request:
 > missing expertise. Leave clean reusable source, separate run results, and
 > the exact command to use it again.
 
-This is the entry point for **Codex, Claude Code, Claude Cowork, Pi, OpenClaw,
+This is the entry point for **Codex, Claude Code, Claude Cowork, Pi, OpenClaw, Hermes,
 and other harnesses that can read files and run commands**. The public source
 is [patrickyoung/bench-tools](https://github.com/patrickyoung/bench-tools).
 For human readers, follow the [practical walkthrough](docs/BUILD-WITH-AN-LLM.md).
@@ -60,6 +60,7 @@ files are never default inputs to another job or part of a reusable export.
 | Claude Cowork | [Account skill/plugin, execution environment, and remote connectors](.agents/skills/bench/references/cowork.md) |
 | Pi | [Skill discovery or Git package, and ordinary command tools](.agents/skills/bench/references/pi.md) |
 | OpenClaw | [Workspace skill and gateway/sandbox execution](.agents/skills/bench/references/openclaw.md) |
+| Hermes | [Profile skills, trusted projects and terminal backend](.agents/skills/bench/references/hermes.md) |
 | Another harness | Read the skill directly; use the host's supported skill discovery and command tool. |
 
 If Bench is already installed, refresh the copied skill from the selected
@@ -70,6 +71,11 @@ personal/account skill copy. The host references explain each installation route
 A skill installs knowledge; the source installer installs programs. The host
 supplies execution permissions. Ask uses its own model connection; a harness
 login alone does not configure it. See [observed setup evidence](docs/HARNESS-VERIFICATION.md).
+
+To take one worker into another host's native model/tool loop, use a
+[targeted worker export](docs/WORKER-PORTABILITY.md). Keep the full definition
+and select `native` or `bench` execution explicitly. Teams retain their existing
+Bench entry command; native team translation is not yet supported.
 
 If the request is only setup, finish setup without inventing a business job or
 paid evaluation. If the user supplied a job, continue using the authorization
@@ -88,6 +94,8 @@ or access that prevent necessary work. Preserve existing settings.
 | Practice cases and historical showcases | [examples/](examples/README.md); supply them explicitly for a chosen evaluation |
 | Installed programs and their boundaries | [Tool guide](docs/TOOLS.md) and each component's manual |
 | Remote workers or services | Existing [A2A](tools/a2a/README.md) or [MCP](tools/mcp/README.md) |
+| Omnigent chat with local or remote job sandboxes | [Portable deployment](examples/omnigent/README.md) |
+| Persistent builder and deployment chats through Matterbridge | [Matterbridge application](examples/matterbridge/README.md) |
 
 The older plugin under `tools/agent/plugins/bench-system-builder` targets a
 separately pinned legacy suite. Use this entry point and its shared skill for
