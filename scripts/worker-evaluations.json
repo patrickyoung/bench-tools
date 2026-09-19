@@ -1,0 +1,847 @@
+{
+  "schema": "bench.library-evaluation-catalog/v1",
+  "suites": [
+    {
+      "id": "product-owner",
+      "profile": "core",
+      "covers": [
+        "workers/product-owner"
+      ],
+      "tests": [
+        "workers/product-owner/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/product-owner/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Public checker positive cases, byte bindings, malformed inputs and role-specific counterexamples.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
+    },
+    {
+      "id": "product-manager",
+      "profile": "core",
+      "covers": [
+        "workers/product-manager"
+      ],
+      "tests": [
+        "workers/product-manager/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/product-manager/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Public checker positive cases, byte bindings, malformed inputs and role-specific counterexamples.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
+    },
+    {
+      "id": "enterprise-architect",
+      "profile": "core",
+      "covers": [
+        "workers/enterprise-architect"
+      ],
+      "tests": [
+        "workers/enterprise-architect/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/enterprise-architect/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Public checker positive cases, byte bindings, malformed inputs and role-specific counterexamples.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
+    },
+    {
+      "id": "visual-artist",
+      "profile": "core",
+      "covers": [
+        "workers/visual-artist"
+      ],
+      "tests": [
+        "workers/visual-artist/tests/test_contract.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/visual-artist/tests",
+          "-p",
+          "test_contract.py",
+          "-v"
+        ]
+      ],
+      "proves": "Public checker positive cases, byte bindings, malformed inputs and role-specific counterexamples.",
+      "requires": "Python 3.9+; Node 22+ for visual-artist",
+      "prerequisites": {
+        "commands": [
+          "node"
+        ]
+      }
+    },
+    {
+      "id": "independent-page-roles",
+      "profile": "core",
+      "covers": [
+        "workers/frontend",
+        "workers/canvas-artist",
+        "workers/blender-artist",
+        "workers/image-editor",
+        "workers/page-reviewer",
+        "workers/image-concept",
+        "workers/page-planner"
+      ],
+      "tests": [
+        "scripts/tests/test_worker_roles.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts/tests",
+          "-p",
+          "test_worker_roles.py",
+          "-v"
+        ]
+      ],
+      "proves": "Standalone positive handoffs and changed-output rejection. Native format signatures are synthetic, not native validity.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "page-proposals",
+      "profile": "core",
+      "covers": [
+        "workers/page-planner",
+        "workers/image-concept"
+      ],
+      "tests": [
+        "scripts/evaluation-tests/test_page_roles.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts/evaluation-tests",
+          "-p",
+          "test_page_roles.py",
+          "-v"
+        ]
+      ],
+      "proves": "Valid plan/finish, unknown workers/criteria, bounds, stale snapshots, missing/malformed image requests.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "vector-contracts",
+      "profile": "core",
+      "covers": [
+        "workers/inkscape-illustrator",
+        "workers/inkscape-controlled-illustrator"
+      ],
+      "tests": [
+        "scripts/evaluation-tests/test_vector_contracts.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts/evaluation-tests",
+          "-p",
+          "test_vector_contracts.py",
+          "-v"
+        ]
+      ],
+      "proves": "Both shipped XML checkers reject active/external/wrong-size SVG; controlled plans reject invalid operations.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "publication-workers",
+      "profile": "core",
+      "covers": [
+        "workers/editorial-director",
+        "workers/information-designer",
+        "workers/executive-writer",
+        "workers/presentation-designer",
+        "workers/publication-reviewer"
+      ],
+      "tests": [
+        "scripts/evaluation-tests/test_publication_workers.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts/evaluation-tests",
+          "-p",
+          "test_publication_workers.py",
+          "-v"
+        ]
+      ],
+      "proves": "Each shipped worker accepts a bound spec, rejects stale/unknown facts, and enforces artifact or review gates. No rendering/quality claim.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "workbook-contracts",
+      "profile": "core",
+      "covers": [
+        "workers/excel-workbook-designer"
+      ],
+      "tests": [
+        "workers/excel-workbook-designer/tests/test_spec.py",
+        "workers/excel-workbook-designer/tests/test_edit_context.py",
+        "workers/excel-workbook-designer/tests/test_renderer_repairs.py",
+        "workers/excel-workbook-designer/tests/test_validator_diagnostics.py",
+        "workers/excel-workbook-designer/tests/test_date_metrics.py",
+        "workers/excel-workbook-designer/tests/test_visual_check.py",
+        "workers/excel-workbook-designer/tests/test_saved_native_features.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_spec.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_edit_context.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_renderer_repairs.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_validator_diagnostics.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_date_metrics.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_visual_check.py",
+          "-v"
+        ],
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_saved_native_features.py",
+          "-v"
+        ]
+      ],
+      "proves": "Creation/edit preservation, strict dates, formula/metric diagnostics, optional visual gate protocol and saved feature bindings.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "workbook-metrics",
+      "profile": "core",
+      "covers": [
+        "workers/excel-workbook-designer"
+      ],
+      "tests": [
+        "workers/excel-workbook-designer/tests/test_metric_values.mjs"
+      ],
+      "commands": [
+        [
+          "node",
+          "workers/excel-workbook-designer/tests/test_metric_values.mjs"
+        ]
+      ],
+      "proves": "JavaScript metric value and type distinctions.",
+      "requires": "Node 22+",
+      "prerequisites": {
+        "commands": [
+          "node"
+        ]
+      }
+    },
+    {
+      "id": "page-team-handoffs",
+      "profile": "core",
+      "covers": [
+        "teams/page-team"
+      ],
+      "tests": [
+        "teams/page-team/tests/contracts.py",
+        "teams/page-team/tests/handoffs.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "teams/page-team/tests/contracts.py",
+          "{stage}/teams/page-team/expert"
+        ]
+      ],
+      "proves": "Assembled handoffs, original-goal/artifact review receipts, rejected/stale review, image adapter and MCP failures.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "comparison-lead-handoffs",
+      "profile": "core",
+      "covers": [
+        "teams/vendor-comparison-team"
+      ],
+      "tests": [
+        "teams/vendor-comparison-team/tests/test_lead_handoffs.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "teams/vendor-comparison-team/tests",
+          "-p",
+          "test_lead_handoffs.py",
+          "-v"
+        ]
+      ],
+      "proves": "Scope/weight preservation and refusal to upgrade a conditional decision or change its winner.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "studio-contracts",
+      "profile": "core",
+      "covers": [
+        "teams/vendor-decision-studio"
+      ],
+      "tests": [
+        "teams/vendor-decision-studio/tests/test_contracts.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "teams/vendor-decision-studio/tests",
+          "-p",
+          "test_contracts.py",
+          "-v"
+        ]
+      ],
+      "proves": "Publication handoff contracts, numeric display, stale/fabricated references, per-image completeness and review gate refusals.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "statistics",
+      "profile": "analysis",
+      "covers": [
+        "workers/polars-analyst"
+      ],
+      "tests": [
+        "workers/polars-analyst/tests/test_statistics.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/polars-analyst/tests",
+          "-p",
+          "test_statistics.py",
+          "-v"
+        ]
+      ],
+      "proves": "Independent Student-t quadrature, paired ID joins, Holm families, data quality, design refusals, hashes and public render/check.",
+      "requires": "Selected Python with workers/polars-analyst/expert/requirements.txt",
+      "prerequisites": {
+        "modules": [
+          "numpy",
+          "scipy",
+          "polars"
+        ]
+      }
+    },
+    {
+      "id": "comparison-contracts",
+      "profile": "analysis",
+      "covers": [
+        "workers/vendor-comparison",
+        "teams/vendor-comparison-team"
+      ],
+      "tests": [
+        "teams/vendor-comparison-team/tests/test_contracts.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "teams/vendor-comparison-team/tests",
+          "-p",
+          "test_contracts.py",
+          "-v"
+        ]
+      ],
+      "proves": "Independent weighted totals, mandatory gates, unknown/conflicting evidence, citations, format extraction, statistical and manager bindings; local HTTP fixture.",
+      "requires": "Selected Python with Polars/NumPy/SciPy; pdftotext on PATH",
+      "prerequisites": {
+        "modules": [
+          "numpy",
+          "scipy",
+          "polars"
+        ],
+        "commands": [
+          "pdftotext"
+        ]
+      }
+    },
+    {
+      "id": "inkscape-illustrator-native",
+      "profile": "native",
+      "covers": [
+        "workers/inkscape-illustrator"
+      ],
+      "tests": [
+        "workers/inkscape-illustrator/tests/contracts.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/inkscape-illustrator/tests/contracts.py",
+          "{stage}/workers/inkscape-illustrator/expert"
+        ]
+      ],
+      "proves": "Actual Inkscape author/export, pixel/source identity, deliberate corruptions and refreshed-hash near misses. Aesthetics remain independent.",
+      "requires": "Inkscape on PATH or INKSCAPE=/absolute/executable",
+      "prerequisites": {}
+    },
+    {
+      "id": "inkscape-controlled-illustrator-native",
+      "profile": "native",
+      "covers": [
+        "workers/inkscape-controlled-illustrator"
+      ],
+      "tests": [
+        "workers/inkscape-controlled-illustrator/tests/contracts.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/inkscape-controlled-illustrator/tests/contracts.py"
+        ]
+      ],
+      "proves": "Actual Inkscape author/export, pixel/source identity, deliberate corruptions and refreshed-hash near misses. Aesthetics remain independent.",
+      "requires": "Inkscape on PATH or INKSCAPE=/absolute/executable",
+      "prerequisites": {}
+    },
+    {
+      "id": "page-browser",
+      "profile": "browser",
+      "covers": [
+        "teams/page-team",
+        "workers/frontend"
+      ],
+      "tests": [
+        "teams/page-team/tests/browser.mjs"
+      ],
+      "commands": [
+        [
+          "node",
+          "teams/page-team/tests/browser.mjs",
+          "{stage}/teams/page-team/expert"
+        ]
+      ],
+      "proves": "Chromium desktop/mobile, interaction, reduced motion, network rejection, and external acceptance failure.",
+      "requires": "Node 22+, page-team pinned Playwright via --node-modules, installed Chromium via PLAYWRIGHT_BROWSERS_PATH",
+      "prerequisites": {
+        "commands": [
+          "node"
+        ]
+      }
+    },
+    {
+      "id": "workbook-visual-context",
+      "profile": "workbook-visual",
+      "covers": [
+        "workers/excel-workbook-designer"
+      ],
+      "tests": [
+        "workers/excel-workbook-designer/tests/test_visual_context.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/excel-workbook-designer/tests",
+          "-p",
+          "test_visual_context.py",
+          "-v"
+        ]
+      ],
+      "proves": "Actual LibreOffice/PDF/image preparation, bookmarks, byte bindings and real Cage write/network denial.",
+      "requires": "WORKBOOK_PYTHON with pypdf; WORKBOOK_VISUAL_SOFFICE, WORKBOOK_VISUAL_PDFTOPPM, WORKBOOK_VISUAL_CAGE",
+      "prerequisites": {
+        "selectors": [
+          "WORKBOOK_PYTHON",
+          "WORKBOOK_VISUAL_SOFFICE",
+          "WORKBOOK_VISUAL_PDFTOPPM",
+          "WORKBOOK_VISUAL_CAGE"
+        ]
+      }
+    },
+    {
+      "id": "team-command-composition",
+      "profile": "core",
+      "covers": [
+        "teams/vendor-comparison-team",
+        "teams/vendor-decision-studio"
+      ],
+      "tests": [
+        "scripts/evaluation-tests/test_team_commands.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "scripts/evaluation-tests",
+          "-p",
+          "test_team_commands.py",
+          "-v"
+        ]
+      ],
+      "proves": "Real shell entry commands preserve ordering, literal paths, recording flags, stop on failed stages and refuse existing studio runs; local fixtures, not model evidence.",
+      "requires": "Python 3.9+ and sh",
+      "prerequisites": {}
+    },
+    {
+      "id": "workbook-render",
+      "profile": "workbook-render",
+      "covers": [
+        "workers/excel-workbook-designer"
+      ],
+      "tests": [
+        "workers/excel-workbook-designer/tests/render_date_fixture.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/excel-workbook-designer/tests/render_date_fixture.py",
+          "{run}/date-render"
+        ]
+      ],
+      "proves": "Actual workbook rendering and saved-date checks.",
+      "requires": "WORKBOOK_NODE and WORKBOOK_NODE_MODULES with Artifact Tool; selected Python",
+      "prerequisites": {
+        "selectors": [
+          "WORKBOOK_NODE",
+          "WORKBOOK_NODE_MODULES"
+        ]
+      }
+    },
+    {
+      "id": "workbook-process",
+      "profile": "workbook-process",
+      "covers": [
+        "workers/excel-workbook-designer"
+      ],
+      "tests": [
+        "workers/excel-workbook-designer/tests/exercise_visual_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/excel-workbook-designer/tests/exercise_visual_check.py",
+          "--out",
+          "{run}/visual-process",
+          "--bin",
+          "{bin_dir}",
+          "--ask",
+          "{ask}"
+        ]
+      ],
+      "proves": "Ten explicit loopback Ask/Record/Cage visual judgment cases with retained evidence; no paid endpoint.",
+      "requires": "WORKBOOK_NODE and WORKBOOK_NODE_MODULES with Artifact Tool; visual renderers, --bin-dir, --ask",
+      "prerequisites": {
+        "selectors": [
+          "WORKBOOK_NODE",
+          "WORKBOOK_NODE_MODULES",
+          "WORKBOOK_PYTHON",
+          "WORKBOOK_VISUAL_SOFFICE",
+          "WORKBOOK_VISUAL_PDFTOPPM",
+          "WORKBOOK_VISUAL_CAGE"
+        ]
+      }
+    }
+  ],
+  "quality_cases": {
+    "workers/product-owner": {
+      "ordinary": "Turn a fictional support team problem (repeat tickets, uncertain cause) into outcome intake and backlog experiments.",
+      "missing": "Omit customer and baseline; require needs-input and bounded questions.",
+      "near_miss": "Polished backlog promises a 30% gain without evidence or commits another team\u2019s capacity.",
+      "transfer": "Review an AI-assisted triage proposal instead of a support backlog.",
+      "rubric": "Problem, customer and outcome distinguish facts from assumptions; priorities and acceptance are testable; no invented commitments."
+    },
+    "workers/product-manager": {
+      "ordinary": "Frame two fictional platform options with fit, annual cost and exit criteria, then synthesize conditional evidence.",
+      "missing": "Remove strategic outcome and decision owner; request clarification.",
+      "near_miss": "Synthesis turns an unresolved mandatory gate into an unconditional purchase recommendation.",
+      "transfer": "Frame a product sunset rather than an acquisition.",
+      "rubric": "Preserve candidate scope, supplied weights, confidence and lifecycle economics; recommend an evidence-backed decision or defer."
+    },
+    "workers/enterprise-architect": {
+      "ordinary": "Compare shared identity-platform consolidation with retaining two systems using supplied capabilities, costs and transition risks.",
+      "missing": "Omit a mandated security requirement and the migration owner.",
+      "near_miss": "Architecture narrative quietly invents policy approval or implementation capacity.",
+      "transfer": "Evaluate a legacy application sunset with explicit retention dependencies.",
+      "rubric": "Outcome-linked options, capability reuse, economic uncertainty, transition gates and accountable owners; no invented authority."
+    },
+    "workers/polars-analyst": {
+      "ordinary": "Compare synthetic groups [2,4,6,8,10] and [3,5,8,11,15,19] with declared independent units using Welch intervals.",
+      "missing": "Remove sampling/design support; require descriptive-only results.",
+      "near_miss": "Repeated units masquerade as independent observations; small p-value offered as causal proof.",
+      "transfer": "Paired measurements with shuffled IDs, missing pairs and an ordinal metric.",
+      "rubric": "Independent arithmetic agrees; uncertainty and Holm family are correct; preserve missingness and refuse unsupported inference."
+    },
+    "workers/vendor-comparison": {
+      "ordinary": "Use vendor-comparison-team/tests/make_cases.py case 01: independently expect Atlas 77, Beacon 90, Crest 100 but excluded by SSO.",
+      "missing": "Use case 02: contradictory Atlas SSO evidence and missing price.",
+      "near_miss": "Prompt-like text in Beacon source demands fabricated price and gate passes.",
+      "transfer": "Use case 03 observability services with proposed rather than supplied weights.",
+      "rubric": "Quotes actually support claims; gates dominate totals; unknown is not zero; preserve weights, scope, economic exclusions and uncertainty."
+    },
+    "workers/editorial-director": {
+      "ordinary": "Turn the synthetic gated vendor result into an executive story with three qualified messages and report/deck arcs.",
+      "missing": "Remove evidence for the preferred option and identify the gap.",
+      "near_miss": "Message map makes the excluded highest-score candidate the unqualified winner.",
+      "transfer": "Create a story for a platform sunset with no numerical ranking.",
+      "rubric": "Audience-specific argument, faithful qualifiers and eligibility labels, traceable facts and consistent terminology."
+    },
+    "workers/information-designer": {
+      "ordinary": "Design score bounds, coverage and decision-path graphics for three fictional options with one unknown score and one failed gate.",
+      "missing": "No inferential statistics supplied; omit effects claims.",
+      "near_miss": "Beautiful bar chart silently replaces unknowns with zero or clips its score axis.",
+      "transfer": "Seven candidates and long criteria require pagination and a complete workbook.",
+      "rubric": "Independent values match every saved chart/table, uncertainty is visible, all rows retained, labels readable in actual renders."
+    },
+    "workers/executive-writer": {
+      "ordinary": "Write a 1100\u20133000 word executive report from the synthetic conditional comparison and shared story.",
+      "missing": "Missing exit costs must remain a diligence gap.",
+      "near_miss": "Report preserves totals but changes a conditional recommendation into an approved purchase.",
+      "transfer": "Write a longer multi-option sunset decision with different evidence limits.",
+      "rubric": "Sustained clear argument, source fidelity, shared messages and material qualifiers; complete editable DOCX/PDF; review every rendered page."
+    },
+    "workers/presentation-designer": {
+      "ordinary": "Create a 7\u201312 slide decision narrative with editable score chart/table, notes and conditional decision.",
+      "missing": "No inferential comparison supplied; omit an effects plot.",
+      "near_miss": "Native chart has correct labels but wrong cached values or a misleading truncated axis.",
+      "transfer": "Seven options, long names and many criteria require multiple readable pages.",
+      "rubric": "Narrative pacing, exact values and qualifiers, editable objects, complete pages; independent pixel review for clipping and density."
+    },
+    "workers/publication-reviewer": {
+      "ordinary": "Review a consistent synthetic report/deck/workbook package with bound current image observations.",
+      "missing": "Omit a slide image or source qualifier; request review/revision.",
+      "near_miss": "All averages exceed four but one material misstatement or unreadable page remains.",
+      "transfer": "Review a second package with different pagination and no numerical comparison.",
+      "rubric": "Concrete per-artifact findings; inspect actual rendered media; no publication with material defects or missing visual evidence."
+    },
+    "workers/frontend": {
+      "ordinary": "Build a single-file local service page with navigation, a details dialog and a contact form.",
+      "missing": "No form endpoint supplied; clearly describe local behavior.",
+      "near_miss": "Attractive page contains broken keyboard navigation or a hidden remote asset.",
+      "transfer": "Mobile event page with reduced-motion preference and long content.",
+      "rubric": "Functional keyboard/pointer flows, responsive layout, accessible labels, no unintended network; inspect rendered page at all supported sizes."
+    },
+    "workers/visual-artist": {
+      "ordinary": "Create a p5.js or D3 interactive synthetic rainfall visualization with truthful quantities and static fallback.",
+      "missing": "No sensor available; use the documented fallback.",
+      "near_miss": "Beautiful animation misencodes data or requires motion despite reduced-motion preference.",
+      "transfer": "Create a non-data generative artwork without unnecessary sensing.",
+      "rubric": "Brief fidelity, purposeful interaction, pinned libraries, input bindings, truthful data and usable static/reduced-motion fallback; inspect pixels."
+    },
+    "workers/canvas-artist": {
+      "ordinary": "Create a small Canvas particle field with controllable intensity, CSS and SVG fallback.",
+      "missing": "WebGL unavailable; retain an informative static view.",
+      "near_miss": "Valid handoff contains a blank or CPU-heavy animation.",
+      "transfer": "Create a touch-friendly geometric piece at a narrow viewport.",
+      "rubric": "Actual render, bounded resource use, controls, accessibility and fallback meet brief; signatures alone are insufficient."
+    },
+    "workers/blender-artist": {
+      "ordinary": "Create an editable low-poly desk lamp with a lit preview and optimized GLB export.",
+      "missing": "Missing scale specification is stated as an assumption.",
+      "near_miss": "Files have correct signatures but GLB is empty or lamp parts are missing.",
+      "transfer": "Create a different object, a wheeled cart with clear proportions.",
+      "rubric": "Open master in Blender, inspect geometry/materials/scale, load GLB independently, compare actual preview to brief."
+    },
+    "workers/inkscape-illustrator": {
+      "ordinary": "Illustrate a bicycle with editable layers, portable SVG and native PNG preview.",
+      "missing": "No style reference; state a consistent chosen style.",
+      "near_miss": "Matching hashes conceal a flattened master, missing wheels or blank preview.",
+      "transfer": "Create a typographic garden-event poster with editable text and outlined export.",
+      "rubric": "Native editability, visual fidelity and hierarchy, portable export and matching pixels; inspect composition directly."
+    },
+    "workers/inkscape-controlled-illustrator": {
+      "ordinary": "Use a bounded drawing plan for a layered seaside lighthouse with primary review targets.",
+      "missing": "Primary target is unspecified; declare what must remain visible.",
+      "near_miss": "Primary subject is fully hidden behind a later opaque shape.",
+      "transfer": "Create a schematic robot using distinct shapes and proportions.",
+      "rubric": "Plan/master/export agree, review targets visible, geometry bounded; independently inspect composition and brief fidelity."
+    },
+    "workers/image-editor": {
+      "ordinary": "Composite a supplied synthetic product photo onto a neutral background, preserving the original and editable XCF layers.",
+      "missing": "Missing source image requires clarification, not fabricated provenance.",
+      "near_miss": "Valid signatures hide changed originals, destructive edits or visible edge halos.",
+      "transfer": "Retouch a landscape while preserving texture and original dimensions.",
+      "rubric": "Original hashes unchanged, editable layers open in GIMP, actual pixels satisfy requested edits without artifacts."
+    },
+    "workers/image-concept": {
+      "ordinary": "Prepare a generator request for a wide library mural with a quiet reading area and explicit composition notes.",
+      "missing": "No reference image supplied; avoid claiming one was used.",
+      "near_miss": "Polished request invents a reference or reports an image as already generated.",
+      "transfer": "Draft a square technical cover with negative space for later text.",
+      "rubric": "Prompt faithfully captures objects/layout/style and constraints; references are explicit; generation is not claimed."
+    },
+    "workers/page-planner": {
+      "ordinary": "Given admitted frontend/review workers and page criteria, plan integration then dependent review within bounds.",
+      "missing": "Required art role is unavailable; plan a valid alternative or report blocked.",
+      "near_miss": "Proposal uses a stale snapshot or an unadmitted worker despite a plausible plan.",
+      "transfer": "Finish an already accepted page with a different original brief.",
+      "rubric": "Dependencies and worker selection make sense; preserve original goal, snapshot and budget; do not claim completion without acceptance."
+    },
+    "workers/page-reviewer": {
+      "ordinary": "Assess supplied current mobile/desktop browser observations for a page with a working dialog.",
+      "missing": "No visual observations supplied; state limitations without claiming inspection.",
+      "near_miss": "A pass ignores a documented keyboard trap or uses observations from old HTML.",
+      "transfer": "Review a long educational page with a reduced-motion failure.",
+      "rubric": "Findings match supplied evidence, material issues trigger revise, coverage and unobserved dimensions remain explicit."
+    },
+    "teams/page-team": {
+      "ordinary": "Run the existing page-team command for a fictional local club page with a generated Canvas contribution and reviewed integration.",
+      "missing": "Requested native art capability is unavailable; keep outcome honest.",
+      "near_miss": "Integration changes HTML after review or drops a specialist asset from visible content.",
+      "transfer": "Build a different responsive service page with form interactions.",
+      "rubric": "Controller accepts the exact reviewed final bytes and original goal; contributions remain visible; actual browser and independent visual review pass."
+    },
+    "teams/vendor-comparison-team": {
+      "ordinary": "Run compare-team on synthetic case 01 through manager, analyst, comparison, synthesis and reviewer.",
+      "missing": "Use conflicting/missing case 02 and an unsupported statistical design.",
+      "near_miss": "Manager adds a candidate, synthesis upgrades confidence, or stale analyst output is admitted.",
+      "transfer": "Run proposed-framework case 03 in the observability domain.",
+      "rubric": "All handoffs retain scope and bindings; independently verify numbers and source entailment; reviewer preserves conditional/defer outcomes."
+    },
+    "teams/vendor-decision-studio": {
+      "ordinary": "Run compare-studio from synthetic case 01 through checked analysis, story, graphics, report, deck and independent review.",
+      "missing": "Omit current visual observations or a required evidence qualification.",
+      "near_miss": "Beautiful publications disagree about gate eligibility or omit a workbook page from review.",
+      "transfer": "Publish a seven-option case with longer labels, extra pages and no valid inference.",
+      "rubric": "Complete analysis and all formats, exact values/qualifiers across them, actual rendered review of every page, no material defect at publish."
+    },
+    "workers/excel-workbook-designer": {
+      "ordinary": "Create a synthetic team-capacity workbook with exact lookups, RAG status and date-based coverage; independently calculate expected results.",
+      "missing": "Omit a lookup key and a required date; preserve missingness or request clarification instead of converting blanks to zero.",
+      "near_miss": "A polished workbook has stale cached formulas, a one-day date error, or an edit that destroys an unrelated conditional format.",
+      "transfer": "Prompt-edit a multi-sheet time-off workbook while preserving untouched formulas, tables and charts.",
+      "rubric": "Saved workbook values and recalculation agree with independent expectations; controls work, content is preserved, native features remain editable and actual rendered sheets are legible."
+    }
+  },
+  "manual_tests": {
+    "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite."
+  }
+}

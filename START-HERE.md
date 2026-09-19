@@ -105,6 +105,7 @@ or access that prevent necessary work. Preserve existing settings.
 | Available specialties | [workers/README.md](workers/README.md), then the selected `worker.json` and `expert/README.md` |
 | Runnable teams and member selection | [teams/README.md](teams/README.md), then the selected `team.json` and wiring README |
 | Source exports, versioning and retirement | [Library guide](docs/WORKER-LIBRARY.md) |
+| Worker/team evaluation suites and repeat commands | [Evaluation runbook](docs/WORKER-EVALUATIONS.md) |
 | Teach a worker, learn from a recovery or retain company context | [Teaching and learning](.agents/skills/bench/references/learn.md), using Hire, Hone and fresh Agent cases |
 | A new worker or changed team | [Builder walkthrough](docs/BUILD-WITH-AN-LLM.md) and Hire |
 | Practice cases and historical showcases | [examples/](examples/README.md); supply them explicitly for a chosen evaluation |

@@ -209,6 +209,15 @@ for observed versions and the limits of that evidence.
 
 ## Worker source library
 
+`make check-workers` (or `python3 scripts/check-worker-evaluations.py`) runs
+the default core and analysis evaluations from
+`worker-evaluations.json`. `--entry ID` selects a worker or team; `--profile`
+selects optional native, browser and workbook runtime suites. The runner stages
+current source and assembled rosters outside the checkout, isolates ambient
+model/reviewer configuration, retains logs and exact source hashes, and returns
+nonzero for failed, unavailable or timed-out suites. It installs nothing and
+never selects a paid model. See the [evaluation runbook](../docs/WORKER-EVALUATIONS.md).
+
 `workers export` and `export-team` accept optional `--target HOST --execution
 native|bench` to wrap an intact export under `references/bench/` in a host skill
 without changing any original definition or lock bytes. `worker_portability.py` writes packaging instructions, never an

@@ -8,6 +8,10 @@ A worker defines one role. A team selects workers and supplies their existing
 execution wiring. Both are versioned in this monorepo; a run supplies a new
 brief, workspace and selected inputs.
 
+Use `make check-workers` for worker and team evaluation suites. The
+[evaluation runbook](../docs/WORKER-EVALUATIONS.md) maps coverage, explains
+prerequisites and provides focused and optional native/browser commands.
+
 | Team | Purpose | Authoritative roster |
 | --- | --- | --- |
 | [Vendor comparison team](vendor-comparison-team/expert/README.md) | Lead technical evaluations through Product Manager framing/synthesis, Polars analysis, comparison and independent review. | [team.json](vendor-comparison-team/team.json) |

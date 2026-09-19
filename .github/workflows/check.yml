@@ -163,11 +163,16 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Run all core worker and team evaluations
+        run: python3 scripts/check-worker-evaluations.py --profile core --out "$RUNNER_TEMP/worker-evaluations"
       - name: Export the committed Product Owner without tests or run content
         run: python3 scripts/workers export product-owner "$RUNNER_TEMP/product-owner" --ref "$(git rev-parse HEAD)" --allow-experimental
       - name: Check Product Owner contracts with synthetic cases and no model
@@ -182,6 +187,39 @@ jobs:
           ENTERPRISE_ARCHITECT_EXPERT: ${{ runner.temp }}/enterprise-architect/expert
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s workers/enterprise-architect/tests -v
+      - name: Retain worker evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: worker-evaluations-${{ matrix.os }}
+          path: ${{ runner.temp }}/worker-evaluations
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  worker-analysis-native:
+    needs: boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install explicit offline-suite prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y inkscape poppler-utils python3-venv
+          python3 -m venv "$RUNNER_TEMP/evaluation-runtime"
+          "$RUNNER_TEMP/evaluation-runtime/bin/python3" -m pip install -r workers/polars-analyst/expert/requirements.txt
+      - name: Run numerical and actual Inkscape suites without models
+        run: python3 scripts/check-worker-evaluations.py --profile analysis --profile native --python "$RUNNER_TEMP/evaluation-runtime/bin/python3" --out "$RUNNER_TEMP/analysis-native-evaluations"
+      - name: Retain numerical and native evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: worker-analysis-native-evaluations
+          path: ${{ runner.temp }}/analysis-native-evaluations
+          include-hidden-files: true
+          if-no-files-found: warn
 
   worker-browser:
     needs: boundaries
