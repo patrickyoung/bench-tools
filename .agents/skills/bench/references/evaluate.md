@@ -3,6 +3,10 @@
 A working installation, a valid expert folder, a passing verifier, and a useful
 answer are separate claims. Decide which evidence establishes each one.
 
+For comparative skill/check changes, use [test and review improvements](improve.md).
+Freeze independent coverage and error limits before testing, keep calibration
+separate from held-out evidence, and include fresh matched final-output review.
+
 ## Before model runs
 
 Inspect generated code and run its deterministic checks in a disposable
@@ -15,6 +19,12 @@ Hire's structural verification never executes the generated check. Agent/Ply
 run that check outside the action Cage. If it executes worker-authored code,
 select a suitable separate boundary for that code. Do not treat the action
 sandbox as protection for the verifier.
+
+For a model-based check, follow [semantic checks](semantic-checks.md). Test its
+false passes and false rejections against independent labels, then compare
+fresh completed outputs and repair behavior. Faster inference or valid JSON
+alone does not demonstrate a better worker. Keep offline fixtures separate
+from explicitly selected live evaluations and their measured total cost.
 
 ## Evaluate real work
 

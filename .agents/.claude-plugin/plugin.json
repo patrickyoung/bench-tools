@@ -1,0 +1,12 @@
+{
+  "name": "bench-tools",
+  "version": "0.4.2",
+  "description": "Find, build, teach, evaluate and run reusable Bench workers and teams.",
+  "author": {
+    "name": "Patrick Young"
+  },
+  "homepage": "https://github.com/patrickyoung/bench-tools/blob/main/START-HERE.md",
+  "repository": "https://github.com/patrickyoung/bench-tools",
+  "license": "MIT",
+  "skills": "./skills/"
+}

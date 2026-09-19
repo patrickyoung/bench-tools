@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "criteria": [
+    {
+      "id": "policy_fidelity",
+      "requirement": "The candidate correctly states that cancellation takes effect at renewal, while notice must be given at least 30 days before renewal.",
+      "feedback": "Distinguish the notice deadline from the cancellation effective date."
+    },
+    {
+      "id": "unsupported_promises",
+      "requirement": "The candidate makes no promise of a refund; the supplied policy establishes no refund entitlement.",
+      "feedback": "Remove any refund promise that the supplied policy does not support."
+    }
+  ]
+}

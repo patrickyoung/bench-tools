@@ -13,7 +13,7 @@ refused before a model words a lesson. For example, an archive may contain:
 ```
 $ hone -into house "${PLY_DIR:-$HOME/.ply/sessions}"
 hone: 20260801-1712: no check ran, so nothing judged it but the model
-hone: 20260801-1715: the check passed and nothing ever failed
+hone: 20260801-1715: the check passed, but no supported recovery pair was recorded
 hone: 20260801-2147: nothing worth keeping
 ~/.claude/skills/house/SKILL.md: 1 lesson(s) added (12 total)
 ```
@@ -62,10 +62,15 @@ worker model call. Hone still requires qualifying failure evidence; a fresh
 session containing only a pass is not a recovery.
 
 ```
-hone: the check passed and nothing ever failed
+hone: the check passed, but no supported recovery pair was recorded
 ```
 
-No failure/recovery pair is recorded, so Hone has no lesson to extract.
+No supported failure/recovery pair is recorded. A failed pre-check followed
+only by a generated report does not identify the rejected report bytes. For
+content repairs, Hone needs two actual assistant candidates with complete
+matching v2 receipts: rejected, changed, then accepted under the same check.
+There is no way to add missing evidence retrospectively. Keep the original
+run, and assess later runs on their own recorded evidence.
 
 ## Read before you believe
 

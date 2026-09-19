@@ -94,9 +94,14 @@ When changing `hone`:
   system prompt travels in `ASK_SYSTEM`, not argv, because argv is
   world-readable in `ps` and evidence can be private;
 
-- **send only what proved something.** The evidence is the goal, the check
-  and the stumbles. Sending the whole transcript would cost the window and
-  invite a lesson grounded in the parts of a run that proved nothing;
+- **send only what proved something.** The evidence is the goal, check and
+  command stumbles or exact bound content pairs. Content eligibility requires
+  replay-verified complete v2 receipts for a rejected assistant candidate and
+  changed accepted candidate under the same recorded checker identities.
+  Never infer candidate bytes from an empty pre-check, disguise a report as a
+  shell command, or treat an unchanged answer's verdict flip as a repair.
+  Preserve the command and legacy paths. Sending the whole transcript would
+  cost the window and invite a lesson grounded in unproved parts of a run;
 
 - **preserve the exit contract**: 0 yes, 1 no, 2 error. It is `grep`'s, not
   `ask`'s, because `hone` asks a question where no is a real answer and the

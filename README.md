@@ -11,6 +11,35 @@ provide model access, correction loops, skills, evidence and durable execution.
 Workers cooperate through explicit inputs, checked files, streams and exit
 status. The monorepo keeps their source and team rosters together in Git.
 
+## Install with your AI app
+
+Give Claude Code, Codex or Claude Cowork this request:
+
+> Install and set up Bench from https://github.com/patrickyoung/bench-tools.
+> Read START-HERE.md and complete setup for this environment.
+
+The app follows its native plugin route, installs the commands where it can
+run them, checks the installation and saves a setup record for future tasks.
+It preserves existing settings and makes no additional model calls for setup.
+Then ask it to find, build or run a worker for your job.
+
+You can also add the GitHub URL directly through your app's plugin installer:
+
+| App | Install Bench |
+| --- | --- |
+| Claude Code | `claude plugin marketplace add https://github.com/patrickyoung/bench-tools`, then `claude plugin install bench-tools@bench-tools` |
+| Codex | `codex plugin marketplace add https://github.com/patrickyoung/bench-tools`, then `codex plugin add bench-tools@bench-tools` |
+| Claude Cowork | **Customize → Plugins → Add → Add marketplace → Add from a repository**. Paste the URL, sync, then install **bench-tools**. |
+
+Start a fresh task and ask **“Use Bench to finish setup.”** The plugin supplies
+the skill; its first setup installs the separate Unix programs. Setup needs
+macOS, Linux or WSL, Python 3.9+ and Git. Linux uses verified GitHub packages on
+supported Intel/AMD and ARM64 hosts and needs system Bubblewrap. Mac installs
+build from source and need Go 1.26+. The app checks its actual execution environment;
+a mounted folder alone is not a host shell.
+Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-connect-a-model).
+[Host details and verification](START-HERE.md#your-harnesss-setup-instructions).
+
 ## Start with workers and teams
 
 | You want to… | Start here |
@@ -20,6 +49,7 @@ status. The monorepo keeps their source and team rosters together in Git.
 | See the available specialties | [Worker catalog](workers/README.md) |
 | Select a ready assembly | [Team catalog and recipes](teams/README.md) |
 | Add, improve, version or retire reusable source | [Library and GitHub guide](docs/WORKER-LIBRARY.md) |
+| Inspect a run, test improvements and choose what to apply | [Improve and review](.agents/skills/bench/references/improve.md) |
 | Call or expose a worker on another machine | [Optional A2A](tools/a2a/README.md) |
 
 For a harness, start with a request like:
@@ -115,7 +145,7 @@ authentication. Local use needs neither. See [A2A](tools/a2a/README.md).
 | [Runnable starters](examples/README.md) | Explicit practice inputs and executable examples |
 | [Recipes](docs/RECIPES.md) | Small compositions of existing tools |
 | [How it works](docs/HOW-IT-WORKS.md) | Model, loop, check and durable job responsibilities |
-| [Tool reference](docs/TOOLS.md) | All 20 components and 24 public commands |
+| [Tool reference](docs/TOOLS.md) | All 21 components and 25 public commands |
 | [Installation](docs/INSTALL.md) | Selected tools, updates and removal |
 | [Source and releases](docs/RELEASES.md) | Pinning a reproducible toolset |
 
@@ -132,7 +162,7 @@ content outside source. Review changes with GitHub pull requests.
 For toolkit development, from the checkout:
 
 ```sh
-make build                    # all 24 commands in .build/bin
+make build                    # all 25 commands in .build/bin
 make test                     # ordinary checks, no paid model calls
 make check                    # standalone and process integration checks
 ```

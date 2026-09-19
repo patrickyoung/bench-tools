@@ -11,6 +11,11 @@ in independent modules within this monorepo; the directory is their interface.
 - `hire verify` checks generated definition structure through `agent check`.
   It must not execute the generated worker's check or other generated code
   with controller authority. Structural readiness is not task-quality proof.
+- `BENCH_WEIGH=1` permits adding optional Weigh use; unset/empty/0 disables new
+  selection. Normalize and validate this preference before starting Agent.
+  Preserve existing dependencies during unrelated revisions. Keep selected
+  Weigh guidance in the builder skill, not a backend-specific verification
+  schema or a mandatory decision for every build.
 - Reuse the extracted home authoring/maintenance code. All execution belongs
   to the public Agent command. No fallback to an embedded runner.
 - Keep outputs in the caller's build workspace and controller evidence

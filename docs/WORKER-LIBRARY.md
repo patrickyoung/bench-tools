@@ -87,6 +87,11 @@ provider settings, credentials and native installations remain operator choices.
 A source pin reproduces code, not identical model output or external services.
 Nothing fetches `main`, resolves versions or upgrades workers during a run.
 
+Optional `--target HOST --execution native|bench` wraps an intact export under
+`references/bench/` in a portable host skill. See [worker portability](WORKER-PORTABILITY.md)
+for installation, native execution limits and cross-harness evaluation. Default
+exports and Bench execution retain their existing contracts.
+
 Only active entries appear in default listings. `--all` shows every status.
 `--allow-experimental` permits evaluation of experimental teams and members;
 it does not allow deprecated or retired definitions. All selected members must

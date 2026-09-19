@@ -1,0 +1,68 @@
+{
+  "id": "vendor-decision-studio",
+  "description": "Compare technical options with sound statistics and create a shared narrative across expert-written reports, executive presentations, graphics and auditable tables, with publication review.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "production": "Selected bundled document/Office runtimes, Poppler, separate pinned matplotlib runtime, PUBLICATION_* environment selectors",
+    "model": "Explicit configured Ask model; image attachments required for visual review"
+  },
+  "files": [
+    "teams/vendor-decision-studio/expert/AGENTS.md",
+    "teams/vendor-decision-studio/expert/LICENSE",
+    "teams/vendor-decision-studio/expert/README.md",
+    "teams/vendor-decision-studio/expert/bin/check",
+    "teams/vendor-decision-studio/expert/bin/compare-studio",
+    "teams/vendor-decision-studio/expert/bin/compare-team",
+    "teams/vendor-decision-studio/expert/bin/publish-decision",
+    "teams/vendor-decision-studio/expert/bin/rebuild-publication",
+    "teams/vendor-decision-studio/expert/plot-requirements.txt",
+    "teams/vendor-decision-studio/expert/tools/publication_contract.py",
+    "teams/vendor-decision-studio/expert/tools/publication_io.py",
+    "teams/vendor-decision-studio/expert/tools/rebuild_publication.py",
+    "teams/vendor-decision-studio/expert/tools/team_io.py",
+    "teams/vendor-decision-studio/expert/tools/visual_review.py"
+  ],
+  "members": {
+    "manager": {
+      "worker": "product-manager"
+    },
+    "analyst": {
+      "worker": "polars-analyst"
+    },
+    "comparison": {
+      "worker": "vendor-comparison"
+    },
+    "reviewer": {
+      "worker": "product-owner"
+    },
+    "editorial-director": {
+      "worker": "editorial-director"
+    },
+    "information-designer": {
+      "worker": "information-designer"
+    },
+    "executive-writer": {
+      "worker": "executive-writer"
+    },
+    "presentation-designer": {
+      "worker": "presentation-designer"
+    },
+    "publication-reviewer": {
+      "worker": "publication-reviewer"
+    }
+  }
+}

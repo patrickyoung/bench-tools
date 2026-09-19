@@ -23,10 +23,24 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 CHECK = runpy.run_path(str(ROOT / "scripts/check"))
 MARKER = {"schema": 1, "producer": "bench-tools/scripts/build"}
+BUILD_TRANSPORT = (
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "GIT_SSL_CAINFO", "GIT_SSL_CAPATH",
+)
 
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def compiler_environment(isolated):
+    # Go's module downloader (and its Git fallback) may need the caller's
+    # network route and CA trust. Keep these out of checks and runtime tools;
+    # never inherit provider credentials or TLS-verification bypass settings.
+    env = dict(isolated)
+    env.update({name: os.environ[name] for name in BUILD_TRANSPORT if name in os.environ})
+    return env
 
 
 def file_inventory(directory):
@@ -52,6 +66,9 @@ def copy_payload(source, package, component):
             shutil.copy2(source / entry, target)
         if name == "draft":
             shutil.copytree(source / "skills/draft", package / "skills/draft")
+    if name == "weigh":
+        shutil.copytree(source / "examples", package / "examples",
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
     for path in sorted(source.iterdir()):
         if path.is_file() and (path.name == "LICENSE" or path.suffix in (".md", ".1")):
             shutil.copy2(path, package / path.name)
@@ -147,6 +164,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tools", nargs="*", help="component names (default: all)")
     parser.add_argument("--output", type=Path, default=ROOT / ".build", help="build directory (default: .build)")
+    parser.add_argument("--no-cgo", action="store_true", help="compile with CGO_ENABLED=0 for portable release binaries")
     parser.add_argument("--list", action="store_true", help="list components and their commands")
     args = parser.parse_args(argv)
     components = json.loads((ROOT / "components.json").read_text())["components"]
@@ -202,6 +220,9 @@ def main(argv=None):
             env = CHECK["isolated_environment"](home, temporary, system_bin, cache)
             print("Checking source boundaries", flush=True)
             subprocess.run([sys.executable, str(ROOT / "scripts/check-boundaries.py")], cwd=ROOT, env=env, check=True)
+            build_env = compiler_environment(env)
+            if args.no_cgo:
+                build_env["CGO_ENABLED"] = "0"
             revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
             staged = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix=".staging-", dir=output)))
             (staged / "tools").mkdir(); (staged / "bin").mkdir()
@@ -213,7 +234,9 @@ def main(argv=None):
                               "original_import": component["source"], "compiler": version,
                               "build_flags": ["-mod=readonly", "-trimpath", "-buildvcs=false"],
                               "files_sha256": digest(json.dumps(records, sort_keys=True).encode()), "files": records}
-                build_package(component, source, staged / "tools" / component["name"], env, compiler, provenance)
+                if args.no_cgo:
+                    provenance["build_environment"] = {"CGO_ENABLED": "0"}
+                build_package(component, source, staged / "tools" / component["name"], build_env, compiler, provenance)
             publish(output, staged, selected)
         print("Built " + str(sum(len(c["commands"]) for c in selected)) + " commands in " + str(output / "bin"))
         install = ["./scripts/install"] + (args.tools if args.tools else []) + ["--from-build", str(output)]

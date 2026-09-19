@@ -1,5 +1,20 @@
 # Create and use workers and teams with Bench
 
+For installation, give your harness this request:
+
+> Install and set up Bench from https://github.com/patrickyoung/bench-tools.
+> Read START-HERE.md and complete setup for this environment.
+
+Install the shared knowledge through the [host's plugin route](#your-harnesss-setup-instructions),
+then follow [common setup](.agents/skills/bench/references/setup.md). Complete
+both within the user's existing authorization. The default setup command is
+`python3 scripts/setup`: it installs the builder tools to a dedicated user
+prefix, checks them, and writes `~/.local/share/bench/BENCH-SETUP.md` with an
+environment file the next session can load. Supported Linux hosts use
+source-matched GitHub packages without a Go compiler; Macs build locally with
+Go 1.26+. No manual PATH edit or demo MCP
+server is needed. A plugin cache is not the stable writable source checkout.
+
 Give your harness this request:
 
 > Read START-HERE.md. Use Bench to create and evaluate a worker or team for
@@ -8,7 +23,7 @@ Give your harness this request:
 > missing expertise. Leave clean reusable source, separate run results, and
 > the exact command to use it again.
 
-This is the entry point for **Codex, Claude Code, Claude Cowork, Pi, OpenClaw,
+This is the entry point for **Codex, Claude Code, Claude Cowork, Pi, OpenClaw, Hermes,
 and other harnesses that can read files and run commands**. The public source
 is [patrickyoung/bench-tools](https://github.com/patrickyoung/bench-tools).
 For human readers, follow the [practical walkthrough](docs/BUILD-WITH-AN-LLM.md).
@@ -55,21 +70,28 @@ files are never default inputs to another job or part of a reusable export.
 
 | Harness | Install its Bench knowledge and verify access |
 | --- | --- |
-| Codex | [Repository discovery, personal skill, and MCP registration](.agents/skills/bench/references/codex.md) |
-| Claude Code | [Personal skill or plugin, and MCP registration](.agents/skills/bench/references/claude-code.md) |
-| Claude Cowork | [Account skill/plugin, execution environment, and remote connectors](.agents/skills/bench/references/cowork.md) |
+| Codex | [GitHub plugin installation and command setup](.agents/skills/bench/references/codex.md) |
+| Claude Code | [GitHub plugin installation and command setup](.agents/skills/bench/references/claude-code.md) |
+| Claude Cowork | [GitHub marketplace installation and execution environment](.agents/skills/bench/references/cowork.md) |
 | Pi | [Skill discovery or Git package, and ordinary command tools](.agents/skills/bench/references/pi.md) |
 | OpenClaw | [Workspace skill and gateway/sandbox execution](.agents/skills/bench/references/openclaw.md) |
+| Hermes | [Profile skills, trusted projects and terminal backend](.agents/skills/bench/references/hermes.md) |
 | Another harness | Read the skill directly; use the host's supported skill discovery and command tool. |
 
-If Bench is already installed, refresh the copied skill from the selected
-checkout after comparing local changes, then verify discovery in a fresh
-session. Updating binaries or pulling the source does not refresh a separate
-personal/account skill copy. The host references explain each installation route.
+If Bench is already installed, reuse its setup record and installed plugin.
+Update knowledge through the host's plugin controls when requested, then verify
+discovery in a fresh session. For an older copied skill, compare local changes
+before refreshing it. Updating binaries or pulling source does not refresh a
+separate skill copy. The host references explain each installation route.
 
 A skill installs knowledge; the source installer installs programs. The host
 supplies execution permissions. Ask uses its own model connection; a harness
 login alone does not configure it. See [observed setup evidence](docs/HARNESS-VERIFICATION.md).
+
+To take one worker into another host's native model/tool loop, use a
+[targeted worker export](docs/WORKER-PORTABILITY.md). Keep the full definition
+and select `native` or `bench` execution explicitly. Teams retain their existing
+Bench entry command; native team translation is not yet supported.
 
 If the request is only setup, finish setup without inventing a business job or
 paid evaluation. If the user supplied a job, continue using the authorization
@@ -88,6 +110,8 @@ or access that prevent necessary work. Preserve existing settings.
 | Practice cases and historical showcases | [examples/](examples/README.md); supply them explicitly for a chosen evaluation |
 | Installed programs and their boundaries | [Tool guide](docs/TOOLS.md) and each component's manual |
 | Remote workers or services | Existing [A2A](tools/a2a/README.md) or [MCP](tools/mcp/README.md) |
+| Omnigent chat with local or remote job sandboxes | [Portable deployment](examples/omnigent/README.md) |
+| Persistent builder and deployment chats through Matterbridge | [Matterbridge application](examples/matterbridge/README.md) |
 
 The older plugin under `tools/agent/plugins/bench-system-builder` targets a
 separately pinned legacy suite. Use this entry point and its shared skill for

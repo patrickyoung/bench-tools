@@ -84,6 +84,42 @@ expert. `-B=false` explicitly permits a passing pre-check to skip model work.
 Default model actions use Agent's Cage boundary. `-net` and `-no-cage` are
 explicit caller selections with the same meaning as in Agent.
 
+## Enable optional Weigh use
+
+Weigh is off by default. Enable it for one build or for the shell session:
+
+```sh
+BENCH_WEIGH=1 hire build -C authoring -evidence build-records -goal-file JOB.md
+export BENCH_WEIGH=1
+# Turn it off again:
+unset BENCH_WEIGH
+```
+
+Unset, empty or `0` means off; `1` permits adding Weigh. Hire rejects other
+values before starting Agent. Enabling it does not require selection, install
+a command, choose a model or configure credentials. The builder's Ask model is
+separate and unaffected. An unrelated revision preserves existing dependencies;
+turning Weigh off does not request their removal.
+
+For selected Weigh work, the builder authors usable questions or a fix menu,
+small caller wiring, and task-specific tests. The
+[optional builder procedure](expert/skills/checking-deliverables/references/weigh-build.md)
+covers independent labels, a rules comparison, final checking and measured
+tradeoffs. Keep evaluation cases, labels and results outside `expert/`. Ordinary
+builds need no Weigh decision file, manifest or evaluation package.
+
+Hire's outer build check uses ordinary `hire verify EXPERT`: it inspects the
+portable definition through Agent, runs no generated code, and establishes no
+model-quality claim. Inspect and run selected tests through the existing action
+boundary before relying on the worker. Report offline wiring tests separately
+from live quality and efficiency comparisons.
+
+Supported Bench caller adapters honor the same runtime opt-in. A required
+Weigh judgment reached while off is a broken check or selection, never a pass
+or automatic model fallback. Rules and explicitly selected Ask routes remain
+usable. The switch is a preference, not confinement: it does not constrain
+direct `weigh` commands or retrofit arbitrary existing workers.
+
 ## Start without a model
 
 ```sh

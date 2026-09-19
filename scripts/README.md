@@ -7,9 +7,12 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 24 commands under .build/bin
+scripts/build                              # all 25 commands under .build/bin
 scripts/build ask ply                      # only selected components
+python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
+scripts/install oauth --from-release      # selected pinned Linux package, no compiler
+scripts/install --from-release            # all published Linux tool packages
 scripts/install --from-build .build --prefix /tmp/bench-preview
 scripts/uninstall --prefix /tmp/bench-preview
 scripts/check --quick                      # everyday checks, no integration/race/supplemental suites
@@ -24,7 +27,28 @@ python3 scripts/check-docs.py              # local guide links and anchors
 python3 scripts/check-examples.py --bin-dir .build/bin  # copied starters, local fixtures
 python3 scripts/check-harnesses.py --bin-dir .build/bin # portable skill + real MCP calls
 python3 scripts/check-harnesses.py --host-clis          # optional installed Codex/Claude/Pi discovery
+python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
+python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
 ```
+
+`check-weigh.py --bin-dir DIR` exercises public Weigh/Ask/Record judgments,
+optional diagnosis, and Ply checking against loopback fixtures.
+`check-hone-content.py --bin-dir DIR` exercises real Ask/Ply content receipts,
+Hone's proposal lifecycle, stale evidence and unchanged verdict refusals.
+Both run inside process integration. Weigh's standalone checks also run the
+calibration and exact proposal-review example tests. These establish protocol
+behavior, not hosted-model accuracy or learned output quality.
+
+`setup` composes the existing installer for Hire, Agent and their builder
+companions. It defaults to `~/.local/share/bench/runtime` and writes
+`BENCH-SETUP.md`, `env.sh` and `setup.json` under `~/.local/share/bench`.
+`--prefix` and `--state-dir` select other absolute locations; `--from-build`
+uses verified existing packages without a compiler and records their source
+receipts separately from the checkout revision. Runbook checks include native
+Cage; a failed check returns nonzero without disguising a partial setup.
+It preserves edited handoffs and unmanaged binaries, and does not configure
+host plugins, credentials, services or shell profiles. Keep personal notes in
+a separate file and load the generated environment in each harness shell.
 
 Builds require Go 1.26+, Python 3.9+, Git, and sh. The test runner selects its
 prerequisites for the requested plan: Perl for Draft shell tests, a C compiler
@@ -65,6 +89,14 @@ Python and completed packages; normal installation first runs the builder.
 Default installation is user-owned under `~/.local`; no privileged setup or
 shell startup edits occur automatically. Runtime dependencies remain separate
 programs on PATH, and provider configuration remains each tool's responsibility.
+
+`--from-release` downloads the Linux archive pinned in `releases/builder.json`,
+verifies all its packages and the selected components' source identities, then
+installs only those selected components. With no names it installs all components.
+It never compiles or falls back to source. Mac installs continue building locally.
+The release inventory comes from `components.json`, independently of the nine
+tools selected by `scripts/setup`. `--from-release` and `--from-build` cannot
+be combined.
 
 Draft's `skills/draft/references/tools.md` is a declared generated file. Its
 contents may change through `draft sync`; updates preserve it along with any
@@ -166,8 +198,9 @@ inside public-process integration on Linux and macOS. `make check-harnesses`
 builds its two required components and runs it on its own.
 
 The optional `--host-clis` path also requires installed Codex, Claude Code, and
-Pi. It validates and discovers the extracted Claude plugin, connects Claude to MCP, asks a
-fresh Codex app-server to discover the installed skill and MCP tool, and asks
+Pi. It installs the current Claude and Codex package through their Git marketplace
+commands in isolated homes, checks every installed skill byte, and verifies fresh
+discovery of the enabled plugins. It also connects Claude and Codex to MCP and asks
 a fresh Pi RPC session to discover its installed package. All configuration
 is in temporary homes; no model turn or personal profile change is requested.
 These host checks are separate from CI because those CLIs are optional external
@@ -175,6 +208,18 @@ dependencies. See the [harness verification record](../docs/HARNESS-VERIFICATION
 for observed versions and the limits of that evidence.
 
 ## Worker source library
+
+`workers export` and `export-team` accept optional `--target HOST --execution
+native|bench` to wrap an intact export under `references/bench/` in a host skill
+without changing any original definition or lock bytes. `worker_portability.py` writes packaging instructions, never an
+execution loop. [Worker portability](../docs/WORKER-PORTABILITY.md) explains the
+supported hosts, explicit fidelity limits and teaching/re-export workflow.
+
+`make check-worker-portability` builds Brief and exercises real pinned worker
+and team exports, relocation, skill lint, and original response-check streams.
+It is also part of `make check`. Add `--host-clis` to the Python script for
+fresh Codex, Claude Code and Pi discovery in disposable homes. These checks use
+no live model; paired job evaluations remain separately selected evidence.
 
 `python3 scripts/workers list --all` reads catalog metadata; `check` inspects
 source and approved export inventories. `export ID DEST --ref FULL_COMMIT`
@@ -187,6 +232,28 @@ deprecated and retired entries cannot be exported at that selected revision.
 This is a repository utility, not an installed Bench command or runtime. See
 [the library guide](../docs/WORKER-LIBRARY.md) for content exclusions, source
 pins, authoring, checks and lifecycle policy.
+
+`python3 scripts/deploy-omnigent worker ID DEST --ref FULL_COMMIT` packages a
+clean export, pinned toolkit source and the [Omnigent deployment adapter](../examples/omnigent/README.md).
+Use `team` instead of `worker` to assemble a team. The resulting directory can
+be installed locally or transferred to an SSH host before installation. Each
+job uses a Docker sandbox; the repository script only packages source and
+never starts a model or server. Experimental exports still require explicit
+`--allow-experimental`.
+The bundle also includes an optional [SSH/MCP service](../examples/omnigent/SERVICE.md)
+for client identities, session serialization, durable Tend jobs and explicit
+recovery. Its workers are supervised separately from client connections.
+
+`deploy-omnigent builder builder DEST --ref FULL_COMMIT` packages a sandboxed
+Hire authoring service with a pinned read-only library snapshot. An explicit
+`--candidate FILE` packages a bounded generated source snapshot instead of a
+catalog export; worker and team candidates use the ordinary root Agent entry.
+Generated code never runs on the packaging host. The installed bundle accepts
+`./install --without-chat` to omit Omnigent and its Python environment.
+The optional [Matterbridge application](../examples/matterbridge/README.md)
+composes these commands for persistent build conversations, explicit deployment,
+smoke verification and dedicated Telegram topics. Its small process supervisor
+belongs to that application, not the Bench tools.
 
 Replay verification includes the required Record/Ask executable contract and
 Record/Ply interpreter fixture. See [the replay scope](../docs/REPLAY.md) for

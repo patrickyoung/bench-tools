@@ -27,8 +27,8 @@ client, agent loop, or sibling implementation.
 
 ## What qualifies
 
-Hone reads the goal, command typescripts, loaded skill names, and verifier
-notes from an Ask session. It normally runs `ask replay -check` before using
+Hone reads the goal, command typescripts, candidate text, loaded skill names,
+and verifier notes from an Ask session. It normally runs `ask replay -check` before using
 that evidence. Ask owns the replay verdict; Hone does not reproduce its fold.
 
 The last recognized Ply verifier outcome must be accepted. Current
@@ -37,14 +37,51 @@ attributed to `ply` are recognized. Rejected, broken, or missing final
 verdicts do not qualify. An Ask `done` event ends a model call; it is not a
 task acceptance receipt.
 
-There must also be a recorded stumble: a failed typescript command with
-subsequent command evidence. Hone collects the following commands up to the
-next nonfailed command and groups consecutive failures. The failed pre-check
-that Ply includes with the initial goal can supply this evidence too.
+There must also be one of two recorded recovery pairs:
+
+- A failed typescript command with subsequent command evidence. Hone collects
+  following commands up to the next nonfailed command and groups consecutive
+  failures. The failed pre-check carried with the initial goal can supply the
+  failure in this existing command path.
+- A rejected assistant candidate followed by a changed, accepted assistant
+  candidate, each bound to a complete `ply.verifier/v2` receipt. This content
+  path requires successful Ask replay verification. It does not invent shell
+  commands or infer a repair from a report of success.
+
+For content, Hone reconstructs Ask's ordinary text answer and Ply's verifier
+stdin: nonblank text blocks joined with a blank line, surrounding whitespace
+trimmed, and one final newline. It excludes reasoning and refuses partial or
+unsupported attachment responses. Each candidate SHA-256 must match its
+receipt; each complete check output must match its digest and byte count.
+The verifier command, interpreter, verifier digest, working directory, timeout,
+and optional admitted contract identity must remain identical across the pair.
+An unchanged normalized candidate, broken check, incomplete output, malformed
+binding, missing candidate, continued unfinished turn, or version 1 receipt
+cannot supply a content recovery. Only the final supported pair is retained.
+
+The initial pre-check receives empty stdin. Even if its caller-owned checker
+loads a saved candidate from a file, that receipt does not identify those
+candidate bytes. Hone cannot retrospectively turn that pre-check into a
+rejected assistant candidate; a later accepted report alone is insufficient.
+
+The verifier digest binds the recorded interpreter path and command string,
+not executable bytes, transitive files, rubric contents, environment, remote
+services or policy. Equal optional contract IDs are consistency checks, not
+proof that the caller's contract was admitted correctly. Callers must retain
+and review those dependencies separately, using an immutable check recipe
+and explicit evidence. Hone neither reads current files to reconstruct old
+state nor invents missing identities.
 
 This is a mechanical selection rule. It does not prove that a particular
 change caused the recovery, that the check covers the whole task, or that a
 lesson will improve another run. A reviewer must assess those claims.
+
+When the verifier composes a model judgment, the same arithmetic gate applies;
+Hone does not call that judge again or infer a new verdict from probabilities.
+The wording prompt limits lessons to the observed repair and supplied rubric,
+model and evidence. A probabilistic pass is not universal correctness, and
+weakening the check or resampling until it agrees is not a procedural repair.
+Review retained check evidence and test the proposed lesson on fresh cases.
 
 For a finished Ply session, inspect the evidence without calling a model:
 
@@ -55,12 +92,18 @@ hone -why repair.jsonl
 No qualifying recovery is exit 1 with an explanation on stderr. A first-try
 success or an unfinished run can be useful to a person while supplying no
 lesson under this rule. `-no-verify` explicitly skips the replay check for
-ordinary inspection/wording; reviewed proposals always require verification.
+the existing command path during ordinary inspection/wording. Content recovery
+always requires replay verification; reviewed proposals also always require it.
 
 ## Wording is a separate model call
 
-Hone sends Ask the goal, check, failed-command output, and subsequent command
-evidence. Loaded procedures are named; their bodies and the whole original
+Hone sends Ask the goal, check and qualifying recovery evidence. Command
+recoveries carry failed-command output and subsequent commands. Content
+recoveries carry the exact two verifier stdin values, their digests, complete
+check outputs, outcomes and shared checker identity. Non-UTF-8 check output
+is retained as base64 instead of lossy replacement text. These fields are
+recorded data, never instructions to the wording model. Loaded procedures
+are named; their bodies and the whole original
 transcript are not copied into the wording request. The prompt is supplied
 through `ASK_SYSTEM`, with evidence on stdin rather than in process arguments.
 

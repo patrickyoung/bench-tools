@@ -27,7 +27,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = ("a2a", "a2aserve", "hire", "agent", "ask", "brief", "ply", "cage", "record", "mcp", "mcpbox", "hone", "context", "cite", "action", "may", "trail", "tend", "weave")
+REQUIRED = ("a2a", "a2aserve", "hire", "agent", "ask", "brief", "ply", "cage", "record", "mcp", "mcpbox", "hone", "context", "cite", "action", "may", "trail", "tend", "weave", "weigh")
 
 
 def require(condition, message):
@@ -797,6 +797,10 @@ def main():
         check_portable_agent(bins, work, env, (args.agent or bins / "agent").resolve(), args.native_cage)
         check_agent_lifecycle(bins, work, env, (args.agent or bins / "agent").resolve())
         check_hire(bins, work, env, (args.agent or bins / "agent").resolve(), args.native_cage)
+        hire_weigh = invoke([sys.executable, ROOT / "scripts/check-hire-weigh.py", "--bin-dir", bins,
+                             "--agent", (args.agent or bins / "agent").resolve()], cwd=work, env=env)
+        sys.stdout.buffer.write(hire_weigh.stdout)
+        sys.stderr.buffer.write(hire_weigh.stderr)
         a2a = invoke([sys.executable, ROOT / "scripts/check-a2a.py", "--bin-dir", bins], cwd=work, env=env)
         sys.stdout.buffer.write(a2a.stdout)
         sys.stderr.buffer.write(a2a.stderr)
@@ -806,6 +810,12 @@ def main():
         env["PLY_TEST_ASK_SOURCE"] = str(ROOT / "tools/ask")
         go_contract("ply", "TestAskPlyContract", env)
         go_contract("hone", "TestScaffoldWritesFrontmatterBriefCanRead", env)
+        weigh = invoke([sys.executable, ROOT / "scripts/check-weigh.py", "--bin-dir", bins], cwd=work, env=env)
+        sys.stdout.buffer.write(weigh.stdout)
+        sys.stderr.buffer.write(weigh.stderr)
+        hone_content = invoke([sys.executable, ROOT / "scripts/check-hone-content.py", "--bin-dir", bins], cwd=work, env=env)
+        sys.stdout.buffer.write(hone_content.stdout)
+        sys.stderr.buffer.write(hone_content.stderr)
         evidence = check_context_cite(bins, work, env)
         check_action_receipts(bins, work, env, evidence)
         print("running Weave's offline executable/example suite", flush=True)

@@ -154,7 +154,7 @@ func TestNothingToLearnIsExitOneWithEmptyStdout(t *testing.T) {
 	}{
 		{"no verdict", []string{"$ go test ./...\nexit 1\n", "$ go test ./...\nok\n"}, "", "no check ran"},
 		{"check failed", []string{"$ go test ./...\nexit 1\n", "$ go test ./...\nok\n"}, failedMark, "never passed"},
-		{"nothing failed", []string{"$ go test ./...\nok\n"}, passedMark, "nothing ever failed"},
+		{"nothing failed", []string{"$ go test ./...\nok\n"}, passedMark, "no supported recovery pair"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sessions, _, askdir := sandbox(t, "- a lesson that must never be asked for")

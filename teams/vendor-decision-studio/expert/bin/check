@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+TEAM=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+exec python3 "$TEAM/tools/publication_io.py" check "${PUBLICATION_RUN:-.}"

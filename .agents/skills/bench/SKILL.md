@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Find, build, teach, improve, evaluate and run reusable Bench workers and teams. Use when asked to teach a worker, learn from a Bench run, remember knowledge for a worker, assemble experts, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
+description: Find, build, teach, improve, evaluate, export and run reusable Bench workers and teams. Use when asked to teach a worker, improve a run or its checks, learn from a Bench run, remember knowledge for a worker, assemble experts, port workers to another harness, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
 license: MIT
 ---
 
@@ -13,7 +13,9 @@ add ordinary code only for a missing input/output contract or deterministic task
 
 ## Start with the right source
 
-Read existing `BENCH-SETUP.md` records when available. Locate the authoritative
+Read the user's existing `BENCH-SETUP.md`, or check the default
+`~/.local/share/bench/BENCH-SETUP.md`. Load its adjacent `env.sh` in a command
+shell to recover the source and command paths. Locate the authoritative
 checkout using [setup](references/setup.md); persist its absolute `BENCH_SOURCE`
 path, revision and installed command paths outside reusable source. A copied
 skill is knowledge, not the worker catalog or the binaries. Resolve Markdown
@@ -33,11 +35,17 @@ Discovery and committed source export require no model call.
 | --- | --- |
 | Find a worker, choose a team, reuse source, change membership or lifecycle | [Library](references/library.md) |
 | Create missing expertise or adapt a definition/team | [Build](references/build.md), then [evaluate](references/evaluate.md) |
+| Improve this run, propose better checks or skills, calibrate or retire a check | [Test and review improvements](references/improve.md) |
 | Teach a worker, learn from a run, correct its method or remember a fact for it | [Teach and learn](references/learn.md), then [evaluate](references/evaluate.md) |
 | Run, resume, inspect results or expose a command | [Operate](references/operate.md) |
 | Set this harness up | [Setup](references/setup.md), then the host reference below |
 | Connect or expose a tool through MCP | [MCP](references/mcp.md) |
 | A lower-level capability is missing | [Tool map](references/tools.md), then the selected command's manual |
+
+When authoring or improving a deliverable check that needs judgment beyond
+structure or arithmetic, read [semantic checks](references/semantic-checks.md).
+It covers optional Weigh or Ask composition, actual visual evidence, and how to
+measure whether the check improves completed work.
 
 Use a suitable unchanged export directly. Use Hire for changes that need
 expertise or wiring authored. A request for a working model-backed solution
@@ -71,10 +79,17 @@ briefs into new assemblies. Promote generalized learning only as reviewed source
 
 Follow the current host's reference when installation or discovery is needed:
 [Codex](references/codex.md), [Claude Code](references/claude-code.md),
-[Cowork](references/cowork.md), [Pi](references/pi.md), or
-[OpenClaw](references/openclaw.md). Another host can read this skill directly
+[Cowork](references/cowork.md), [Pi](references/pi.md),
+[OpenClaw](references/openclaw.md), or [Hermes](references/hermes.md).
+Another host can read this skill directly
 and use its command tool. Complete authorized setup rather than merely giving
 instructions. Preserve unrelated settings and existing local changes.
+
+For a fresh setup, run `python3 "$BENCH_SOURCE/scripts/setup"` to install the builder
+commands, verify them and leave the persistent handoff. Use the host's
+GitHub plugin route for knowledge across sessions; avoid adding a second copy
+when this skill already comes from an installed plugin. Do not add demo MCP
+servers or make model calls for an installation-only request.
 
 Verify actual command paths, execution boundaries and model access separately.
 Ask uses its own provider setup. A harness login does not establish that access.

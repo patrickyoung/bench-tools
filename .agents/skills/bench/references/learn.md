@@ -6,6 +6,11 @@ current worker and [source setup](setup.md); the harness guides existing
 commands. Hire authors definitions, Hone extracts lessons from recoveries,
 Brief supplies skills, and Agent runs the result. No model weights change.
 
+For “Improve this run” or proposals to revise checks, skills or cutoffs, use
+[test and review improvements](improve.md): test a separate authoring copy and
+present numbered exact changes for acceptance. This does not add a new approval
+step to an already authorized specific teaching correction.
+
 ## Select the kind of teaching
 
 | Supplied material | Operation |
@@ -51,6 +56,13 @@ Ask session created by Agent/Ply. A Claude, Codex or Pi chat transcript is not
 that record. Do not convert or fabricate verifier receipts. Inspect the actual
 failed check, repair and acceptance; a packaging check cannot establish that
 an architectural recommendation or other judgment is correct.
+
+For a model-based verifier, inspect the retained rubric, exact candidate/input
+bindings, selected model and per-criterion judgments using
+[semantic checks](semantic-checks.md). A recorded pass establishes acceptance
+under that check, not universal correctness. Do not teach lowered thresholds,
+omitted evidence or repeated sampling until a judge agrees as a recovery.
+Keep lessons within the demonstrated evidence and verify them on fresh work.
 
 For a portable definition with separate work and evidence, use Hone directly
 against the clean **authoring copy**, never the pinned source export. Preserve
@@ -149,6 +161,12 @@ inventories and a new pinned export; never commit job content, credentials,
 runtime memory or the entire teaching workspace. Preserve the old lock and pin:
 existing exports do not update automatically. Revise the selected worker/team
 pin when adopting the new version, and record the exact next-run invocation.
+
+If this worker also has native host packages, regenerate them from the reviewed
+source commit using the targeted export in `docs/WORKER-PORTABILITY.md`. Preserve
+the entire learned skill and its relative references. Evaluate a fresh retention
+case both through Bench and each selected native host; discovery alone does not
+prove retention. Native host transcripts cannot be converted into Hone receipts.
 
 Report separately what was proposed, applied, evaluated and committed/published.
 Name where the knowledge lives and how the next run will load it. A source

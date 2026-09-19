@@ -45,6 +45,7 @@ BOUNDARIES = {
     "tend": "durable job input, work and observed transitions",
     "trail": "read-only archive verification",
     "weave": "deterministic task/observation projection",
+    "weigh": "explicit typed questions, native probabilities and inference outcome",
 }
 
 

@@ -1,0 +1,11 @@
+#!/bin/sh
+# A separately supervised provisioning queue. Tend owns every transition.
+while :; do
+    "$1" work
+    status=$?
+    case "$status" in
+        0) ;;
+        1) sleep 1 ;;
+        *) exit "$status" ;;
+    esac
+done

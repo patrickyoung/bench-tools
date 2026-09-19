@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 // maxLessons bounds what one run can add. It is small on purpose: a run
 // that appears to teach five things has usually taught one thing and four
@@ -99,7 +99,7 @@ func cmdHone(args []string) int {
 		max     = fs.Int("n", maxLessons, "most lessons to take from one run")
 		dry     = fs.Bool("N", false, "say what would be learned, write nothing")
 		quiet   = fs.Bool("q", false, "no progress on stderr")
-		noVfy   = fs.Bool("no-verify", false, "skip the replay check on the session")
+		noVfy   = fs.Bool("no-verify", false, "skip replay for command recoveries; content requires verification")
 		expl    = fs.Bool("why", false, "print the evidence a lesson would be drawn from, and stop")
 		prepare = fs.String("prepare", "", "write an exact reviewed-learning proposal, not the skill")
 		dirArg  = fs.String("d", askDir(), "session directory")
@@ -191,6 +191,7 @@ func (g *hone) one(ctx context.Context, path string) (int, int) {
 			return 0, 1
 		}
 	}
+	s.verified = g.verify
 	if ok, why := s.Teaches(); !ok {
 		g.say("%s: %s", s.ID, why)
 		return 0, 1
@@ -353,6 +354,7 @@ func explain(ctx context.Context, askBin string, paths []string, replay bool) in
 				continue
 			}
 		}
+		s.verified = replay
 		ok, why := s.Teaches()
 		if !ok {
 			fmt.Fprintf(os.Stderr, "hone: %s: %s\n", s.ID, why)

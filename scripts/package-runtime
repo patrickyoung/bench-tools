@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""Archive every verified independent package for the native release platform."""
+import argparse
+import gzip
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import runpy
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+from install_support import verify_package
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CHECK = runpy.run_path(str(ROOT / "scripts/check"))
+REPOSITORY = "https://github.com/patrickyoung/bench-tools"
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def native_platform():
+    system = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
+    machine = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+        platform.machine().lower())
+    if not system or not machine:
+        raise ValueError("release bundles support native macOS/Linux on amd64/arm64")
+    return system + "-" + machine
+
+
+def verify_binary_platform(path, target, compiler):
+    result = subprocess.run([compiler, "version", "-m", str(path)], check=True,
+                            capture_output=True, text=True)
+    settings = {}
+    for line in result.stdout.splitlines():
+        fields = line.strip().split("\t")
+        if len(fields) == 2 and fields[0] == "build" and "=" in fields[1]:
+            key, value = fields[1].split("=", 1)
+            settings[key] = value
+    observed = settings.get("GOOS", "") + "-" + settings.get("GOARCH", "")
+    if observed != target:
+        raise ValueError("binary platform mismatch for " + str(path) + ": " + observed + ", expected " + target)
+
+
+def verify_committed_component(component, revision):
+    committed = subprocess.run(["git", "rev-parse", "--verify", revision + "^{commit}"],
+                               cwd=ROOT, capture_output=True, text=True)
+    if committed.returncode != 0 or committed.stdout.strip() != revision:
+        raise ValueError("package source revision is not an available commit: " + component["name"])
+    changed = subprocess.run(["git", "diff", "--quiet", revision, "--", component["path"]], cwd=ROOT)
+    untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "-z", "--", component["path"]],
+                               cwd=ROOT, check=True, capture_output=True)
+    if changed.returncode != 0 or untracked.stdout:
+        raise ValueError("release component differs from its recorded commit: " + component["name"])
+
+
+def runtime_metadata(build, target, compiler):
+    components = json.loads((ROOT / "components.json").read_text())["components"]
+    revisions, packages, sources, payload = set(), {}, {}, []
+    if (build / "tools").is_symlink():
+        raise ValueError("build tools directory must not be a symlink")
+    for component in components:
+        name = component["name"]
+        directory = build / "tools" / name
+        receipt = verify_package(directory, name)
+        if receipt["commands"] != [entry["name"] for entry in component["commands"]]:
+            raise ValueError("package command inventory does not match components.json: " + name)
+        source = receipt.get("source")
+        if (not isinstance(source, dict) or not isinstance(source.get("repository_revision"), str) or
+                not re.fullmatch(r"[0-9a-f]{40}", source["repository_revision"])):
+            raise ValueError("package lacks a full source commit: " + name)
+        revisions.add(source["repository_revision"])
+        with tempfile.TemporaryDirectory(prefix="bench-release-source-") as exported:
+            records = CHECK["export_source"](ROOT, component, Path(exported))
+        source_hash = sha256(json.dumps(records, sort_keys=True).encode())
+        if (source.get("path") != component["path"] or source.get("files") != records or
+                source.get("files_sha256") != source_hash):
+            raise ValueError("package source does not match the selected checkout: " + name)
+        verify_committed_component(component, source["repository_revision"])
+        packages[name] = sha256((directory / "package.json").read_bytes())
+        sources[name] = source_hash
+        if component["module"]:
+            for command in receipt["commands"]:
+                verify_binary_platform(directory / "bin" / command, target, compiler)
+        for path in sorted(directory.rglob("*")):
+            if path.is_symlink() or (not path.is_dir() and not path.is_file()):
+                raise ValueError("release payload must contain only regular files: " + str(path))
+            if path.is_file():
+                payload.append(("tools/" + name + "/" + path.relative_to(directory).as_posix(), path))
+    if len(revisions) != 1:
+        raise ValueError("builder packages must share one source commit")
+    return {"schema": 1, "repository": REPOSITORY, "revision": revisions.pop(),
+            "platform": target, "tools": [entry["name"] for entry in components],
+            "packages": packages, "sources": sources}, payload
+
+
+def add_file(archive, name, data, mode):
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    info.mode = mode
+    info.mtime = 0
+    archive.addfile(info, io.BytesIO(data))
+
+
+def write_archive(path, metadata, payload):
+    with path.open("wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", filename="", mtime=0) as compressed:
+        with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive:
+            add_file(archive, "runtime.json", (json.dumps(metadata, indent=2) + "\n").encode(), 0o644)
+            for name, source in payload:
+                add_file(archive, name, source.read_bytes(), stat.S_IMODE(source.stat().st_mode))
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--from-build", type=Path, required=True, help="verified packages from scripts/build")
+    parser.add_argument("--output", type=Path, required=True, help="new .tar.gz archive; also writes .json and .sha256")
+    args = parser.parse_args(argv)
+    try:
+        compiler = shutil.which("go")
+        if compiler is None:
+            raise ValueError("Go is required to inspect release executable metadata")
+        build = args.from_build.expanduser().absolute()
+        if build.is_symlink():
+            raise ValueError("build directory must not be a symlink")
+        build = build.resolve()
+        output = args.output.expanduser().absolute()
+        if not output.name.endswith(".tar.gz"):
+            raise ValueError("release archive output must end in .tar.gz")
+        outputs = (output, Path(str(output) + ".json"), Path(str(output) + ".sha256"))
+        for path in outputs:
+            if os.path.lexists(path):
+                raise ValueError("refusing to replace an existing release file: " + str(path))
+            resolved = path.resolve()
+            if build / "tools" in resolved.parents:
+                raise ValueError("release output must not be inside its input packages")
+        metadata, payload = runtime_metadata(build, native_platform(), compiler)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".bench-release-", dir=output.parent) as staging:
+            staged = Path(staging)
+            archive = staged / output.name
+            write_archive(archive, metadata, payload)
+            checksum = sha256(archive.read_bytes())
+            external = dict(metadata, sha256=checksum, size=archive.stat().st_size)
+            (staged / outputs[1].name).write_text(json.dumps(external, indent=2) + "\n")
+            (staged / outputs[2].name).write_text(checksum + "  " + output.name + "\n")
+            published = []
+            try:
+                for path in outputs:
+                    # Exclusive publication refuses a destination created while
+                    # verification was running, including a new symlink.
+                    os.link(staged / path.name, path)
+                    published.append(path)
+            except OSError:
+                for path in published:
+                    path.unlink()
+                raise
+        print(output)
+        print(outputs[1])
+        return 0
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+        print("package-runtime: " + str(error), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

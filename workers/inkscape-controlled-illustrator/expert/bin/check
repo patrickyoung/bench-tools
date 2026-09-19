@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""Read-only acceptance check with independent master/final Inkscape renders."""
+import sys
+sys.dont_write_bytecode = True
+import hashlib, json, os, pathlib, re, shutil, signal, stat, subprocess, tempfile
+EXPERT_ROOT=pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0,str(EXPERT_ROOT/"tools"))
+from svg_contract import ContractError, bounded_regular_bytes, inspect_svg, png_pixels, read_request
+import composition_audit
+
+ROOT=pathlib.Path.cwd().resolve(); OUT=ROOT/"output"; MAX_JSON=1024*1024
+REQUIRED={"illustration.inkscape.svg","illustration.svg","preview.png",
+          "design-notes.md","render.json","inkscape.log","inkscape-plan.json","authoring-receipt.json",
+          "composition-audit.json"}
+
+def fail(msg):
+    print("check: "+msg,file=sys.stderr); raise SystemExit(1)
+def regular(path):
+    try: info=os.lstat(path)
+    except OSError: fail("missing file: "+str(path))
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        fail("not a regular non-symlink file: "+str(path))
+    return info
+def load_json(path):
+    try: raw=bounded_regular_bytes(path,MAX_JSON,str(path))
+    except ContractError as e: fail(str(e))
+    try: return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError,json.JSONDecodeError) as e: fail("invalid JSON "+str(path)+": "+str(e))
+def sha(path,limit):
+    try: return hashlib.sha256(bounded_regular_bytes(path,limit,str(path))).hexdigest()
+    except ContractError as e: fail(str(e))
+def executable():
+    selected=os.environ.get("INKSCAPE")
+    if selected:
+        p=pathlib.Path(selected)
+        if not p.is_absolute() or not p.is_file() or not os.access(p,os.X_OK):
+            fail("INKSCAPE must select an absolute executable file")
+        return str(p.resolve())
+    found=shutil.which("inkscape")
+    if not found: fail("Inkscape unavailable for independent re-render")
+    return str(pathlib.Path(found).resolve())
+def child(argv,cwd,env,category):
+    proc=subprocess.Popen(argv,cwd=cwd,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                          start_new_session=True)
+    try: stdout,stderr=proc.communicate(timeout=120)
+    except subprocess.TimeoutExpired:
+        try: os.killpg(proc.pid,signal.SIGKILL)
+        except ProcessLookupError: pass
+        proc.communicate()
+        fail(category+" timed out")
+    if proc.returncode:
+        detail=stderr.decode("utf-8","replace")[-1000:]
+        fail(category+" failed"+(": "+detail if detail else ""))
+    return stdout,stderr
+
+try: request,w,h,request_raw=read_request(ROOT/"request.json")
+except ContractError as e: fail(str(e))
+if not OUT.is_dir() or OUT.is_symlink(): fail("output must be a real directory")
+actual=set()
+for p in OUT.rglob("*"):
+    if p.is_symlink(): fail("symlink below output: "+str(p))
+    if p.is_file():
+        regular(p)
+        if p.stat().st_size > 64*1024*1024: fail("oversized output: "+str(p))
+        actual.add(str(p.relative_to(OUT)))
+missing=REQUIRED-actual
+if missing: fail("missing required output(s): "+", ".join(sorted(missing)))
+from authoring import verify
+try: verify(ROOT)
+except (ValueError, OSError) as e: fail("authoring rejected: "+str(e))
+master=OUT/"illustration.inkscape.svg"; final=OUT/"illustration.svg"; preview=OUT/"preview.png"
+try:
+    inspect_svg(master,w,h,master=True)
+    inspect_svg(final,w,h,master=False)
+    supplied=png_pixels(preview)
+except (ContractError,OSError) as e: fail(str(e))
+if supplied[:2]!=(w,h): fail("preview PNG dimensions do not match request")
+try: notes=bounded_regular_bytes(OUT/"design-notes.md",1024*1024,"design notes").decode("utf-8")
+except (ContractError,UnicodeDecodeError) as e: fail(str(e))
+if len(notes.strip())<120: fail("design notes are too short")
+for term in ("intent","composition","palette","style","simplif","review"):
+    if term not in notes.lower(): fail("design notes omit "+term)
+if "visibility" not in notes.lower(): fail("design notes omit visibility review")
+try:
+    composition_audit.verify(ROOT)
+except (ContractError,OSError) as e: fail("composition audit rejected: "+str(e))
+receipt=load_json(OUT/"render.json")
+if not isinstance(receipt,dict) or receipt.get("schema")!="inkscape-illustrator.render/v1":
+    fail("invalid render receipt schema")
+if receipt.get("requested_pixels")!={"width":w,"height":h}: fail("stale render dimensions")
+ink=receipt.get("inkscape")
+if not isinstance(ink,dict) or set(ink)!={"executable","version"}: fail("invalid Inkscape identity receipt")
+if not isinstance(ink["executable"],str) or not pathlib.PurePath(ink["executable"]).is_absolute():
+    fail("receipt executable is not absolute")
+if not isinstance(ink["version"],str) or not re.search(r"Inkscape\s+\d+\.\d+",ink["version"]):
+    fail("invalid Inkscape version receipt")
+expected_bindings={
+ "request":("request.json",hashlib.sha256(request_raw).hexdigest()),
+ "master":("output/illustration.inkscape.svg",sha(master,16*1024*1024)),
+ "final":("output/illustration.svg",sha(final,16*1024*1024)),
+ "preview":("output/preview.png",sha(preview,64*1024*1024)),
+ "composition_audit":("output/composition-audit.json",sha(OUT/"composition-audit.json",1024*1024))}
+bindings=receipt.get("bindings")
+if not isinstance(bindings,dict) or set(bindings)!=set(expected_bindings): fail("invalid render bindings")
+for key,(path,digest) in expected_bindings.items():
+    if bindings[key]!={"path":path,"sha256":digest}: fail("stale render binding: "+key)
+commands=receipt.get("commands"); labels=["version","help","plain-svg-export","png-render","bounds-query"]
+if not isinstance(commands,list) or [x.get("label") if isinstance(x,dict) else None for x in commands]!=labels:
+    fail("render command sequence is missing or invalid")
+for item in commands:
+    if set(item)!={"label","argv","exit_code","timed_out","duration_seconds"}:
+        fail("invalid command receipt fields")
+    if item["exit_code"]!=0 or item["timed_out"] is not False: fail("receipt contains unsuccessful command")
+    if (not isinstance(item["argv"],list) or not item["argv"] or
+        item["argv"][0]!=ink["executable"] or not all(isinstance(x,str) for x in item["argv"])):
+        fail("invalid literal argv receipt")
+export=commands[2]["argv"]; render=commands[3]["argv"]
+if any(x=="--batch-process" for x in export+render): fail("unsupported batch-process flag in receipt")
+for flag in ("--export-type=svg","--export-plain-svg","--export-text-to-path","--export-filename"):
+    if flag not in export: fail("export receipt lacks "+flag)
+if export[-1]!=str(master) or str(final) not in export: fail("export source/output binding mismatch")
+for flag in ("--export-type=png","--export-width","--export-height","--export-filename"):
+    if flag not in render: fail("render receipt lacks "+flag)
+if render[-1]!=str(final) or str(preview) not in render: fail("render source/output binding mismatch")
+try:
+    if not bounded_regular_bytes(OUT/"inkscape.log",4*1024*1024,"Inkscape log").strip():
+        fail("empty Inkscape log")
+except ContractError as e: fail(str(e))
+handoff=load_json(ROOT/"handoff.json")
+if handoff.get("specialist")!="inkscape-illustrator": fail("wrong handoff specialist")
+if handoff.get("request_sha256")!=hashlib.sha256(request_raw).hexdigest(): fail("stale handoff request binding")
+manifest=handoff.get("files")
+if not isinstance(manifest,list): fail("invalid handoff file list")
+listed={x.get("path") for x in manifest if isinstance(x,dict)}
+expected={"output/"+x for x in actual}
+if listed!=expected: fail("handoff must manifest every and only output file")
+child([str(EXPERT_ROOT/"bin"/"validate-handoff"),"handoff.json"],ROOT,os.environ.copy(),
+      "portable handoff validation")
+
+exe=executable()
+with tempfile.TemporaryDirectory(prefix="inkscape-check-") as td:
+    temp=pathlib.Path(td)
+    for name in ("profile","cache","config","data","tmp"): (temp/name).mkdir()
+    env=os.environ.copy()  # HOME is intentionally preserved.
+    env.update({"INKSCAPE_PROFILE_DIR":str(temp/"profile"),"XDG_CACHE_HOME":str(temp/"cache"),
+                "XDG_CONFIG_HOME":str(temp/"config"),"XDG_DATA_HOME":str(temp/"data"),
+                "TMPDIR":str(temp/"tmp")})
+    master_export=temp/"master-export.svg"
+    child([exe,"--export-type=svg","--export-plain-svg","--export-text-to-path",
+           "--export-filename",str(master_export),str(master)],ROOT,env,
+          "independent master export")
+    try: inspect_svg(master_export,w,h,master=False)
+    except ContractError as e: fail("independent master export invalid: "+str(e))
+    rendered=[]
+    for label,source in (("master",master_export),("final",final)):
+        target=temp/(label+"-preview.png")
+        child([exe,"--export-type=png","--export-width",str(w),"--export-height",str(h),
+               "--export-filename",str(target),str(source)],ROOT,env,
+              "independent "+label+" render")
+        try: sample=png_pixels(target)
+        except ContractError as e: fail("independent "+label+" PNG invalid: "+str(e))
+        if sample[:2]!=(w,h): fail("independent "+label+" render dimensions differ")
+        rendered.append(sample)
+# Compare dimensions, color format, and every decoded sample.
+if supplied != rendered[1]:
+    fail("supplied preview pixel content differs from independent final render")
+if supplied != rendered[0]:
+    fail("editable master pixel content differs from supplied final preview")
+print("accepted corresponding editable master, plain vector SVG, and matching Inkscape preview")

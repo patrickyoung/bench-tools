@@ -1,0 +1,17 @@
+{
+  "name": "bench-tools",
+  "description": "Reusable Bench workers and teams for Claude Code and Cowork.",
+  "owner": {
+    "name": "Patrick Young",
+    "url": "https://github.com/patrickyoung"
+  },
+  "plugins": [
+    {
+      "name": "bench-tools",
+      "source": "./.agents",
+      "description": "Find, build, teach, evaluate and run reusable Bench workers and teams.",
+      "category": "productivity",
+      "tags": ["workers", "teams", "automation"]
+    }
+  ]
+}

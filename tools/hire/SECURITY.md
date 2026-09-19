@@ -7,6 +7,12 @@ The generated definition is an artifact, not a controller authorization.
 executes the generated verifier or other generated code. Structural readiness
 does not prove that an expert's check is sound or its output is correct.
 
+`BENCH_WEIGH` is a caller preference, not a confinement boundary. Hire validates
+and normalizes it for the builder. It does not change structural verification
+or inspect arbitrary generated code for model calls. Runtime adapters and their
+offline tests establish their own opt-in behavior; direct `weigh` invocation
+remains explicit. Preserve existing dependencies during unrelated revisions.
+
 ## Existing recurring-home maintenance
 
 `hire learn` deliberately runs outside Cage because it may amend a local

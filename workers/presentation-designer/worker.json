@@ -1,0 +1,39 @@
+{
+  "id": "presentation-designer",
+  "description": "Create a coherent executive PowerPoint with native editable charts, tables and text.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 for contracts; selected bundled Python 3.12 for production and PDF checks",
+    "model": "Explicit operator-selected Ask model and credentials; no secrets bundled",
+    "production": "PUBLICATION_* selectors: bundled Artifact Tool Node/Python/LibreOffice, Poppler, document/presentation skill helpers; separate matplotlib 3.11.2 runtime for information design",
+    "review": "Independent actual-image Ask review plus a separate semantic Agent review; model judgment, not certification"
+  },
+  "files": [
+    "workers/presentation-designer/expert/AGENTS.md",
+    "workers/presentation-designer/expert/CONTRACT.md",
+    "workers/presentation-designer/expert/LICENSE",
+    "workers/presentation-designer/expert/PROVENANCE.md",
+    "workers/presentation-designer/expert/README.md",
+    "workers/presentation-designer/expert/bin/check",
+    "workers/presentation-designer/expert/lib/publication_contract.py",
+    "workers/presentation-designer/expert/lib/render.py",
+    "workers/presentation-designer/expert/lib/render_office.mjs",
+    "workers/presentation-designer/expert/role.json",
+    "workers/presentation-designer/expert/skills/executive-slidecraft/SKILL.md",
+    "workers/presentation-designer/expert/tools/render"
+  ]
+}

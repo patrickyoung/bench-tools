@@ -12,6 +12,7 @@ the chosen tools' READMEs and manuals. `components.json` is the command inventor
 | Responsibility | Component / public commands | Read next in the checkout |
 | --- | --- | --- |
 | One model request and its replayable conversation | ask | tools/ask/README.md |
+| Optional bounded typed model judgments, without a conversation | weigh | tools/weigh/README.md |
 | Execute actions, return feedback, check candidates | ply | tools/ply/README.md |
 | Run a portable expert or standing home | agent | tools/agent/README.md |
 | Build, inspect, or maintain its definition | hire | tools/hire/README.md |
@@ -43,3 +44,5 @@ Agent run verify that the changed knowledge is available and useful.
 
 Install companion commands explicitly. Dependency adjacency in the monorepo
 does not install credentials, grant access, or require loading every tool.
+Weigh reports judgments; a caller's evaluated policy decides acceptance. See
+[semantic checks](semantic-checks.md) when composing it or Ask into a verifier.
