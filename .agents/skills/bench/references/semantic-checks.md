@@ -10,6 +10,16 @@ When improving a check from run evidence, follow
 [test and review improvements](improve.md) for focused experiments, unchanged
 independent quality criteria and acceptance of exact numbered proposals.
 
+Bench's optional Weigh path is off unless `BENCH_WEIGH=1`. Unset, empty or `0`
+means off; other values are configuration errors when that path is needed.
+Keep models and backend selection explicit. A disabled required judgment is a
+broken check, never an accepted candidate or an automatic Ask fallback. Rules
+that establish the criterion and explicitly selected Ask checks remain usable.
+A selected live Weigh path requires its executable and provider access. This
+convention belongs to caller adapters; direct `weigh` invocation remains
+explicit use. During unrelated authoring revisions, preserve existing
+dependencies; default-off does not request a migration.
+
 ## Author the check, not another runner
 
 Use Hire to author a worker's procedure and check. The trusted check lives

@@ -4,6 +4,7 @@
 A bound caller rule avoids inference; otherwise one selected Weigh or Ask call
 chooses an ID. The caller executes its existing action and independently checks
 the result. Exit 0 is a selection, never acceptance; exit 2 is broken selection.
+The Weigh path additionally requires BENCH_WEIGH=1; rules and Ask do not.
 """
 import argparse
 from decimal import DecimalException
@@ -17,7 +18,7 @@ import tempfile
 # These are local example JSON/process helpers, not another tool's internals.
 # Provider access remains exclusively through the public Ask/Weigh commands.
 from triage import (Broken, digest, encode, execute, parse, read_snapshot,
-                    validate_distribution)
+                    require_weigh_enabled, validate_distribution)
 
 
 QUESTION = (
@@ -109,7 +110,7 @@ def main():
     parser.add_argument("--backend", choices=("weigh", "ask"))
     parser.add_argument("--model")
     parser.add_argument("--records", type=Path, required=True)
-    parser.add_argument("--live", action="store_true", help="explicitly enable the semantic model path")
+    parser.add_argument("--live", action="store_true", help="deprecated compatibility flag; backend/model selection enables the call")
     parser.add_argument("--ask", default="ask")
     parser.add_argument("--weigh", default="weigh")
     parser.add_argument("--record", default="record")
@@ -130,8 +131,10 @@ def main():
         if rules_raw is not None:
             validate_rules(rules, raw, state["actions"])
         action = rules["action"] if rules is not None else None
-        if action is None and (not args.backend or not text(args.model) or not args.live):
-            raise Broken("semantic selection requires --backend, --model and --live")
+        if action is None and (not args.backend or not text(args.model)):
+            raise Broken("semantic selection requires --backend and --model")
+        if action is None and args.backend == "weigh":
+            require_weigh_enabled()
         args.records.mkdir(parents=True, exist_ok=True)
         run = Path(tempfile.mkdtemp(prefix="select-fix-", dir=args.records.resolve()))
         (run / "snapshot.json").write_bytes(raw)

@@ -26,6 +26,9 @@ rubric coverage, feedback, calibration and execution failures. Low confidence
 alone does not prove a threshold problem; a failed call supplies no judgment.
 Optional Weigh/Ask triage proposes a hypothesis, never a causal finding or an
 authorization. Keep an Ask-only workflow usable without Weigh.
+Weigh is off unless `BENCH_WEIGH=1`; leave it out of the improvement cycle when
+disabled. Enabling it still needs an explicit backend/model and bounded calls.
+Do not skip required acceptance checks or silently switch models when it is off.
 
 For choosing the next fix, use deterministic rules where inspected facts settle
 the action. Optional `select-fix.py` in the Bench example named below records a
@@ -38,6 +41,12 @@ the repair model separately. No default model, automatic fallback, threshold
 adjustment or checker edit belongs in this route. A check pass alone is not a
 sufficient rule for keeping an artifact. Compare whole-path quality, time,
 tokens and cost against rules before claiming the selector improves a workflow.
+
+For a revision to Weigh questions, action menus or feedback, use
+`checking-deliverables` and read
+`brief cat checking-deliverables/references/weigh-build.md`. Keep the independent
+final checker fixed and use fresh cases after evaluation feedback has guided an
+edit. Preserve existing dependencies during an unrelated revision.
 
 Before testing, freeze required outcomes, criterion/check coverage, independent
 label rules, acceptable error rates and final-review requirements. Preserve this

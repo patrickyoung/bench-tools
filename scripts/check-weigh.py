@@ -92,6 +92,8 @@ def main():
             require(calls[0][0] == "/api/alpha/decisions" and calls[0][1]["model"] == "~typesafe/jev-latest", "Decisions route or literal model changed")
             require(calls[0][1]["state"]["exact"] == 9007199254740993, "state numeric precision changed")
             require(calls[0][2] == "Bearer offline-key", "explicit fixture key missing")
+            direct = invoke(command, cwd=root, env=dict(env, BENCH_WEIGH="0"), data=raw)
+            require(direct.stdout == answer.stdout, "Bench opt-in changed the independent Weigh executable")
             captured = invoke([bins / "record", "run", "-ask", bins / "ask", "-f", receipt, "--", *command], cwd=root, env=env, data=raw)
             require(captured.stdout == answer.stdout, "record changed validated output")
             negative = dict(request, state={"mode": "failure"})
@@ -123,15 +125,33 @@ def main():
                              "--rubric", str(rubric), "--candidate", str(candidate), "--records", str(root / "checks"),
                              "--accept-at", ".95", "--reject-at", ".95", "--endpoint", endpoint,
                              "--ask", str(bins / "ask"), "--weigh", str(bins / "weigh"), "--record", str(bins / "record")]
-            rejected = invoke(check_command, cwd=root, env=env, code=1)
+            for setting in (None, "", "0", "invalid"):
+                disabled_env = dict(env)
+                if setting is not None:
+                    disabled_env["BENCH_WEIGH"] = setting
+                before = len(calls)
+                disabled = invoke(check_command, cwd=root, env=disabled_env, code=2)
+                require(not disabled.stdout and len(calls) == before and b"BENCH_WEIGH" in disabled.stderr,
+                        "disabled or invalid Weigh checker called a model or silently skipped acceptance")
+            enabled_env = dict(env, BENCH_WEIGH="1")
+            rejected = invoke(check_command, cwd=root, env=enabled_env, code=1)
             require(json.loads(rejected.stdout)["feedback"] == ["Replace bad with good."], "lost criterion repair feedback")
             snapshot = {"version": 1, "id": "one-selected-run", "candidate": "bad", "evidence": "good is required",
                         "criteria": json.loads(rubric.read_text())["criteria"], "check": {"verdict": "reject"},
                         "review": {"verdict": "reject", "independent": True, "findings": ["The output is bad."]}}
-            triage = [sys.executable, ROOT / "tools/weigh/examples/improve-checks/triage.py", "--live",
+            triage = [sys.executable, ROOT / "tools/weigh/examples/improve-checks/triage.py",
                       "--model", "openrouter/~typesafe/jev-latest", "--records", root / "triage",
                       "--ask", bins / "ask", "--record", bins / "record", "--weigh", bins / "weigh"]
-            classified = invoke([*triage, "--backend", "weigh", "--endpoint", endpoint], cwd=root, env=env,
+            for setting in (None, "", "0", "invalid"):
+                disabled_env = dict(env)
+                if setting is not None:
+                    disabled_env["BENCH_WEIGH"] = setting
+                before = len(calls)
+                disabled = invoke([*triage, "--backend", "weigh", "--endpoint", endpoint], cwd=root,
+                                  env=disabled_env, data=json.dumps(snapshot).encode(), code=2)
+                require(not disabled.stdout and len(calls) == before and b"BENCH_WEIGH" in disabled.stderr,
+                        "disabled or invalid Weigh diagnosis called a model or emitted a hypothesis")
+            classified = invoke([*triage, "--backend", "weigh", "--endpoint", endpoint], cwd=root, env=enabled_env,
                                 data=json.dumps(snapshot).encode())
             hypothesis = json.loads(classified.stdout)
             require(hypothesis["status"] == "hypothesis" and hypothesis["hypothesis"]["target"]["value"] == "artifact",
@@ -144,13 +164,14 @@ def main():
                 turns.append(1)
                 return "```sh\nprintf 'good\\n' > candidate.txt\n```" if len(turns) == 1 else "Updated candidate.txt."
 
-            with SUPPORT["model_fixture"](env, repair) as (generation_env, _):
+            with SUPPORT["model_fixture"](enabled_env, repair) as (generation_env, _):
                 loop = invoke([bins / "ply", "-sh", "-m", "openai/fixture", "-f", root / "repair.jsonl",
                                "-turns", "4", "-check", shlex.join(check_command), "Correct candidate.txt according to the checker."],
                               cwd=root, env=generation_env)
                 require(candidate.read_text() == "good\n" and len(turns) == 2, "Ply did not repair from semantic feedback")
             # Ask-only route uses no Weigh executable and no OpenRouter access.
             ask_env = {key: value for key, value in env.items() if key != "OPENROUTER_API_KEY"}
+            ask_env["BENCH_WEIGH"] = "invalid"
             with SUPPORT["model_fixture"](ask_env, lambda _: '{"answers":{"content":"satisfied"}}') as (ask_env, _):
                 accepted = invoke([sys.executable, checker, "--backend", "ask", "--model", "openai/fixture",
                                    "--rubric", rubric, "--candidate", candidate, "--records", root / "ask-only",
@@ -180,7 +201,7 @@ def main():
                            cwd=root, env=offline)
         sys.stdout.buffer.write(selection.stdout)
         sys.stderr.buffer.write(selection.stderr)
-    print("ok Weigh: Decisions wire, typed results, errors, private auth, offline Record replay, Ply repair and optional Ask-only checker")
+    print("ok Weigh: independent direct CLI, default-off adapters, Decisions wire, typed results, errors, private auth, offline Record replay, Ply repair and unaffected Ask-only checker")
 
 
 if __name__ == "__main__":

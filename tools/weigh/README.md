@@ -33,6 +33,19 @@ go build -o weigh .
 The runtime uses the Go standard library and does not require Ask, Agent, or
 another Bench command. Installation and offline checks make no model calls.
 
+Bench's Hire builder defaults new Weigh use to off and preserves existing
+dependencies during unrelated revisions. The supplied check/improvement
+adapters also default Weigh execution to off. Set `BENCH_WEIGH=1` to permit it;
+unset, empty or `0` means off. Enabling it selects no model or provider access.
+Only a selected live Weigh path needs this external service; deterministic rules
+and explicit Ask routes remain usable without it. An unavailable required
+judgment fails without accepting the candidate or switching models.
+
+Single-call adapters select their backend and model explicitly; the semantic
+batch evaluator additionally requires `--live`. This is a caller convention:
+the independent `weigh` command above executes an explicit request regardless
+of `BENCH_WEIGH`. Hire requires no universal Weigh decision or manifest.
+
 ## One explicit request
 
 Save this as `request.json`:

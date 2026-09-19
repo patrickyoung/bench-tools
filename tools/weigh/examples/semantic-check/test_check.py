@@ -76,7 +76,7 @@ class CheckerTests(unittest.TestCase):
                     if key in ("PATH", "SYSTEMROOT", "TMPDIR")}
         self.env.update(SC_TEST_CALLS=str(self.call_file),
                         SC_TEST_ASK_RESPONSE=str(self.ask_response),
-                        SC_TEST_WEIGH_RESPONSE=str(self.weigh_response))
+                        SC_TEST_WEIGH_RESPONSE=str(self.weigh_response), BENCH_WEIGH="1")
         self.set_criteria(["grounded", "qualified"])
         self.ask_answers({key: "satisfied" for key in self.ids})
         self.weigh_answers({key: (.96, .02, .02) for key in self.ids})
@@ -123,6 +123,7 @@ class CheckerTests(unittest.TestCase):
         self.assertNotIn(b"SENTINEL", result.stdout + result.stderr)
 
     def test_missing_and_empty_candidate_reject_without_any_dependency(self):
+        self.env["BENCH_WEIGH"] = "invalid"
         for state in ("missing", "empty"):
             with self.subTest(state=state):
                 if state == "missing":
@@ -135,6 +136,31 @@ class CheckerTests(unittest.TestCase):
                 self.assertIn("missing or empty", report["feedback"][0])
                 self.assertEqual(self.calls(), [])
                 self.assertEqual(list(self.records.iterdir()), [])
+
+    def test_weigh_opt_in_precedes_dependencies_and_never_uses_fallback(self):
+        self.executables = {role: self.root / "not-installed" for role in self.executables}
+        for value in (None, "", "0", "true", " 1"):
+            with self.subTest(value=value):
+                self.env.pop("BENCH_WEIGH", None)
+                if value is not None:
+                    self.env["BENCH_WEIGH"] = value
+                result, report = self.run_check("weigh", extra=("--fallback-model", "fixture/fallback"))
+                self.assert_broken(result, report)
+                self.assertIn(b"BENCH_WEIGH", result.stderr)
+                self.assertEqual(list(self.records.iterdir()), [])
+        self.assertEqual(self.calls(), [])
+
+    def test_ask_ignores_weigh_opt_in(self):
+        for value in (None, "", "0", "invalid"):
+            with self.subTest(value=value):
+                self.env.pop("BENCH_WEIGH", None)
+                if value is not None:
+                    self.env["BENCH_WEIGH"] = value
+                result, report = self.run_check("ask")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(report["verdict"], "accept")
+        self.assertEqual(self.calls("weigh"), [])
+        self.assertEqual(len(self.calls("ask")), 4)
 
     def test_ask_only_has_no_weigh_or_key_dependency(self):
         self.executables["weigh"] = self.root / "not-installed-weigh"

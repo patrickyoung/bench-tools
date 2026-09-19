@@ -797,6 +797,10 @@ def main():
         check_portable_agent(bins, work, env, (args.agent or bins / "agent").resolve(), args.native_cage)
         check_agent_lifecycle(bins, work, env, (args.agent or bins / "agent").resolve())
         check_hire(bins, work, env, (args.agent or bins / "agent").resolve(), args.native_cage)
+        hire_weigh = invoke([sys.executable, ROOT / "scripts/check-hire-weigh.py", "--bin-dir", bins,
+                             "--agent", (args.agent or bins / "agent").resolve()], cwd=work, env=env)
+        sys.stdout.buffer.write(hire_weigh.stdout)
+        sys.stderr.buffer.write(hire_weigh.stderr)
         a2a = invoke([sys.executable, ROOT / "scripts/check-a2a.py", "--bin-dir", bins], cwd=work, env=env)
         sys.stdout.buffer.write(a2a.stdout)
         sys.stderr.buffer.write(a2a.stderr)

@@ -1,0 +1,58 @@
+{
+  "id": "excel-workbook-designer",
+  "description": "Create and prompt-edit Excel reports and text-first team workbooks; verify exact lookups, RAG, WBS and time-off logic, preserve content and add native charts/simple pivots.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "a9c37fc43c958712637acf6db416456f171946bc",
+      "commands": [
+        "hire",
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "runtime": "Python >=3.9; operator-selected bundled Node with @oai/artifact-tool (tested bundled runtime 26.909.12148); WORKBOOK_NODE, WORKBOOK_NODE_MODULES, WORKBOOK_PYTHON",
+    "model": "Explicit caller-selected authoring Ask model/profile; no credentials or default model bundled. Optional visual Ask/model selection is independent and needs image/schema/offline-replay support; no new model-quality claim.",
+    "review": "Independent semantic and actual-image review remains necessary. Optional selected check covers only added/changed literal strings on LibreOffice saved-workbook pages; formula results, unchanged/style-only content and native Microsoft Excel behavior need separate review.",
+    "limits": "Macro-free XLSX with bounded ranges. Simple native pivots; existing pivot/cache preservation. No native pivot-layout edits, slicers, Power Query, macros, external connections or unpreservable source features. See EDITING.md.",
+    "optional-visual": "Default off. Complete WORKBOOK_VISUAL_ASK/MODEL/RECORDS selection; selected Ask also handles offline Record verification. AGENT_RECORD or caller PATH selects Record. For nonempty changed-literal scope also explicitly select absolute WORKBOOK_VISUAL_SOFFICE, WORKBOOK_VISUAL_PDFTOPPM, WORKBOOK_VISUAL_CAGE and WORKBOOK_PYTHON (with host-supplied pypdf). Records outside all action write roots. See VISUAL-CHECK.md and VISUAL-CONTEXT.md. No Weigh dependency."
+  },
+  "files": [
+    "workers/excel-workbook-designer/expert/AGENTS.md",
+    "workers/excel-workbook-designer/expert/CONTRACT.md",
+    "workers/excel-workbook-designer/expert/EDITING.md",
+    "workers/excel-workbook-designer/expert/LICENSE",
+    "workers/excel-workbook-designer/expert/PROVENANCE.md",
+    "workers/excel-workbook-designer/expert/README.md",
+    "workers/excel-workbook-designer/expert/VISUAL-CHECK.md",
+    "workers/excel-workbook-designer/expert/VISUAL-CONTEXT.md",
+    "workers/excel-workbook-designer/expert/bin/check",
+    "workers/excel-workbook-designer/expert/lib/build.mjs",
+    "workers/excel-workbook-designer/expert/lib/contract.py",
+    "workers/excel-workbook-designer/expert/lib/dispatch.py",
+    "workers/excel-workbook-designer/expert/lib/edit.mjs",
+    "workers/excel-workbook-designer/expert/lib/edit_contract.py",
+    "workers/excel-workbook-designer/expert/lib/features.mjs",
+    "workers/excel-workbook-designer/expert/lib/features.py",
+    "workers/excel-workbook-designer/expert/lib/metrics.mjs",
+    "workers/excel-workbook-designer/expert/lib/preview.mjs",
+    "workers/excel-workbook-designer/expert/lib/visual_check.py",
+    "workers/excel-workbook-designer/expert/lib/visual_context.py",
+    "workers/excel-workbook-designer/expert/lib/visual_pages.py",
+    "workers/excel-workbook-designer/expert/skills/common-workflows/SKILL.md",
+    "workers/excel-workbook-designer/expert/skills/text-workbooks/SKILL.md",
+    "workers/excel-workbook-designer/expert/skills/workbook-design/SKILL.md",
+    "workers/excel-workbook-designer/expert/skills/workbook-editing/SKILL.md",
+    "workers/excel-workbook-designer/expert/tools/edit-context",
+    "workers/excel-workbook-designer/expert/tools/inspect-workbook",
+    "workers/excel-workbook-designer/expert/tools/prepare-request",
+    "workers/excel-workbook-designer/expert/tools/render",
+    "workers/excel-workbook-designer/expert/tools/visual-context"
+  ]
+}

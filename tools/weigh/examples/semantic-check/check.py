@@ -3,6 +3,7 @@
 
 Example code, not a new Bench runtime. The caller owns the rubric, thresholds,
 model selection, deterministic checks and controller evidence directory.
+The Weigh path additionally requires BENCH_WEIGH=1; it is off by default.
 """
 import argparse
 import hashlib
@@ -245,6 +246,12 @@ def main(argv=None):
                  "rubric_sha256": digest(rubric_raw)}
         if len(encode(state)) > LIMIT:
             raise Broken("combined selected inputs exceed 8 MiB")
+        if args.backend == "weigh":
+            enabled = os.environ.get("BENCH_WEIGH", "")
+            if enabled in ("", "0"):
+                raise Broken("Weigh is disabled; set BENCH_WEIGH=1 to enable this model path")
+            if enabled != "1":
+                raise Broken("BENCH_WEIGH must be 0 or 1 (unset or empty disables Weigh)")
         args.records.mkdir(parents=True, exist_ok=True)
         run = Path(tempfile.mkdtemp(prefix="check-", dir=args.records.resolve()))
         (run / "rubric.json").write_bytes(rubric_raw)

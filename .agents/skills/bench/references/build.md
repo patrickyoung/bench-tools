@@ -10,6 +10,10 @@ For meaning, evidence fidelity or visual quality that deterministic checks
 cannot establish, follow [semantic checks](semantic-checks.md). Give Hire the
 rubric, backend choice, evidence boundary and acceptance policy; Weigh is
 optional, and an Ask-only checker remains a valid composition.
+New Weigh use is off by default. Set `BENCH_WEIGH=1` to let Hire consider it;
+unset, empty or `0` keeps it off. Preserve existing dependencies during unrelated
+revisions. A selected live Weigh path needs its executable, explicit model and
+provider access; enabling the preference supplies none of these.
 
 For choosing a repair from check findings, give Hire an explicit allowed action
 menu, selector model, separately selected repair runner and action limits. Use
@@ -54,6 +58,17 @@ These commands use the selected PATH from setup. Hire invokes the existing
 Agent runner. Its generated `authoring/expert` must be inspected before use:
 `hire verify` validates structure without executing generated verifier code.
 Follow `docs/BUILD-WITH-AN-LLM.md` and `tools/hire/README.md` for a full brief.
+
+For selected Weigh work, have Hire author concrete questions or a fix menu,
+executable caller wiring and task-specific tests. Keep evaluation inputs,
+independent expectations and results outside the expert; their format should
+fit the job.
+Ordinary builds need no Weigh decision file or evaluation package. Inspect and
+exercise selected tests through the existing action boundary, then compare the
+whole path with rules before claiming improvement. Runtime adapters honor the
+opt-in: an unavailable required judgment fails explicitly, never passing the
+candidate or silently switching models. Rules and explicit Ask routes remain
+usable without Weigh.
 
 For direct authoring use `hire new expert 'JOB'`, add its required README and
 finish the instructions and deliberately rejecting scaffold check before

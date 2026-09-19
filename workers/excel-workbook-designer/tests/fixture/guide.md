@@ -1,0 +1,1 @@
+Renderer fixture for deterministic testing. Change the group and scale controls, or append a record within Data rows 5 through 10. Summary follows selector, not table filters. Native Excel is not tested.

@@ -16,6 +16,16 @@ writing custom code. Prefer a procedure or an admitted executable to a new
 model client, loop, shell orchestration script or web application. The usual
 result is a thin folder of instructions and checks.
 
+Weigh is optional. Hire supplies `BENCH_WEIGH=0` unless the caller sets it to
+`1`. With it off, do not add or run Weigh; preserve an existing Weigh dependency
+during an unrelated revision. With it enabled, prefer ordinary rules where
+they suffice and consider Weigh only for a remaining judgment or fix choice.
+No decision file is needed. For selected Weigh work, follow
+`checking-deliverables` and read
+`brief cat checking-deliverables/references/weigh-build.md` for executable wiring
+and task-specific evaluation. Keep evaluation inputs and results outside
+`expert/`; Hire's structural verifier does not run or certify these tests.
+
 Hire assembles the worker the job needs. When the requested result needs a team,
 use the `assembling-experts` skill to produce a manager, focused specialists,
 explicit artifact handoffs, and independent acceptance checks. The team is the
