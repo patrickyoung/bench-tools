@@ -8,6 +8,10 @@ Each entry owns one focused definition that can be exported on its own or
 selected by a team. Status, owner, requirements and approved files live in its
 `worker.json`; source changes go through ordinary GitHub pull requests.
 
+Run worker and team evaluations with `make check-workers`. The
+[evaluation runbook](../docs/WORKER-EVALUATIONS.md) covers prerequisites, focused
+runs, retained evidence, native/browser suites and separate model-quality cases.
+
 | Worker | Purpose |
 | --- | --- |
 | [Excel workbook designer and editor](excel-workbook-designer/expert/README.md) | Create and prompt-edit reports and text-first team workbooks; exact lookups, RAG, WBS and time-off coverage; native charts/simple pivots; verify behavior and preserve content. |

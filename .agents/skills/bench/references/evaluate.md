@@ -9,6 +9,13 @@ separate from held-out evidence, and include fresh matched final-output review.
 
 ## Before model runs
 
+For the reusable library, start with `docs/WORKER-EVALUATIONS.md` in the selected
+checkout. `make check-workers` runs the cataloged offline suites; use
+`python3 scripts/check-worker-evaluations.py --list --profile all` to inspect
+coverage and prerequisites. The runner retains exact current source, command
+logs and verdicts outside the library. Quality case plans are separately
+generated with `--quality-plan /absolute/new/directory`; they make no model calls.
+
 Inspect generated code and run its deterministic checks in a disposable
 workspace. Try a known acceptable artifact and deliberate counterexamples:
 missing output, wrong values, stale input bindings, and the failures specific

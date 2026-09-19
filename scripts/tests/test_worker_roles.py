@@ -136,6 +136,82 @@ class IndependentRoles(unittest.TestCase):
         self.check(data=json.dumps(proposal).encode(), accept=False)
         self.assertFalse((self.work / 'handoff.json').exists())
 
+    def test_canvas_rejects_invalid_javascript_even_with_a_fresh_handoff(self):
+        self.select('canvas-artist')
+        self.write('visual.js', 'globalThis.fixture = true;\n')
+        self.write('visual.css', ':root { color: black; }')
+        self.write('fallback.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        self.write('visual-notes.md', 'Synthetic source contract fixture.')
+        self.handoff('visual-artist')
+        self.check()
+        self.write('visual.js', 'const broken = ;')
+        self.handoff('visual-artist')
+        self.check(accept=False)
+        self.write('visual.js', 'globalThis.fixture = true;\n')
+        (self.work / 'output/fallback.svg').unlink()
+        self.handoff('visual-artist')
+        self.check(accept=False)
+
+    def test_blender_rejects_each_bad_signature_with_refreshed_hashes(self):
+        self.select('blender-artist')
+        files = {'asset.blend': b'BLENDER' + b'0' * 40,
+                 'preview.png': b'\x89PNG\r\n\x1a\n' + b'0' * 40,
+                 'asset.glb': b'glTF' + b'0' * 40,
+                 'build_asset.py': b'# synthetic checker fixture only\n' * 2}
+        for name, data in files.items():
+            self.write(name, data)
+        self.handoff('blender')
+        self.check()
+        for name in ('asset.blend', 'preview.png', 'asset.glb'):
+            with self.subTest(file=name):
+                self.write(name, b'not a native container' * 4)
+                self.handoff('blender')
+                self.check(accept=False)
+                self.write(name, files[name])
+        self.handoff('blender')
+        self.check()
+        (self.work / 'handoff.json').unlink()
+        self.check(accept=False)
+
+    def test_image_editor_rejects_bad_master_missing_originals_and_ambiguous_export(self):
+        self.select('image-editor')
+        master = b'gimp xcf ' + b'0' * 40
+        self.write('composite.xcf', master)
+        self.write('composite.png', b'\x89PNG\r\n\x1a\n' + b'0' * 40)
+        self.write('finish.py', '# synthetic checker fixture only\n')
+        self.write('finish-notes.md', 'Synthetic signatures; not a native art evaluation.')
+        original = self.write('originals/input.txt', 'Explicit fixture input')
+        self.handoff('gimp')
+        self.check()
+        self.write('composite.xcf', b'not an XCF container' * 4)
+        self.handoff('gimp')
+        self.check(accept=False)
+        self.write('composite.xcf', master)
+        original.unlink()
+        self.handoff('gimp')
+        self.check(accept=False)
+        self.write('originals/input.txt', 'Explicit fixture input')
+        self.write('composite.webp', b'second ambiguous export' * 4)
+        self.handoff('gimp')
+        self.check(accept=False)
+
+    def test_review_requires_each_dimension_after_fresh_handoff(self):
+        self.select('page-reviewer')
+        review = {key: [] for key in ('structural', 'functional', 'visual', 'responsive',
+                                     'accessibility', 'provenance', 'limitations')}
+        self.write('review.md', 'Synthetic observation fixture; no visual inspection claimed.')
+        for verdict in ('pass', 'revise'):
+            self.write('review.json', json.dumps(dict(review, verdict=verdict)))
+            self.handoff('review')
+            self.check()
+        for dimension in review:
+            with self.subTest(dimension=dimension):
+                bad = dict(review, verdict='pass')
+                bad.pop(dimension)
+                self.write('review.json', json.dumps(bad))
+                self.handoff('review')
+                self.check(accept=False)
+
 
 if __name__ == '__main__':
     unittest.main()

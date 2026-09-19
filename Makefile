@@ -4,8 +4,10 @@
 PYTHON ?= python3
 TOOLS ?=
 PREFIX ?= $(HOME)/.local
+EVAL_PYTHON ?= $(PYTHON)
+EVAL_ARGS ?=
 
-.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers install uninstall list
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -15,6 +17,7 @@ help:
 	@echo 'make check-examples        Build starter tools and run offline examples'
 	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
 	@echo 'make check-worker-portability Verify worker skill exports and original checks'
+	@echo 'make check-workers         Run worker/team offline evaluations (see docs/WORKER-EVALUATIONS.md)'
 	@echo 'make install               Build and install under ~/.local'
 	@echo 'make uninstall             Remove verified installs made here'
 	@echo 'make list                  List components and public commands'
@@ -48,6 +51,9 @@ check-harnesses:
 check-worker-portability:
 	@$(PYTHON) scripts/build brief
 	@$(PYTHON) scripts/check-worker-portability.py --bin-dir .build/bin
+
+check-workers:
+	@$(PYTHON) scripts/check-worker-evaluations.py --python "$(EVAL_PYTHON)" $(EVAL_ARGS)
 
 install:
 	@$(PYTHON) scripts/install $(TOOLS) --prefix "$(PREFIX)"
