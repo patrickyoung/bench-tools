@@ -70,7 +70,7 @@ Hire builds the definition; Agent runs it with those companions. Add `cite`
 for the [support-reply starter](../examples/support-reply/README.md). Python
 runs the source installer, not Hire or Agent: both commands are native Go.
 
-Without names, the installer builds and installs all 24 commands:
+Without names, the source installer builds and installs all 25 commands:
 
 ```sh
 python3 scripts/install
@@ -100,11 +100,12 @@ The equivalent Make commands are `make install`, or
 ### Install published Linux packages without Go
 
 The pinned release includes all 20 components and their 24 public commands,
-including OAuth, MCP, A2A and Draft. Select any components, or omit names for all:
+including OAuth, MCP, A2A and Draft. Select components whose source still matches
+that release; the newer optional Weigh component requires a source build:
 
 ```sh
 python3 scripts/install oauth --from-release --prefix "$HOME/.local/share/bench/runtime"
-python3 scripts/install --from-release --prefix "$HOME/bench-all"
+python3 scripts/install oauth mcp a2a --from-release --prefix "$HOME/bench-edges"
 ```
 
 `--from-release` downloads the pinned archive, verifies its contents and source
@@ -114,6 +115,22 @@ no matching Linux package exists, or verification fails; it never switches to
 compilation. Omit the flag for a source build. Macs retain source builds.
 The default `scripts/setup` still selects its nine builder tools from this
 complete release; package availability does not require installing every tool.
+
+### Optional typed judgments
+
+Weigh is a new optional component and is not part of the pinned 20-component
+Linux release above or the default nine-tool setup. Build it from the selected
+source checkout when a checker explicitly needs it:
+
+```sh
+python3 scripts/install weigh
+```
+
+Installing it makes no model call. Using its OpenRouter Decisions backend needs
+separately supplied OpenRouter access and an explicit model. Existing checks can
+continue to use Ask or deterministic programs. The [Weigh guide](../tools/weigh/README.md)
+and [checker example](../tools/weigh/examples/semantic-check/README.md) document
+backend selection; missing access never means that a check passed.
 
 ## Deploy only the runtime
 

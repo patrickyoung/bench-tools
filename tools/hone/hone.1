@@ -1,4 +1,4 @@
-.TH HONE 1 "2026-08-27" "hone 0.2.0" "General Commands Manual"
+.TH HONE 1 "2026-09-18" "hone 0.3.0" "General Commands Manual"
 .SH NAME
 hone \- read a run a program judged, write down what it teaches
 .SH SYNOPSIS
@@ -81,6 +81,24 @@ logs is learning from unlabelled ones, and the difference is not small: in
 published comparisons, skills distilled from verified trajectories are worth
 roughly an order of magnitude more than skills distilled from unverified
 ones.
+.SS Content repairs
+Content-only recovery requires two complete assistant candidates with
+.B ply.verifier/v2
+receipts: rejected, then changed and accepted. Ask replay verification is
+mandatory for this path. Hone checks the exact normalized verifier stdin
+against each candidate digest, and checks complete output bytes against the
+recorded output digest and byte count. It retains both inputs and outputs.
+.PP
+The recorded command, interpreter, verifier digest, directory, timeout and
+optional contract identity must agree. Their equality does not hash the
+checker executable, rubric, environment or transitive files; callers retain
+and review those dependencies separately. Candidate text and check output
+are evidence, not instructions to the wording model.
+.PP
+Unchanged answers, partial responses, broken checks, malformed bindings and
+version 1 receipts cannot supply content recovery. Empty initial pre-check
+stdin does not identify a rejected candidate loaded privately by a checker.
+Do not invent missing candidate evidence after the run.
 .SS No store
 A lesson is a skill,
 .BR brief (1)
@@ -212,9 +230,9 @@ The session directory.
 .B \-no-verify
 Skip
 .B ask replay \-check
-on a session before reading it. The check is on by default because a log
-that does not replay is not a record of what happened, and so is not
-evidence of anything.
+for the existing command recovery path. Content recovery still requires
+verification. Replay is on by default because damaged records cannot
+establish what happened.
 .TP
 .B \-q
 No progress on standard error.

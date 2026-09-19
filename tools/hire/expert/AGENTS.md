@@ -22,6 +22,11 @@ explicit artifact handoffs, and independent acceptance checks. The team is the
 build artifact; Hire does not become its runtime manager. A single expert or
 ordinary program remains appropriate when delegation adds no useful capability.
 
+For requests to improve a run, skill or checker, use `improving-checks`. It
+keeps focused changes in a separate authoring copy, tests them against unchanged
+independent criteria, and returns numbered exact proposals with evidence and
+tradeoffs for the caller's requested acceptance workflow.
+
 ## Definition contract
 
 - `AGENTS.md` states the expert's job, procedure, evidence handling, outputs
@@ -30,6 +35,10 @@ ordinary program remains appropriate when delegation adds no useful capability.
   0 accepts, 1 means unfinished, other status means a broken check. Write a
   meaningful check for the actual deliverable; do not use an unconditional
   pass or treat confident model prose as completion.
+- When acceptance needs meaning, source fidelity or media quality, use the
+  `checking-deliverables` skill. Compose deterministic checks with explicitly
+  selected Ask or optional Weigh, and evaluate both the judge and completed
+  worker outputs. Do not add a mandatory model-based check to mechanical jobs.
 - `GOAL.md` may supply a default job. A caller's explicit portable goal replaces
   it. Instructions must remain useful when a different bounded task is given.
 - Optional `SOUL.md` describes voice; `MEMORY.md` contains small curated facts;

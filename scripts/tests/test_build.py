@@ -213,6 +213,86 @@ class BuildWorkflowTests(unittest.TestCase):
         self.assertNotIn("bin/agent-action-shell", {entry["path"] for entry in agent_receipt["files"]})
         self.assertEqual(agent_receipt["commands"], ["agent"])
 
+    def test_weigh_examples_survive_build_install_and_relocation(self):
+        # Package the real leaf: its visual wrapper imports a sibling module,
+        # and its checker must remain executable when composed by literal argv.
+        leaf = self.root / "tools/weigh"
+        shutil.copytree(ROOT / "tools/weigh", leaf,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
+        self.components.append({"name": "weigh", "path": "tools/weigh",
+                                "module": "github.com/patrickyoung/weigh",
+                                "source": {"commit": "original-fixture"},
+                                "commands": [{"name": "weigh", "package": "."}]})
+        (self.root / "components.json").write_text(json.dumps({"schema": 1, "components": self.components}))
+        examples = leaf / "examples"
+        expected = {"examples/" + name: value for name, value in snapshot(examples).items()
+                    if value[0] == "file"}
+        cache = examples / "visual-check/__pycache__"
+        cache.mkdir()
+        (cache / "visual_contract.cpython-314.pyc").write_bytes(b"stale cache")
+        (examples / "semantic-check/check.pyc").write_bytes(b"stale bytecode")
+        (examples / "semantic-check/check.pyo").write_bytes(b"stale optimized bytecode")
+        self.build("weigh")
+        relocated_build = self.base / "build moved with spaces"
+        self.output.rename(relocated_build)
+        package = relocated_build / "tools/weigh"
+        receipt = json.loads((package / "package.json").read_text())
+        payload = {entry["path"]: entry for entry in receipt["files"]
+                   if entry["path"].startswith("examples/")}
+        self.assertEqual(set(payload), set(expected))
+        for name, (_, mode, data) in expected.items():
+            self.assertEqual((package / name).read_bytes(), data)
+            self.assertEqual(payload[name]["sha256"], hashlib.sha256(data).hexdigest())
+            self.assertEqual(payload[name]["mode"], mode)
+        self.assertFalse((package / "examples/visual-check/__pycache__").exists())
+        self.assertEqual(receipt["commands"], ["weigh"])
+
+        for name in ("install", "uninstall", "install_support.py"):
+            shutil.copy2(ROOT / "scripts" / name, self.root / "scripts" / name)
+        prefix = self.base / "installed prefix"
+        result = subprocess.run([sys.executable, str(self.root / "scripts/install"), "weigh",
+                                 "--from-build", str(relocated_build), "--prefix", str(prefix)],
+                                env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        relocated = self.base / "installed and moved with spaces"
+        prefix.rename(relocated)
+        # Remove both original payload sources: no runtime path may reach back.
+        shutil.rmtree(leaf)
+        shutil.rmtree(relocated_build)
+        installed = relocated / "lib/bench-tools/weigh"
+        actual = {"examples/" + name: value for name, value in snapshot(installed / "examples").items()
+                  if value[0] == "file"}
+        self.assertEqual(actual, expected)
+        self.assertEqual(sorted(p.name for p in (relocated / "bin").iterdir()), ["weigh"])
+        home, work = self.base / "weigh-home", self.base / "weigh-work"
+        home.mkdir(); work.mkdir()
+        python_bin = self.base / "python-bin"
+        python_bin.mkdir()
+        (python_bin / "python3").symlink_to(Path(sys.executable).resolve())
+        env = {"PATH": str(python_bin) + ":/usr/bin:/bin:/usr/sbin:/sbin",
+               "HOME": str(home), "TMPDIR": str(self.base), "PYTHONDONTWRITEBYTECODE": "1"}
+        commands = [[str(relocated / "bin/weigh"), "version"]]
+        for entry in ("semantic-check/check.py", "semantic-check/evaluate.py",
+                      "visual-check/check-current.py", "visual-check/observe.py"):
+            path = installed / "examples" / entry
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)
+            commands.append([str(path), "--help"])
+        # The packaged tests select only local executable fixtures; running
+        # them after relocation proves the usable recipe, not provider quality.
+        for directory in ("semantic-check", "visual-check"):
+            commands.append([sys.executable, "-m", "unittest", "discover", "-s",
+                             str(installed / "examples" / directory), "-p", "test_*.py"])
+        for command in commands:
+            with self.subTest(command=command):
+                result = subprocess.run(command, cwd=work, env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual({"examples/" + name: value for name, value in
+                          snapshot(installed / "examples").items() if value[0] == "file"}, expected)
+        result = subprocess.run([sys.executable, str(self.root / "scripts/uninstall"), "weigh",
+                                 "--prefix", str(relocated)], env=env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(installed.exists())
+
     def test_nonempty_unmanaged_output_is_untouched(self):
         self.output.mkdir()
         (self.output / "valuable.txt").write_text("keep this\n")

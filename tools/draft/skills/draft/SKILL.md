@@ -89,6 +89,21 @@ another nonzero status for infrastructure failure. A bare `ask | grep` can
 hide Ask's failure behind grep's ordinary no-match status. A model-based
 checker also needs evaluation; calling it a program does not make it infallible.
 
+For bounded typed judgments, an explicitly selected checker may instead call
+optional `weigh`; read its installed help for the request contract. Weigh's
+successful inference is not acceptance. Keep deterministic checks first and
+apply a fixed per-criterion policy with meaningful rejection feedback. Preserve
+insufficient evidence and operational failure separately; do not average away
+hard failures, silently fall back to paid calls, or lower thresholds to pass.
+Protect rubric/model selection and exact candidate/input snapshots from worker
+writes. Retain observations through existing process records. Jev currently
+accepts text: visual claims need actual rendered-image review by a vision-capable
+model or person, not the generation prompt. A later typed judgment cannot add
+missing perception. Evaluate false passes/rejections and fresh completed-output
+quality against independent labels, with total time/cost including repairs and
+fallback. Keep live model trials separate from offline fixtures. Ask-only checks
+remain useful; no new dependency belongs in every design.
+
 The check runs **before** the first model turn. A passing pre-check avoids
 that model call. The check itself may still take time or call a service.
 Scheduled use needs a check that detects whether current inputs require work;

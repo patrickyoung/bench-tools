@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Find, build, teach, improve, evaluate, export and run reusable Bench workers and teams. Use when asked to teach a worker, learn from a Bench run, remember knowledge for a worker, assemble experts, port workers to another harness, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
+description: Find, build, teach, improve, evaluate, export and run reusable Bench workers and teams. Use when asked to teach a worker, improve a run or its checks, learn from a Bench run, remember knowledge for a worker, assemble experts, port workers to another harness, maintain their library or set up a harness. Uses existing Unix commands and optional MCP/A2A connections.
 license: MIT
 ---
 
@@ -35,11 +35,17 @@ Discovery and committed source export require no model call.
 | --- | --- |
 | Find a worker, choose a team, reuse source, change membership or lifecycle | [Library](references/library.md) |
 | Create missing expertise or adapt a definition/team | [Build](references/build.md), then [evaluate](references/evaluate.md) |
+| Improve this run, propose better checks or skills, calibrate or retire a check | [Test and review improvements](references/improve.md) |
 | Teach a worker, learn from a run, correct its method or remember a fact for it | [Teach and learn](references/learn.md), then [evaluate](references/evaluate.md) |
 | Run, resume, inspect results or expose a command | [Operate](references/operate.md) |
 | Set this harness up | [Setup](references/setup.md), then the host reference below |
 | Connect or expose a tool through MCP | [MCP](references/mcp.md) |
 | A lower-level capability is missing | [Tool map](references/tools.md), then the selected command's manual |
+
+When authoring or improving a deliverable check that needs judgment beyond
+structure or arithmetic, read [semantic checks](references/semantic-checks.md).
+It covers optional Weigh or Ask composition, actual visual evidence, and how to
+measure whether the check improves completed work.
 
 Use a suitable unchanged export directly. Use Hire for changes that need
 expertise or wiring authored. A request for a working model-backed solution

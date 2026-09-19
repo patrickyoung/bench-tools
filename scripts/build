@@ -66,6 +66,9 @@ def copy_payload(source, package, component):
             shutil.copy2(source / entry, target)
         if name == "draft":
             shutil.copytree(source / "skills/draft", package / "skills/draft")
+    if name == "weigh":
+        shutil.copytree(source / "examples", package / "examples",
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
     for path in sorted(source.iterdir()):
         if path.is_file() and (path.name == "LICENSE" or path.suffix in (".md", ".1")):
             shutil.copy2(path, package / path.name)

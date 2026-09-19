@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 24 commands under .build/bin
+scripts/build                              # all 25 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
@@ -30,6 +30,14 @@ python3 scripts/check-harnesses.py --host-clis          # optional installed Cod
 python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
 python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
 ```
+
+`check-weigh.py --bin-dir DIR` exercises public Weigh/Ask/Record judgments,
+optional diagnosis, and Ply checking against loopback fixtures.
+`check-hone-content.py --bin-dir DIR` exercises real Ask/Ply content receipts,
+Hone's proposal lifecycle, stale evidence and unchanged verdict refusals.
+Both run inside process integration. Weigh's standalone checks also run the
+calibration and exact proposal-review example tests. These establish protocol
+behavior, not hosted-model accuracy or learned output quality.
 
 `setup` composes the existing installer for Hire, Agent and their builder
 companions. It defaults to `~/.local/share/bench/runtime` and writes

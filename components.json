@@ -339,6 +339,23 @@
           "package": "."
         }
       ]
+    },
+    {
+      "name": "weigh",
+      "path": "tools/weigh",
+      "module": "github.com/patrickyoung/weigh",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "weigh",
+          "package": "."
+        }
+      ]
     }
   ]
 }

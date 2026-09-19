@@ -98,6 +98,11 @@ type session struct {
 	Script   []string // every typescript the run produced, in order
 	Notes    []noteData
 	Receipts []verifierReceipt
+
+	verified        bool // Ask replay checked this source before content eligibility
+	candidate       string
+	rejectedContent *checkedContent
+	contentRepair   *contentRecovery
 }
 
 // These are Ply's human-readable boundaries around the failed pre-check it
@@ -167,7 +172,8 @@ func readSession(path string) (*session, error) {
 			return nil, rerr
 		}
 		if atEOF && len(line) > 0 {
-			break // no terminating newline means Ask never completed the event
+			s.resetContent() // unfinished bytes cannot complete a content repair
+			break            // no terminating newline means Ask never completed the event
 		}
 		if len(bytes.TrimSpace(line)) > 0 {
 			var e event
@@ -201,6 +207,8 @@ func (s *session) add(e event, first *bool) error {
 		s.ID, s.Model = h.ID, h.Model
 		s.Check = checkOf(h.System)
 	case kUser:
+		s.candidate = ""
+		s.contentRepair = nil
 		var u userData
 		if err := json.Unmarshal(e.Data, &u); err != nil {
 			return fmt.Errorf("%s: user event %d: %w", s.Path, e.Seq, err)
@@ -225,10 +233,12 @@ func (s *session) add(e event, first *bool) error {
 		if err := json.Unmarshal(e.Data, &t); err != nil {
 			return fmt.Errorf("%s: assistant event %d: %w", s.Path, e.Seq, err)
 		}
-		// A partial turn was interrupted mid-stream and never happened as
-		// far as the conversation is concerned. ask excludes it from the
-		// fold; excluding it here is the same statement.
-		_ = t
+		s.contentRepair = nil
+		var complete bool
+		s.candidate, complete = candidateInput(t)
+		if !complete {
+			s.resetContent()
+		}
 	case kNote:
 		var n noteData
 		if err := json.Unmarshal(e.Data, &n); err != nil {
@@ -243,10 +253,13 @@ func (s *session) add(e event, first *bool) error {
 			if !receipt.validOutcome() {
 				return fmt.Errorf("%s: verifier receipt event %d: invalid outcome %q for observed execution", s.Path, e.Seq, receipt.Outcome)
 			}
+			s.contentVerdict(n)
 			s.Receipts = append(s.Receipts, receipt)
 			if receipt.Verifier != "" {
 				s.Check = receipt.Verifier
 			}
+		} else if n.Source == "ply" && (strings.Contains(n.Text, passedMark) || strings.Contains(n.Text, failedMark)) {
+			s.resetContent()
 		}
 	}
 	return nil

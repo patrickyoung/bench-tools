@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **20 components and 24 public commands**. MCP supplies
+This guide covers all **21 components and 25 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -20,9 +20,23 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Build the expert's instructions, skills, and check | **Hire** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
+| Evaluate explicit semantic criteria with typed probabilities | Optional **[Weigh](../tools/weigh/README.md)**; the calling check owns acceptance |
+| Test changes to a skill, check or threshold, then choose what to apply | [Improvement workflow](../.agents/skills/bench/references/improve.md) using existing programs |
 
 Stdout is the usable output stream; stderr carries diagnostics; the exit status
 is the numeric outcome. [How it works](HOW-IT-WORKS.md) explains these interfaces.
+
+Weigh is an optional independent filter for OpenRouter's Decisions API. Existing
+Ask-based and deterministic checks keep working without it. It reads supplied
+state and choice, score or probability questions; it does not run a check or
+choose acceptance thresholds. See the [semantic checker example](../tools/weigh/examples/semantic-check/README.md)
+for explicit Ask-only and Weigh paths, recording and quality evaluation, and the
+[visual example](../tools/weigh/examples/visual-check/README.md) for actual image
+observations before text judgments. Jev currently has no image perception.
+The [improvement example](../tools/weigh/examples/improve-checks/README.md)
+composes optional diagnosis, offline calibration and exact proposal review.
+Teacher and runner are caller-selected model roles; Weigh can judge supplied
+criteria or suggest an investigation, while independent tests establish gains.
 
 ## Ask, Ply, Agent, and Hire: answer, work, run, or build?
 
@@ -188,6 +202,9 @@ lesson and writes a proposal, leaving the skill unchanged. After reviewing
 the exact text, `hone admit lesson.json` writes it as a Brief skill change.
 A clean first attempt, unfinished run, or missing verifier verdict can yield
 “nothing to learn.” Hone does not silently learn from every conversation.
+Hone 0.3.0 also recognizes changed text candidates bound to complete Ply v2
+rejection/acceptance receipts. An empty precheck or unchanged verdict flip does
+not establish that recovery. See its manual for the observed identity limits.
 
 ## Action, May, Cage, and Trail: permission, limits, and evidence
 

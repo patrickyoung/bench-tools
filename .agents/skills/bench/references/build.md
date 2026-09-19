@@ -6,6 +6,19 @@ sample files; ask only when a missing decision changes the result or authority.
 Turn vague quality words into examples, mechanical checks, or an explicit
 review rubric. Do not invent policy or expected facts.
 
+For meaning, evidence fidelity or visual quality that deterministic checks
+cannot establish, follow [semantic checks](semantic-checks.md). Give Hire the
+rubric, backend choice, evidence boundary and acceptance policy; Weigh is
+optional, and an Ask-only checker remains a valid composition.
+
+For choosing a repair from check findings, give Hire an explicit allowed action
+menu, selector model, separately selected repair runner and action limits. Use
+rules for established mechanical fixes and optional `select-fix.py` from
+`tools/weigh/examples/improve-checks/` for semantic choices. The caller dispatches
+the selected ID through existing commands and always runs its independent final
+check, including when no change was selected. See [improve](improve.md) for the
+snapshot contract, evidence and evaluation; this adds no worker-specific loop.
+
 ## Find or assemble first
 
 Follow [library discovery](library.md) before writing a new definition. Select

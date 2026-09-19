@@ -66,7 +66,7 @@ func TestTheGate(t *testing.T) {
 			name:    "passed, but nothing ever failed",
 			b:       build{script: []string{"$ go test ./...\nok\n"}, notes: []noteData{passedNote()}},
 			teaches: false,
-			because: "nothing ever failed",
+			because: "no supported recovery pair",
 		},
 		{
 			name:    "failed, then passed",

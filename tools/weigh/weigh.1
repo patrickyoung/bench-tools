@@ -1,0 +1,122 @@
+.TH WEIGH 1 "September 2026" "weigh 0.1.0" "User Commands"
+.SH NAME
+weigh \- obtain typed judgments and native probabilities
+.SH SYNOPSIS
+.B weigh \-m openrouter/MODEL
+.RI [ options ]
+.br
+.B weigh help
+.br
+.B weigh version
+.SH DESCRIPTION
+Weigh reads one versioned JSON request from standard input through EOF,
+makes one native OpenRouter Decisions request, validates the entire response,
+and writes one JSON result followed by a newline to standard output.
+Diagnostics use standard error. Weigh applies no thresholds or actions.
+.SH OPTIONS
+.TP
+.BI \-m " MODEL"
+Required explicit model with the prefix openrouter/.
+The remaining name is sent verbatim, including an initial tilde.
+For example, openrouter/~typesafe/jev-latest.
+.TP
+.BI \-timeout " DURATION"
+Positive duration covering input, authorization reads, and inference.
+Default 30s. SIGINT and SIGTERM cancel outstanding work and return status 1.
+.TP
+.BI \-endpoint " URL"
+Full endpoint URL. Default https://openrouter.ai/api/alpha/decisions.
+HTTPS is required; HTTP is allowed only for literal loopback IP addresses.
+URL credentials, queries, and fragments are refused. Redirects are refused.
+.TP
+.BI \-header-fd " N"
+Read one Authorization header through EOF from descriptor N, at least 3.
+The header is bounded at 8192 bytes; a final LF or CRLF is allowed.
+This selection takes precedence over OPENROUTER_API_KEY without fallback.
+.SH INPUT
+Exactly one object with fields version, state, and questions.
+Version must be the integer 1. State must be a JSON string, object, or array.
+Nested numeric literals retain precision. Questions is a nonempty object of
+named questions. IDs are at most 256 UTF-8 bytes, nonempty, without controls.
+.TP
+.B choice
+Fields: type (choice), question (nonempty text), options (an object mapping
+2 to 255 option IDs to nonempty text descriptions).
+.TP
+.B score
+Fields: type (score), question (nonempty text), levels (an ordered array of
+2 to 10 nonempty text descriptions). Positions start at zero.
+.TP
+.B probability
+Fields: type (probability), question (nonempty proposition or question text).
+.PP
+Question IDs identify answers; meanings belong in the descriptions.
+All questions share state but do not consume one another's answers.
+The provider mapping uses instructions for question, criteria for options or
+levels, and noul for probability. Unknown fields, duplicate decoded keys,
+invalid UTF-8 or unmatched surrogate escapes, and trailing documents fail.
+.SH OUTPUT
+Fields: version (1), model (requested and reported names), answers, and
+optional metadata. Each answer has type and value. Choice values are option
+IDs; score values are fractional positions; probability values are in [0,1].
+Choice and score answers include complete native probabilities objects.
+Score distribution keys are zero-based level indices written as strings.
+.PP
+Probabilities must be finite, in [0,1], cover exactly the requested support,
+and have positive total reported mass. For observed hundredth rounding,
+exact multiples of 0.01 get interpretation intervals of plus or minus 0.005,
+clipped to the allowed range. More precise values get no rounding allowance.
+Probability intervals must permit a normalized distribution. A score must
+be in range and its interval must intersect that distribution's possible
+weighted means. Comparisons use 1e-6 absolute numerical slack.
+This is an empirical compatibility policy, not a provider precision guarantee;
+all native numbers are preserved without rounding or renormalization.
+A supplied score legend must match the requested levels.
+Missing distributions fail; they are never filled, normalized, or invented.
+.PP
+Optional metadata preserves service-reported request_id, provider, usage
+(input_tokens, output_tokens, optional cost), and confidence by question ID.
+Unknown native response fields fail explicitly. Missing metadata stays absent.
+Confidence is provider metadata, not a universal probability of correctness.
+The reported model name does not establish immutable model weights.
+.SH LIMITS
+Input and response: 8 MiB each. JSON nesting: 64 containers.
+Questions: 1024. IDs: 256 UTF-8 bytes. Authorization header: 8192 bytes.
+Response headers: 64 KiB. Excess data is refused, not truncated.
+.SH ENVIRONMENT
+.TP
+.B OPENROUTER_API_KEY
+Bearer credential, unless an authorization descriptor is explicitly selected.
+No credential acquisition, storage, or refresh is performed.
+.PP
+Standard Go HTTP proxy environment behavior applies to the transport.
+No configuration file, default model, or session directory is read.
+.SH EXIT STATUS
+.TP
+.B 0
+One valid inference, including negative or uncertain judgments.
+This does not mean a candidate passed a task-specific check.
+.TP
+.B 1
+Runtime, credential, service, protocol, timeout, cancellation, or output error.
+.TP
+.B 2
+Invalid invocation or locally invalid request. No inference was attempted.
+.SH COMPOSITION
+Record may capture the input, output, diagnostics, and exit status externally.
+Its replay makes no model call. Callers own thresholds, fallback, retries,
+acceptance, and actions. A Ply checker must map Weigh failures to its own
+broken-check status, not pass exit 1 through as ordinary candidate rejection.
+.PP
+All response validation precedes output. A write error may leave partial bytes;
+consumers must check status. Error bodies and private input are not printed.
+At most one inference request is made; redirects and retries are disabled.
+A timeout does not prove that no work or billing occurred at the service.
+.SH COMPATIBILITY
+The backend uses OpenRouter's alpha Decisions protocol, not Chat Completions.
+Offline fixtures verify protocol and process behavior. Live compatibility and
+judgment accuracy require a separate explicitly selected evaluation.
+The backend schema permits omitted distributions; Weigh deliberately refuses
+such responses instead of silently weakening its public contract.
+.SH SEE ALSO
+README.md, DESIGN.md, AGENTS.md, examples/semantic-check/README.md

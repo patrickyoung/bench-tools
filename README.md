@@ -49,6 +49,7 @@ Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-
 | See the available specialties | [Worker catalog](workers/README.md) |
 | Select a ready assembly | [Team catalog and recipes](teams/README.md) |
 | Add, improve, version or retire reusable source | [Library and GitHub guide](docs/WORKER-LIBRARY.md) |
+| Inspect a run, test improvements and choose what to apply | [Improve and review](.agents/skills/bench/references/improve.md) |
 | Call or expose a worker on another machine | [Optional A2A](tools/a2a/README.md) |
 
 For a harness, start with a request like:
@@ -144,7 +145,7 @@ authentication. Local use needs neither. See [A2A](tools/a2a/README.md).
 | [Runnable starters](examples/README.md) | Explicit practice inputs and executable examples |
 | [Recipes](docs/RECIPES.md) | Small compositions of existing tools |
 | [How it works](docs/HOW-IT-WORKS.md) | Model, loop, check and durable job responsibilities |
-| [Tool reference](docs/TOOLS.md) | All 20 components and 24 public commands |
+| [Tool reference](docs/TOOLS.md) | All 21 components and 25 public commands |
 | [Installation](docs/INSTALL.md) | Selected tools, updates and removal |
 | [Source and releases](docs/RELEASES.md) | Pinning a reproducible toolset |
 
@@ -161,7 +162,7 @@ content outside source. Review changes with GitHub pull requests.
 For toolkit development, from the checkout:
 
 ```sh
-make build                    # all 24 commands in .build/bin
+make build                    # all 25 commands in .build/bin
 make test                     # ordinary checks, no paid model calls
 make check                    # standalone and process integration checks
 ```

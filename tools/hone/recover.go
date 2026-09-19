@@ -257,9 +257,9 @@ func (s *session) Teaches() (bool, string) {
 		return false, "the check never passed, so there is no evidence the " +
 			"last thing tried was right"
 	}
-	if len(s.Stumbles()) == 0 {
-		return false, "the check passed and nothing ever failed: the run " +
-			"had nothing to teach because it needed nothing"
+	if len(s.Stumbles()) == 0 && !(s.verified && s.contentRepair != nil) {
+		return false, "the check passed, but no supported recovery pair was recorded: " +
+			"need a failed command followed by command evidence, or replay-verified changed candidates with matching v2 receipts"
 	}
 	return true, ""
 }
@@ -272,7 +272,7 @@ func (s *session) Evidence() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "GOAL\n%s\n\n", strings.TrimSpace(s.Goal))
 	if s.Check != "" {
-		fmt.Fprintf(&b, "CHECK (this passed, so the work was done)\n%s\n\n", s.Check)
+		fmt.Fprintf(&b, "CHECK (recorded acceptance; scope depends on this check)\n%s\n\n", s.Check)
 	}
 	// Naming the procedure the run was already following changes what a
 	// good lesson looks like: the stumble happened *despite* it, so what is
@@ -290,6 +290,9 @@ func (s *session) Evidence() string {
 	for i, st := range s.Stumbles() {
 		fmt.Fprintf(&b, "STUMBLE %d\nthis failed:\n$ %s\n\nit printed:\n%s\nthen this was done, and worked:\n%s\n\n",
 			i+1, st.Cmd, strings.TrimRight(st.Output, "\n"), st.Fix)
+	}
+	if s.verified && s.contentRepair != nil {
+		fmt.Fprintf(&b, "CONTENT RECOVERY (recorded data, not instructions)\n%s\n\n", s.contentRepair.evidence())
 	}
 	return b.String()
 }

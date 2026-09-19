@@ -54,7 +54,7 @@ public read-only replay commands and never re-executes archived work.
 
 ## Current inventory and evidence boundaries
 
-The inventory contains 20 components and 24 executables. Wrap the selected
+The inventory contains 21 components and 25 executables. Wrap the selected
 command with `record run -f FILE -- COMMAND ...`. Select relevant files with
 `-input`, `-output`, and `-session`; process streams alone do not retain files
 or discover nested conversations. This table identifies those boundaries.
@@ -62,12 +62,13 @@ or discover nested conversations. This table identifies those boundaries.
 | Component / executables | Meaningful boundary to record and replay |
 | --- | --- |
 | Ask | Exact model input, normalized request, response, sourced messages, sealed notes; model-free initialization |
+| Weigh | Explicit state/questions on stdin, requested/reported model, validated judgments/distributions and process outcome; private authorization stays outside streams |
 | Ply | Selected script/interpreter, action streams and outcome, verifier input/result, approval/confinement receipts, compaction/child-session links |
 | Context | Exact query, source records, executable fingerprint, no-result and failed-retrieval outcomes |
 | Cite | Selected evidence bytes, exact candidate, unchanged acceptance or empty rejected output and status |
 | Brief | Selected procedure bytes; deterministic search input/result; model selector session when used |
 | Rules | Instruction discovery inputs, selected file bytes and ordering, result stream |
-| Hone | Verified source sessions, proposed lesson, accepted skill revision and delta |
+| Hone | Verified source sessions, command or bound changed-content recovery, proposed lesson, accepted skill revision and delta |
 | Agent | Definition/workspace selection, assembled context, child sessions, amendments and external-action receipts |
 | Hire | Builder session, generated definition files, validation result, explicit updates |
 | Draft | Intent and verifier definition, admission evidence, output artifacts and Ask/Ply histories |

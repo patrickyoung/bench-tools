@@ -114,6 +114,9 @@ Build positive and negative cases for each contribution and the combined
 deliverable. Inspect generated checks before executing them. Verify that a
 specialist works independently, that required dependencies are actually passed,
 and that a failed contribution cannot yield a successful manager result.
+Use the `checking-deliverables` skill when those checks need semantic or visual
+judgment. Team integration needs its own evidence; accepted parts alone do not
+prove coherent writing, faithful claims or a usable final layout.
 
 Run representative model-backed cases when the user requests a working solution
 and its configured capabilities are available. Keep offline fixture results

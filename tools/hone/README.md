@@ -65,6 +65,15 @@ could learn from. It changes no skill and makes no model call. If there is no
 qualifying recovery, Hone explains why and exits 1. A clean first attempt,
 an unfinished attempt, or a transcript with no verifier verdict is not enough.
 
+Hone also recognizes content-only repairs: a rejected assistant answer and a
+changed accepted answer, each bound to complete Ply v2 verifier receipts under
+the same recorded check settings. `-why` prints both exact candidate inputs
+and check outputs. Replay must verify; `-no-verify` cannot enable this path.
+An unchanged answer with a new verdict is insufficient. An initial pre-check
+with empty stdin does not identify a rejected answer loaded privately by the
+checker, so an accepted first generated answer alone cannot supply this pair.
+See [the binding rules and their limits](DESIGN.md#what-qualifies).
+
 ```mermaid
 flowchart LR
     S[Ask session] --> R[Verify replay and recovery]
@@ -78,6 +87,12 @@ flowchart LR
 The check establishes the task-specific outcome. Replay establishes the
 retained record's integrity. Neither makes an inferred lesson universally true;
 read it before using it as a future instruction.
+
+For a model-based verifier, inspect its retained rubric, model, exact candidate
+and input evidence too. Hone's recovery gate remains arithmetic on recorded
+outcomes; it does not turn a probability into truth or call the judge again.
+A lesson must describe a supported repair, not lowered thresholds, omitted
+evidence or repeated judging until a pass. Verify retention on fresh work.
 
 ## Review the exact lesson before saving
 

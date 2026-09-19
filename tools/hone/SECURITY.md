@@ -8,7 +8,8 @@ opens no network connection, and runs no command from a session it reads.
 Nothing durable of its own except the sessions in which lessons were worded,
 under `~/.hone/lessons/` (`$HONE_DIR`), mode 0700. Those are `ask`
 sessions like any other, and they contain the evidence that was sent: the
-goal, the check, and the failing commands with their output. If a run
+goal, the check, and the failing commands or compared candidates with their
+check output. If a run
 printed a secret, that secret is in the session it came from and in the
 hone session that read it.
 
@@ -20,6 +21,8 @@ when it sees one.
 
 Only the evidence: the goal, the check command, and each stumble — a failing
 command, what it printed, and the commands that followed until one worked.
+For content repairs it also sends the exact rejected and changed accepted
+candidate inputs and complete check outputs with their recorded bindings.
 Not the whole transcript, not the reasoning blocks, not the parts of a run
 that proved nothing. `hone -why` prints exactly what would be sent, calls
 no model, and is the way to check before paying.
@@ -70,3 +73,18 @@ conversation is not a defence. Deleting the file is.
 
 Open an issue, or mail the address in the repository metadata for anything
 that should not be public first.
+
+## Content recovery bindings
+
+Content repairs require Ask replay verification and matching public Ply v2
+receipts for rejected and changed accepted assistant candidates. Candidate
+bytes and complete output bytes are checked against their recorded digests;
+non-UTF-8 output stays base64. Partial, broken, unchanged or mismatched
+evidence cannot qualify. Empty initial pre-check stdin supplies no candidate.
+
+Equal recorded checker paths, command strings, directory, timeout and optional
+contract ID do not establish unchanged executable bytes, rubric, environment,
+remote services or transitive files. The caller retains that evidence and
+reviews check quality. A replay seal establishes record integrity, not author
+authentication, factual truth or permission to admit a lesson. No threshold
+change, check retirement or lesson admission happens automatically.

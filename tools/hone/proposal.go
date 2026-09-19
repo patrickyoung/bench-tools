@@ -319,6 +319,7 @@ func cmdAdmit(args []string) int {
 	if s.ID != p.SourceID {
 		return fail(errors.New("source session id changed after proposal review"))
 	}
+	s.verified = true // both source and wording were replay-verified above
 	if ok, why := s.Teaches(); !ok {
 		fmt.Fprintf(os.Stderr, "hone: %s: %s\n", s.ID, why)
 		return 1

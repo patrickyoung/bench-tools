@@ -26,7 +26,9 @@ lesson, never to decide there is one.
 the verdict: ply -check writes each result as a typed, sealed receipt in the
 session, so hone knows how a run ended without guessing. Legacy signed prose
 notes still read. A run with no check has no verdict and is refused, saying
-so. This is the whole reason it works: unlabelled trajectories do not teach.
+so. Content repairs require replay-verified, changed assistant candidates
+bound to rejected and accepted v2 receipts under the same check identities.
+An empty pre-check or an unchanged answer cannot supply a content repair.
 
 no store: a lesson is a skill, brief is the catalogue, and $BRIEF_PATH is
 where it lives. hone writes what brief reads and stops -- there is no
@@ -56,7 +58,7 @@ flags:
   -prepare file word one verified session into a user-named exact proposal;
                 require -into, write no skill, and never overwrite the file
   -d dir        session directory ($ASK_DIR)
-  -no-verify    skip ask replay -check on the session before reading it
+  -no-verify    skip replay for command recoveries; content needs verification
   -q            no progress on stderr
 
 environment:
