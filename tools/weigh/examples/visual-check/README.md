@@ -100,7 +100,7 @@ command cannot stand in for a check.
 After evaluating appropriate thresholds on your own held-out visual cases:
 
 ```sh
-python3 "$EXAMPLES/visual-check/check-current.py" \
+BENCH_WEIGH=1 python3 "$EXAMPLES/visual-check/check-current.py" \
   --observations "$RUN/observations.json" \
   --rubric "$RUN/rubric.json" \
   --checker "$EXAMPLES/semantic-check/check.py" -- \
@@ -112,6 +112,11 @@ python3 "$EXAMPLES/visual-check/check-current.py" \
 `ACCEPT_AT` and `REJECT_AT` are explicit caller policy, not recommended universal
 values. An optional `--evidence FILE` supplies additional selected text to the
 semantic checker. It cannot substitute for a missing image observation.
+The environment reaches the semantic checker unchanged. Its Weigh path
+requires `BENCH_WEIGH=1`; unset, empty or `0` disables it, and other values
+are errors when that path is reached. A disabled path fails with exit 2 and
+no verdict instead of skipping the check or switching models. The vision
+observer and Ask-only checking remain independent of this Weigh opt-in.
 
 Without Jev, use the same current-image guard and retained observations:
 

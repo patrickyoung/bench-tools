@@ -40,6 +40,18 @@ agent runner. An Ask-only checker remains valid when Weigh is not selected.
 Use the installed programs' help/manuals for exact argv and contracts; compose
 them as subprocesses without another provider client or loop.
 
+Bench enables optional Weigh use with `BENCH_WEIGH=1`. Unset, empty or `0` means
+off; other values are configuration errors when the Weigh path is needed.
+Keep rules and explicitly selected Ask routes usable without it. A disabled
+required Weigh judgment returns broken-check status, never an acceptance or an
+automatic fallback. The standalone `weigh` command remains an explicit filter;
+this convention belongs to its caller adapters.
+
+When a requested build or revision selects Weigh for judging or fix selection,
+use [the Weigh build procedure](references/weigh-build.md) to author executable
+wiring and task-specific tests. Keep evaluation material outside the worker.
+Ordinary builds need no Weigh decision or evaluation package.
+
 The operator explicitly selects the backend, model, call limits and any fallback.
 Never silently enable paid calls, pass because credentials are absent, or switch
 providers after failure. A configured Ask fallback may resolve insufficient

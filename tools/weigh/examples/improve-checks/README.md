@@ -11,6 +11,20 @@ Use Python 3.9+ and the explicitly selected public executables. Keep inputs,
 records, labels and proposals outside reusable source. Optional model calls
 remain explicit; the offline evaluation and review helpers need no credentials.
 
+These adapters default to Weigh off. Set `BENCH_WEIGH=1` to permit a selected
+Weigh model path; unset, empty or `0` disables it. Backend and model remain
+explicit. Any other value is an error only when a Weigh path is reached.
+Disabled or invalid Weigh configuration exits 2 without calling a dependency,
+emitting a selection, or switching to Ask. Deterministic rules and explicitly
+selected Ask paths work regardless of this variable. It controls these caller
+adapters, not the standalone `weigh` command.
+
+An enabled Weigh path still depends on the selected executable, a compatible
+model, credentials and a reachable provider. Missing dependencies, invalid
+responses and provider failures stop that path; they never accept a candidate
+or silently choose a different model. Explicit backend/model invocation enables
+the call. The old `--live` option is accepted for compatibility and has no effect.
+
 ## Inspect one selected run
 
 `triage.py` accepts one version-1 snapshot from stdin or `--input FILE`:
@@ -42,7 +56,7 @@ observations. Snapshot size is limited to 4 MiB. Duplicate JSON keys, nonfinite
 numbers, invalid criteria, changed selected files and malformed results fail.
 
 ```sh
-python3 triage.py --live --backend weigh --model "$WEIGH_MODEL" \
+BENCH_WEIGH=1 python3 triage.py --backend weigh --model "$WEIGH_MODEL" \
   --input /selected/run/snapshot.json --records /selected/run/diagnosis \
   --weigh /selected/bin/weigh --ask /selected/bin/ask --record /selected/bin/record
 ```
@@ -50,8 +64,8 @@ python3 triage.py --live --backend weigh --model "$WEIGH_MODEL" \
 Select `--backend ask --model "$ASK_MODEL"` for an Ask-only route; it works
 without Weigh. Existing approved credential wrappers can be selected as the
 executables. No model or fallback is selected implicitly. `--endpoint` is an
-explicit Weigh Decisions endpoint override; loopback fixture endpoints need
-`--live` too. The default dependency deadline is 60 seconds.
+explicit Weigh Decisions endpoint override, including loopback fixtures. The
+default dependency deadline is 60 seconds.
 
 The result has `status: "hypothesis"`, the exact input SHA256, model identity,
 record path and two classifications: `target` (artifact, evidence, applicability,
@@ -118,7 +132,7 @@ a failed checker executable can select process investigation without asking a
 model to infer a content defect. These rules use observed conditions, not a
 model's confidence score.
 
-For a rule-settled action, no backend, model or live-call flag is needed:
+For a rule-settled action, no backend or model is needed:
 
 ```sh
 python3 select-fix.py --input /selected/run/fix-snapshot.json \
@@ -128,7 +142,7 @@ python3 select-fix.py --input /selected/run/fix-snapshot.json \
 For a semantic choice, explicitly select the backend and model:
 
 ```sh
-python3 select-fix.py --live --backend weigh --model "$WEIGH_MODEL" \
+BENCH_WEIGH=1 python3 select-fix.py --backend weigh --model "$WEIGH_MODEL" \
   --input /selected/run/fix-snapshot.json --rules /selected/run/rule-result.json \
   --records /selected/run/fix-selection \
   --weigh /selected/bin/weigh --record /selected/bin/record \
@@ -139,8 +153,8 @@ Omit `--rules` when there is no rule result. Use `--backend ask --model
 "$ASK_MODEL" --ask /selected/bin/ask` for an Ask selector. The selector model
 and the eventual repair model are separate caller choices. Existing credential
 wrappers can be selected as executables. `--endpoint` optionally selects a
-Weigh Decisions endpoint; every actual model route, including local fixtures,
-requires `--live`. No model, threshold, retry or fallback is implied.
+Weigh Decisions endpoint, including local fixtures. No model, threshold, retry
+or fallback is implied.
 
 Successful output contains `status: "selected"`, `action`, `input_sha256`,
 `selector` (`rule`, `weigh` or `ask`), and `requires_final_check: true`.

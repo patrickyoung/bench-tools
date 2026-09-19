@@ -3,6 +3,7 @@
 
 This caller-owned example composes Ask or Weigh and Record. It neither changes
 a check nor declares a recovery, selects a threshold, or admits a lesson.
+The Weigh path additionally requires BENCH_WEIGH=1; it is off by default.
 """
 import argparse
 from decimal import Decimal, DecimalException
@@ -51,6 +52,14 @@ PROMPT = (
 
 class Broken(Exception):
     pass
+
+
+def require_weigh_enabled():
+    value = os.environ.get("BENCH_WEIGH", "")
+    if value in ("", "0"):
+        raise Broken("Weigh is disabled; set BENCH_WEIGH=1 to enable this model path")
+    if value != "1":
+        raise Broken("BENCH_WEIGH must be 0 or 1 (unset or empty disables Weigh)")
 
 
 def unique(pairs):
@@ -186,15 +195,13 @@ def main():
     parser.add_argument("--backend", choices=("ask", "weigh"), required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--records", type=Path, required=True)
-    parser.add_argument("--live", action="store_true", help="explicitly enable selected model call")
+    parser.add_argument("--live", action="store_true", help="deprecated compatibility flag; backend/model selection enables the call")
     parser.add_argument("--ask", default="ask")
     parser.add_argument("--weigh", default="weigh")
     parser.add_argument("--record", default="record")
     parser.add_argument("--endpoint", help="explicit Weigh Decisions endpoint, including loopback fixtures")
     parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
-    if not args.live:
-        parser.error("--live is required for a selected model call")
     if not math.isfinite(args.timeout) or args.timeout < 1:
         parser.error("timeout must be finite and at least one second")
     if args.endpoint and args.backend != "weigh":
@@ -204,6 +211,8 @@ def main():
         raw = read_snapshot(args.input)
         state = parse(raw)
         validate(state)
+        if args.backend == "weigh":
+            require_weigh_enabled()
         args.records.mkdir(parents=True, exist_ok=True)
         run = Path(tempfile.mkdtemp(prefix="triage-", dir=args.records.resolve()))
         (run / "snapshot.json").write_bytes(raw)

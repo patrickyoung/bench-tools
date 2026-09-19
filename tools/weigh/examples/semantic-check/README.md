@@ -3,6 +3,9 @@
 This example turns a fixed rubric into an ordinary executable check. It can use
 Ask alone, or Weigh with an explicitly selected Ask fallback. Weigh is optional;
 neither the checker nor Bench silently chooses a paid backend on your behalf.
+Its Weigh model path is off by default: set `BENCH_WEIGH=1` to enable it.
+Unset, empty or `0` disables it; other values are errors when that path is
+reached. This caller convention does not disable the standalone `weigh` command.
 
 `check.py` is application example code, not a new verifier runtime. Copy and
 adapt it with the rubric for the application that owns acceptance. Keep the
@@ -38,7 +41,7 @@ have evaluated for this exact rubric, question type and pinned model. There
 are no threshold defaults. The following variables must be selected explicitly:
 
 ```sh
-python3 check.py --backend weigh --model openrouter/typesafe/jev-1.13 \
+BENCH_WEIGH=1 python3 check.py --backend weigh --model openrouter/typesafe/jev-1.13 \
   --accept-at "$ACCEPT_AT" --reject-at "$REJECT_AT" \
   --fallback-model "$STRONG_CHECK_MODEL" \
   --rubric rubric.json --evidence evidence.txt --candidate /work/candidate.txt \
@@ -57,6 +60,12 @@ unestablished compliance is a rejection with evidence-needed feedback. Service
 errors, missing credentials or missing executables are broken checks, never
 acceptance or a reason to spend on an unselected fallback. A reported Weigh
 confidence number is not used as a calibrated probability of correctness.
+
+Turning Weigh off does not waive a configured semantic requirement. When its
+model path is reached while disabled, the check exits 2 with no verdict and no
+dependency calls, including the selected Ask fallback. Choose and validate a
+different checker explicitly. Ask-only checks ignore `BENCH_WEIGH`; the cheap
+missing-candidate rejection still works with Weigh disabled.
 
 Both backends return JSON with a verdict, per-criterion judgments, fixed repair
 messages, selected models, input hashes, elapsed time and recording paths. The
@@ -127,6 +136,8 @@ in a JSON document like this, replacing the model and threshold placeholders:
 
 A Weigh profile uses `backend: "weigh"`, `model: "openrouter/typesafe/jev-1.13"`,
 numeric `accept_at` and `reject_at` fields, and optionally `fallback_model`.
+Set `BENCH_WEIGH=1` in the evaluator's environment when selecting such profiles;
+it is inherited by each checker. Ask-only evaluations need no opt-in.
 
 ```sh
 python3 evaluate.py --live --profiles /operator/profiles.json \

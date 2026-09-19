@@ -94,9 +94,9 @@ class TriageTests(unittest.TestCase):
                     if key in ('PATH', 'SYSTEMROOT', 'TMPDIR')}
         self.env.update(TRIAGE_TEST_CALLS=str(self.calls_path),
                         TRIAGE_TEST_ASK_RESPONSE=str(self.ask_response),
-                        TRIAGE_TEST_WEIGH_RESPONSE=str(self.weigh_response))
+                        TRIAGE_TEST_WEIGH_RESPONSE=str(self.weigh_response), BENCH_WEIGH='1')
 
-    def run_triage(self, backend='ask', *, live=True, raw=None, extra=()):
+    def run_triage(self, backend='ask', *, live=False, raw=None, extra=()):
         args = [sys.executable, str(HERE / 'triage.py'), '--backend', backend,
                 '--model', 'fixture/diagnosis', '--records', str(self.records)]
         for role, executable in self.executables.items():
@@ -120,11 +120,42 @@ class TriageTests(unittest.TestCase):
         self.assertNotIn(b'Traceback', result.stderr)
         self.assertEqual(list(self.records.glob('*/result.json')), [])
 
-    def test_live_is_required_before_reading_input_or_creating_records(self):
+    def test_deprecated_live_flag_remains_compatible(self):
+        result, report = self.run_triage(live=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(report['backend'], 'ask')
+        self.assertEqual(len(self.calls('ask')), 1)
+
+    def test_missing_input_fails_before_dependencies_or_records(self):
         self.input.unlink()
-        self.broken(*self.run_triage(live=False))
+        self.broken(*self.run_triage())
         self.assertFalse(self.records.exists())
         self.assertEqual(self.calls(), [])
+
+    def test_weigh_opt_in_precedes_all_dependencies_and_records(self):
+        self.executables = {role: self.root / 'not-installed' for role in self.executables}
+        for value in (None, '', '0', 'true', ' 1'):
+            with self.subTest(value=value):
+                self.env.pop('BENCH_WEIGH', None)
+                if value is not None:
+                    self.env['BENCH_WEIGH'] = value
+                result, report = self.run_triage('weigh')
+                self.broken(result, report)
+                self.assertIn(b'BENCH_WEIGH', result.stderr)
+                self.assertFalse(self.records.exists())
+        self.assertEqual(self.calls(), [])
+
+    def test_ask_ignores_weigh_opt_in(self):
+        for value in (None, '', '0', 'invalid'):
+            with self.subTest(value=value):
+                self.env.pop('BENCH_WEIGH', None)
+                if value is not None:
+                    self.env['BENCH_WEIGH'] = value
+                result, report = self.run_triage('ask')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(report['backend'], 'ask')
+        self.assertEqual(self.calls('weigh'), [])
+        self.assertEqual(len(self.calls('ask')), 4)
 
     def test_selected_snapshot_is_the_only_state_and_original_bytes_are_bound(self):
         selected = snapshot()

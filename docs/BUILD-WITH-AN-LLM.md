@@ -173,6 +173,16 @@ hire build -C authoring -evidence authoring-records -goal-file job.txt
 hire verify authoring/expert
 ```
 
+New Weigh use is optional and off by default. Prefix the build with
+`BENCH_WEIGH=1` to let Hire consider it for judgments or choosing fixes. A live
+Weigh path needs its executable, an explicit model and provider access. Hire
+authors task-specific wiring and tests when selected; ordinary builds need no
+Weigh decision or evaluation files. Unrelated revisions preserve existing
+dependencies. Supported runtime adapters use the same opt-in: unset the variable
+or set it to `0` to disable the path. An unavailable required judgment fails
+clearly without passing the candidate or silently switching models.
+See [Hire's opt-in contract](../tools/hire/README.md#enable-optional-weigh-use).
+
 Inspect what Hire produced. Its structural verification does not execute the
 generated check or establish task quality. For direct authoring, `hire new`
 creates a scaffold whose initial check deliberately rejects unfinished work.

@@ -115,6 +115,29 @@ class VisualTests(unittest.TestCase):
         result=self.check();self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(json.loads(result.stdout)['verdict'],'accept')
 
+    def test_semantic_checker_inherits_weigh_opt_in_without_bypassing_acceptance(self):
+        self.assertEqual(self.observe().returncode, 0)
+        records = self.root / 'semantic-records'
+        argv = [sys.executable, str(HERE / 'check-current.py'),
+                '--observations', str(self.records / 'observations.json'),
+                '--rubric', str(self.rubric),
+                '--checker', str(HERE.parent / 'semantic-check' / 'check.py'), '--',
+                '--backend', 'weigh', '--model', 'fixture/decision',
+                '--accept-at', '.8', '--reject-at', '.8', '--records', str(records),
+                '--record', str(self.root / 'not-installed'),
+                '--weigh', str(self.root / 'not-installed')]
+        for value in (None, '', '0', 'invalid'):
+            with self.subTest(value=value):
+                env = dict(self.env)
+                env.pop('BENCH_WEIGH', None)
+                if value is not None:
+                    env['BENCH_WEIGH'] = value
+                result = subprocess.run(argv, capture_output=True, env=env, timeout=15)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(result.stdout, b'')
+                self.assertIn(b'BENCH_WEIGH', result.stderr)
+                self.assertFalse(records.exists())
+
     def test_bad_observer_outputs_never_emit_success(self):
         for mode in ['missing','duplicate','wrong_id','wrong_image','bad_status','bad_json','no_limitations','fail','bad_record','change_source']:
             with self.subTest(mode=mode):

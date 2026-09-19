@@ -29,6 +29,13 @@ necessary, before deciding what to change.
 
 Optional helpers live at `tools/weigh/examples/improve-checks/README.md` beneath
 the selected `BENCH_SOURCE`; read that README and each selected helper's help.
+Weigh is off unless `BENCH_WEIGH=1`; unset, empty or `0` keeps it off. Explicit
+Ask and deterministic rules remain available without the Weigh service.
+`triage.py` and `select-fix.py` need an explicit backend and model for inference;
+they need no additional live-call flag. The semantic-check batch evaluator
+retains its explicit `--live` opt-in. A selected live Weigh path needs provider
+access; an unavailable required judgment fails without passing the candidate
+or switching backends. Preserve existing dependencies during unrelated edits.
 `triage.py` can ask explicitly selected Weigh or Ask to suggest an investigation
 from one supplied snapshot. Its output is a hypothesis to test, not a diagnosis,
 recovery witness or permission to change policy. Direct inspection can suffice.

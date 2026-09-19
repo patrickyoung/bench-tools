@@ -173,22 +173,35 @@ def main():
         finish(rule_unchanged, "rule-unchanged", "good", False)
         inference_replays = []
         with decisions() as (endpoint, calls, response):
-            live_env = dict(env, OPENROUTER_API_KEY="offline-key")
+            weigh_env = dict(env, OPENROUTER_API_KEY="offline-key", BENCH_WEIGH="1")
             weigh = [*common, "--backend", "weigh", "--model", "openrouter/typesafe/fixture",
                      "--endpoint", endpoint]
             before = len(calls)
-            failed = invoke(weigh, cwd=root, env=live_env, data=raw, code=2)
-            require(not failed.stdout and len(calls) == before, "semantic call ran without --live")
-            failed = invoke([*weigh, "--live", "--record", root / "missing-record"],
-                            cwd=root, env=live_env, data=raw, code=2)
+            for setting in (None, "", "0", "invalid"):
+                disabled_env = dict(weigh_env)
+                if setting is None:
+                    disabled_env.pop("BENCH_WEIGH")
+                else:
+                    disabled_env["BENCH_WEIGH"] = setting
+                failed = invoke(weigh, cwd=root, env=disabled_env, data=raw, code=2)
+                require(not failed.stdout and len(calls) == before and b"BENCH_WEIGH" in failed.stderr,
+                        "disabled or invalid Weigh opt-in emitted an action or reached the model")
+                write_rules("mechanical_repair")
+                ruled = json.loads(invoke([*missing, "--backend", "weigh", "--model", "openrouter/typesafe/fixture",
+                                          "--endpoint", endpoint], cwd=root, env=disabled_env, data=raw).stdout)
+                require(ruled["selector"] == "rule" and len(calls) == before,
+                        "decisive rules depended on the Weigh opt-in")
+            write_rules(None)
+            failed = invoke([*weigh, "--record", root / "missing-record"],
+                            cwd=root, env=weigh_env, data=raw, code=2)
             require(not failed.stdout and len(calls) == before, "broken recorder triggered inference or fallback")
             write_rules("mechanical_repair")
             invoke([*missing, "--backend", "weigh", "--model", "openrouter/typesafe/fixture",
-                    "--endpoint", endpoint, "--live"], cwd=root, env=live_env, data=raw)
+                    "--endpoint", endpoint], cwd=root, env=weigh_env, data=raw)
             require(len(calls) == before, "explicit rule needlessly called a provider")
             write_rules(None)
-            selected_raw = invoke([*weigh, "--live", "--rules", rules, "--input", source],
-                                  cwd=root, env=live_env).stdout
+            selected_raw = invoke([*weigh, "--rules", rules, "--input", source],
+                                  cwd=root, env=weigh_env).stdout
             selected = json.loads(selected_raw)
             require(len(calls) == before + 1, "semantic selection retried or made multiple requests")
             require(calls[-1][0] == "/api/alpha/decisions" and calls[-1][2] == "Bearer offline-key",
@@ -217,20 +230,20 @@ def main():
             finish(selected, "bad-repair", "bad", False)
 
             response["action"] = "no_change"
-            unchanged = json.loads(invoke([*weigh, "--live"], cwd=root, env=live_env, data=raw).stdout)
+            unchanged = json.loads(invoke(weigh, cwd=root, env=weigh_env, data=raw).stdout)
             finish(unchanged, "unchanged", "good", False)
             inference_replays.append((unchanged["record"], unchanged["inference"]))
             for mode, action in (("valid", "unavailable_action"), ("missing_distribution", "targeted_repair"),
                                  ("unavailable", "targeted_repair")):
                 response.update(mode=mode, action=action)
                 before = len(calls)
-                failed = invoke([*weigh, "--live"], cwd=root, env=live_env, data=raw, code=2)
+                failed = invoke(weigh, cwd=root, env=weigh_env, data=raw, code=2)
                 require(not failed.stdout and len(calls) == before + 1,
                         "failed inference emitted a usable action, retried or fell back")
 
         # Ask has the same action boundary and needs no Weigh binary or key.
-        with SUPPORT["model_fixture"](env, lambda _: '{"action":"targeted_repair"}') as (ask_env, ask_calls):
-            selected = json.loads(invoke([*common, "--backend", "ask", "--model", "openai/fixture", "--live",
+        with SUPPORT["model_fixture"](dict(env, BENCH_WEIGH="invalid"), lambda _: '{"action":"targeted_repair"}') as (ask_env, ask_calls):
+            selected = json.loads(invoke([*common, "--backend", "ask", "--model", "openai/fixture",
                                           "--weigh", root / "missing-weigh"], cwd=root, env=ask_env, data=raw).stdout)
             require(len(ask_calls) == 1 and selected["selector"] == "ask"
                     and selected["action"] == "targeted_repair"
@@ -239,7 +252,7 @@ def main():
             inference_replays.append((selected["record"], selected["inference"]))
             finish(selected, "ask-repair", "good", True)
         with SUPPORT["model_fixture"](env, lambda _: '{"action":"unavailable_action"}') as (ask_env, ask_calls):
-            failed = invoke([*common, "--backend", "ask", "--model", "openai/fixture", "--live",
+            failed = invoke([*common, "--backend", "ask", "--model", "openai/fixture",
                              "--weigh", root / "missing-weigh"], cwd=root, env=ask_env, data=raw, code=2)
             require(not failed.stdout and len(ask_calls) == 1, "invalid Ask action retried, fell back or escaped validation")
 
@@ -264,7 +277,7 @@ def main():
             replay = invoke([bins / "record", "replay", "-ask", bins / "ask", "-f", receipt],
                             cwd=root, env=env, code=code)
             require(replay.stdout == stdout, "offline final-check replay changed output or rejection status")
-    print("ok fix selection: zero-call rules, native Weigh choice, optional Ask, explicit failures, external actions, independent checks and offline replay")
+    print("ok fix selection: default-off Weigh opt-in, zero-call rules, native Weigh choice, unaffected Ask, explicit failures, external actions, independent checks and offline replay")
 
 
 if __name__ == "__main__":

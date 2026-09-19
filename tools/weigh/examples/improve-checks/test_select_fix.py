@@ -54,9 +54,10 @@ class SelectFixTests(unittest.TestCase):
         self.env = {key: os.environ[key] for key in ("PATH", "TMPDIR", "SYSTEMROOT") if key in os.environ}
         self.env.update(TRIAGE_TEST_CALLS=str(self.calls_path),
                         TRIAGE_TEST_WEIGH_RESPONSE=str(self.weigh_response),
-                        TRIAGE_TEST_ASK_RESPONSE=str(self.ask_response), PYTHONDONTWRITEBYTECODE="1")
+                        TRIAGE_TEST_ASK_RESPONSE=str(self.ask_response), PYTHONDONTWRITEBYTECODE="1",
+                        BENCH_WEIGH="1")
 
-    def call(self, *, backend="weigh", live=True, rules=False, raw=None, extra=()):
+    def call(self, *, backend="weigh", live=False, rules=False, raw=None, extra=()):
         argv = [sys.executable, str(HERE / "select-fix.py"), "--records", str(self.records)]
         if backend:
             argv += ["--backend", backend, "--model", "fixture/selector"]
@@ -110,6 +111,35 @@ class SelectFixTests(unittest.TestCase):
                 self.assertEqual(run.stat().st_mode & 0o777, 0o700)
         self.assertEqual(self.calls(), [])
 
+    def test_weigh_opt_in_precedes_all_dependencies_and_records(self):
+        self.executables = {role: self.root / "not-installed" for role in self.executables}
+        for value in (None, "", "0", "true", " 1"):
+            with self.subTest(value=value):
+                self.env.pop("BENCH_WEIGH", None)
+                if value is not None:
+                    self.env["BENCH_WEIGH"] = value
+                result = self.call()
+                self.broken(result)
+                self.assertIn(b"BENCH_WEIGH", result.stderr)
+                self.assertFalse(self.records.exists())
+        self.assertEqual(self.calls(), [])
+
+    def test_rules_and_ask_ignore_weigh_opt_in(self):
+        for value in (None, "", "0", "invalid"):
+            with self.subTest(value=value):
+                self.env.pop("BENCH_WEIGH", None)
+                if value is not None:
+                    self.env["BENCH_WEIGH"] = value
+                self.rule("repair")
+                result = self.call(rules=True, live=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["selector"], "rule")
+                result = self.call(backend="ask")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["selector"], "ask")
+        self.assertEqual(self.calls("weigh"), [])
+        self.assertEqual(len(self.calls("ask")), 4)
+
     def test_null_rule_uses_one_model_but_does_not_send_rule_reason(self):
         self.rule(None, reason="Unselected private-rule-SENTINEL")
         result = self.call(rules=True)
@@ -153,9 +183,11 @@ class SelectFixTests(unittest.TestCase):
         self.assertEqual(self.calls("weigh"), [])
 
     def test_inference_must_be_explicit_and_invalid_inputs_have_no_effects(self):
-        self.broken(self.call(live=False))
+        self.broken(self.call(backend=None))
+        self.broken(self.call(backend=None, extra=("--backend", "weigh")))
+        self.broken(self.call(backend=None, extra=("--model", "fixture/selector")))
         self.rule(None)
-        self.broken(self.call(live=False, rules=True))
+        self.broken(self.call(backend=None, rules=True))
         for extra in (("--timeout", "nan"), ("--timeout", "0")):
             self.broken(self.call(extra=extra))
         invalid = [b'{"version":1,"version":1}', b'{"private-SENTINEL":NaN}',
@@ -170,6 +202,15 @@ class SelectFixTests(unittest.TestCase):
                 self.broken(self.call(raw=raw))
         self.assertEqual(self.calls(), [])
         self.assertFalse(self.records.exists())
+
+    def test_deprecated_live_flag_is_compatible_but_does_not_enable_weigh(self):
+        result = self.call(live=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["selector"], "weigh")
+        self.assertEqual(len(self.calls("weigh")), 1)
+        self.env.pop("BENCH_WEIGH")
+        self.broken(self.call(live=True))
+        self.assertEqual(len(self.calls("weigh")), 1)
 
     def test_stale_unknown_or_malformed_rule_is_not_ignored_or_sent_to_a_model(self):
         for overrides in ({"input_sha256": "0" * 64}, {"action": "unavailable"},
