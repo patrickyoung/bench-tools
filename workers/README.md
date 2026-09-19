@@ -26,6 +26,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | [Presentation Designer](presentation-designer/expert/README.md) | Pace executive PowerPoint narratives with native editable charts, tables and text. |
 | [Publication Reviewer](publication-reviewer/expert/README.md) | Audit evidence fidelity, writing, design and cross-format coherence using current rendered-image critiques. |
 | [Frontend](frontend/expert/README.md) | Integrate accepted contributions into one accessible, self-contained HTML page. |
+| [WorldWeaver-Omega](worldweaver-omega/expert/README.md) | Generate varied explorable Three.js worlds from descriptions and visual styles, with deterministic chunk streaming and requested ambient life. |
 | [Visual artist](visual-artist/expert/README.md) | Create p5.js/D3 artwork and artistic data experiences, with purposeful optional sensor inputs. |
 | [Canvas artist](canvas-artist/expert/README.md) | Make lightweight Canvas/WebGL pieces using the original page specialist contract. |
 | [Blender artist](blender-artist/expert/README.md) | Produce editable Blender sources, a preview and a web asset. |
