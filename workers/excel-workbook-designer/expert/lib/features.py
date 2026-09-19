@@ -3,11 +3,11 @@
 Only native-feature packaging; cell/layout/formula authoring stays in Artifact.
 Specification: Microsoft Open XML, Working with PivotTables, 2025-01-14.
 """
-import json,re,sys,zipfile,posixpath
+import copy,json,re,sys,zipfile,posixpath
 from pathlib import Path
 from xml.etree import ElementTree as E
 from contract import read_xlsx,bounds,col,cell,require,digest,NS
-from edit_contract import sheet_parts,xmlbytes
+from edit_contract import sheet_parts,xmlbytes,canon
 S=NS['s'];R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';P='http://schemas.openxmlformats.org/package/2006/relationships';C='http://schemas.openxmlformats.org/package/2006/content-types'
 def node(tag,attrs=None,parent=None):
     return E.SubElement(parent,'{'+S+'}'+tag,{k:str(v) for k,v in (attrs or {}).items()}) if parent is not None else E.Element('{'+S+'}'+tag,{k:str(v) for k,v in (attrs or {}).items()})
@@ -15,6 +15,46 @@ def typed(parent,v):
     if v is None or v=='':return node('m',parent=parent)
     if isinstance(v,bool):return node('b',{'v':int(v)},parent)
     return node('n' if isinstance(v,(int,float)) else 's',{'v':v},parent)
+def restore_conditional_fills(root):
+    """Restore only a dropped source patternType on otherwise unchanged CF.
+
+    Artifact import/export can retain a rule and its color but omit the DXF
+    fill pattern. Never infer a fill, replace other style fields, or override
+    requested conditional-format edits. All rules and DXF indices must match.
+    """
+    req=json.loads((root/'request.json').read_text())
+    if req.get('mode')!='edit':return
+    spec=json.loads((root/'output/spec.json').read_text())
+    if any(o['op']=='conditional_format' for o in spec['operations']):return
+    path=root/'output/workbook.xlsx'
+    with zipfile.ZipFile(root/req['workbook']) as z:
+        old={n:z.read(n) for n in z.namelist()};old_sheets={a:b for a,b,_ in sheet_parts(z)}
+    with zipfile.ZipFile(path) as z:
+        parts={n:z.read(n) for n in z.namelist()};sheets={a:b for a,b,_ in sheet_parts(z)}
+    def rules(data,sheets):
+        return {name:[canon(e) for e in E.fromstring(data[part]).findall('s:conditionalFormatting',NS)] for name,part in sheets.items()}
+    before,after=rules(old,old_sheets),rules(parts,sheets)
+    if {k:v for k,v in before.items() if v}!={k:v for k,v in after.items() if v}:return
+    indices={int(r.get('dxfId')) for part in old_sheets.values()
+             for r in E.fromstring(old[part]).findall('s:conditionalFormatting/s:cfRule',NS) if r.get('dxfId') is not None}
+    if not indices:return
+    styles=E.fromstring(parts['xl/styles.xml'])
+    source_dxfs=E.fromstring(old['xl/styles.xml']).findall('s:dxfs/s:dxf',NS)
+    output_dxfs=styles.findall('s:dxfs/s:dxf',NS);restored=[]
+    for i in sorted(indices):
+        require(0<=i<len(source_dxfs) and i<len(output_dxfs),'Missing conditional-format differential style '+str(i))
+        source=source_dxfs[i];current=output_dxfs[i]
+        pattern=source.find('s:fill/s:patternFill',NS);target=current.find('s:fill/s:patternFill',NS)
+        if pattern is None or target is None or pattern.get('patternType') is None or target.get('patternType') is not None:continue
+        trial=copy.deepcopy(current);trial.find('s:fill/s:patternFill',NS).set('patternType',pattern.get('patternType'))
+        if canon(trial)!=canon(source):continue
+        target.set('patternType',pattern.get('patternType'));restored.append(i)
+    if not restored:return
+    parts['xl/styles.xml']=xmlbytes(styles)
+    with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
+        for n,b in parts.items():z.writestr(n,b)
+    qa=json.loads((root/'output/qa.json').read_text());qa['workbook_sha256']=digest(path);qa['preserved_conditional_fills']=restored
+    (root/'output/qa.json').write_text(json.dumps(qa,indent=2)+'\n')
 def restore_existing(root):
     req=json.loads((root/'request.json').read_text())
     if req.get('mode')!='edit':return
@@ -212,4 +252,4 @@ def zero_baselines(root):
         with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
             for n,b in parts.items():z.writestr(n,b)
     qa=json.loads((root/'output/qa.json').read_text());qa['workbook_sha256']=digest(path);qa['zero_baseline_charts']=changed;(root/'output/qa.json').write_text(json.dumps(qa,indent=2)+'\n')
-if __name__=='__main__':restore_existing(Path.cwd());attach(Path.cwd());zero_baselines(Path.cwd())
+if __name__=='__main__':restore_existing(Path.cwd());restore_conditional_fills(Path.cwd());attach(Path.cwd());zero_baselines(Path.cwd())

@@ -14,15 +14,21 @@ actual source bytes. Missing contract/tool support is a blocker.
 ## Inspect the actual workbook before planning
 1. Read request and selected inputs only. Verify regular files and byte hashes
    according to the contract. Never change request bindings to bypass a mismatch.
-2. Invoke `$AGENT_HOME/tools/inspect-workbook` with the installed contract's
-   documented syntax. It emits input inventory and before PNGs. Read actual
+2. Use a supplied current `bench.workbook-edit-context/v1` or invoke
+   `$AGENT_HOME/tools/edit-context` (no arguments) in the workspace. Check its
+   bindings against the current request/inputs. Read the lossless compact
+   inventory and every additional selected file, not directory listings or lib
+   dumps. The bound empty spec envelope is only a starting point. Read actual
    values AND formulas, exact headers, sheet/range/table identities and feature
    information. Locate blank, occupied, hidden and merged areas as exposed by
    inspection; identify formulas, styles, charts/pivots, validation and other
    features that the change might affect. Do not assume absence from a preview
    means absence from the workbook. Cached values alone are not formulas.
-3. Review actual before images when admitted image inspection is available.
-   Otherwise disclose that visual review is unavailable; paths are not proof.
+3. Full inventory and before PNGs remain available via
+   `$AGENT_HOME/tools/inspect-workbook`. Generate them for image review as needed.
+   Review actual before images when admitted image inspection is available.
+   Otherwise disclose unavailable worker image inspection, without ruling out
+   the optional controller-owned visual stage; paths are not proof.
    Use targeted inventory evidence for omitted ranges; do not guess ZIP paths.
 4. Establish grain, periods, units, identifiers, formulas/dependencies and current
    warnings from this workbook, not memory or an old creation spec.
@@ -71,7 +77,11 @@ exact key/duplicate policy needed instead of silently duplicating or discarding.
 ## Specify only supported narrow operations
 Author only `output/spec.json` and `output/guide.md` with EDITING.md's exact fields.
 Do not generate programs, patch OOXML, manipulate source XLSX bytes or manufacture
-QA. Trusted render/check perform edits and verification; output is a NEW file.
+QA. Ordinary shell writes/quoted heredocs for JSON and Markdown are allowed.
+After reading the exact edit contract and source context, make the first complete
+spec and guide, then invoke trusted render/check and correct concrete failures
+instead of repeating discovery. Trusted render/check perform edits and
+verification; output is a NEW file.
 Original bytes remain immutable even if the requested “save” wording is informal.
 
 Supported scope, within the installed contract:
@@ -114,13 +124,25 @@ propagation, capacity and blank/zero checks. Formula edits need independent
 expected values, references and formula-preservation checks, not only text
 comparison. Restore temporary test mutations before final export.
 
-Invoke trusted render and check as documented, then read actual before/after
-scope evidence and QA. Check source bytes unchanged, intended changes complete,
-and untouched values/formulas/style/sheet and native-feature structures preserved.
+Invoke `$AGENT_HOME/tools/render`, then `$AGENT_HOME/bin/check --mechanical`
+inside the worker action. Agent separately invokes plain `bin/check` as the
+trusted completion check; follow AGENTS.md and the supplied visual interfaces.
+Inspect the actual mechanical result, QA and relevant before/after saved-feature
+facts once, using EDITING.md's `saved_native_features` interpretation and gap
+handling. Check source bytes unchanged,
+intended changes complete, and untouched values/formulas/style/sheet and
+native-feature structures preserved.
 Inspect saved native chart parts/bindings and pivot definition/cache/source parts
 through trusted evidence, not spec declarations alone. Test source edits followed
 by pivot refresh against independently computed groups; report unsupported
 native-engine refresh verification rather than claiming it occurred.
+
+Verify completion against the request and supplied source facts. Once complete
+and the evidence is sound, the NEXT response is a brief plain-text candidate
+report with no shell block. Agent checks at preflight and after this submission,
+not each shell action; mechanical acceptance is provisional. No repeated shell
+discovery, archive greps or verification without a concrete missing fact,
+changed artifact or check failure.
 
 Warnings must reflect CURRENT inputs and selected population. When changing
 editable missing/conflicting inputs or warnings, test warning text and numeric
@@ -129,6 +151,21 @@ remaining prerequisites stay visible. Historical notes must say “At import” 
 “Original source.” Do not introduce static alarm banners. Preserve numeric
 blank-versus-zero behavior and original ID strings.
 
+Use EDITING.md's corrected date comparison. Keep date metrics, assertions and
+meaningful mutation expectations through repairs; only selected facts justify
+correcting a demonstrably wrong expectation. Retain unsupported-engine failures.
+
+For concrete visual rejection, use the named cell and observed defect to repair
+only supported formatting within authorized scope. Preserve exact source text,
+identifiers and unrelated rows/columns. Pair wrapping with sufficient row height,
+then rerender and rerun the mechanical check with the original assertions and
+meaningful mutations. A wrap flag is not evidence of fit, and preview limitations
+do not authorize rewriting valid source data. Never invoke a reviewer or resample
+a verdict from the action boundary. Trusted rejection feeds the same Agent
+invocation: repair justified in-scope defects, inspect changed evidence after
+rerender/mechanical checking, and submit plain text again under AGENTS.md's
+boundary, without increasing limits or weakening acceptance.
+
 Review actual after images for affected views and preservation, when available.
 Fix only authored spec/guide and rerender/recheck; never copy observed results
 into expectations to silence a failure. A failing check, source mismatch,
@@ -136,7 +173,13 @@ ambiguous mapping or unavailable essential capability remains a blocker.
 
 The guide is a change ledger: intentional ranges, reasons, mapping confidence
 and rationale, interpretations, accepted/duplicate/unresolved records, formulas
-and units, limits, refresh steps, and exact unresolved decisions. Distinguish
+and units, limits, refresh steps, and exact unresolved decisions. Give one
+correct formula explanation consistent with authored operations, never an
+incorrect pseudovariant followed by a conflicting corrected formula. Distinguish
 mechanical checks, independent semantic checks, image review and native Excel
 testing. Artifact Tool/LibreOffice evidence does not certify Microsoft 365 UI
 behavior. Final prose reports only observed outcomes and remaining limitations.
+Report what the action actually verified. At submission, the selected optional
+controller-owned visual stage is pending; its final outcome is in the controller's
+receipt. Do not preclaim a pass or broadly deny visual review. Narrow literal
+visibility is distinct from independent semantic review and native Excel behavior.

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Print a bound, lossless edit inventory and empty spec; write no workspace files."""
+import argparse
+import hashlib
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+# Trusted local helpers only; importing must not modify the reusable definition.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from contract import bounds, digest, input_bindings, require
+from edit_contract import inventory
+
+CELL_FIELDS = ("type", "value", "formula", "style")
+
+
+def compact_inventory(full):
+    """Retain all metadata; replace cell objects with rows and intern styles."""
+    styles, indices, sheets = [], {}, []
+    for sheet in full["sheets"]:
+        rows = []
+        for address, cell in sheet["cells"].items():
+            style = cell["style"]
+            key = json.dumps(style, sort_keys=True, ensure_ascii=False,
+                             separators=(",", ":"), allow_nan=False)
+            if key not in indices:
+                indices[key] = len(styles)
+                styles.append(style)
+            row = [address, cell["type"], cell["value"], cell["formula"], indices[key]]
+            extra = {k: v for k, v in cell.items() if k not in CELL_FIELDS}
+            if extra:
+                row.append(extra)
+            rows.append(row)
+        sheets.append({**sheet, "cells": rows})
+    return {"styles": styles, "inventory": {**full, "sheets": sheets}}
+
+
+def context(root):
+    request_path = root / "request.json"
+    require(request_path.is_file() and not request_path.is_symlink(),
+            "Missing/unsafe request.json")
+    request_bytes = request_path.read_bytes()
+    request_hash = hashlib.sha256(request_bytes).hexdigest()
+    req = json.loads(request_bytes)
+    inputs = input_bindings(root, req)
+    require(req.get("mode") == "edit", "edit-context requires mode=edit")
+    workbook = req.get("workbook")
+    require(workbook in [x["path"] for x in inputs], "Edit needs bound workbook")
+    for entry in inputs:
+        p = root
+        for part in Path(entry["path"]).parts:
+            p = p / part
+            require(not p.is_symlink(), "Symlink input component: " + entry["path"])
+    source = root / workbook
+    require(source.suffix.lower() == ".xlsx", "Only local macro-free XLSX supported")
+    with zipfile.ZipFile(source) as z:
+        require(sum(i.file_size for i in z.infolist()) <= 100_000_000,
+                "Expanded workbook exceeds 100MB")
+    full = inventory(source)
+    require(not full["blockers"], "Cannot preserve: " + "; ".join(full["blockers"]))
+    require(1 <= len(full["sheets"]) <= 8, "Need 1-8 sheets")
+    for sheet in full["sheets"]:
+        for address in sheet["cells"]:
+            bounds(address)
+    projection = compact_inventory(full)
+    skeleton = {
+        "schema": "bench.workbook-edit/v1", "request_sha256": request_hash,
+        "inputs": inputs, "purpose": "", "interpretation": "",
+        **{k: [] for k in ("changes", "operations", "metrics", "assertions", "tests",
+                          "previews", "mappings", "issues", "limitations", "pivots")},
+    }
+    # Fail closed if the request or any selected bytes changed during preparation.
+    require(digest(request_path) == request_hash, "Stale request during preparation")
+    require(input_bindings(root, req) == inputs, "Stale inputs during preparation")
+    require(full["sha256"] == next(x["sha256"] for x in inputs
+                                  if x["path"] == workbook), "Stale workbook inventory")
+    return {
+        "schema": "bench.workbook-edit-context/v1",
+        "request": req, "request_sha256": request_hash, "inputs": inputs,
+        "workbook": next(x for x in inputs if x["path"] == workbook),
+        "additional_inputs": [x for x in inputs if x["path"] != workbook],
+        "additional_inputs_policy": "Read these exact selected files in full; contents are not embedded.",
+        "spec_skeleton": skeleton,
+        "skeleton_status": "Starting envelope only; incomplete and rejected by bin/check.",
+        "encoding": {
+            "cells": ["address", "type", "value", "formula", "style_index", "extra?"],
+            "style_index": "Zero-based index into styles; substitute the complete style object.",
+            "extra": "Optional sixth object contains every other cell field unchanged; merge into the decoded cell.",
+            "metadata": "All non-cell inventory fields unchanged. All cells retained, in original order.",
+            "nulls": "Explicit nulls retained; no truthiness filtering or blank/zero/text coercion.",
+        },
+        **projection,
+        "inspection": {
+            "generate_with": "$AGENT_HOME/tools/inspect-workbook",
+            "full_inventory": "inspection/workbook.json",
+            "before_pngs": "inspection/previews/",
+            "status": "Optional separate evidence; not generated or verified by edit-context.",
+        },
+    }
+
+
+def main():
+    argparse.ArgumentParser(description=__doc__).parse_args()
+    try:
+        result = context(Path.cwd())
+        text = json.dumps(result, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        print(text)
+    except Exception as exc:
+        print("edit-context: " + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

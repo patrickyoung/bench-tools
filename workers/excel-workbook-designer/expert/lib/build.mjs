@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {Workbook,SpreadsheetFile} from '@oai/artifact-tool';
 import {refreshPivots,addChart} from './features.mjs';
+import {observeMetrics,checkMetrics} from './metrics.mjs';
 
 // Deliberately declarative: no eval, subprocesses, arbitrary scripts or fetch.
 const root=path.resolve(process.argv[2]);
@@ -67,14 +68,14 @@ for(const c of spec.controls){
 }
 wb.recalculate();
 refreshPivots(wb,spec.pivots||[]);
-const metrics=()=>Object.fromEntries(spec.metrics.map(m=>[m.id,wb.worksheets.getItem(m.sheet).getRange(m.cell).values[0][0]]));
-const baseline=metrics(),tests=[];
+const metrics=()=>observeMetrics(wb,spec.metrics);
+const initial=metrics(),baseline=initial.values,tests=[];
 for(const t of spec.tests){
  const saved=[];
  try{
   for(const e of t.edits){const r=wb.worksheets.getItem(e.sheet).getRange(e.cell);saved.push([r,r.values]);r.values=[[value(e.value)]];}
   wb.recalculate();refreshPivots(wb,spec.pivots||[]);const observed=metrics();
-  const checks=t.expect.map(e=>({metric:e.metric,expected:e.value,actual:observed[e.metric],passed:typeof e.value==='number'?typeof observed[e.metric]==='number'&&Math.abs(e.value-observed[e.metric])<=(e.tolerance??1e-6):e.value===observed[e.metric]}));
+  const checks=checkMetrics(t.expect,observed);
   tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
  }finally{for(const [r,vs] of saved)r.values=vs.map(row=>row.map(value));wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
 }
@@ -87,7 +88,7 @@ for(let i=0;i<spec.sheets.length;i++){
  previews.push({sheet:s.name,path:p,sha256:await digest(path.join(root,p))});
 }
 await (await SpreadsheetFile.exportXlsx(wb)).save(path.join(root,'output/workbook.xlsx'));
-const qa={schema:'bench.workbook-qa/v1',engine:'Artifact Tool',spec_sha256:await digest(specPath),workbook_sha256:await digest(path.join(root,'output/workbook.xlsx')),baseline,tests,previews,limitations:['Native Microsoft Excel interaction has not been tested.','Declared mutation expectations require independent review.']};
+const qa={schema:'bench.workbook-qa/v1',engine:'Artifact Tool',spec_sha256:await digest(specPath),workbook_sha256:await digest(path.join(root,'output/workbook.xlsx')),baseline,baseline_date_metrics:initial.dateMetrics,tests,previews,limitations:['Native Microsoft Excel interaction has not been tested.','Declared mutation expectations require independent review.']};
 await fs.writeFile(path.join(root,'output/qa.json'),JSON.stringify(qa,null,2)+'\n');
 console.log(JSON.stringify({baseline,tests:tests.map(t=>({name:t.name,passed:t.passed,...(!t.passed?{checks:t.checks}:{})})),previews:previews.length}));
 if(tests.some(t=>!t.passed))process.exitCode=1;

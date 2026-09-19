@@ -191,3 +191,157 @@ explicit font, fill and alignment when matching or moving inputs/headers, with
 saved-style and preview verification; preservation alone does not establish the
 requested change. This is supplied host feedback, not a Hone lesson or a claim
 that the underlying dependency has been fixed. Evidence stays outside source.
+
+
+## Editing preparation and deterministic preservation revision
+
+Retains worker ID `excel-workbook-designer` from clean source commit
+`ac3f133a6a19441e2e71e87da7602c975b4f19d9`. The supplied teaching request was
+processed through Hire with the existing Astra bridge. It produced the
+`tools/edit-context` preparation filter and related guidance. This is supplied
+knowledge and authoring, not an admitted Hone lesson. Existing source lineage,
+licenses and skill attribution above remain applicable.
+
+The filter uses the existing local contract and inventory helpers to emit an
+exactly bound, reversible compact inventory and an incomplete spec envelope.
+It requires no model, provider client, new package or writable runtime state.
+The envelope is deliberately incomplete and cannot pass the final check.
+The helper uses Python 3.9+ standard-library APIs, including the existing
+binding helper's `Path.is_relative_to`; it does not require Python 3.10.
+
+The host separately supplied more precise range, matrix, scope and metric
+validation diagnostics without broadening the accepted contract; a narrow
+repair of an omitted conditional-fill pattern when all remaining rule/style
+facts match; a final preservation check of referenced differential styles;
+and regeneration of previews from the saved workbook after native repairs.
+The host also clarified bounded A1 syntax, use of current prepared evidence
+and the existing wrap/height treatment of newly appended text. These are
+reviewed instructions and deterministic engineering changes, not a model
+permission to weaken checks or write runtime programs.
+
+Portable synthetic tests are curated under the worker's separate `tests/`
+directory and never exported. They exercise byte bindings, reversible
+preparation, invalid and stale inputs, diagnostics, precise native repairs
+and rejection of altered referenced styles. They establish bounded contracts,
+not business correctness, representative model reliability or native Excel
+certification. Live cases, rejected attempts, model/cost comparisons and image
+reviews remain external operator evidence and are not embedded here.
+
+An operator may compose public Ask init/append with Agent's existing checkpoint
+contract to put the complete selected preparation in the first model request.
+That caller-side procedure is outside this definition: it grants no new worker
+authority and changes no provider, model, call limit, confinement or acceptance
+rule. No Weigh service, model routing or automatic improvement loop is required.
+
+## Typed date metric comparison revision
+
+The host supplied this deterministic repair after observing that the existing
+renderer compared JavaScript Date objects directly with JSON expectations,
+then serialized those objects to ISO strings in QA. The repair is engineering
+work with synthetic offline regressions, not a Hire-authored skill amendment,
+a Hone lesson, a model-guided business fact or a Weigh decision.
+
+The new local `lib/metrics.mjs` is shared by this worker's creation and editing
+adapters only. Actual runtime Dates receive explicit renderer-owned metadata;
+ordinary text, booleans and numbers are not coerced into dates. The public check
+binds marked dates to saved numeric cells and recognized calendar formatting,
+and validates serials under the saved workbook's declared 1900/1904 system.
+Typed date writes use the same conversion. Invalid calendar dates, wrong days,
+blank or boolean cells, duplicate/unknown markers and unsupported date formats
+remain failures. Existing numeric serial expectations remain numeric.
+
+The separate portable tests include 46 Python cases (the prior 33 plus 13 date
+cases), nine JavaScript observation/comparison cases and an explicit Artifact
+render/check fixture. The fixture retains its date assertion and mutation,
+passes exact typed/ISO expectations, and rejects a wrong day. The 1904 and
+January/February 1900 cases exercise saved-file verification using synthetic
+OOXML; they do not establish engine import/export support for every such date.
+Calendar-format recognition is deliberately bounded, not a full Excel format
+parser. Actual engine evidence uses a modern 1900-system date; native Excel
+behavior requires separate verification.
+
+No model call, provider, action loop, retry, permission, assertion deletion or
+business-expectation change is part of this repair. Offline evidence does not
+retroactively accept a failed live run or establish fresh-task transfer, lower
+cost, general model reliability or Weigh benefit. A later source adoption must
+retain its separate acceptance evidence and original rejected outcomes.
+
+## Optional saved-workbook visual check revision
+
+Retains worker ID and source baseline
+`ac3f133a6a19441e2e71e87da7602c975b4f19d9`. All prior source pins, attribution,
+licenses and dated amendment history above are retained. This section describes
+host-supplied engineering in an experimental source revision, not an admitted
+Hone lesson or Weigh result. Its initial staging proposal preceded source
+adoption; adoption and evaluation records remain separately attributable.
+
+The host added a public visual-context preparation command and a caller-selected
+Ask check composed with public Record. The helper uses reviewed original/saved
+XLSX inventories, exact sheet bookmarks from LibreOffice SinglePageSheets PDF
+export, and Poppler rasterization. It supplies complete affected-sheet images
+and row/header context; it does not infer glyph bounds or diagnose clipping.
+The render process stays inside the selected public Cage boundary. The check
+recomputes mechanical acceptance first, binds and rechecks PDF/image/input and
+executable identities, validates one finding per selected changed literal, and
+preserves recorded unknown outcomes without resampling. There is no mandatory
+service, provider client, second action loop, renderer fallback or Weigh call.
+
+LibreOffice's documented PDF filter contract informs that preparation; it is
+not evidence of native Excel parity. The supplied Artifact preview path was
+found unsuitable for some correctly saved leading-zero literal IDs and was not
+retained as this visual evidence backend. Stored text fidelity and displayed
+image fidelity are separate questions. No identifier exception or acceptance
+threshold was relaxed to conceal that disagreement.
+
+Related procedure guidance was supplied through Hire, limited to AGENTS, the
+existing creation/edit contracts' prose and the workbook-editing skill. The
+teacher process reached its six-turn limit and exited 2; it did not complete.
+The host and independent reviewer inspected the four authored instruction files,
+then independently verified structure and skill format and accepted those exact
+bytes into the experimental candidate. The external guidance-application receipt
+binds before/after hashes and confirms all other bytes unchanged. Reviewed byte
+acceptance is not a successful teacher process, repaired workbook, or passed
+live development/transfer evaluation.
+
+The separate tests include standard-library gate boundaries, actual confined
+LibreOffice/PDF preparation on synthetic workbooks, and loopback Ask/Record
+integration with supplied fixture judgments. They cover process contracts and
+specific deterministic behavior, not vision accuracy or model generalization.
+Current component evidence and all paid controls, workbook outputs, model
+settings, comparison outcomes and independent acceptance criteria remain in
+external operator records. The prior rejected promotion proposal remains
+rejected; Date and visual component tests do not retroactively accept it.
+
+The original proposal required review of the teaching diff, materialized source
+inventory and synthetic suites, plus declared live controls and fresh cases
+under unchanged independent criteria. Keep those acceptance records, including
+failures and limitations, separately from portable source. Keep this worker
+experimental. Exports must use an approved source commit and a fresh destination
+while preserving the original locks.
+
+## Saved native-feature evidence and earlier completion handoff
+
+This experimental revision retains the source baseline, prior pins and history
+above. A narrow host-authored change exposes facts already computed by the edit
+check from the saved XLSX: its hash, table sheet/name/range/ordered headers and
+actual chart part/reference strings. The compact object omits whole records
+with explicit incomplete/omitted counts when its 16KiB budget is exceeded; it
+does not expose cell inventories or canonical XML. Existing acceptance rules
+are unchanged. These are observed facts, not exact requested-chart-binding
+acceptance; chart owner/type and requested-to-saved mapping remain unresolved.
+
+A subsequent Hire teaching process completed with exit 0. The host and an
+independent reviewer approved its exact three instruction-file changes: AGENTS,
+EDITING and the workbook-editing skill. They teach one comparison of relevant
+saved-feature evidence, a prompt plain-language completion report after the
+first complete mechanical result, and correction of concrete trusted feedback
+without redundant discovery or invented action names. The separate application
+receipt binds these bytes and confirms all executable and other bytes unchanged
+by teaching. Earlier teacher failures remain recorded in the history above.
+
+Portable synthetic tests cover this additional evidence and failure behavior.
+Copied closed-workbook probes and all model/evaluation records remain external.
+Completed teaching, deterministic checks and richer evidence do not establish
+fresh workbook acceptance, successful visual repair, transfer reliability, lower
+cost or source adoption. Keep the worker experimental and retain independent
+acceptance records, including failed outcomes, separately.

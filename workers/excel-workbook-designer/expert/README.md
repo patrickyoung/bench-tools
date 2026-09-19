@@ -1,5 +1,8 @@
 # Excel workbook designer and editor
 
+Experimental. This portable package makes no representative model-reliability,
+lower-cost transfer, fresh-task acceptance or native Excel certification claim.
+
 One independently reusable Agent/Cage worker designs friendly, task-first
 workbooks from selected CSV/JSON, semi-structured records and notes. It authors
 declarative logic and guidance; the host's Artifact Tool renderer owns production.
@@ -30,10 +33,11 @@ For creation, use the exact schemas and fields in `CONTRACT.md`. Inputs are:
 For editing, a plain-language prompt may be the only new input alongside an
 existing XLSX. The operator binds that workbook and any explicitly selected new
 records according to `EDITING.md`; no old spec or structured edit list is needed.
-Before planning, the worker invokes `tools/inspect-workbook` using the contract's
-syntax and reads the resulting input inventory, values/formulas, exact headers,
-feature information and actual before PNGs when image inspection is available.
-It never reconstructs the workbook from a prior spec or memory.
+Before planning, use a supplied current `tools/edit-context` result or run it
+from the workspace. Read the compact full inventory and all additional selected
+inputs. Full inspection and before PNGs are still available via
+`tools/inspect-workbook`; generate/review images when image inspection is
+available. Never reconstruct a workbook from a prior spec or memory.
 
 The worker authors only `output/spec.json` (the selected mode's schema) and
 `output/guide.md`. The trusted renderer produces `output/workbook.xlsx`,
@@ -57,6 +61,44 @@ Unpreservable input features are blockers, not permission to remove them.
 A list selector is a list selector, not a slicer. Native What-If Data Tables,
 custom scripts and other undocumented features are not promised.
 
+## Editing preparation interface
+From the bound workspace, run `"$EXPERT/tools/edit-context"` (no arguments;
+`--help` describes usage). It uses Python 3.9+ standard library and the existing
+local contract helpers only; no Node, model, new package or inspection cache.
+It prints one compact JSON object on stdout, diagnostics on stderr and exits
+nonzero on invalid/stale bindings or unsupported source features. It writes
+nothing, including no spec, guide, QA or before images. The operator may capture
+stdout outside the definition and supply it to the same Agent/Cage run.
+A supplied context is valid only for its exact request/input bytes; regenerate
+after an authorized request change, never rebind inputs to hide a mismatch.
+
+`bench.workbook-edit-context/v1` contains the complete parsed request,
+`request_sha256` of exact request bytes, sorted `inputs`, the selected `workbook`
+binding, explicit `additional_inputs`, an incomplete bound `spec_skeleton`,
+`styles`, `inventory` and encoding/evidence notes. CSV/text/JSON contents remain
+in their exact selected input files: read those files, not inferred summaries.
+The skeleton has empty plans/operations/metrics/assertions/tests; the original
+verifier rejects it. No expected business results or QA are fabricated.
+
+Reversible inventory encoding: each sheet's `cells` object becomes an ordered
+array of `[address,type,value,formula,style_index]` rows. A sixth object, when
+present, holds every other cell field. Decode to an address-keyed object with
+`type`, `value`, `formula`, `style: styles[style_index]`, merging the sixth object.
+Styles are interned globally by complete JSON equality (object key order ignored).
+All other inventory fields are unchanged, including native-feature metadata and
+blockers. No cells or strings are sampled/truncated; null, empty text, zero and
+text IDs remain distinct. This is lossless relative to the existing helper's
+inventory, not a replacement OOXML parser: immutable XLSX bytes remain the
+complete source, and existing inspection/before images remain separate evidence.
+Unsupported blockers fail on stderr rather than emitting a usable context.
+
+Positive offline use: bind a supported synthetic XLSX and optional CSV/notes,
+invoke the helper, decode cells/styles, and compare to the existing inventory.
+Negative use: change any selected file without rebinding; the helper must reject
+with empty stdout. Writing the untouched skeleton as output/spec.json must also
+fail `bin/check --mechanical`. Preparation alone proves no workbook quality,
+render success or turn savings; real model evaluation stays with the host.
+
 ## Run locally
 Prerequisites: Agent and its configured Ask/Ply/Brief/Cage/Record companions,
 operator-selected model/credentials, and the host-supplied trusted `CONTRACT.md`,
@@ -67,8 +109,8 @@ run results belong in the operator's external evaluation record.
 Follow the installed contract and public tool documentation, never guessed flags.
 The host selects `WORKBOOK_NODE`, `WORKBOOK_NODE_MODULES` (containing `@oai/artifact-tool`) and
 `WORKBOOK_PYTHON`, with dependencies outside the writable workspace.
-LibreOffice may be supplied by the host for separate engine evaluation, not a
-replacement authoring API. Microsoft Excel availability is operator-dependent.
+LibreOffice may be supplied for separate engine evaluation or the explicitly
+selected changed-text visual path below. It is not a replacement authoring API. Microsoft Excel availability is operator-dependent.
 The operator must admit the trusted tools and their dependencies under Cage.
 The worker cannot fix denied permissions by disabling confinement.
 
@@ -107,16 +149,60 @@ Within an admitted runtime workspace, edits first require
 modes use the trusted production and acceptance commands:
 ```sh
 "$AGENT_HOME/tools/render"
-"$AGENT_HOME/bin/check"
+"$AGENT_HOME/bin/check" --mechanical
 ```
 
 For operator reruns of these deterministic commands, from that same workspace,
-use `"$EXPERT/tools/render"` then `"$EXPERT/bin/check"` with the same host-selected
+use `"$EXPERT/tools/render"` then `"$EXPERT/bin/check" --mechanical` with the same host-selected
 environment. Do not run them in the reusable definition directory or invent flags.
-`bin/check` exit 0 accepts mechanically, 1 means unfinished, another status means
-the check is broken. Agent exit statuses follow Agent's public manual.
+`bin/check --mechanical` exit 0 accepts mechanically and 1 means unfinished.
+Agent separately invokes plain `bin/check` as its trusted completion check; the
+optional visual stage below can reject that completion or return broken status 2.
+Agent exit statuses follow Agent's public manual.
 A definition-only inspection is `agent check -C "$WORKSPACE" "$EXPERT"` with
 an existing workspace; it is not a workbook evaluation.
+
+## Optional changed-literal visibility check
+
+With no visual configuration, bin/check preserves mechanical-only behavior. For a bound edit,
+the caller may set all three nonempty values: `WORKBOOK_VISUAL_ASK`,
+`WORKBOOK_VISUAL_MODEL` and an absolute `WORKBOOK_VISUAL_RECORDS` directory outside
+the workspace, definition, Agent state and all worker action write grants.
+The selected Ask must support image attachments, native JSON schema,
+`-effort medium` and public offline session/replay commands. Record uses that
+same Ask; choose Record with `AGENT_RECORD` or the caller's PATH.
+
+When added/changed literal strings exist, also explicitly select absolute
+`WORKBOOK_VISUAL_SOFFICE`, `WORKBOOK_VISUAL_PDFTOPPM`, `WORKBOOK_VISUAL_CAGE`
+and `WORKBOOK_PYTHON` executables. Python needs the public pypdf package supplied
+by the host. No dependency is installed, and no fallback renderer, provider or
+model is chosen. Source-bound clarification and zero-target results need no
+visual inference; zero targets needs none of these renderer selections.
+
+`tools/visual-context` compares the bound original and saved XLSX, then renders
+whole affected sheets through confined LibreOffice→PDF→PNG at 160 dpi. Exact PDF
+sheet bookmarks, page mapping, selected text, row/header context, PDF/PNG bytes,
+and selected executable identities are bound and checked. A wrapper hash does
+not pin every font/library/program behind it. Original workbook bytes are never
+rewritten. See VISUAL-CONTEXT.md for limits and unsupported cases.
+
+After fresh mechanical acceptance, one recorded Ask call judges all selected
+literal cells. Every selected cell needs its own finding. Complete pass returns 0;
+concrete failure or valid uncertainty returns 1 with cell-specific feedback for
+the existing Agent loop; partial configuration, unavailable dependencies,
+malformed/missing findings or stale/unknown evidence returns 2 and stops. There
+is no silent mechanical-only fallback after selection. An exact unchanged
+candidate can reuse a revalidated recorded pass or rejection. Broken attempted
+judgments remain pending for explicit caller resolution, never automatic retry.
+
+The scoped visual receipt supplements the mechanical result. It does not cover
+unchanged text, formula-result text, style-only changes, general aesthetics,
+charts, accessibility, business meaning or native Microsoft Excel behavior.
+Whole-sheet print pages have no guaranteed blank guard or cell-pixel mapping;
+ambiguous localization and possible page-edge cutoff must remain uncertain.
+Keep independent broader review. Never rewrite correct source identifiers to
+match a renderer's display limitation. Weigh is not required by this path.
+See VISUAL-CHECK.md for the full selection, evidence and exit contract.
 
 ## Text-heavy workbook craft
 The text-workbooks skill teaches maintenance by stable text ID, exact guarded
@@ -263,21 +349,47 @@ and LibreOffice results do not certify Microsoft 365 desktop or web behavior;
 unverified native behavior must be disclosed.
 
 ## Maintenance
-This Hire text-craft amendment retains worker ID `excel-workbook-designer` from
-the supplied clean committed baseline
-`54d930451d50d5cdad34d202c9e4f1a5204dc6c9`. The initial text-craft amendment
-added the text-workbooks skill and common-workflows routing. This follow-up
-changes only `skills/text-workbooks/SKILL.md` and relevant `AGENTS.md`,
-`README.md` and `PROVENANCE.md` wording. It is supplied host design feedback
-through Hire, not a Hone lesson.
-The creation and editing skills are preserved. The host owns both contracts and all deterministic
-implementation. Missing capabilities require a separately reviewed host adapter
-and external cases, not generated runtime code. One worker is sufficient:
-domain interpretation belongs in skills, transformations/checking in trusted tools.
-The dated 2026 evidence is directional, not a universal workflow ranking or proof
-of this worker's quality; see provenance. No new evaluations are claimed.
+Retain worker ID `excel-workbook-designer`. The editing-preparation amendment
+was authored through Hire from supplied host design feedback, not a Hone
+lesson. It adds the lossless `tools/edit-context` filter and associated editing
+guidance. Existing creation, common-workflow and text-workbook skills remain.
+
+The host supplied the deterministic changes accompanying this revision:
+validation errors identify the failing range, matrix, scope or metric; the
+renderer restores a conditional-fill pattern only when that single omitted
+attribute explains the entire source/output differential-style difference;
+the final check verifies referenced conditional-format differential styles on
+unchanged sheets; previews are regenerated from the saved workbook after a
+native fill repair. These changes preserve the existing schemas and validation
+rules while strengthening preservation checks. Those deterministic repairs add no model call. The optional visual check
+below may call the selected Ask; it adds no provider client, action loop or
+automatic retry.
+
+The local `lib/metrics.mjs` helper preserves actual runtime Date identity when
+recording metrics and checking expectations. A calendar-date metric accepts
+its exact canonical UTC ISO value or a valid single-key `{date:"YYYY-MM-DD"}`
+expectation at UTC midnight. Ordinary text, booleans and numbers remain distinct.
+The final check validates marked dates against numeric saved cells, recognized
+calendar-date formatting and the saved workbook's 1900/1904 date system. Typed
+date writes use that same conversion; invalid dates cannot match blank cells.
+No assertion or mutation expectation is removed to obtain a passing result.
+See EDITING.md and CONTRACT.md for the bounded format support. Synthetic saved
+1904/early-1900 tests do not certify all engine import/export or native Excel
+behavior; the actual engine fixture uses a modern 1900-system date.
+
+The host owns both contracts and deterministic implementation. Missing
+capabilities require a separately reviewed host adapter and external cases,
+not worker-generated runtime code. Domain interpretation belongs in skills;
+transformations and checking belong in trusted tools. See PROVENANCE.md for
+source attribution and the history of prior amendments.
 
 Validate the definition with `hire verify "$EXPERT"` and
-`brief lint -strict "$EXPERT/skills"`. These inspect structure/skill format,
-not live workbook quality. Fresh synthetic cases and actual Agent evaluations
-are host-owned, outside this reusable source; none are added by this amendment.
+`brief lint -strict "$EXPERT/skills"`. These inspect structure and skill format,
+not live workbook quality. Portable synthetic regressions live beside `expert/`
+in the source library's `tests/` directory and are not exported. They cover
+bindings, lossless preparation, validation, native-style preservation, typed
+date comparison and optional visual process boundaries;
+see their README for dependency-free and explicitly selected runtime commands. Model runs, rendered workbooks,
+independent semantic and image reviews, and native-application evidence remain
+outside reusable source. An exported definition does not install an operator's
+conversation-preparation procedure or change its model, limits or permissions.

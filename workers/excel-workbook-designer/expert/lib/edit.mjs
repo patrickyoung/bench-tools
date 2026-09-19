@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {FileBlob,SpreadsheetFile} from '@oai/artifact-tool';
 import {refreshPivots,addChart} from './features.mjs';
+import {observeMetrics,checkMetrics} from './metrics.mjs';
 const root=path.resolve(process.argv[2]), inspectOnly=process.argv[3]==='inspect';
 const req=JSON.parse(await fs.readFile(path.join(root,'request.json'),'utf8'));
 const wb=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'.runtime/import.xlsx')));
@@ -48,19 +49,18 @@ if(inspectOnly){
   }
  }
  wb.recalculate();refreshPivots(wb,spec.pivots||[]);
- const metrics=()=>Object.fromEntries(spec.metrics.map(m=>[m.id,wb.worksheets.getItem(m.sheet).getRange(m.cell).values[0][0]]));
- const check=(expected,actual)=>expected.map(e=>({metric:e.metric,expected:e.value,actual:actual[e.metric],passed:typeof e.value==='number'?typeof actual[e.metric]==='number'&&Math.abs(e.value-actual[e.metric])<=(e.tolerance??1e-6):e.value===actual[e.metric]}));
- const baseline=metrics(),assertions=check(spec.assertions,baseline),tests=[];
+ const metrics=()=>observeMetrics(wb,spec.metrics);
+ const initial=metrics(),baseline=initial.values,assertions=checkMetrics(spec.assertions,initial),tests=[];
  for(const t of spec.tests){
   const saved=[];
   try{
    for(const e of t.edits){const r=wb.worksheets.getItem(e.sheet).getRange(e.cell);saved.push([r,r.values,r.formulas]);r.values=[[typed(e.value)]];}
-   wb.recalculate();refreshPivots(wb,spec.pivots||[]);const checks=check(t.expect,metrics());tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
+   wb.recalculate();refreshPivots(wb,spec.pivots||[]);const checks=checkMetrics(t.expect,metrics());tests.push({name:t.name,passed:checks.every(c=>c.passed),checks});
   }finally{for(const [r,v,f] of saved){if(f[0]?.[0])r.formulas=f;else r.values=v.map(row=>row.map(typed));}wb.recalculate();refreshPivots(wb,spec.pivots||[]);}
  }
  const previews=await render(spec.previews,'previews');
  await (await SpreadsheetFile.exportXlsx(wb)).save(path.join(root,'output/workbook.xlsx'));
- await fs.writeFile(path.join(root,'output/qa.json'),JSON.stringify({schema:'bench.workbook-edit-qa/v1',engine:'Artifact Tool',spec_sha256:await digest(specPath),workbook_sha256:await digest(path.join(root,'output/workbook.xlsx')),baseline,assertions,tests,previews,limitations:['Native Excel UI not tested; independent semantic/visual review required.']},null,2)+'\n');
+ await fs.writeFile(path.join(root,'output/qa.json'),JSON.stringify({schema:'bench.workbook-edit-qa/v1',engine:'Artifact Tool',spec_sha256:await digest(specPath),workbook_sha256:await digest(path.join(root,'output/workbook.xlsx')),baseline,baseline_date_metrics:initial.dateMetrics,assertions,tests,previews,limitations:['Native Excel UI not tested; independent semantic/visual review required.']},null,2)+'\n');
  console.log(JSON.stringify({baseline,assertions,tests:tests.map(t=>({name:t.name,passed:t.passed})),previews:previews.length}));
  if(assertions.some(x=>!x.passed)||tests.some(x=>!x.passed))process.exitCode=1;
 }

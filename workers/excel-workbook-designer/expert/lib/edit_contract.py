@@ -2,7 +2,7 @@
 import json,re,sys,zipfile,posixpath
 from pathlib import Path
 from xml.etree import ElementTree as E
-from contract import require,digest,input_bindings,bounds,cell,col,read_xlsx,NS,ERR
+from contract import require,digest,input_bindings,bounds,cell,col,read_xlsx,NS,ERR,require_matrix_shape,require_metric_reference,validated_date_metrics,metric_equal,workbook_date1904,excel_date_serial
 S=NS['s'];R='http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 def xmlbytes(doc):
     namespace=doc.tag.split('}')[0].lstrip('{')
@@ -91,14 +91,17 @@ def validate(root):
     require(s.get('purpose') and s.get('interpretation') and s.get('changes'),'Missing edit plan')
     for ch in s['changes']:bounds(ch['range']);require(ch.get('reason'),'Change needs reason')
     allowed={'add_sheet','values','formulas','copy','format','table','validation','conditional_format','chart','chart_data'}
-    for op in s['operations']:
+    for operation_index,op in enumerate(s['operations']):
         require(op['op'] in allowed,'Unknown operation')
         if op['op']=='add_sheet':
             require(op['sheet'] not in names and 0<len(op['sheet'])<=31 and not re.search(r'[\[\]:*?/\\]',op['sheet']),'Invalid added sheet');names.append(op['sheet']);continue
         require(op['sheet'] in names,'Unknown operation sheet');bounds(op['range'])
-        if op['op'] not in ('chart','chart_data'):require(affected(s,op['sheet'],op['range']),'Operation outside scope '+op['range'])
+        location='operations['+str(operation_index)+'] ('+op['op']+') sheet='+repr(op['sheet'])+' range='+repr(op['range'])
+        if op['op'] not in ('chart','chart_data') and not affected(s,op['sheet'],op['range']):
+            declared=[x['range'] for x in s['changes'] if x['sheet']==op['sheet']]
+            raise ValueError('Operation outside scope at '+location+': missing containing changes range for '+repr(op['sheet'])+'!'+op['range']+'; declared ranges on this sheet: '+repr(declared))
         if op['op'] in ('values','formulas'):
-            a=op[op['op']];r,c,R,C=bounds(op['range']);require(len(a)==R-r+1 and all(len(row)==C-c+1 for row in a),'Bad matrix shape')
+            a=op[op['op']];r,c,R,C=bounds(op['range']);require_matrix_shape(a,R-r+1,C-c+1,location)
             if op['op']=='formulas':
                 for row in a:
                     for f in row:require(isinstance(f,str) and f.startswith('=') and not re.search(r'\[|https?:|WEBSERVICE|DDE|RTD|HYPERLINK',f,re.I),'Unsafe/unsupported edit formula')
@@ -112,19 +115,47 @@ def validate(root):
     require(s.get('metrics') and s.get('assertions'),'Need metrics and independent baseline assertions');ids={m['id'] for m in s['metrics']}
     require(len(ids)==len(s['metrics']) and set(req.get('required_metrics',[]))<=ids,'Required/duplicate metrics')
     for m in s['metrics']:require(m['sheet'] in names,'Unknown metric sheet');cell(m['cell'])
-    require(all(e['metric'] in ids for e in s['assertions']),'Unknown assertion')
+    for assertion_index,e in enumerate(s['assertions']):require_metric_reference(e['metric'],ids,'assertions['+str(assertion_index)+'].metric','Unknown assertion')
     live=any(o['op'] in ['formulas','chart','chart_data'] for o in s['operations']) or bool(s.get('pivots'))
     require(not live or s.get('tests'),'Live changes require mutation test')
-    for t in s['tests']:
+    for test_index,t in enumerate(s['tests']):
         require(t.get('name') and t.get('edits') and t.get('expect'),'Incomplete test')
         for e in t['edits']:require(e['sheet'] in names,'Unknown mutation sheet');cell(e['cell'])
-        require(all(e['metric'] in ids for e in t['expect']),'Unknown test metric')
+        for expect_index,e in enumerate(t['expect']):require_metric_reference(e['metric'],ids,'tests['+str(test_index)+'] ('+repr(t['name'])+').expect['+str(expect_index)+'].metric','Unknown test metric')
     require(s.get('previews') and all(p['sheet'] in names for p in s['previews']),'Missing previews')
     for p in s['previews']:bounds(p['range'])
     for m in s.get('mappings',[]):require(m.get('confidence') in ['high','medium'] and all(m.get(k) for k in ['source','column','target','reason']),'Unresolved or incomplete mapping')
     return req,s,inv
+def conditional_styles(path):
+    """Resolve styles used by conditional rules; rule XML alone omits them."""
+    with zipfile.ZipFile(path) as z:
+        dxfs=xml(z,'xl/styles.xml').findall('s:dxfs/s:dxf',NS);result={}
+        for name,part,_ in sheet_parts(z):
+            styles=[]
+            for cf in xml(z,part).findall('s:conditionalFormatting',NS):
+                for rule in cf.findall('s:cfRule',NS):
+                    index=rule.get('dxfId')
+                    if index is None:continue
+                    require(re.fullmatch(r'[0-9]+',index) is not None and int(index)<len(dxfs),'Invalid conditional-format differential style '+name+'!'+str(cf.get('sqref'))+': '+index)
+                    styles.append((cf.get('sqref'),canon(rule),canon(dxfs[int(index)])))
+            result[name]=styles
+        return result
+def saved_native_features(after):
+    """Bounded observed facts from the existing saved-file inventory, not a verdict."""
+    counts={'tables':sum(len(sh['tables']) for sh in after['sheets']),'charts':len(after['charts'])}
+    facts={'workbook_sha256':after['sha256'],'tables':[],'charts':[],'counts':counts,'omitted':dict(counts),'complete':not any(counts.values()),'max_compact_bytes':16384,
+           'scope':'Observed saved-XLSX table definitions and chart formula references, not exact requested-chart-binding acceptance. Chart owner/type and requested-to-saved chart mapping are not resolved.'}
+    records=(('tables',{'sheet':sh['name'],'name':t['name'],'range':t['range'],'headers':t['headers']}) for sh in after['sheets'] for t in sh['tables'])
+    charts=(('charts',{'part':ch['part'],'references':ch['references']}) for ch in after['charts'])
+    for group in (records,charts):
+        for kind,record in group:
+            facts[kind].append(record);facts['omitted'][kind]-=1;facts['complete']=not any(facts['omitted'].values())
+            if len(json.dumps(facts,ensure_ascii=False,separators=(',',':')).encode('utf-8'))>facts['max_compact_bytes']:
+                facts[kind].pop();facts['omitted'][kind]+=1;facts['complete']=False
+    return facts
 def check(root):
     req,s,before=validate(root);qa=json.loads((root/'output/qa.json').read_text());after=inventory(root/'output/workbook.xlsx')
+    before_styles=conditional_styles(root/req['workbook']);after_styles=conditional_styles(root/'output/workbook.xlsx')
     from features import verify_pivots
     pivots=verify_pivots(root,s)
     require(qa['spec_sha256']==digest(root/'output/spec.json') and qa['workbook_sha256']==digest(root/'output/workbook.xlsx'),'Stale edit output')
@@ -156,6 +187,7 @@ def check(root):
             if not changed:verify(props==cb.get(cn),f'Preserved {a["name"]} column {col(cn)} width/state')
         for key,opname in [('validations','validation'),('conditional_formats','conditional_format')]:
             if not any(o['op']==opname and o['sheet']==a['name'] for o in s['operations']):verify(a[key]==b[key],f'Preserved {a["name"]} {key}')
+        if not any(o['op']=='conditional_format' and o['sheet']==a['name'] for o in s['operations']):verify(before_styles[a['name']]==after_styles[b['name']],f'Preserved {a["name"]} conditional-format differential styles')
         editedtables={o['name'] for o in s['operations'] if o['op']=='table' and o['sheet']==a['name']}
         for t in a['tables']:
             if t['name'] not in editedtables:verify(t in b['tables'],'Preserved table '+t['name'])
@@ -175,25 +207,27 @@ def check(root):
         r,c,R,C=bounds(o['range'])
         for i,row in enumerate(o[o['op']]):
             for j,v in enumerate(row):expected_cells[(o['sheet'],col(c+j)+str(r+i))]=(o['op'],v)
-    from datetime import date
+    date1904=workbook_date1904(root/'output/workbook.xlsx') if any(isinstance(v,dict) for kind,v in expected_cells.values()) else False
     for (sh,a),(kind,v) in expected_cells.items():
-        obs=actual[sh].get(a,{});want=v
-        if isinstance(v,dict):want=(date.fromisoformat(v['date'])-date(1899,12,30)).days
-        verify(obs.get('formula')==v[1:] if kind=='formulas' else obs.get('value')==want,'Requested '+kind+' '+sh+'!'+a)
+        obs=actual[sh].get(a,{});want=v;valid=True
+        if isinstance(v,dict):want=excel_date_serial(v['date']+'T00:00:00.000Z',date1904);valid=want is not None and type(obs.get('value')) in (int,float)
+        verify(valid and (obs.get('formula')==v[1:] if kind=='formulas' else obs.get('value')==want),'Requested '+kind+' '+sh+'!'+a)
     for o in s['operations']:
         if o['op']=='table':verify(any(t['name']==o['name'] and t['range']==o['range'] for sh in after['sheets'] if sh['name']==o['sheet'] for t in sh['tables']),'Requested table '+o['name'])
-    for m in s['metrics']:verify(actual[m['sheet']].get(m['cell'],{}).get('value')==qa['baseline'][m['id']],'Saved metric '+m['id'])
+    date_metrics=validated_date_metrics(root/'output/workbook.xlsx',qa,s['metrics'],actual)
+    for m in s['metrics']:verify(m['id'] in date_metrics or metric_equal(actual[m['sheet']].get(m['cell'],{}).get('value'),qa['baseline'][m['id']],0),'Saved metric '+m['id'])
     for assertion in s['assertions']:
-        v=qa['baseline'].get(assertion['metric']);w=assertion['value'];ok=abs(v-w)<=(assertion.get('tolerance',1e-6)) if isinstance(v,(int,float)) and isinstance(w,(int,float)) else v==w
+        v=qa['baseline'].get(assertion['metric']);w=assertion['value'];ok=metric_equal(v,w,assertion.get('tolerance',1e-6),assertion['metric'] in date_metrics)
         verify(ok,'Independent asserted baseline '+assertion['metric'])
     for sh,cells in actual.items():
         for a,x in cells.items():
             old=next((z for z in before['sheets'] if z['name']==sh),{}).get('cells',{}).get(a,{})
             if x['type']=='e' or isinstance(x['value'],str) and x['value'] in ERR:verify(x==old,'No new formula error '+sh+'!'+a)
-    report={'source_sha256':before['sha256'],'output_sha256':after['sha256'],'changes':s['changes'],'mappings':s.get('mappings',[]),'checks':checks,'pivots':pivots,'passed':not errors,'limitations':s.get('limitations',[])}
+    native=saved_native_features(after)
+    report={'source_sha256':before['sha256'],'output_sha256':after['sha256'],'changes':s['changes'],'mappings':s.get('mappings',[]),'checks':checks,'pivots':pivots,'passed':not errors,'limitations':s.get('limitations',[]),'saved_native_features':native}
     (root/'output/change-report.json').write_text(json.dumps(report,indent=2)+'\n')
     require(not errors,'Preservation/output failure: '+'; '.join(errors[:8]));require((root/'output/guide.md').stat().st_size>50,'Missing guide')
-    return {'status':'accepted-mechanically','preservation_checks':len(checks),'native':after['features'],'metrics':qa['baseline'],'limits':'Independent semantic, visual and native Excel review required'}
+    return {'status':'accepted-mechanically','preservation_checks':len(checks),'native':after['features'],'metrics':qa['baseline'],'limits':'Independent semantic, visual and native Excel review required','saved_native_features':native}
 if __name__=='__main__':
     root=Path.cwd()
     try:
