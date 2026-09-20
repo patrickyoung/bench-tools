@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "renderer": "webgl2",
+  "pipeline": "webgl-composer",
+  "fallback": "unavailable",
+  "environment": {
+    "kind": "local-hdri",
+    "path": "phase-03/runtime/assets/dry_field_1k.hdr",
+    "description": "Poly Haven Dry Field 1k (Greg Zaal, CC0), PMREM for material lighting/reflection only. Procedural sky and authored painted skyline remain visible. Local assets are awaited before readiness.",
+    "rotationYRadians": 1.2367742205667935,
+    "intensity": 0.22
+  },
+  "exposure": 1.0,
+  "fog": {
+    "color": "#bec8c4",
+    "near": 160,
+    "far": 2350
+  },
+  "lights": [
+    {
+      "type": "hemisphere",
+      "color": "#abbad8",
+      "intensity": 1.2
+    },
+    {
+      "type": "directional",
+      "color": "#ffe0a5",
+      "intensity": 3.0
+    }
+  ],
+  "effects": [
+    {
+      "id": "natural-surfaces",
+      "enabled": true,
+      "implementation": "CC0 1k scanned mud/grass/bark/mossed stone diffuse and GL-normal maps, sRGB only for diffuse, metre UVs, moderated scan luminance preserving literary palette. Fine alpha-tested layered leaf sprigs and crooked branching; no spherical foliage cores."
+    },
+    {
+      "id": "long-cool-shadows",
+      "enabled": true,
+      "implementation": "Camera-local directional shadow map with a warm key behind experiential left and cool hemisphere fill."
+    },
+    {
+      "id": "haze",
+      "enabled": true,
+      "implementation": "Depth fog plus progressively flatter and bluer painted hill layers."
+    },
+    {
+      "id": "output",
+      "enabled": true,
+      "implementation": "Official EffectComposer / RenderPass / OutputPass / ShaderPass(FXAAShader), ACES filmic color-managed output. FXAA after sRGB output. No MSAA allocation."
+    },
+    {
+      "id": "ambient-motion",
+      "enabled": true,
+      "implementation": "Globally identified 32m atmosphere tiles, pure equal-time CPU poses and fixed bounded buffers (<=350); water shader shares production clock. No particle shader motion or origin-based reseeding."
+    },
+    {
+      "id": "contact-ao",
+      "enabled": false,
+      "implementation": "Assessed official GTAOPass; deferred because its MeshNormalMaterial override ignores fine alpha foliage and adds three full-screen targets plus normal geometry pass. Preserve leaf cutouts and budget instead of adding opaque-card halos. No SSR/SSGI/HBAO claim."
+    },
+    {
+      "id": "environmental-sound",
+      "enabled": true,
+      "implementation": "User-gesture Sound on/off control; local synthesized wind, leaves and stream. Canopy low-pass/gain attenuation. Audio context suspended on pause/hidden/retained page/context loss and closed on teardown. Default off."
+    }
+  ],
+  "weather": {
+    "state": "late-afternoon dry haze",
+    "cycleSeconds": 180,
+    "uniforms": [
+      "simulationTime"
+    ],
+    "reducedMotion": "Reduce drift amplitude and speed, never erase atmospheric details. No camera bob or automatic camera animation."
+  },
+  "materials": {
+    "dust": {
+      "roughness": 0.94,
+      "bumpScaleMetres": 0.022
+    },
+    "earth": {
+      "roughness": 0.97,
+      "bumpScaleMetres": 0.055
+    },
+    "bark": {
+      "roughness": 0.96,
+      "bumpScaleMetres": 0.11
+    },
+    "leaf": {
+      "roughness": 0.83,
+      "bumpScaleMetres": 0.013
+    },
+    "stone": {
+      "roughness": 0.91,
+      "bumpScaleMetres": 0.045
+    },
+    "water": {
+      "roughness": 0.2,
+      "clearcoat": 0.22,
+      "opacity": 0.48
+    }
+  }
+}
