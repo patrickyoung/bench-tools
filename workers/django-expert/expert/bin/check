@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""Read-only structural deliverable checker. No application code is executed."""
+import hashlib
+import json
+import re
+import stat
+import sys
+from pathlib import Path
+
+JSON_LIMIT = 256 * 1024
+FILE_LIMIT = 64 * 1024 * 1024
+TOTAL_LIMIT = 256 * 1024 * 1024
+ROOT = Path.cwd().resolve()
+
+
+class Invalid(ValueError):
+    pass
+
+
+def require(condition, message):
+    if not condition:
+        raise Invalid(message)
+
+
+def text(value, label):
+    require(isinstance(value, str) and bool(value.strip()), f"{label}: nonempty string required")
+    require(len(value) <= 8192, f"{label}: string too long")
+
+
+def fields(value, names, label):
+    require(isinstance(value, dict), f"{label}: object required")
+    require(set(value) == set(names.split()), f"{label}: incorrect fields")
+
+
+def sequence(value, label):
+    require(isinstance(value, list) and len(value) <= 512, f"{label}: bounded array required")
+
+
+def choice(value, options, label):
+    text(value, label)
+    require(value in options, f"{label}: invalid value")
+
+
+def relative(value):
+    text(value, "path")
+    require(len(value) <= 512 and "\\" not in value and ":" not in value,
+            "path: invalid length or separator")
+    require(not any(ord(c) < 32 or ord(c) == 127 for c in value),
+            "path: control character")
+    require(all(p not in ("", ".", "..") for p in value.split("/")),
+            "path: absolute, empty, dot or parent component")
+    return value.split("/")
+
+
+def locate(value, directory=False):
+    parts = relative(value)
+    current = ROOT
+    for index, part in enumerate(parts):
+        current = current / part
+        mode = current.lstat().st_mode
+        require(not stat.S_ISLNK(mode), f"{value}: symlink forbidden")
+        if index < len(parts) - 1 or directory:
+            require(stat.S_ISDIR(mode), f"{value}: directory required")
+        else:
+            require(stat.S_ISREG(mode), f"{value}: regular file required")
+    return current
+
+
+def read_bounded(value, limit):
+    path = locate(value)
+    require(path.stat().st_size <= limit, f"{value}: too large")
+    with path.open("rb") as stream:
+        data = stream.read(limit + 1)
+    require(len(data) <= limit, f"{value}: too large")
+    return data
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def no_constant(value):
+    raise Invalid(f"invalid JSON constant: {value}")
+
+
+def integer(value):
+    require(len(value) <= 32, "JSON integer too long")
+    return int(value)
+
+
+def bounds(value, depth=0):
+    require(depth <= 20, "JSON nesting exceeds limit")
+    if isinstance(value, dict):
+        require(len(value) <= 512, "object too large")
+        for key, child in value.items():
+            bounds(key, depth + 1)
+            bounds(child, depth + 1)
+    elif isinstance(value, list):
+        sequence(value, "JSON")
+        for child in value:
+            bounds(child, depth + 1)
+    elif isinstance(value, str):
+        require(len(value) <= 8192, "JSON string too long")
+        value.encode("utf-8")  # Reject lone surrogate code points.
+
+
+class Bindings:
+    def __init__(self):
+        self.total = 0
+        self.paths = set()
+
+    def verify(self, entry):
+        fields(entry, "path sha256", "binding")
+        name = entry["path"]
+        relative(name)
+        require(name not in self.paths, f"{name}: repeated binding")
+        self.paths.add(name)
+        digest = entry["sha256"]
+        require(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest),
+                f"{name}: invalid SHA256")
+        path = locate(name)
+        require(path.stat().st_size <= FILE_LIMIT, f"{name}: too large")
+        actual = hashlib.sha256()
+        count = 0
+        with path.open("rb") as stream:
+            while True:
+                chunk = stream.read(1024 * 1024)
+                if not chunk:
+                    break
+                count += len(chunk)
+                self.total += len(chunk)
+                require(count <= FILE_LIMIT and self.total <= TOTAL_LIMIT,
+                        "hashed file byte limit exceeded")
+                actual.update(chunk)
+        require(actual.hexdigest() == digest, f"{name}: stale or tampered hash")
+        return name
+
+
+def main():
+    data = json.loads(
+        read_bounded("handoff.json", JSON_LIMIT).decode("utf-8"),
+        object_pairs_hook=unique_object, parse_constant=no_constant,
+        parse_int=integer, parse_float=no_constant,
+    )
+    bounds(data)
+    fields(data, "schema_version mode status summary application request inputs artifacts "
+           "environments validations limitations next_actions blockers", "handoff")
+    require(type(data["schema_version"]) is int and data["schema_version"] == 1,
+            "schema_version must be integer 1")
+    choice(data["mode"], ("plan", "build", "iterate", "review_debug"), "mode")
+    choice(data["status"], ("ready_for_review", "blocked"), "status")
+    text(data["summary"], "summary")
+    if data["application"] is not None:
+        locate(data["application"], directory=True)
+
+    for key in ("inputs", "artifacts", "validations", "limitations", "next_actions", "blockers"):
+        sequence(data[key], key)
+    for key in ("limitations", "next_actions", "blockers"):
+        for item in data[key]:
+            text(item, key)
+
+    bindings = Bindings()
+    fields(data["request"], "path sha256", "request")
+    require(data["request"]["path"] == "request.md", "request path must be request.md")
+    bindings.verify(data["request"])
+    require(read_bounded("request.md", FILE_LIMIT).decode("utf-8").strip(),
+            "request.md: empty")
+    for entry in data["inputs"]:
+        fields(entry, "path sha256", "input")
+        parts = relative(entry["path"])
+        require(len(parts) >= 2 and parts[0] == "inputs", "selected input must be under inputs/")
+        bindings.verify(entry)
+
+    artifacts = set()
+    for entry in data["artifacts"]:
+        fields(entry, "path sha256", "artifact")
+        relative(entry["path"])
+        require(entry["path"] not in ("handoff.json", "request.md"),
+                "artifact cannot be handoff or request")
+        artifacts.add(bindings.verify(entry))
+    require("report.md" in artifacts, "report.md must be manifested")
+    require(read_bounded("report.md", 2 * 1024 * 1024).decode("utf-8").strip(),
+            "report.md: empty")
+
+    if data["mode"] == "build" and data["status"] == "ready_for_review":
+        require(data["application"] is not None,
+                "ready_for_review build requires an application directory")
+        require(any(name.startswith(data["application"] + "/") for name in artifacts),
+                "ready_for_review build requires a manifested file below application")
+
+    fields(data["environments"], "local DevTest UAT production", "environments")
+    for name, decisions in data["environments"].items():
+        fields(decisions, "database authentication deployment", name)
+        for key, value in decisions.items():
+            text(value, f"{name}.{key}")
+
+    results = []
+    for validation in data["validations"]:
+        fields(validation, "command result evidence", "validation")
+        text(validation["command"], "validation.command")
+        result = validation["result"]
+        choice(result, ("passed", "failed", "not_run", "blocked"), "validation.result")
+        results.append(result)
+        evidence = validation["evidence"]
+        if evidence is not None:
+            relative(evidence)
+            require(evidence in artifacts, "validation evidence must be manifested")
+            require(locate(evidence).stat().st_size > 0, "validation evidence is empty")
+        if result in ("passed", "failed"):
+            require(evidence is not None, "claimed validation result requires evidence")
+
+    if data["status"] == "blocked":
+        require(data["blockers"], "blocked requires concrete blockers")
+        require(data["limitations"] and data["next_actions"],
+                "blocked requires limitations and next actions")
+    else:
+        require(not data["blockers"], "ready_for_review cannot contain blockers")
+        require(not any(r in ("failed", "blocked") for r in results),
+                "ready_for_review cannot contain failed/blocked validations")
+    if "not_run" in results:
+        require(data["limitations"] and data["next_actions"],
+                "unrun validation requires limitations and next actions")
+
+    print(f"structurally valid: {data['status']}; no independent runtime or quality assurance")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (Invalid, OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+        print(f"unfinished: {exc}", file=sys.stderr)
+        sys.exit(1)

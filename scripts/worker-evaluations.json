@@ -669,6 +669,26 @@
           "WORKBOOK_VISUAL_CAGE"
         ]
       }
+    },
+    {
+      "id": "django-expert",
+      "profile": "core",
+      "covers": [
+        "workers/django-expert"
+      ],
+      "tests": [
+        "workers/django-expert/tests/test_contract.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-B",
+          "workers/django-expert/tests/test_contract.py"
+        ]
+      ],
+      "proves": "Strict current-input/artifact bindings, four environments, evidence/status consistency, minimal build output, malformed and escaped/symlink path rejection; no application runtime or security certification.",
+      "requires": "Python 3.10+ standard library",
+      "prerequisites": {}
     }
   ],
   "quality_cases": {
@@ -839,6 +859,13 @@
       "near_miss": "A polished workbook has stale cached formulas, a one-day date error, or an edit that destroys an unrelated conditional format.",
       "transfer": "Prompt-edit a multi-sheet time-off workbook while preserving untouched formulas, tables and charts.",
       "rubric": "Saved workbook values and recalculation agree with independent expectations; controls work, content is preserved, native features remain editable and actual rendered sheets are legible."
+    },
+    "workers/django-expert": {
+      "ordinary": "Build a small PostgreSQL-backed customer request tracker with custom user/admin, local password testing, shared-environment OIDC guards, locked development setup and accessible forms.",
+      "missing": "Omit UAT IdP registration; fail closed and report blocked external integration while retaining honest partial test evidence.",
+      "near_miss": "A plausible SSO setup leaves admin password login active, trusts email domain for superuser status, or claims PostgreSQL testing using SQLite.",
+      "transfer": "Plan a multi-branch booking portal with concurrent reservations, tenant-scoped admin, weak mobile connectivity and iterative usability feedback.",
+      "rubric": "Actual requested code and observed checks; exact baseline, supported locked dependencies, all four environments, OIDC/admin/tenant enforcement, usable accessible journeys, measured scaling and clear DevOps/QA handoffs. No invented user, performance or production evidence."
     }
   },
   "manual_tests": {
