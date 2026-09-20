@@ -1,0 +1,9 @@
+Poly Haven CC0 assets bundled with this example:
+brown_mud diffuse + OpenGL normal: https://polyhaven.com/a/brown_mud
+bark_willow diffuse + OpenGL normal: https://polyhaven.com/a/bark_willow
+mossy_rock diffuse + OpenGL normal: https://polyhaven.com/a/mossy_rock
+grass_ground diffuse + OpenGL normal: https://polyhaven.com/a/grass_ground
+dry_field_1k.hdr: Greg Zaal, https://polyhaven.com/a/dry_field
+License: CC0 https://creativecommons.org/publicdomain/zero/1.0/
+Exact source hashes and URLs: provenance.json alongside these assets.
+Generic willow bark scan used as bark surface detail, not a botanical assertion.

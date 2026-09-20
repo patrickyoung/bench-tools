@@ -14,6 +14,7 @@ through their public process interfaces.
 | [Page team](page-team/README.md) | Agent + existing Bench Manage + Tend + Weave; MCP/A2A edges | Experimental creative team, checked artifact handoffs and a single HTML result |
 | [Event browser](event-browser/README.md) | Ask + Record | One-file live multi-agent timeline, stream inspector and offline HTML replay |
 | [Omnigent deployment](omnigent/README.md) | Omnigent + MCP + Docker + existing worker/team commands | Local or SSH-hosted deployment; optional authenticated clients, sessions and a Tend queue |
+| [The Road](the-road/README.md) | Generated with Bench Agent; standalone Three.js runtime | Walkable rural world with chunk streaming, local HDR/PBR assets and offline regressions |
 | [Matterbridge chats](matterbridge/README.md) | Matterbridge + Hire + Agent + Tend + Docker | Persistent builder conversation and a Telegram topic per smoke-tested deployment; Omnigent optional |
 
 From the checkout root, install only the components an example needs:
