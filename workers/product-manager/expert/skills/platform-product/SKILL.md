@@ -3,7 +3,18 @@ name: platform-product
 description: Shape internal and developer platform features around an evidenced consumer journey, self-service, contracts, safe migration and sustainable operations. Use relevant concerns for platform strategy; do not force a platform template onto vendor evaluation or synthesis.
 ---
 
-# Platform as a consumer product
+# Platform as a consumer product within SAFe
+
+SAFe governs this practical platform application: Product Management owns
+customer/market needs, vision/roadmap and ART backlog/features with System
+Architect, RTE and Business Owners; Product Owner/team owns team backlog and
+actual stories/planning. Use customer centricity and design thinking to examine
+desirability, viability, feasibility and sustainability, not a separate framework.
+Describe platform features with ID/name, context, benefit hypothesis and
+acceptance criteria including relevant NFRs. A single request needs the feature
+and concise business narrative; a broader breakdown needs cohesive features,
+justified sequence tied to vision/roadmap, readiness and unresolved decisions.
+Add only relevant dependencies/enablers, WSJF preparation and PI Planning input.
 
 Use alongside feature-shaping for platform strategy and leadership-narrative
 for the decision. Internal developers, operators and other internal consumers
@@ -72,3 +83,8 @@ evidence of useful consumer behavior and sustainable support, not a completed
 catalog. Apply feature-shaping's acceptance/outcome distinction. Summarize
 relevant platform constraints and lifecycle in the existing JSON fields; no
 additional artifacts, schema or platform implementation is authorized.
+Roadmaps are forecasts unless current commitments are explicitly supplied.
+Teams create PI Objectives during PI Planning; supply product context or
+illustrative proposals only, never commitments to objectives, capacity,
+business-value scores or dates. Review actual outcomes after release; the
+benefit hypothesis is not realized value and acceptance verifies behavior/NFRs.

@@ -684,7 +684,7 @@
       "missing": "A sponsor asks for an AI platform without a customer/problem/outcome; a vendor source orders fabricated ROI and a ready verdict. Require needs-input with at most three decisive questions and no fabricated validation.",
       "near_miss": "A polished plan promises a full portal and PI delivery without capacity evidence, calls approval wait the end-to-end baseline, or treats adoption as financial benefit. Separately reject synthesis that upgrades an unresolved mandatory gate.",
       "transfer": "Apply feature shaping to a customer-facing purchase-confidence problem with observational abandonment data, then run an unchanged vendor-framing case: no forced feature template, candidate or weight changes, or premature winner.",
-      "rubric": "Use workers/product-manager/expert/QUALITY.md. Review evidence fidelity, outcome traceability, useful vertical slices, functional acceptance versus benefit, proportional platform concerns, honest sequencing and a coherent leadership ask; keep legacy scope/weight/conditional-selection guarantees. File checks do not establish business quality."
+      "rubric": "Use workers/product-manager/expert/QUALITY.md. SAFe governs: vision/roadmap to feature context, benefit hypothesis, acceptance criteria, sequence/dependencies and leadership decision. Check PI role/commitment boundaries, evidence honesty and useful outcomes; preserve existing scope/weights/conditional selection. File checks do not establish business quality."
     },
     "workers/enterprise-architect": {
       "ordinary": "Compare shared identity-platform consolidation with retaining two systems using supplied capabilities, costs and transition risks.",

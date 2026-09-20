@@ -3,7 +3,13 @@ name: feature-shaping
 description: Shape evidence-led product features and minimum useful slices in strategy mode, with benefit hypotheses, verifiable acceptance, outcome measures and PO/team refinement handoffs. Use for feature definition or sequencing, not vendor selection or committed sprint planning.
 ---
 
-# Shape value, not a document hierarchy
+# Shape SAFe ART backlog features
+
+SAFe governs feature purpose and role boundaries. Product Management owns
+customer/market needs, vision/roadmap and ART backlog/features in collaboration
+with System Architect, RTE and Business Owners; Product Owner/team owns team
+backlog and actual stories/planning. Use customer centricity and design thinking,
+not an external product framework or mandatory document hierarchy.
 
 Use with product-management and CONTRACT.md. Feature shaping is a **strategy**
 use case. Put narrative and feature detail in output/response.md; existing JSON
@@ -14,9 +20,8 @@ into vendor candidate IDs or vendor criteria. Preserve any supplied scope.
 
 ## Find the problem worth solving
 
-Distinguish an outcome (observable change for a population), an opportunity
-(unmet need, friction or problem in a situation), and a solution (one possible
-intervention). A requested portal, automation or dashboard is not itself an
+Distinguish the vision and business outcome (desired change for a population),
+customer need (evidenced problem in a situation), and proposed solution. A requested portal, automation or dashboard is not itself an
 outcome. Constructively acknowledge its intent, trace it to the evidenced
 problem and compare a smaller intervention, reuse or defer where relevant.
 Do not merely reject a solution-first brief or invent a need to justify it.
@@ -34,8 +39,20 @@ Name the assumption that could break that causal chain.
 Retain supplied stable feature IDs, or assign neutral IDs such as F-01 and
 keep them stable through narrative, detail and the JSON handoff. Define only
 the features useful to the decision; one compact paragraph may suffice for a
-small request. For each selected feature make the following clear, in prose
-or a compact list, without an obligatory table or hierarchy:
+single-feature request: provide the feature and concise business narrative.
+The SAFe starting point for each feature is **ID/name, context, benefit
+hypothesis and acceptance criteria**. The benefit hypothesis proposes a
+measurable customer/business benefit; it is not realized value. Acceptance
+describes correct functionality and relevant NFRs.
+
+For broader breakdowns, provide a cohesive feature set and justified sequence
+tied to vision/customer need/business outcome and the product/solution roadmap,
+with readiness and unresolved decisions. Use a roadmap forecast only when
+helpful; distinguish supplied current commitments from future forecasts.
+ART Kanban manages feature flow; report actual flow state only if supplied.
+
+Add only relevant supporting detail from the prompts below, proportionate to
+the decision, not a custom mandatory artifact stack or checklist:
 
 - User/consumer and triggering situation or job.
 - Current problem, its evidence and material evidence gaps.
@@ -64,7 +81,7 @@ benefit, preserving attribution limits and possible adverse effects.
 
 ## Scope and sequence without invented commitments
 
-Use SAFe terms cautiously. A feature describes stakeholder value and is normally
+Use SAFe terms with their intended purpose. A feature describes stakeholder value and is normally
 sized for one ART within a PI; a capability is broader and can span ARTs,
 refining into features. An epic is a larger investment hypothesis needing
 further analysis/decomposition, not just a big feature label. An enabler
@@ -93,15 +110,22 @@ WSJF is not ROI, vendor scoring, or funding authority.
 
 ## Discovery and handoff
 
-Assess **value, usability, feasibility and viability** separately. Choose the
+Use SAFe **desirability, viability, feasibility and sustainability**, customer
+centricity and design thinking to guide discovery. Choose the
 decision-changing risk, not a generic call for more research. For example, a
 task observation tests the problem, a prototype task test probes usability,
-a bounded technical spike probes a feasibility constraint, and an accountable
-operating/cost review probes viability. Tie the test to the feature ID, evidence
+a bounded technical spike probes feasibility, and an accountable cost/support/
+lifecycle review probes viability and sustainability. Tie the test to the feature ID, evidence
 needed, guardrails and the decision it can reverse. Do not claim those tests
 ran, statistical sufficiency, or architecture approval.
 
 Hand off selected IDs/outcomes, unresolved assumptions, acceptance and team
 refinement needs in existing details.delivery_handoff and next_actions.
-Use leadership-narrative for the recommendation and explicit commitment ask;
+Include relevant PI Planning input: product vision, feature intent/priorities,
+dependencies, enablers/NFRs, evidence and unresolved decisions. Teams create PI
+Objectives during PI Planning; provide product context or clearly illustrative
+proposals, never PM-committed objectives, capacity, business-value scores or
+dates. Use leadership-narrative for the business decision and explicit ask;
 state validation/build/refinement readiness in prose, not a schema extension.
+Review actual outcomes after release against the hypothesis, with attribution
+limits; acceptance alone cannot establish realized customer/business benefit.

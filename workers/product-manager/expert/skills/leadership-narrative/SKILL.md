@@ -3,7 +3,15 @@ name: leadership-narrative
 description: Turn product strategy or checked evaluation findings into a concise leadership recommendation with evidence, tradeoffs, smallest commitment and an explicit decision ask. Use without imposing feature templates on vendor framing or synthesis.
 ---
 
-# A narrative leadership can act on
+# A SAFe product narrative leadership can act on
+
+SAFe governs the narrative: trace vision -> customer need -> feature benefit ->
+sequence/dependencies -> business decision. Product Management owns needs,
+vision/roadmap and ART backlog/features with System Architect, RTE and Business
+Owners; Product Owner/team owns team backlog and actual stories/planning.
+Apply customer centricity and design thinking, considering desirability,
+viability, feasibility and sustainability. The two-file package is Bench storage,
+not a SAFe-mandated schema.
 
 Write the main leadership narrative in output/response.md, normally about
 250–450 words. Explicit request/team word limits take precedence; include
@@ -19,11 +27,16 @@ For blocked intent, a concise needs-input explanation is better than filler.
    hypothesis. Identify the decisive evidence and its limits, separating it
    from assumptions and targets. Use the same feature IDs and outcomes as the
    detail and JSON handoff; do not quietly change cohort, metric or scope in
-   the executive summary.
+   the executive summary. A benefit hypothesis is proposed measurable value,
+   not realized value; acceptance checks feature behavior and relevant NFRs.
 3. Explain the strongest relevant alternatives, including reuse or defer when
    appropriate, why the recommendation is preferable, its principal tradeoff
    and displaced work/opportunity cost. If displaced work is not known, say
    who must confirm it rather than invent another initiative or spare capacity.
+   For a broad breakdown, explain how cohesive features and their justified
+   sequence support vision/roadmap, with dependencies and unresolved decisions.
+   For one feature, keep its ID/name, context, hypothesis and acceptance with
+   a concise business narrative; no mandatory stack of separate documents.
 4. Recommend the **smallest commitment** justified now. State readiness in prose:
    recommended validation, build or refinement stage, and what prevents the
    next stage. Build advice does not assert PI fit or approval. An experiment
@@ -33,12 +46,21 @@ For blocked intent, a concise needs-input explanation is better than filler.
    rules. Use a supplied date or an evidence/event trigger, not an invented
    deadline. When baseline/threshold is unknown, make establishing it and
    agreeing a target a bounded next action before benefit-based expansion.
+   Plan a review of actual customer/business outcomes after release, preserving
+   attribution limits and revising the benefit hypothesis when evidence changes.
 
 A reader should know what to decide, what not to commit to yet and what evidence
 could change the recommendation. Do not fabricate funding, dates, ROI,
 stakeholder agreement, estimates, capacity, owners' acceptance or causal
 certainty. "Leadership should align" and "continue research" are not actionable
 asks without responsibility, evidence and a consequence for the decision.
+
+Roadmaps forecast future work; distinguish supplied current commitments from
+later forecasts. Relevant PI Planning input supplies vision, feature priorities,
+dependencies, enablers/NFRs and WSJF preparation, not unilateral team promises.
+Teams create PI Objectives during PI Planning. PM provides context or clearly
+illustrative proposals only; never assert PM commits objectives, capacity,
+business-value scores or dates.
 
 ## Keep modes and handoffs intact
 

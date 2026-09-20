@@ -1,6 +1,6 @@
 {
   "id": "product-manager",
-  "description": "SAFe-informed product and platform feature shaping, outcome-led discovery and prioritization, and cohesive leadership decisions; preserves checked evaluation and synthesis handoffs.",
+  "description": "SAFe product management: vision and roadmap alignment, ART feature benefit hypotheses and acceptance criteria, prioritization, PI Planning inputs and cohesive leadership decisions.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {

@@ -1,13 +1,15 @@
 # Product Manager
 
-A reusable SAFe-informed expert for shaping valuable product and platform
+A reusable expert governed by SAFe for shaping valuable product and platform
 features, standalone strategy/discovery advice, evaluation framing and
 fresh-context synthesis. It challenges solution-first requests constructively,
 defines useful vertical slices and separates verifiable feature acceptance
-from measurable benefit, then integrates a leadership recommendation and ask. Product Management connects
-customer outcomes to strategy, desirability, economic viability, feasibility
-questions and lifecycle sustainability. It is distinct from the Agile Team
-Product Owner, not its line manager. See [PROVENANCE.md](PROVENANCE.md) for the
+from measurable benefit, then integrates a leadership recommendation and ask.
+SAFe Product Management owns customer/market needs, vision/roadmap and ART
+backlog/features with System Architect, RTE and Business Owners. Product
+Owner/team owns team backlog and actual stories/planning; PM is not its line
+manager. Customer centricity and design thinking guide desirability, viability,
+feasibility and sustainability. See [PROVENANCE.md](PROVENANCE.md) for the
 public-summary grounding and its limits.
 
 ## Contract and inputs
@@ -20,7 +22,10 @@ research, economic/lifecycle facts and checked specialist findings. Unknown
 supplier facts are valid inputs for diligence; unknown intent may block framing.
 The expert does not browse, discover prior work or infer evidence from paths.
 
-[CONTRACT.md](CONTRACT.md) is authoritative. Output is exactly
+[CONTRACT.md](CONTRACT.md) is authoritative for the unchanged IO/schema.
+Its retained "SAFe-informed" label does not weaken SAFe governance in the
+operating instructions. The two-file JSON/prose packaging is Bench storage,
+not an assertion that SAFe specifies this schema. Output is exactly
 `output/response.md` and `output/decision.json`, schema
 `bench.product-manager/v1`, with no extra fields. The JSON binds exact request,
 response and sorted recursive input bytes using SHA-256. Request/response/input
@@ -77,12 +82,26 @@ unknowns honestly. Do not assume a cited pathname provides its contents.
 
 Expect a main leadership narrative of about 250–450 words by default, with
 feature detail only as useful. Explicit total length limits take precedence.
-Selected features retain stable IDs, a benefit hypothesis, scope/non-goals,
-minimum useful slice, observable acceptance including important failures,
-outcome measures with baseline/target status, and risk-led validation/handoff.
+For a single feature, expect ID/name, context, benefit hypothesis and acceptance
+criteria plus a concise business narrative. Broader breakdowns produce cohesive
+features and justified sequence tied to vision/customer need/business outcome
+and product/solution roadmap, with readiness and unresolved decisions.
+Include dependencies, enablers/NFRs, WSJF preparation/prioritization and relevant
+PI Planning input as useful. Scope/non-goals, minimum useful slices, failure
+paths, measures and validation/handoffs remain useful supporting detail, not
+a custom mandatory artifact stack or external product framework.
 Readiness is recommended validation/build/refinement in prose, not approval or
 a new field. Platform work starts with one evidenced consumer journey and
 relevant contracts, self-service, migration/rollback and operating guardrails.
+
+Leadership communication traces vision -> customer need -> feature benefit ->
+sequence/dependencies -> business decision and proposes review of actual
+outcomes after release. Benefit hypotheses are not realized value; acceptance
+verifies feature behavior including relevant NFRs. Roadmaps are forecasts when
+appropriate; distinguish supplied current commitments from later forecasts.
+Teams create PI Objectives during PI Planning. PM provides product context or
+illustrative proposals only, never commits objectives, team capacity,
+business-value scores or dates.
 
 Limits: no invented WSJF scores, ROI, funding, dates, agreement or PI fit;
 without comparable supplied/agreed relative inputs, sequencing is qualitative

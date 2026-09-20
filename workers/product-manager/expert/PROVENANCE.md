@@ -1,100 +1,67 @@
 # Provenance and scope
 
-## SAFe public-summary grounding
+## Governing SAFe public-summary grounding
 
-The host supplied these reviewed public summaries, checked 2026-09-15:
+The host supplied these authoritative public source notes, checked 2026-09-19.
+This correction paraphrases them without browsing; full gated articles were
+not accessed. Links are provenance, not runtime research inputs.
 
 - [Product Management](https://framework.scaledagile.com/product-management/),
-  article updated 2024-10-15: responsibility for customer-relevant solutions
-  that are viable, feasible and sustainable across their lifecycle; direction
-  for product strategy, vision, roadmap and ART backlog; collaboration with
-  architecture, business owners and delivery leadership.
-- [Product Owner](https://framework.scaledagile.com/product-owner), article
-  updated 2025-01-24: represents customer/stakeholder needs within the Agile
-  Team and connects team backlog priorities to strategy.
+  updated 2024-10-15: customer/market needs and desirable, viable, feasible,
+  sustainable solutions; strategy, vision, roadmap, ART backlog and lifecycle;
+  collaboration with System Architect, RTE and Business Owners.
+- [Features and Capabilities](https://framework.scaledagile.com/features-and-capabilities/),
+  updated 2025-02-24: features express value sized for an ART/PI; capabilities
+  can span ARTs. Teams split features into stories; enablers and NFRs support
+  and constrain delivery. No claim of actual PI fit without supplied evidence.
+- [Glossary](https://framework.scaledagile.com/glossary/): benefit hypotheses
+  propose measurable customer/business benefit; acceptance criteria describe
+  correct functionality and relevant NFRs. ART Kanban manages feature flow.
+- [Crafting Clarity](https://framework.scaledagile.com/blog/crafting-clarity-using-feature-templates-to-shape-and-communicate-intent):
+  supplemental SAFe Fellow guidance describes feature name, context, benefit
+  hypothesis and acceptance criteria as a starting point, not another
+  mandatory canvas.
+- [Solution Vision](https://framework.scaledagile.com/solution-vision),
+  updated 2024-02-25: a desired future solution reflects customer/stakeholder
+  needs and aligns work.
+- [Roadmap](https://framework.scaledagile.com/roadmap/), updated 2025-02-25:
+  forecast deliverables/milestones over time; product/solution roadmap supports
+  vision. PI roadmap distinguishes actual first-PI commitments from later
+  forecasts; only supplied commitments may be reported, never invented dates.
+- [PI Objectives](https://framework.scaledagile.com/pi-objectives/): teams create
+  business/technical objectives during PI Planning to communicate value and
+  dependencies; Product Management supplies context, not unilateral commitments.
+- [Product Owner](https://framework.scaledagile.com/product-owner/): team backlog
+  aligned with customer/stakeholder needs and strategy; PO/team owns actual
+  stories and planning.
+- [WSJF](https://framework.scaledagile.com/wsjf/): sequence comparable work using
+  relative cost of delay divided by duration, considering value, time
+  criticality and risk reduction/opportunity enablement. Never invent inputs
+  or scores.
 
-Both roles use customer and product judgment. The distinction here is scope
-and responsibility, not a claim that only Product Management understands
-customers. Full articles require login and were not read. This build relied
-on the supplied checked summaries without browsing; worker runs need no
-browsing. These links are provenance only. No SAFe text or images are copied,
-and no certification or framework compliance is claimed. Evaluation Lead in
-this Bench team is our application of the responsibilities, not an official
-SAFe team pattern.
+SAFe governs roles and product deliverables here. Customer centricity and design
+thinking frame desirability, viability, feasibility and sustainability.
+Practical platform journey, acceptance/failure, contract/migration and leadership
+prompts apply that model; they are not quotations or a separate governing
+framework. No certification or framework compliance is claimed. Evaluation Lead
+is a Bench assignment, not an official SAFe team pattern. The exact two-file
+JSON/prose contract is Bench storage, not a SAFe-prescribed schema.
 
-## Reused and new material
+## Reuse and boundaries
 
-- The host supplied the reviewed distinct `CONTRACT.md` and executable
-  `bin/check`, reusing Product Owner's bounded IO/hash envelope with a
-  Product Manager schema and detail contract. They are retained unchanged;
-  shared envelope mechanics do not make this a renamed Product Owner.
-- `skills/evidence-discovery/SKILL.md` is reused unchanged from Product Owner.
-- `skills/business-outcomes/SKILL.md`,
-  `skills/product-capabilities/SKILL.md` and `skills/finops/SKILL.md` are reused
-  unchanged from Enterprise Architect expertise.
-- `AGENTS.md`, `README.md` and `skills/product-management/SKILL.md` define the
-  new product strategy, evaluation and synthesis judgment and its boundaries.
-  No provider client, nested worker tree or scheduler is introduced.
-- The host's existing team launcher and IO/handoff implementation own the
-  five bounded Agent calls and integration. Only the team README and operating
-  instructions are updated here; the host assembles the new manager roster
-  member from this standalone definition. Reviewer remains Product Owner.
+The host-supplied CONTRACT.md and executable bin/check remain byte-for-byte
+unchanged. Existing strategy/evaluation/synthesis interfaces, statistical and
+comparison authority, and Product Owner review boundaries remain intact.
+The existing controller owns the five bounded Agent calls and handoffs.
+No runtime, judge, provider client, scheduler, subworker or extra output is added.
 
-`LICENSE` remains supplied with the definition. Source contains no current
-customer case, dataset, mutable runtime, installed environment, credential or
-model record. Actual fixtures and fresh evaluations belong to the host outside
-this reusable definition. Structural verification is not live quality evidence;
-no successful behavioral evaluation is claimed by this provenance.
+skills/evidence-discovery/SKILL.md is retained from Product Owner;
+skills/business-outcomes/SKILL.md, skills/product-capabilities/SKILL.md and
+skills/finops/SKILL.md retain Enterprise Architect expertise, selected only
+as relevant under SAFe governance. LICENSE remains supplied with the definition.
+Reuse source pin: f3ea32a4bf0cf71690e1d3923baa59d7d90940c9.
 
-Reuse source pin: `f3ea32a4bf0cf71690e1d3923baa59d7d90940c9`. The new knowledge was authored through Bench Hire and inspected by the host; actual build status and fresh evaluations are retained externally.
-
-## Product and platform feature amendment — research checked 2026-09-19
-
-Distinct from the 2026-09-15 grounding above, this amendment uses the host's
-supplied RESEARCH.md summaries and the existing definition. The host reports
-browsing public primary sources; this authoring did not independently retrieve
-them. Gated full SAFe articles were not accessed. These are bounded method
-paraphrases, not company evidence or reproduced articles:
-
-- [SAFe Product Management](https://framework.scaledagile.com/product-management/),
-  public page updated 2024-10-15, checked 2026-09-19: connect customer needs
-  with strategy, roadmap, ART priorities and sustainable lifecycle decisions;
-  collaborate with architecture, delivery leadership and business owners.
-- [SAFe Features and Capabilities](https://framework.scaledagile.com/features-and-capabilities/),
-  public page updated 2025-02-24, checked 2026-09-19: features express stakeholder
-  value within an ART/PI scope; capabilities may span ARTs; teams refine features
-  into stories. Enablers and NFRs support/constrain value delivery. Actual fit
-  requires team evidence, not an author's assertion.
-- [SAFe WSJF](https://framework.scaledagile.com/wsjf/), public summary checked
-  2026-09-19 (update date not supplied): relative cost of delay and job duration
-  support sequencing comparable work. Value, urgency and risk reduction/
-  opportunity enablement need explicit inputs; this is neither vendor scoring
-  nor fabricated ROI or an override of mandatory dependencies.
-- [Marty Cagan, SVPG: The Four Big Risks](https://www.svpg.com/four-big-risks/),
-  published 2017-12-04, checked 2026-09-19: assess value, usability, feasibility
-  and business viability collaboratively and early. Feature counts are not
-  product outcomes.
-- [Teresa Torres, Product Talk: Opportunity Solution Trees](https://www.producttalk.org/opportunity-solution-trees/),
-  read by the host 2026-09-19: connect outcomes to customer opportunities,
-  compare possible solutions and test assumptions; an opportunity is not the
-  proposed solution, and a small coherent problem is a useful starting point.
-- [DORA: Platform engineering](https://dora.dev/capabilities/platform-engineering/),
-  updated 2026-01-12, checked 2026-09-19: treat internal platforms as developer
-  products, improve a real consumer journey before broad rollout, and combine
-  task/workflow success and feedback with adoption and operational/delivery
-  guardrails. A shipped portal or mandated usage does not establish benefit.
-
-The host's synthesis informs the decisive leadership narrative: one
-recommendation and explicit ask, problem/evidence and causal hypothesis,
-alternatives/tradeoffs, smallest commitment and advance/change/stop rules.
-The detailed acceptance/failure prompts, cautious epic/enabler boundaries,
-illustrative refinement slices, platform contract/migration prompts and manual
-rubric are authored operating guidance, not quotations or claims that the
-public summaries prescribe a complete template or certify SAFe compliance.
-
-Amendment scope: three focused skills (`feature-shaping`, `platform-product`,
-`leadership-narrative`), explicit routing from AGENTS.md/product-management,
-QUALITY.md and README guidance. CONTRACT.md and bin/check remain unchanged;
-existing strategy/evaluation/synthesis interfaces and team responsibilities
-remain in force. No new runtime, judge, outputs, subworkers or provider SDK.
-These sources convey methods only; each run still needs admitted task evidence.
+Research history, fixtures, current job data and evaluation records stay external
+to this reusable definition. Non-SAFe research sources are not reusable
+provenance or governing methods here. Each run needs admitted task evidence.
+Structural verification does not establish semantic quality or live behavior.

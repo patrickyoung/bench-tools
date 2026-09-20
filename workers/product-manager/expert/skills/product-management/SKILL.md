@@ -3,10 +3,14 @@ name: product-management
 description: Frame product strategy, evaluation criteria and decision-changing discovery, or synthesize checked specialist evidence into an executive decision brief. Use for feature shaping, platform value, customer outcomes, strategic fit, viability, feasibility questions and lifecycle tradeoffs; not team sprint planning or vendor scoring.
 ---
 
-# Product-management decision judgment
+# SAFe Product Management decision judgment
 
 Follow the owning expert's CONTRACT.md; this skill introduces no output fields.
-Choose only the steps and supporting skills relevant to the bounded decision.
+SAFe governs the role and deliverables; choose only steps and supporting skills
+relevant to the bounded decision. Product Management owns customer/market needs,
+vision/roadmap and ART backlog/features, collaborating with System Architect,
+RTE and Business Owners. Product Owner/team owns team backlog and actual
+stories/planning. The two-file package is Bench storage, not a SAFe schema.
 
 ## Explicit supporting-skill routing
 
@@ -38,10 +42,8 @@ Choose only the steps and supporting skills relevant to the bounded decision.
 2. **Connect strategy to evidence.** Explain how the outcome could support the
    supplied strategy, vision or roadmap, and what would falsify that fit.
    When no strategy is supplied, mark fit as a hypothesis requiring owner
-   confirmation. Assess discovery risks distinctly: value (will it help enough
-   to choose/use), usability (can consumers accomplish the task), feasibility
-   (can it be built/operated) and viability (can the business sustain it).
-   Consider desirability (need/adoption), viability (benefit,
+   confirmation. Use SAFe customer centricity and design thinking to examine
+   desirability (need/adoption and usable experiences), viability (benefit,
    opportunity cost and affordability), feasibility (architecture/integration/
    security questions) and sustainability (operations, support, migration,
    portability and exit). Do not claim feasibility on architecture's behalf.
@@ -67,7 +69,9 @@ Choose only the steps and supporting skills relevant to the bounded decision.
    counting the same benefit twice. Put criteria and rationale in prose as
    well as JSON. A gate cannot be compensated for by a high preference score.
    WSJF sequences comparable investments only with supplied/agreed relative
-   inputs: show sources, assumptions and sensitivity. Otherwise use qualitative
+   inputs: relative cost of delay (business/user value, time criticality,
+   risk reduction/opportunity enablement) divided by job duration/size.
+   Show sources, assumptions and sensitivity. Otherwise use qualitative
    value/risk/dependency rationale and ask the team for estimates; do not invent
    scores or override mandatory dependencies. WSJF is not vendor scoring.
    No candidate scores or winner in strategy/evaluation; selection stays
@@ -104,12 +108,24 @@ Choose only the steps and supporting skills relevant to the bounded decision.
    story-sized slices in strategy are refinement input, not invented sprint
    stories or commitments. Do not create sprint backlogs, estimates, capacity,
    deadlines or an ART rollout plan; do not assert PI fit without team evidence.
+   For one feature, give ID/name, context, benefit hypothesis and acceptance
+   criteria with a concise business narrative. For broader breakdowns, provide
+   cohesive features and justified sequence tied to vision/roadmap, readiness
+   and unresolved decisions. Include relevant dependencies, enablers, NFRs,
+   WSJF preparation and PI Planning input, not a mandatory document stack.
    Keep stable feature IDs/outcomes in narrative, detail and handoff. State
    recommended validation/build/refinement readiness in prose only.
    Product Management guides product direction, not the PO's employment or
    the workflow scheduler. Advice cannot authorize purchase or external action.
 
-This is a SAFe-informed application, not framework compliance or an official
-SAFe team pattern. Product Management and Product Owner both exercise customer
+A product/solution roadmap is a forecast; distinguish supplied current
+commitments from future forecasts. Teams create PI Objectives during PI
+Planning; PM supplies product context or illustrative proposals only, never
+commits objectives, capacity, business-value scores or dates. Acceptance
+verifies feature behavior and relevant NFRs, not the benefit hypothesis.
+Review actual customer/business outcomes after release.
+
+SAFe governs this application; no certification, framework compliance or
+official SAFe team pattern is claimed. Product Management and Product Owner both exercise customer
 judgment, at different scopes. Public-summary provenance and links are in
 PROVENANCE.md; no article retrieval is part of a run.
