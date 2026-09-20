@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 21 workers
+`make check-workers` runs the library's offline regression suites. All 22 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
@@ -256,3 +256,7 @@ checks catalog completeness and runner failure/isolation behavior. The guard
 rejects unmapped library test files and library entries without suites. Register
 shared tests only when they actually execute the affected shipped code. Keep
 source changes, offline evidence and live-quality evidence separately identified.
+
+## WorldWeaver-Omega
+
+Focused core/browser suites use retained external scratch and exact source copies. See [its test guide](../workers/worldweaver-omega/tests/README.md) for native browser sandbox prerequisites and optional offline dependency-profile checks. Fresh generated worlds, selected-model records and independent visual reviews remain external evidence; fixtures do not certify aesthetics or physical mobile 90 FPS.

@@ -1,0 +1,62 @@
+{
+  "id": "worldweaver-omega",
+  "description": "Build varied explorable Three.js worlds from a description and visual style, with deterministic chunk streaming and prompt-matched scenery or ambient life.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "2ec79db01ed479dd1f639e1d6784645cc29071a0",
+      "commands": [
+        "agent",
+        "hire",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "node": ">=22; Three.js, esbuild, Playwright and optional capability profiles pinned in expert/templates package-lock files",
+    "python": ">=3.10 standard library",
+    "browser": "Explicitly selected Chromium with native sandbox for independent source, rendered-image and behavior review; physical mobile performance remains device-specific"
+  },
+  "files": [
+    "workers/worldweaver-omega/expert/AGENTS.md",
+    "workers/worldweaver-omega/expert/DEPENDENCIES.md",
+    "workers/worldweaver-omega/expert/GOAL.md",
+    "workers/worldweaver-omega/expert/LICENSE",
+    "workers/worldweaver-omega/expert/README.md",
+    "workers/worldweaver-omega/expert/bin/check",
+    "workers/worldweaver-omega/expert/lib/browser-cleanup.mjs",
+    "workers/worldweaver-omega/expert/lib/contracts.py",
+    "workers/worldweaver-omega/expert/review/rubric.json",
+    "workers/worldweaver-omega/expert/skills/ww-compile/SKILL.md",
+    "workers/worldweaver-omega/expert/skills/ww-compile/references/capabilities.md",
+    "workers/worldweaver-omega/expert/skills/ww-compile/references/contract.md",
+    "workers/worldweaver-omega/expert/skills/ww-compile/references/research.md",
+    "workers/worldweaver-omega/expert/skills/ww-repair/SKILL.md",
+    "workers/worldweaver-omega/expert/skills/ww-runtime/SKILL.md",
+    "workers/worldweaver-omega/expert/skills/ww-verify/SKILL.md",
+    "workers/worldweaver-omega/expert/templates/core/budget.mjs",
+    "workers/worldweaver-omega/expert/templates/core/coordinates.mjs",
+    "workers/worldweaver-omega/expert/templates/core/noise.mjs",
+    "workers/worldweaver-omega/expert/templates/core/placement.mjs",
+    "workers/worldweaver-omega/expert/templates/core/store.mjs",
+    "workers/worldweaver-omega/expert/templates/profiles/effects-spatial/package-lock.json",
+    "workers/worldweaver-omega/expert/templates/profiles/effects-spatial/package.json",
+    "workers/worldweaver-omega/expert/templates/profiles/effects/package-lock.json",
+    "workers/worldweaver-omega/expert/templates/profiles/effects/package.json",
+    "workers/worldweaver-omega/expert/templates/profiles/spatial/package-lock.json",
+    "workers/worldweaver-omega/expert/templates/profiles/spatial/package.json",
+    "workers/worldweaver-omega/expert/templates/runtime/package-lock.json",
+    "workers/worldweaver-omega/expert/templates/runtime/package.json",
+    "workers/worldweaver-omega/expert/tools/admit.py",
+    "workers/worldweaver-omega/expert/tools/bind.py",
+    "workers/worldweaver-omega/expert/tools/browser-audit.mjs",
+    "workers/worldweaver-omega/expert/tools/check.py",
+    "workers/worldweaver-omega/expert/tools/review.py",
+    "workers/worldweaver-omega/expert/tools/snapshot.py",
+    "workers/worldweaver-omega/expert/tools/validate.py"
+  ]
+}

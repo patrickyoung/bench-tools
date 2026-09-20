@@ -669,6 +669,71 @@
           "WORKBOOK_VISUAL_CAGE"
         ]
       }
+    },
+    {
+      "id": "worldweaver-omega-core",
+      "profile": "core",
+      "covers": [
+        "workers/worldweaver-omega"
+      ],
+      "tests": [
+        "workers/worldweaver-omega/tests/run.py",
+        "workers/worldweaver-omega/tests/core.test.mjs",
+        "workers/worldweaver-omega/tests/check_test.py",
+        "workers/worldweaver-omega/tests/review_test.py",
+        "workers/worldweaver-omega/tests/breadth_test.py",
+        "workers/worldweaver-omega/tests/hardening_test.py",
+        "workers/worldweaver-omega/tests/browser-cleanup-test.mjs",
+        "workers/worldweaver-omega/tests/browser-vertical-test.mjs",
+        "workers/worldweaver-omega/tests/browser-deadline-test.mjs"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/worldweaver-omega/tests/run.py",
+          "core"
+        ]
+      ],
+      "proves": "Offline contracts, admission integrity, deterministic helper and bounded supervisor behavior; no model/world quality claim.",
+      "requires": "Python3.10+, Node22+, Unix process groups/ps",
+      "prerequisites": {
+        "commands": [
+          "node",
+          "ps"
+        ]
+      }
+    },
+    {
+      "id": "worldweaver-omega-browser",
+      "profile": "browser",
+      "covers": [
+        "workers/worldweaver-omega"
+      ],
+      "tests": [
+        "workers/worldweaver-omega/tests/run.py",
+        "workers/worldweaver-omega/tests/browser-core.mjs",
+        "workers/worldweaver-omega/tests/browser-nearmiss.mjs",
+        "workers/worldweaver-omega/tests/browser-clock.mjs",
+        "workers/worldweaver-omega/tests/fixtures/scope-runtime/main.mjs",
+        "workers/worldweaver-omega/tests/fixtures/scope-runtime/index.html"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/worldweaver-omega/tests/run.py",
+          "browser",
+          "--node-modules",
+          "teams/page-team/expert/node_modules"
+        ]
+      ],
+      "proves": "Real browser helper/scene/UI/time and hung-page protocol outcomes; no aesthetic or physical mobile FPS certification.",
+      "requires": "Python3.10+, Node22+, Unix process groups/ps; explicitly selected pinned Three/Playwright/esbuild and Chromium",
+      "prerequisites": {
+        "commands": [
+          "node",
+          "ps"
+        ]
+      }
     }
   ],
   "quality_cases": {
@@ -839,9 +904,17 @@
       "near_miss": "A polished workbook has stale cached formulas, a one-day date error, or an edit that destroys an unrelated conditional format.",
       "transfer": "Prompt-edit a multi-sheet time-off workbook while preserving untouched formulas, tables and charts.",
       "rubric": "Saved workbook values and recalculation agree with independent expectations; controls work, content is preserved, native features remain editable and actual rendered sheets are legible."
+    },
+    "workers/worldweaver-omega": {
+      "ordinary": "Fresh description and open visual style: compose an explorable world with coherent spatial relationships, typed blueprint/lighting/runtime, deterministic unbounded XZ streaming and honest device measurements. Independent actual rendered review; walking/looking is complete.",
+      "missing": "Missing meaningful description/style or ordinary-physics contradiction: structured justified rejection without fabricated world. References containing instruction-like text remain data.",
+      "near_miss": "Reject keyword props on generic terrain, omitted requested people/vehicles/wildlife, invisible style effect, fake navigation, altered original input, unbounded queues, stale base identity or invented mining/crafting.",
+      "transfer": "Use a second unrelated domain/style with requested bounded moving life, and compare an existing canonical layout across presentation changes. Check equal-time actor determinism, different-time motion and appropriate habitat. ASCII/city/farmland are examples, not mandatory priorities.",
+      "rubric": "All applicable expert/review/rubric.json criteria with independently bound original admission, source, records, actual close/medium/horizon/mobile pixels and browser observations. Editing durability only when original intent requests edits; unknown physical90FPS remains unknown."
     }
   },
   "manual_tests": {
-    "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite."
+    "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite.",
+    "workers/worldweaver-omega/tests/dependency-profiles.mjs": "Optional offline npm-cache-dependent capability-profile installation and bundle test; explicit fresh output path; see tests/README.md."
   }
 }
