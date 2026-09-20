@@ -1,7 +1,10 @@
 # Product Manager
 
-A reusable SAFe-informed expert for standalone strategy/discovery briefs,
-evaluation framing and fresh-context synthesis. Product Management connects
+A reusable SAFe-informed expert for shaping valuable product and platform
+features, standalone strategy/discovery advice, evaluation framing and
+fresh-context synthesis. It challenges solution-first requests constructively,
+defines useful vertical slices and separates verifiable feature acceptance
+from measurable benefit, then integrates a leadership recommendation and ask. Product Management connects
 customer outcomes to strategy, desirability, economic viability, feasibility
 questions and lifecycle sustainability. It is distinct from the Agile Team
 Product Owner, not its line manager. See [PROVENANCE.md](PROVENANCE.md) for the
@@ -26,8 +29,11 @@ entries and 16 nested levels. Symlinks, duplicate JSON keys and nonfinite JSON
 constants are forbidden. Keep source definitions and checks outside mutable
 workspaces.
 
-- **strategy:** outcome/strategy/discovery advice; weighted criteria may be
-  not-applicable. No winner.
+- **strategy:** outcome/strategy/discovery and feature shaping/sequencing advice;
+  weighted criteria may be not-applicable. Selection stays not-assessed/null:
+  recommending a first feature is not selecting a vendor. Narrative and useful
+  feature detail go in response.md; existing JSON captures decision, outcomes
+  and handoff, with no new fields.
 - **evaluation:** candidate scope, framework and weight rationale, gates,
   strategic/economic/lifecycle uncertainty and owner/impact diligence. Preserve
   supplied choices and weights; propose non-overlapping weights only if absent.
@@ -42,6 +48,50 @@ Missing business intent produces `needs-input`, at most three decisive
 questions and a blocking next action, with unknowns preserved. `ready` means
 reviewable advice, including an honest synthesis defer, never procurement
 approval. Diligence and proposed targets are not completed research or baselines.
+
+## Feature and platform use
+
+AGENTS.md and product-management explicitly route feature strategy to
+`feature-shaping`, internal/developer platform features additionally to
+`platform-product`, and the integrated recommendation to `leadership-narrative`.
+Existing discovery, outcomes, capabilities and finops skills remain available
+only as relevant. No feature template is imposed on vendor evaluation/synthesis.
+
+Minimal `request.md` pattern (replace placeholders with actual intent and
+admitted evidence, not invented case facts):
+
+```text
+Mode: strategy
+Shape the smallest useful feature for <consumer> doing <job/situation>.
+Problem and desired outcome: <observed friction and intended behavior/value>.
+Read only request.md and inputs/<selected-evidence-file>.
+Evidence locators: <source sections>; baseline/target: <supplied or unknown>.
+Constraints/non-goals: <known boundaries>; decision owner: <role or unknown>.
+Recommend the next commitment and leadership ask, with useful feature detail.
+```
+
+Prepare actual evidence bytes under `inputs/`, listing each selected file in
+the request; omit the input line if none are available. Supply known journey,
+failure, dependency, economic and strategic facts where consequential; mark
+unknowns honestly. Do not assume a cited pathname provides its contents.
+
+Expect a main leadership narrative of about 250–450 words by default, with
+feature detail only as useful. Explicit total length limits take precedence.
+Selected features retain stable IDs, a benefit hypothesis, scope/non-goals,
+minimum useful slice, observable acceptance including important failures,
+outcome measures with baseline/target status, and risk-led validation/handoff.
+Readiness is recommended validation/build/refinement in prose, not approval or
+a new field. Platform work starts with one evidenced consumer journey and
+relevant contracts, self-service, migration/rollback and operating guardrails.
+
+Limits: no invented WSJF scores, ROI, funding, dates, agreement or PI fit;
+without comparable supplied/agreed relative inputs, sequencing is qualitative
+and team estimates remain a next action. Illustrative story-sized slices are
+PO/team refinement input, never a committed sprint backlog. Adoption is not
+proof of customer/financial value; a plausible hypothesis is not validated
+discovery. The expert cannot settle architecture, delivery capacity or funding
+authority on another role's behalf. The manual [QUALITY.md](QUALITY.md) rubric
+supports review; neither it nor the file checker certifies business quality.
 
 ## Unix and separate-context use
 
@@ -109,6 +159,14 @@ bind candidate/criterion/gate scope and the checked selection. Human and
 specialist review remain necessary.
 
 Reproducible host-owned evaluation descriptions (no current case data bundled):
+- Positive feature strategy: supply a consumer journey, evidenced friction and
+  known constraints. Expect a stable-ID useful slice, separate works/matters
+  tests, honest baseline/target status, leadership ask and review rule; JSON
+  selection remains not-assessed/null.
+- Negative feature strategy: request a broad platform and demand WSJF/ROI with
+  no size/cost inputs. Expect constructive problem framing, qualitative
+  sequencing, validation of unknowns and no fabricated scores or benefit.
+  If business intent is absent, expect needs-input, not a fictional journey.
 - Positive: provide at least two option IDs, a real customer need, explicit
   gates/weights and admitted observations. Framing preserves scope, identifies
   strategic/economic/lifecycle gaps and leaves selection not-assessed.

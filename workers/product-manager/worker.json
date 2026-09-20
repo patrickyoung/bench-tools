@@ -1,6 +1,6 @@
 {
   "id": "product-manager",
-  "description": "SAFe-informed product strategy, outcome-led option evaluation and executive synthesis of checked specialist evidence, with economic and lifecycle judgment.",
+  "description": "SAFe-informed product and platform feature shaping, outcome-led discovery and prioritization, and cohesive leadership decisions; preserves checked evaluation and synthesis handoffs.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -26,11 +26,15 @@
     "workers/product-manager/expert/CONTRACT.md",
     "workers/product-manager/expert/LICENSE",
     "workers/product-manager/expert/PROVENANCE.md",
+    "workers/product-manager/expert/QUALITY.md",
     "workers/product-manager/expert/README.md",
     "workers/product-manager/expert/bin/check",
     "workers/product-manager/expert/skills/business-outcomes/SKILL.md",
     "workers/product-manager/expert/skills/evidence-discovery/SKILL.md",
+    "workers/product-manager/expert/skills/feature-shaping/SKILL.md",
     "workers/product-manager/expert/skills/finops/SKILL.md",
+    "workers/product-manager/expert/skills/leadership-narrative/SKILL.md",
+    "workers/product-manager/expert/skills/platform-product/SKILL.md",
     "workers/product-manager/expert/skills/product-capabilities/SKILL.md",
     "workers/product-manager/expert/skills/product-management/SKILL.md"
   ]
