@@ -13,6 +13,25 @@ consequences and require confirmation for destructive effects; use transactions/
 batching appropriately. Audit actor/time/change without leaking sensitive values.
 Test that crafted object IDs and posted relations cannot cross tenant boundaries.
 
+## Identity-owned admin UI
+For DevTest/UAT/production, inventory every AdminSite (including custom sites),
+AdminSite.password_change/password_change_done, UserAdmin per-user password routes,
+password-capable add/change forms, and custom accounts/reset/signup/recovery URLs.
+OIDC-only means disabling password lifecycle UI as well as guarding login.
+Enforce direct GET/POST restrictions server-side even for privileged users;
+hiding links or making a field readonly is not an endpoint policy. Use unusable
+local passwords for OIDC-only provisioned users and deliberate provisioning forms
+that respect the identity owner. Preserve explicitly allowed local testing.
+A reachable password form behind a rejecting password backend is a misleading
+UI/policy defect, not evidence of a login bypass or a general Django vulnerability.
+
+Apply django-auth-environments' fresh-process environment matrix, testing anonymous,
+ordinary, staff and privileged users, direct requests, unchanged hashes after
+forbidden writes and absence of fallback sessions. Route minimization must preserve
+graceful allauth login/callback/error/logout journeys; cover missing state and
+invalid callbacks. Keep browser/UI and simulated-session evidence distinct from
+live OIDC protocol validation.
+
 ## Iteration loop
 1. Identify user, task, context (device/connectivity/assistive technology) and
    measurable acceptance criteria. Separate evidence from assumptions.

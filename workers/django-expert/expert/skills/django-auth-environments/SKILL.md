@@ -48,6 +48,23 @@ rotation at login, deprovisioning, revocation latency, logout/local session
 invalidation and provider logout expectations. Test expired/revoked sessions and
 cross-tenant attempts. Missing IdP means blocked integration, not weaker controls.
 
+## Password lifecycle in OIDC-only environments
+In DevTest, UAT and production, inventory and disable password lifecycle surfaces
+as well as password login: AdminSite.password_change/password_change_done,
+UserAdmin per-user password routes and add/change forms capable of setting a
+password, every custom AdminSite, and accounts/reset/signup/recovery URLs.
+Enforce policy server-side on direct GET and POST, not just navigation or template
+links. Reject forbidden password writes regardless of staff/superuser privilege.
+Provision OIDC-only users with unusable local passwords; define deliberate
+provisioning UI consistent with the identity owner, rather than exposing generic
+password-setting user creation. Existing credentials need an explicit reviewed
+migration policy, not an unrequested destructive bulk rewrite. Preserve legitimate
+explicit local password testing, without enabling a shared-environment fallback.
+
+A password form remaining reachable despite a rejecting authentication backend
+is an OIDC-only UI/policy defect that can mislead users or leave unmanaged local
+credentials. It is not by itself a login bypass or a general Django vulnerability.
+
 ## Every admin entrance
 Inventory each AdminSite, including custom sites and direct URLs. The allauth
 social-only setting does NOT secure Django admin by itself. Use the chosen
@@ -64,3 +81,25 @@ missing config/unknown env fails startup and permission/tenant scope is enforced
 Use mock protocol cases for unit coverage, but label live IdP tests separately.
 All configuration and logs must redact credentials; review source and actual
 runtime evidence independently of the structural handoff checker.
+
+## Environment startup and negative coverage
+Start fresh processes with the actual settings selection for local, DevTest, UAT
+and production, using authorized isolated test data and configuration. Assert the
+effective authentication backends, SOCIALACCOUNT_ONLY, URL configuration and
+environment policy agree. Flipping only LOCAL in an already-loaded local settings
+process is supplemental unit coverage, not shared-environment startup evidence.
+Missing required configuration must fail closed; unavailable integration remains
+explicitly blocked.
+
+For each environment exercise anonymous, ordinary, staff and privileged users
+against inventoried login and password lifecycle routes, with direct GET and POST
+(including authorized CSRF-bearing requests so CSRF rejection cannot mask a policy
+failure). Confirm forbidden writes leave persisted password hashes unchanged and
+cannot create users with usable passwords; verify no accidental authentication
+fallback grants sessions. Test the permitted local flow separately.
+Minimize allauth routes without breaking graceful login initiation, callback,
+error or logout behavior. Test missing state and invalid callbacks for safe
+failure without a session, redirect loop or unhandled error. Simulated authenticated
+sessions test authorization/UI only; mock protocol negatives and live OIDC protocol
+tests are separate evidence. Neither simulated sessions nor invalid callback tests
+establish live IdP validation.

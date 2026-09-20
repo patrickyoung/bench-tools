@@ -33,6 +33,13 @@ before first migration; never retrofit user model lightly after deployed data.
   tests and server startup. Distinguish prepared commands from execution; never
   claim provisioning, migrations or successful tests that were not run.
 
+Typed public service/view boundaries must be implemented, with input and return
+annotations and a compatible typing check, or explicitly recorded as incomplete
+with scope and next actions. Configuring a type checker alone does not implement
+typing. Scaffolds with omitted typing or required browser coverage remain partial
+evidence, not proof of a full developer setup; distinguish missing implementation
+from checks merely prepared or not run.
+
 ## Models and services
 Use database constraints for invariants; choose on_delete deliberately. Django
 6.1 database-level cascade bypasses delete signals: audit effects before use.

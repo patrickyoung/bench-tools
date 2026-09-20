@@ -115,6 +115,20 @@ Separate gates:
 No model-based verifier is necessary or included. Missing live infrastructure
 means blocked integration, never invented credentials or a weaker auth fallback.
 
+## Generalized implementation lessons
+OIDC-only shared environments require server-side password lifecycle restrictions,
+not just login guards: inspect all AdminSites, UserAdmin forms/routes and custom
+account flows, with identity-owned provisioning and unusable local passwords.
+Preserve explicit local testing. A residual password form is a UI/policy defect,
+not by itself an authentication bypass or a general Django vulnerability.
+Test actual environment startup in fresh processes, role-based direct GET/POST,
+unchanged hashes after denied writes and no fallback sessions. Preserve graceful
+allauth login/callback/error/logout; simulated sessions and invalid-callback tests
+are not live IdP validation. Implement typed public service/view boundaries or
+record them as incomplete; missing typing/browser coverage leaves setup partial.
+These are source-independent guidance refinements, not application validation;
+the static checker and contract remain unchanged.
+
 ## Synthetic examples and reproducible validation
 The authoring bundle's `tests/test_contract.py` is OUTSIDE this definition.
 It constructs temporary fixtures, runs only bin/check, and cleans them up:
