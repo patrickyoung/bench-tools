@@ -35,7 +35,9 @@ python3 scripts/check-worker-portability.py --host-clis # optional generated wor
 held-out rejection, exact source export and tamper refusal using synthetic
 observations and zero inference calls. `--bench-adapters` also checks real Hire
 and Agent against a loopback model fixture, with zero paid calls. Both paths
-run inside process integration.
+run inside process integration. The Hire/Agent adapters retain Cage's default
+confinement and need a working native backend. CI installs Bubblewrap and its
+scoped AppArmor namespace grant in the Linux integration job; macOS uses Seatbelt.
 
 `check-weigh.py --bin-dir DIR` exercises public Weigh/Ask/Record judgments,
 optional diagnosis, and Ply checking against loopback fixtures.
@@ -165,8 +167,9 @@ wrapping mktemp or altering Draft's admission check.
 
 Cage cross-compilation is part of its independent check. Native confinement
 is an additional explicit requirement selected by `--native-cage`; it fails
-when the host cannot prove the boundary. CI keeps native proof in a separate
-Linux/macOS job and installs Bubblewrap for Linux. A passing portable suite
+when the host cannot prove the boundary. CI keeps the full native proof in a
+separate Linux/macOS job and installs Bubblewrap for Linux there and in the
+integration job that runs confined Hire/Agent fixtures. A passing portable suite
 does not claim native confinement when that proof has not run.
 
 Full command output, exit status, timing, source digests, and the overall
