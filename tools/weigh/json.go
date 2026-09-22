@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
@@ -160,4 +161,20 @@ func textValue(raw json.RawMessage) (string, error) {
 		return "", errors.New("expected nonempty text")
 	}
 	return s, nil
+}
+
+// Match echoed descriptions without depending on object order or JSON string
+// escapes. UseNumber avoids accepting a changed integer through float rounding.
+// Numeric literal spelling is part of this exact echo contract.
+func sameDescription(a, b json.RawMessage) bool {
+	decode := func(raw json.RawMessage) (any, error) {
+		d := json.NewDecoder(bytes.NewReader(raw))
+		d.UseNumber()
+		var v any
+		err := d.Decode(&v)
+		return v, err
+	}
+	x, xerr := decode(a)
+	y, yerr := decode(b)
+	return xerr == nil && yerr == nil && reflect.DeepEqual(x, y)
 }

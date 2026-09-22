@@ -1,0 +1,93 @@
+.TH IMPROVE 1 "September 2026" "improve 0.1.0" "User Commands"
+.SH NAME
+improve \- measure one proposed source change on fresh cases
+.SH SYNOPSIS
+.B improve
+.RB [ \-n ]
+.RB [ \-o " NEW_DIRECTORY" ]
+< experiment.json
+.br
+.B improve verify
+.RB [ \-record " EXECUTABLE" ]
+DIRECTORY
+.br
+.B improve version
+.SH DESCRIPTION
+Reads one version-1 JSON specification and orchestrates caller-selected
+proposer, trial/scorer and judge commands with literal argv and JSON pipes.
+Snapshots source and cases, pins commands and declared dependencies, measures
+development baselines, proposes one change, compares fresh development pairs,
+and tests the frozen candidate on reserved cases only after development passes.
+Alternates pair order across repeats. Uses Record to capture and replay each
+process boundary. No provider client, agent loop, retry, resume or scheduler.
+.SH OPTIONS
+.TP
+.B \-n
+Validate inputs and print maximum workload. Execute no commands and create no files.
+.TP
+.BI \-o " DIRECTORY"
+Select a new output directory with an existing parent, disjoint from all inputs.
+.TP
+.BI "verify \-record " EXECUTABLE
+Select Record for offline verification; default is record on PATH.
+.SH SPECIFICATION
+Required fields: version (1), source, mutable, development, holdout, commands.
+Each case has id, family and file. IDs are unique; families and identical file
+bytes may not overlap across splits. Commands has propose, trial and judge,
+each with an argv array. Optional dependencies lists files to pin. Settings is
+opaque JSON passed to commands. Record selects its executable, default record.
+Defaults: repeats 3, command_seconds 180, max_seconds 2400.
+Allowed: 2-10 repeats, 1-20 cases per split, 1-64 mutable existing UTF-8 files.
+Only existing selected files can be replaced; modes are preserved.
+.PP
+JSON and captured streams are bounded at 2 MiB. Stream overflow cancels the
+command group and retains an incomplete bounded prefix. Source and command
+trees permit 4096 regular files and 128 MiB; the whole study permits 8192 files
+and 512 MiB. The per-file limit is 64 MiB. Planning rejects unavoidable source
+copies exceeding the study bound and call ledgers above 1 MiB; command-written files are not disk-quota
+controlled. Admitted runs emit invalid-evidence JSON on finalization failure
+and remove any proposal export. Data paths refuse symlinks; executable links
+are resolved once. Paths are relative to the invoking directory; argv arguments
+remain literal and scripts should use absolute paths. Declare transitive
+files explicitly. Hashes do not freeze environment or remote services.
+.SH COMMAND CONTRACT
+The proposer receives source, mutable files, development cases and observations,
+settings, work and evidence paths. Exit 0 returns version, hypothesis, changes
+(path/content replacements) and cost. Exit 1 supplies no proposal.
+.PP
+Trials receive a fresh source copy, case descriptor, repeat, settings, work and
+evidence. Exit 0 returns version, non-null score and cost. Job failure belongs
+in the score; a failed adapter is an incomplete measurement.
+.PP
+The judge receives paired baseline/candidate samples, split and settings.
+Return version, decision (keep or discard), reason and cost. Keep requires
+exit 0; discard requires exit 1. Other outcomes are errors.
+.PP
+Cost is nonnegative provider dollars or null. Unknown cost remains unknown in
+the total; known_cost is only a subtotal. Include nested/repair/authoring costs.
+See README.md for exact JSON requests and examples.
+.SH OUTPUT
+One JSON result on stdout; diagnostics on stderr. The evidence directory retains
+requests, streams, Record receipts, scores, decisions, snapshots and inventory.
+Supported results export proposal/source and a manifest binding source hashes.
+The original source is never updated and no release is published.
+.SH EXIT STATUS
+0: supported proposal or successful planning/verification.
+.br
+1: no supported proposal or incomplete execution.
+.br
+2: invalid invocation, broken evidence or operational error.
+.SH VERIFICATION
+Verify checks retained hashes and Record replay without running the original
+commands. It refuses incomplete receipts. It does not rerun a judge, validate
+current external dependencies, prove label correctness or authorize deployment.
+Missing final inventory means incomplete evidence.
+.SH BOUNDARIES
+Selected commands are trusted programs and choose their own confinement through
+existing tools. Holdout separation is procedural, not filesystem secrecy.
+Timeouts signal the process group and permit three seconds of cleanup before
+escalation; detached descendants remain the runner's responsibility.
+Weigh is optional inside caller-selected research commands, never implicit.
+Hone's checked-recovery contract is independent of experiment comparisons.
+.SH SEE ALSO
+record(1), agent(1), hire(1), ask(1), hone(1), cage(1)

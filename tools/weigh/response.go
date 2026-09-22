@@ -217,8 +217,7 @@ func parseAnswer(raw json.RawMessage, q question) (answer, json.RawMessage, erro
 				return a, nil, errors.New("score legend does not match requested levels")
 			}
 			for i, level := range q.Levels {
-				var got string
-				if json.Unmarshal(levels[strconv.Itoa(i)], &got) != nil || got != level {
+				if !sameDescription(levels[strconv.Itoa(i)], level) {
 					return a, nil, errors.New("score legend does not match requested levels")
 				}
 			}

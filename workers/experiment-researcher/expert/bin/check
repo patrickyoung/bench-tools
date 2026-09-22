@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+"""Check research bindings and a frozen Improve plan through public readers."""
+import copy
+import hashlib
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import sys
+
+JSON_LIMIT = 2 * 1024 * 1024
+SESSION_LIMIT = 64 * 1024 * 1024
+WORK = Path.cwd().resolve()
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def string(value, limit=16000):
+    return isinstance(value, str) and bool(value.strip()) and len(value) <= limit
+
+
+def fields(value, names, label):
+    require(isinstance(value, dict), label + ': expected an object')
+    expected = set(names.split())
+    require(set(value) == expected, label + ': missing fields ' + ', '.join(sorted(expected - set(value)))
+            + '; unexpected fields ' + ', '.join(sorted(set(value) - expected)))
+
+
+def strict(data):
+    def pairs(items):
+        out = {}
+        for key, value in items:
+            require(key not in out, 'duplicate JSON key')
+            out[key] = value
+        return out
+    def constant(_):
+        raise ValueError('nonfinite JSON')
+    return json.loads(data, object_pairs_hook=pairs, parse_constant=constant)
+
+
+def external(value, directory=False):
+    require(string(value, 4096), 'invalid external path')
+    path = Path(value)
+    require(path.is_absolute() and str(path.resolve(strict=True)) == value, 'path must be absolute/canonical without symlinks')
+    require(path != WORK and WORK not in path.parents, 'trusted inputs must be outside workspace')
+    require(path.is_dir() if directory else path.is_file(), 'wrong input file type')
+    return path
+
+
+def read(path, limit=JSON_LIMIT):
+    require(path.resolve(strict=True) == path, 'symlink or noncanonical file')
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        require(stat.S_ISREG(info.st_mode) and info.st_size <= limit, 'nonregular or oversized file')
+        data = stream.read(limit + 1)
+    require(len(data) <= limit, 'oversized file')
+    return data
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def call(argv, data=b'', limit=SESSION_LIMIT):
+    p = subprocess.run(argv, input=data, capture_output=True, timeout=30)
+    require(len(p.stdout) <= limit and len(p.stderr) <= JSON_LIMIT, 'reader output too large')
+    require(p.returncode == 0, Path(argv[0]).name + ': reader/plan validation failed (exit ' + str(p.returncode) + ')')
+    return p.stdout
+
+
+def strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from strings(v)
+
+
+def text_list(value, nonempty=False):
+    return isinstance(value, list) and len(value) <= 24 and (bool(value) or not nonempty) and all(string(v) for v in value)
+
+
+def main():
+    require(sys.argv[1:] in ([], ['--assemble']), 'usage: bin/check [--assemble]')
+    assemble = sys.argv[1:] == ['--assemble']
+    raw = read(external(os.environ.get('EXPERIMENT_RESEARCH_REQUEST')))
+    request = strict(raw)
+    fields(request, 'version question sources tools template fresh_holdout', 'request')
+    require(type(request['version']) is int and request['version'] == 1, 'unsupported request version')
+    require(string(request['question']) and type(request['fresh_holdout']) is bool, 'invalid question/fresh_holdout')
+    fields(request['tools'], 'trail ask improve', 'tools')
+    tools = {}
+    for name, value in request['tools'].items():
+        tools[name] = str(external(value))
+        require(os.access(value, os.X_OK), 'reader must be executable')
+    require(isinstance(request['sources'], list) and len(request['sources']) <= 12, 'invalid source list')
+    sources = {}
+    for source in request['sources']:
+        fields(source, 'id kind path', 'source')
+        require(string(source['id'], 128) and source['id'] not in sources, 'duplicate/invalid source ID')
+        require(source['kind'] in ('archive', 'text'), 'invalid source kind')
+        path = external(source['path'], directory=source['kind'] == 'archive')
+        if source['kind'] == 'text':
+            read(path).decode('utf-8')
+        sources[source['id']] = source
+    template = request['template']
+    require(template is None or isinstance(template, dict), 'template must be object or null')
+    if template is not None:
+        require(isinstance(template.get('settings'), dict) and 'research' not in template['settings'], 'template settings must be object without research')
+
+    report = strict(read(WORK / 'research.json'))
+    fields(report, 'version request_sha256 status summary hypothesis change citations limitations next_inputs', 'research')
+    require(type(report['version']) is int and report['version'] == 1, 'unsupported report version')
+    require(report['request_sha256'] == digest(raw), 'stale request binding')
+    require(report['status'] in ('ready', 'needs_input', 'no_experiment'), 'invalid status')
+    require(string(report['summary']) and text_list(report['limitations'], True), 'summary/limitations required')
+    require(text_list(report['next_inputs']), 'invalid next_inputs')
+    require(bool(report['next_inputs']) == (report['status'] == 'needs_input'), 'next_inputs/status disagree')
+    require(isinstance(report['citations'], list) and len(report['citations']) <= 12, 'invalid citations')
+    checked, events, archive_citations = set(), {}, 0
+    for citation in report['citations']:
+        require(isinstance(citation, dict) and isinstance(citation.get('source'), str) and citation['source'] in sources, 'unselected citation source')
+        source = sources[citation['source']]
+        archive = source['kind'] == 'archive'
+        fields(citation, 'source file sha256 seq quote' if archive else 'source sha256 quote', 'citation')
+        require(string(citation['quote'], 4096), 'invalid quote')
+        if archive:
+            name = citation['file']
+            require(string(name, 255) and Path(name).name == name and name.endswith('.jsonl'), 'citation needs a session basename')
+            path = Path(source['path']) / name
+        else:
+            path = Path(source['path'])
+        content = read(path, SESSION_LIMIT if archive else JSON_LIMIT)
+        require(citation['sha256'] == digest(content), 'stale citation digest')
+        if archive:
+            archive_citations += 1
+            seq = citation['seq']
+            require(type(seq) is int and seq > 0, 'invalid event sequence')
+            if path not in checked:
+                call([tools['ask'], 'replay', '-check', str(path)])
+                checked.add(path)
+            key = (path, seq)
+            if key not in events:
+                output = call([tools['trail'], 'window', '-before', '0', '-after', '0', str(path), str(seq)])
+                rows = [strict(line) for line in output.splitlines() if line.strip()]
+                require(len(rows) == 1 and isinstance(rows[0], dict) and rows[0].get('kind') == 'event', 'missing event or archive warning/error')
+                event = rows[0].get('event')
+                require(isinstance(event, dict) and type(event.get('seq')) is int and event['seq'] == seq, 'wrong event sequence')
+                events[key] = event
+            require(any(citation['quote'] in value for value in strings(events[key])),
+                    'quote absent from selected event: source=' + citation['source']
+                    + ' file=' + citation['file'] + ' seq=' + str(seq))
+        else:
+            require(citation['quote'] in content.decode('utf-8'),
+                    'quote absent from selected text: source=' + citation['source'])
+
+    experiment_path = WORK / 'experiment.json'
+    if report['status'] != 'ready':
+        require(report['hypothesis'] is None and report['change'] is None, 'non-ready hypothesis/change must be null')
+        require(not os.path.lexists(experiment_path), 'non-ready result contains an experiment file')
+    else:
+        require(template is not None and request['fresh_holdout'], 'ready requires a template and fresh reserved cases')
+        require(archive_citations > 0 and string(report['hypothesis']), 'ready requires archive evidence and hypothesis')
+        fields(report['change'], 'path instruction', 'change')
+        require(string(report['change']['instruction']) and isinstance(report['change']['path'], str), 'invalid change')
+        require(isinstance(template.get('mutable'), list) and report['change']['path'] in template['mutable'], 'unadmitted mutable path')
+        # Paths must not acquire a new meaning when Improve runs in another cwd.
+        external(template['source'], directory=True)
+        for split in ('development', 'holdout'):
+            for case in template[split]:
+                external(case['file'])
+        for dependency in template.get('dependencies', []):
+            external(dependency)
+        expected = copy.deepcopy(template)
+        expected['mutable'] = [report['change']['path']]
+        expected['settings']['research'] = {k: report[k] for k in ('hypothesis', 'change', 'summary', 'citations')}
+        experiment_raw = (json.dumps(expected, indent=2, ensure_ascii=False) + '\n').encode('utf-8')
+        create = assemble and not os.path.lexists(experiment_path)
+        if not create:
+            experiment_raw = read(experiment_path)
+        # JSON equality must distinguish true from 1 (Python equality does not).
+        normalized = lambda value: json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+        require(normalized(strict(experiment_raw)) == normalized(expected), 'experiment changed frozen template or research context')
+        call([tools['improve'], '-n'], experiment_raw, JSON_LIMIT)
+        if create:
+            require(len(experiment_raw) <= JSON_LIMIT, 'assembled experiment too large')
+            # Validate before writing; exclusive creation cannot overwrite a
+            # stale plan or follow an output symlink. Default check is read-only.
+            with experiment_path.open('xb') as output:
+                output.write(experiment_raw)
+    print(json.dumps({'accepted': True, 'status': report['status'], 'citations': len(report['citations'])}))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, KeyError, TypeError, RecursionError, subprocess.SubprocessError) as error:
+        print(json.dumps({'accepted': False, 'reason': str(error)[:800]}))
+        sys.exit(1)

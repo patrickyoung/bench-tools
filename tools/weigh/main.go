@@ -14,11 +14,11 @@ import (
 	"time"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 var errTooLarge = errors.New("size limit")
 
-const help = `weigh - one typed judgment, no action or policy
+const help = `weigh - typed judgments, no action or policy
 
 usage: weigh -m openrouter/MODEL [options] < request.json > result.json
        weigh help
@@ -36,6 +36,8 @@ environment: OPENROUTER_API_KEY, unless -header-fd is explicitly selected
 stdin: one JSON object with version:1, state, and nonempty questions
 state: a JSON string, object, or array; numeric literals retain precision
 questions: named choice, score, or probability questions; see weigh.1
+descriptions: text, object, or array; choice also allows null descriptions
+probability: optional criteria with true and false descriptions
 stdout: one fully validated JSON result, followed by a newline
 stderr: diagnostics only; input and provider error bodies are never dumped
 

@@ -331,6 +331,10 @@ class CheckRun:
                 for example in ("semantic-check", "visual-check", "improve-checks"):
                     self.command("weigh-" + example, ["python3", "-m", "unittest", "discover", "-s",
                                  "examples/" + example, "-p", "test_*.py", "-v"], source, env)
+            if name == "improve":
+                for example in ("router", "acceptance"):
+                    self.command("improve-example-" + example, ["python3", "-m", "unittest", "discover", "-s",
+                                 "examples/" + example, "-p", "test_*.py", "-v"], source, env)
             if self.quick:
                 return
             if name == "may":
@@ -397,6 +401,8 @@ class CheckRun:
                      source, record_env)
         self.command("record-ply-interpreter-contract",
                      ["python3", self.root / "scripts/check-record-ply.py", "--bin-dir", self.bin], self.root, env)
+        self.command("improve-executable-contract",
+                     ["python3", self.root / "scripts/check-improve.py", "--bin-dir", self.bin, "--bench-adapters"], self.root, env)
         self.command("record-agent-default-contract",
                      ["python3", self.root / "scripts/check-record-agent.py", "--bin-dir", self.bin], self.root, env)
         self.command("replay-inventory-integration",

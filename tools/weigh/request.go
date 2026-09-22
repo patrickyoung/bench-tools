@@ -8,10 +8,11 @@ import (
 )
 
 type question struct {
-	Type    string
-	Text    string
-	Options map[string]string
-	Levels  []string
+	Type     string
+	Text     json.RawMessage
+	Options  map[string]json.RawMessage
+	Levels   []json.RawMessage
+	Criteria map[string]json.RawMessage
 }
 
 type request struct {
@@ -20,9 +21,9 @@ type request struct {
 }
 
 type nativeQuestion struct {
-	Type         string `json:"type"`
-	Instructions string `json:"instructions"`
-	Criteria     any    `json:"criteria,omitempty"`
+	Type         string          `json:"type"`
+	Instructions json.RawMessage `json:"instructions"`
+	Criteria     any             `json:"criteria,omitempty"`
 }
 
 func parseRequest(raw []byte) (request, error) {
@@ -73,16 +74,16 @@ func parseQuestion(raw json.RawMessage) (question, error) {
 	if err != nil {
 		return q, errors.New("each question must be an object")
 	}
-	if err := fields(obj, "type question", "options levels"); err != nil {
+	if err := fields(obj, "type question", "options levels criteria"); err != nil {
 		return q, err
 	}
 	q.Type, err = textValue(obj["type"])
 	if err != nil {
 		return q, errors.New("question type must be choice, score, or probability")
 	}
-	q.Text, err = textValue(obj["question"])
-	if err != nil {
-		return q, errors.New("question must be nonempty text")
+	q.Text = obj["question"]
+	if !description(q.Text) {
+		return q, errors.New("question must be nonempty text, an object, or an array")
 	}
 	switch q.Type {
 	case "choice":
@@ -93,29 +94,37 @@ func parseQuestion(raw json.RawMessage) (question, error) {
 		if err != nil || len(opts) < 2 || len(opts) > 255 {
 			return q, errors.New("choice requires 2 to 255 named options")
 		}
-		q.Options = make(map[string]string, len(opts))
 		for id, raw := range opts {
-			text, err := textValue(raw)
-			if !validID(id) || err != nil {
-				return q, errors.New("choice option IDs and descriptions must be nonempty text; IDs at most 256 bytes without controls")
+			if !validID(id) {
+				return q, errors.New("choice option IDs must be nonempty text without controls (at most 256 bytes)")
 			}
-			q.Options[id] = text
+			if string(raw) != "null" && !description(raw) {
+				return q, errors.New("choice descriptions must be nonempty text, objects, arrays, or null")
+			}
 		}
+		q.Options = opts
 	case "score":
 		if err := fields(obj, "type question levels", ""); err != nil {
 			return q, err
 		}
 		if json.Unmarshal(obj["levels"], &q.Levels) != nil || len(q.Levels) < 2 || len(q.Levels) > 10 {
-			return q, errors.New("score requires 2 to 10 ordered text levels")
+			return q, errors.New("score requires 2 to 10 ordered descriptions")
 		}
 		for _, level := range q.Levels {
-			if !cleanText(level) {
-				return q, errors.New("score levels must be nonempty text")
+			if !description(level) {
+				return q, errors.New("score levels must be nonempty text, objects, or arrays")
 			}
 		}
 	case "probability":
-		if err := fields(obj, "type question", ""); err != nil {
+		if err := fields(obj, "type question", "criteria"); err != nil {
 			return q, err
+		}
+		if raw, ok := obj["criteria"]; ok {
+			criteria, err := object(raw)
+			if err != nil || fields(criteria, "true false", "") != nil || !description(criteria["true"]) || !description(criteria["false"]) {
+				return q, errors.New("probability criteria must contain exactly true and false descriptions (text, object, or array)")
+			}
+			q.Criteria = criteria
 		}
 	default:
 		return q, errors.New("question type must be choice, score, or probability")
@@ -134,6 +143,9 @@ func (r request) native(model string) ([]byte, error) {
 			n.Criteria = q.Levels
 		case "probability":
 			n.Type = "noul"
+			if q.Criteria != nil {
+				n.Criteria = q.Criteria
+			}
 		}
 		qs[id] = n
 	}
@@ -142,4 +154,17 @@ func (r request) native(model string) ([]byte, error) {
 		State     json.RawMessage           `json:"state"`
 		Questions map[string]nativeQuestion `json:"questions"`
 	}{model, r.State, qs})
+}
+
+// The whole document has already passed strictJSON. Structured descriptions
+// are provider data, not another schema; keep their numeric literals intact.
+func description(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	if raw[0] == '{' || raw[0] == '[' {
+		return true
+	}
+	_, err := textValue(raw)
+	return err == nil
 }

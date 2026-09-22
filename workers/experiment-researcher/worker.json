@@ -1,0 +1,35 @@
+{
+  "id": "experiment-researcher",
+  "description": "Research selected Bench event logs with Trail and produce one cited, bounded Improve experiment plan.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record",
+        "trail",
+        "improve"
+      ],
+      "compatibility": "Agent with public file recording; Ask 0.3.0; Trail 0.1.0; Improve 0.1.0. Evaluate and pin exact source before promotion."
+    },
+    "python": ">=3.9 standard library on Linux or macOS",
+    "model": "Caller-selected Ask model and provider credentials; no model is bundled",
+    "review": "Caller-owned template/cases/gate; independent review of research entailment and future experiments"
+  },
+  "files": [
+    "workers/experiment-researcher/expert/AGENTS.md",
+    "workers/experiment-researcher/expert/LICENSE",
+    "workers/experiment-researcher/expert/MEMORY.md",
+    "workers/experiment-researcher/expert/PLAN.md",
+    "workers/experiment-researcher/expert/README.md",
+    "workers/experiment-researcher/expert/SOUL.md",
+    "workers/experiment-researcher/expert/bin/check",
+    "workers/experiment-researcher/expert/bin/wake"
+  ]
+}

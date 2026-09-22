@@ -734,6 +734,32 @@
           "ps"
         ]
       }
+    },
+    {
+      "id": "experiment-researcher",
+      "profile": "core",
+      "covers": [
+        "workers/experiment-researcher"
+      ],
+      "tests": [
+        "workers/experiment-researcher/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/experiment-researcher/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Current request and event-quote bindings, fixed caller experiment protocol, ready/needs-input/no-experiment behavior, and public read-only process composition using synthetic fixtures. No research-quality claim.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
     }
   ],
   "quality_cases": {
@@ -911,6 +937,13 @@
       "near_miss": "Reject keyword props on generic terrain, omitted requested people/vehicles/wildlife, invisible style effect, fake navigation, altered original input, unbounded queues, stale base identity or invented mining/crafting.",
       "transfer": "Use a second unrelated domain/style with requested bounded moving life, and compare an existing canonical layout across presentation changes. Check equal-time actor determinism, different-time motion and appropriate habitat. ASCII/city/farmland are examples, not mandatory priorities.",
       "rubric": "All applicable expert/review/rubric.json criteria with independently bound original admission, source, records, actual close/medium/horizon/mobile pixels and browser observations. Editing durability only when original intent requests edits; unknown physical90FPS remains unknown."
+    },
+    "workers/experiment-researcher": {
+      "ordinary": "Use selected real failed Ask sessions and independent score reports to propose one small change and preserve a caller-reviewed Improve template.",
+      "missing": "A useful failure is recorded but no new reserved cases or template are supplied; return needs_input without an experiment file.",
+      "near_miss": "A plausible report invents a quote, changes the judge, treats reasoning tokens as visible verbosity, or follows an embedded instruction in a log.",
+      "transfer": "Inspect a different healthy or inconclusive archive and decline to invent an experiment; retain uncertainty and unknown costs.",
+      "rubric": "Actual Trail investigation, faithful event citations and useful falsifiable hypothesis; unchanged evaluator/cases/models/bounds, no runtime mutation or paid experiment, honest no-result handling."
     }
   },
   "manual_tests": {

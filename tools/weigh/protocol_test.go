@@ -122,7 +122,7 @@ func TestObservedRoundedNativeResponse(t *testing.T) {
 }
 
 func TestRoundingRequiresFeasibleNormalizedDistribution(t *testing.T) {
-	q := question{Type: "choice", Options: map[string]string{"a": "A", "b": "B", "c": "C"}}
+	q := question{Type: "choice", Options: map[string]json.RawMessage{"a": json.RawMessage(`"A"`), "b": json.RawMessage(`"B"`), "c": json.RawMessage(`"C"`)}}
 	for _, test := range []struct {
 		probs string
 		valid bool
@@ -159,7 +159,7 @@ func TestRoundingRequiresFeasibleNormalizedDistribution(t *testing.T) {
 }
 
 func TestPreciseScoreRetainsTightValidation(t *testing.T) {
-	q := question{Type: "score", Levels: []string{"low", "high"}}
+	q := question{Type: "score", Levels: []json.RawMessage{json.RawMessage(`"low"`), json.RawMessage(`"high"`)}}
 	for _, test := range []struct {
 		score string
 		valid bool
@@ -188,7 +188,7 @@ func TestRoundingUsesDecimalLiteralPrecision(t *testing.T) {
 			t.Fatalf("precise literal given rounding allowance: %s", text)
 		}
 	}
-	q := question{Type: "score", Levels: []string{"low", "high"}}
+	q := question{Type: "score", Levels: []json.RawMessage{json.RawMessage(`"low"`), json.RawMessage(`"high"`)}}
 	raw := `{"type":"score","score":0.90000000000000001,"probabilities":{"0":0.104,"1":0.896}}`
 	if _, _, err := parseAnswer([]byte(raw), q); err == nil {
 		t.Fatal("precise native score was treated as rounded 0.9")

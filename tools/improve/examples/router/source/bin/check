@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import json
+import sys
+try:
+    rows = json.load(sys.stdin)
+    notes = json.load(open('request.json'))['notes']
+    assert isinstance(rows, list) and len(rows) == len(notes)
+    assert all(set(row) == {'id', 'queue'} and row['id'] == note['id'] and
+               row['queue'] in ('security', 'billing', 'technical', 'general')
+               for row, note in zip(rows, notes))
+except (ValueError, TypeError, KeyError, AssertionError):
+    print('Return one raw JSON array with ordered id/queue objects.')
+    sys.exit(1)
