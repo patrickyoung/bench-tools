@@ -14,6 +14,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 
 | Worker | Purpose |
 | --- | --- |
+| [Experiment researcher](experiment-researcher/expert/README.md) | Search selected event logs with Trail and create one cited, bounded Improve experiment plan. |
 | [Excel workbook designer and editor](excel-workbook-designer/expert/README.md) | Create and prompt-edit reports and text-first team workbooks; exact lookups, RAG, WBS and time-off coverage; native charts/simple pivots; verify behavior and preserve content. |
 | [Product Manager](product-manager/expert/README.md) | Frame SAFe-informed product strategy and evaluations, then synthesize checked evidence into business decisions with explicit economic and lifecycle tradeoffs. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |

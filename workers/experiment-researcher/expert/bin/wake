@@ -1,0 +1,3 @@
+#!/bin/sh
+# Replace when HEARTBEAT.md is used. Exit 0 is quiet, 1 wakes, other is broken.
+exit 0

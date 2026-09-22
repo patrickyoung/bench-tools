@@ -22,6 +22,7 @@ the chosen tools' READMEs and manuals. `components.json` is the command inventor
 | Validate citation identities against records | cite | tools/cite/README.md |
 | Design and build a genuinely new program | draft | tools/draft/README.md |
 | Propose a lesson from a checked recovery | hone | tools/hone/README.md |
+| Compare a proposed source change on fresh development and reserved cases | improve | tools/improve/README.md |
 | Gate an exact connector operation | action | tools/action/README.md |
 | Record a person's decision on exact bytes | may | tools/may/README.md |
 | Limit a child's writes and networking | cage | tools/cage/README.md |

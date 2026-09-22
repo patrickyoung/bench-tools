@@ -13,6 +13,49 @@ It does not impose a new approval step on ordinary edits the user has already
 asked you to make. An explicit request to implement a specific correction keeps
 its existing authorization; explain what changed and how it was tested.
 
+## Run a bounded experiment with Improve
+
+Before creating the experiment, define its use-case acceptance contract as
+described in [Test a focused proposal](#test-a-focused-proposal). The creating
+application proposes that policy from the user's intended outcome and records
+its rationale. It does not inherit a global cost/accuracy threshold from a demo.
+
+For log-driven experiment creation, inspect the reusable
+`workers/experiment-researcher` entry in the selected checkout. It uses Trail
+to investigate explicitly selected archives and returns a cited hypothesis and
+an `experiment.json`, or an honest needs-input/no-experiment result. The model
+writes only `research.json`; its local `bin/check --assemble` derives the plan
+from the trusted template and checked research. Default checking is read-only. The caller
+supplies the reviewed template, independent cases and judge, models and bounds.
+The researcher preserves those choices and stops after `improve -n`; running
+the experiment remains a separate existing command. Its checked citations
+establish recorded text identity, not hypothesis quality. Follow its README
+for the trusted request and external workspace contract.
+
+The independent `improve` command turns one source-change experiment into a
+repeatable Unix filter. Read `tools/improve/README.md` in the selected checkout.
+Its JSON specification names a clean source tree, exact mutable existing files,
+development and reserved cases, literal proposer/trial/judge commands, declared
+dependency files and limits. `improve -n` validates without execution;
+`improve -o NEW_DIRECTORY` runs the admitted experiment. Use the source-matched
+installer to install `improve` explicitly if it is absent from the builder setup.
+
+Reuse the router example only as a starting adapter or synthetic process test.
+Select real independent labels and a judge matching the task. Hire can author
+prompt/skill/subagent/check changes; Agent executes workers; Record captures the
+process boundaries; Ask replay supplies model usage and stop evidence. Preserve
+unknown costs, including retries and missing usage. Never confuse a worker's
+format-check pass with independent job correctness.
+
+One invocation allows one proposal, fresh matched development comparisons and
+one reserved comparison after development passes. No second proposal follows
+holdout feedback in that experiment. The result preserves unsuccessful attempts
+or exports exact supported files with a manifest. Review and promote under the
+existing authorization; the command never writes the selected source or
+publishes it. `improve verify DIR` checks retained evidence without inference.
+Weigh is optional research composition, not a new live-run dependency. These
+independent trials do not create a qualifying Hone recovery by themselves.
+
 ## Establish what failed and what must stay true
 
 Keep the original source pin, run, candidate, check outputs and independent
@@ -68,6 +111,37 @@ allowed actions and fresh cases. Measure the whole path, including selection,
 repair and final checks; a faster selection can still add cost or tokens.
 
 ## Test a focused proposal
+
+The application creating the experiment owns its acceptance contract. Derive
+and propose criteria from the user's use case: who acts on the result, what a
+qualified outcome means, critical failure consequences, the value of better
+quality and the operating budget. Reuse an applicable established policy when
+one exists. Explain the basis for each threshold and acceptable trade-off;
+do not ask users to invent percentages when their business context supplies
+the answer, or invent business values when it does not. Resolve material
+missing context before admitting a paid evaluation.
+
+Include the selected policy and rationale in the experiment before testing,
+with case coverage, an independent rubric and scoring method, and a defined
+accept/reject/insufficient-evidence action. Define the exact promotion target,
+configuration and rollback pin before deployment. A policy may accept higher
+quality at greater cost, or adequate quality at lower cost; not every metric
+must improve. Price premiums, savings targets and quality floors are use-case
+choices, never toolkit defaults. Keep critical requirements separate from
+preferences. A changed policy starts a new experiment; it cannot convert an
+old holdout failure into a prospective pass.
+
+The caller-owned `tools/improve/examples/acceptance/` adapter in the selected
+checkout provides deterministic policy preflight and an existing-protocol
+judge. The creating application supplies its policy; the adapter only applies
+the frozen rule. Its `spec.py --experiment DRAFT --policy POLICY` command binds
+that policy to the app's draft, checks matching coverage and selects the judge
+without running the experiment. The trial/scorer must implement the example's
+qualified-outcome score contract. Validate it before paid execution because Improve's generic
+`-n` does not interpret application settings. For the experiment researcher,
+put the reviewed policy in its trusted template: its assembler preserves the
+gate and the worker cannot rewrite that gate while researching logs. Missing
+policy context remains `needs_input`, not a fabricated release decision.
 
 Use Hire when expertise or check wiring needs authoring, and the existing Agent
 or Ply entry command for runs. State one concrete change to test. Preserve the

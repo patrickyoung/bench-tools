@@ -80,6 +80,7 @@ checks explicitly. Proprietary/bundled workbook runtimes are operator-selected.
 
 | Entry | Principal assertions | Further quality evidence required |
 | --- | --- | --- |
+| Experiment researcher | Current request/event bindings, deterministic plan assembly, fixed experiment protocol, missing-input/no-result handling and public reader composition | Actual Trail investigation, faithful hypotheses, fresh-case discipline and useful experiments |
 | Product Owner | Four deliverable modes, needs-input, malformed data, evidence/output bindings | Problem framing, useful priorities and faithful assumptions |
 | Product Manager | Strategy/evaluation/synthesis, scope, weights and no premature selection | Economic/lifecycle reasoning and useful decisions |
 | Enterprise Architect | Ten deliverable types, required roles, profile/input bindings, unsafe/malformed files | Architecture tradeoffs and feasible transitions |

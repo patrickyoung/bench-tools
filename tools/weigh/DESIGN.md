@@ -21,10 +21,15 @@ streams without a Weigh session format.
 ## Representation and validation
 
 The version-1 request has exactly `version`, `state`, and `questions`. Questions
-are named `choice`, `score`, or `probability` records with string descriptions.
+are named `choice`, `score`, or `probability` records. Questions, choice
+descriptions, score levels, and probability criteria accept nonempty text,
+objects, or arrays. Choice descriptions additionally accept null to use the
+option name alone. Optional probability criteria contain exactly `true` and
+`false` descriptions. Structured content is data, not a Weigh schema language.
 The translation changes `question` to `instructions`, options/levels to
-`criteria`, and probability to `noul`. It does not invent prompts or a general
-schema language. State uses raw JSON so large numeric literals remain exact.
+`criteria`, and probability to `noul`; explicit probability criteria pass through.
+It does not invent prompts. State and descriptions use raw JSON so numeric literals remain
+exact. Existing version-1 string requests retain their mapping and behavior.
 
 Before decoding the contract, validate UTF-8, paired Unicode escapes, nesting,
 the complete single document, and unique decoded keys throughout it. Unknown
@@ -43,12 +48,16 @@ capacity from lowest to highest level to find the minimum expectation, and
 reverse the order for the maximum. Comparisons use 1e-6 absolute numerical
 slack. Never renormalize, fill missing alternatives, round scores, or
 manufacture a one-hot distribution. A supplied
-score legend must equal the requested levels. Choice's returned label need
+score legend must equal the requested levels, ignoring object order and string
+escape spelling but preserving array order and exact numeric literal spelling.
+Comparison uses JSON numbers rather than float64 so adjacent large integers
+cannot become equal through rounding. Choice's returned label need
 only belong to its declared support; no undocumented tie or sampling rule is
 imposed.
 
 Native confidence, when present, is retained separately as provider metadata.
-It is not a new estimate of correctness. Native usage, request identity and
+Jev describes it as a summary of distribution concentration, not a measured
+probability of downstream success. Native usage, request identity and
 reported model are retained without inventing absent values. Current native
 usage fields are `input_tokens`, `output_tokens`, and optional `cost`; unknown
 native response or usage fields fail explicitly rather than being interpreted.
@@ -67,8 +76,10 @@ precision; it validates possible rounding without changing any output value.
 
 Input and response are each bounded at 8 MiB, JSON at 64 nested containers,
 questions at 1024, IDs at 256 UTF-8 bytes without control characters, choice
-support at 2-255 alternatives, and score support at 2-10 levels. Descriptions
-must be nonempty strings. Input limits fail before credentials or networking.
+support at 2-255 alternatives, and score support at 2-10 levels. String
+descriptions must be nonempty; object and array descriptions are passed through
+after whole-document validation. Input limits fail before credentials or networking.
+These are process limits, not a token estimator or promise of provider capacity.
 All response checks complete before stdout. Output I/O failure can still leave
 partial bytes, so downstream consumers must check status.
 
@@ -92,12 +103,16 @@ headers. No credential acquisition, persistence, or refresh belongs here.
 
 ## Evidence and compatibility
 
-The September 18, 2026 implementation was checked against these primary
-protocol references:
+The September 18 implementation and September 20, 2026 capability audit were
+checked against these primary protocol references. The latter used OpenRouter
+SDK commit `1a09de8a9749c72450bade8a373ed2120a2865c0`:
 
 - [OpenRouter operation](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/funcs/alphaDecisionsCreate.ts)
 - [Native request](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/models/decisionsrequest.ts)
 - [Native response](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/models/decisionsresponse.ts)
+- [Choice question](https://github.com/OpenRouterTeam/typescript-sdk/blob/1a09de8a9749c72450bade8a373ed2120a2865c0/src/models/decisionschoicequestion.ts)
+- [Score question](https://github.com/OpenRouterTeam/typescript-sdk/blob/1a09de8a9749c72450bade8a373ed2120a2865c0/src/models/decisionsscorequestion.ts)
+- [Noul question](https://github.com/OpenRouterTeam/typescript-sdk/blob/1a09de8a9749c72450bade8a373ed2120a2865c0/src/models/decisionsnoulquestion.ts)
 - [Choice answer](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/models/decisionschoiceanswer.ts)
 - [Score answer](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/models/decisionsscoreanswer.ts)
 - [Noul answer](https://github.com/OpenRouterTeam/typescript-sdk/blob/main/src/models/decisionsnoulanswer.ts)
@@ -110,6 +125,23 @@ all distributions or makes accurate judgments. OpenRouter's alpha schema
 makes distributions optional; Weigh deliberately requires them. A missing
 distribution is an explicit runtime capability failure. Live compatibility
 and held-out task evaluation remain separate, paid, explicitly selected work.
+
+## Model use and caller composition
+
+TypeSafe's current guidance favors independent, atomic questions in one call,
+with caller code combining the answers. Choice is relative to its menu; a
+separate probability question can test absolute applicability. A model response
+does not prove future improvement, and schema validation does not prove factual
+correctness or resistance to instructions embedded in input data. Keep exact
+arithmetic, source selection, experiments and promotion outside Weigh.
+
+The [AutoResearch cookbook](https://docs.typesafe.ai/cookbooks/autoresearch_feature_discovery)
+uses a generative model to propose questions, Jev to produce numeric features,
+and external evaluation to retain useful changes. The
+[skill suggestion cookbook](https://docs.typesafe.ai/cookbooks/skill_suggestion)
+separates relative ranking from applicability and may reject every candidate.
+Both compose through existing Weigh primitives; neither calls for adding a
+research loop, skill router, training runtime or automatic promotion to Weigh.
 
 ## Exclusions
 

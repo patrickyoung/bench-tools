@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 25 commands under .build/bin
+scripts/build                              # all 26 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
@@ -30,6 +30,12 @@ python3 scripts/check-harnesses.py --host-clis          # optional installed Cod
 python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
 python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
 ```
+
+`check-improve.py --bin-dir DIR` exercises actual Improve/Record/Ask acceptance,
+held-out rejection, exact source export and tamper refusal using synthetic
+observations and zero inference calls. `--bench-adapters` also checks real Hire
+and Agent against a loopback model fixture, with zero paid calls. Both paths
+run inside process integration.
 
 `check-weigh.py --bin-dir DIR` exercises public Weigh/Ask/Record judgments,
 optional diagnosis, and Ply checking against loopback fixtures.

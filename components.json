@@ -184,6 +184,23 @@
       ]
     },
     {
+      "name": "improve",
+      "path": "tools/improve",
+      "module": "github.com/patrickyoung/improve",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "improve",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "may",
       "path": "tools/may",
       "module": "github.com/patrickyoung/may",

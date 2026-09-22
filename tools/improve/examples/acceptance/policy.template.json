@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "use_case": {
+    "id": null,
+    "purpose": null,
+    "qualified_outcome": null,
+    "critical_failure": null,
+    "policy_basis": null
+  },
+  "quality_floor": null,
+  "max_category_regression_pp": null,
+  "efficiency": {"min_savings_percent": null, "max_quality_loss_pp": null},
+  "quality": {
+    "min_gain_pp": null,
+    "max_cost_increase_percent": null,
+    "max_cost_per_added_qualified_usd": null
+  },
+  "limits": {"max_mean_cost_usd": null, "max_job_seconds": null},
+  "coverage": {}
+}

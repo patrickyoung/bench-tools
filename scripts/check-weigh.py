@@ -92,6 +92,22 @@ def main():
             require(calls[0][0] == "/api/alpha/decisions" and calls[0][1]["model"] == "~typesafe/jev-latest", "Decisions route or literal model changed")
             require(calls[0][1]["state"]["exact"] == 9007199254740993, "state numeric precision changed")
             require(calls[0][2] == "Bearer offline-key", "explicit fixture key missing")
+            structured = {"version": 1, "state": {"candidate": "good"}, "questions": {
+                "choice": {"type": "choice", "question": {"ask": "Which?", "exact": 9007199254740993},
+                           "options": {"a": {"covers": ["A"]}, "b": ["B"], "other": None}},
+                "score": {"type": "score", "question": ["How much?"],
+                          "levels": [{"meaning": "none", "exact": 9007199254740993}, ["complete"]]},
+                "prob": {"type": "probability", "question": {"ask": "Is there evidence?"},
+                         "criteria": {"true": {"includes": "Direct evidence"}, "false": ["No evidence"]}}}}
+            before = len(calls)
+            typed = invoke(command, cwd=root, env=env, data=json.dumps(structured).encode())
+            require(len(calls) == before + 1 and json.loads(typed.stdout)["answers"]["score"]["value"] == .75,
+                    "structured questions did not yield one validated call")
+            for name, question in structured["questions"].items():
+                native = calls[-1][1]["questions"][name]
+                require(native["instructions"] == question["question"], "structured instructions changed")
+                expected = question.get("options", question.get("levels", question.get("criteria")))
+                require(native["criteria"] == expected, "structured criteria or numeric precision changed")
             direct = invoke(command, cwd=root, env=dict(env, BENCH_WEIGH="0"), data=raw)
             require(direct.stdout == answer.stdout, "Bench opt-in changed the independent Weigh executable")
             captured = invoke([bins / "record", "run", "-ask", bins / "ask", "-f", receipt, "--", *command], cwd=root, env=env, data=raw)

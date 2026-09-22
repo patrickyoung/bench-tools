@@ -79,11 +79,53 @@ descriptions, not merely in IDs. Weigh supplies no domain policy or sources.
 | --- | --- | --- |
 | `choice` | `question`, `options`: map of 2-255 IDs to descriptions | Option ID and complete probability map |
 | `score` | `question`, `levels`: ordered array of 2-10 descriptions | Fractional zero-based position and complete probability map |
-| `probability` | `question`: proposition/question text | Value between zero and one |
+| `probability` | `question`: proposition/question description; optional `criteria` with exactly `true` and `false` descriptions | Probability of yes between zero and one |
 
-Descriptions are nonempty strings. Unknown fields, duplicate keys, missing
+Questions and descriptions can be nonempty strings, JSON objects, or arrays.
+Structured descriptions can include boundaries, examples, or a reference record;
+Weigh forwards them without inventing field meanings. A choice option may also
+have a `null` description when its name is sufficient. Null is not allowed for
+questions, score levels, or probability criteria. Existing string requests work
+unchanged. Unknown fields, duplicate keys, missing
 questions, trailing documents, invalid Unicode, and unsupported shapes fail
-before inference. Nested state numbers retain their original precision.
+before inference. Numeric literals in state and descriptions retain precision.
+
+For example, a probability question can distinguish an explicit observation
+from an inference:
+
+```json
+{
+  "type": "probability",
+  "question": {"ask": "Does the candidate claim that tests ran?", "read": "candidate"},
+  "criteria": {
+    "true": {"includes": ["Says tests ran", "Says tests passed"]},
+    "false": ["Proposes running tests", "Does not mention running tests"]
+  }
+}
+```
+
+## Design the questions for Jev
+
+Ask small, independent semantic questions about supplied evidence, together in
+one request. Jev evaluates each against the state without seeing the other
+questions. Put each question's needed context in its own description or the
+shared state. Filter irrelevant log material before calling; compute counts,
+dates, exact string matches, costs, and deterministic checks in ordinary code.
+
+A choice compares the supplied alternatives; it cannot say that none fit unless
+you include such an option or ask a separate applicability question. A probability
+question measures whether a proposition is true, not how much of a quality is
+present; use named score levels for degree. Do not transfer thresholds between
+choice, probability, or revised questions without evaluating them again.
+
+For offline learning, use Weigh to extract features from selected episodes.
+Have a generative worker propose a change, measure it on fresh cases, and promote
+only demonstrated improvements. Asking which patch will improve future work
+bundles diagnosis and prediction into one question. The
+[event feature example](examples/event-features/README.md) shows the smaller
+composition, following TypeSafe's
+[AutoResearch recipe](https://docs.typesafe.ai/cookbooks/autoresearch_feature_discovery)
+and [documented limitations](https://docs.typesafe.ai/model-jaggedness/jev-1.13).
 
 ## Read the result
 
@@ -116,6 +158,9 @@ answers have a `value` and no fabricated distribution. Choice labels must
 belong to the declared options. Distributions must have full support, values
 in [0,1], and nonzero total mass. Weigh never fills, renormalizes, or rounds
 provider answers.
+When present, a score legend must match the requested descriptions: object
+order and string escapes may differ, but array order and numeric literals must
+match. This comparison never rounds large numbers through floating point.
 
 Native scores and probabilities have been observed with separate rounding to
 hundredths. For compatibility, a value that is an exact multiple of 0.01 gets
@@ -129,8 +174,10 @@ native number, so callers must apply their policies to the reported values.
 
 Optional `metadata` contains service-reported `request_id`, `provider`, `usage`
 (`input_tokens`, `output_tokens`, optional `cost`), and `confidence` keyed by
-question ID. Missing fields stay missing. Provider confidence describes the
-provider's quantity; it is not a universal probability of correctness. A
+question ID. Missing fields stay missing. Jev's choice/score confidence summarizes
+the concentration of its distribution; it is not a measured probability that
+a proposed fix will work. A probability answer has no separate confidence.
+Calibrate acceptance on independent labels for the actual rubric and model. A
 reported model name is not proof of immutable weights.
 
 **Exit 0 means valid inference, not that a candidate passed a check.** Your
@@ -190,6 +237,11 @@ charged nothing. Error bodies and private request data are not printed.
 Requests and responses are each limited to 8 MiB, JSON nesting to 64
 containers, questions to 1024, and question/option IDs to 256 UTF-8 bytes
 without control characters. Excess data is refused, never truncated.
+These are local byte/shape limits, not model token limits. TypeSafe currently
+documents Jev 1.13 limits of 64k tokens across the request and 32k for state plus
+the longest question; selected routes can impose their own limits. Weigh does
+not estimate tokens or truncate input. See the current
+[model reference](https://docs.typesafe.ai/models).
 
 | Exit | Meaning |
 | --- | --- |
@@ -207,7 +259,11 @@ The offline tests exercise the documented OpenRouter alpha protocol and Unix
 boundaries. Live compatibility smoke checks on September 18, 2026 used alias
 and versioned selectors and reported `typesafe/jev-1.13-20260917`. Limited
 synthetic text and image checks completed; they do not establish held-out
-calibration or improved final-output quality. OpenRouter makes distributions
+calibration or improved final-output quality. Two September 20 calls through
+Weigh 0.2.0 exercised structured questions, choice options (including null),
+score levels and explicit probability criteria together against the same reported
+model. Both validated successfully. This establishes route compatibility for
+those requests, not improved worker outcomes. OpenRouter makes distributions
 optional; Weigh requires them, so a missing distribution fails explicitly.
 Evaluate the selected model and rubric on held-out cases before using scores
 for acceptance.

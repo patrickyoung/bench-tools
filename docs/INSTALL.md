@@ -70,7 +70,7 @@ Hire builds the definition; Agent runs it with those companions. Add `cite`
 for the [support-reply starter](../examples/support-reply/README.md). Python
 runs the source installer, not Hire or Agent: both commands are native Go.
 
-Without names, the source installer builds and installs all 25 commands:
+Without names, the source installer builds and installs all 26 commands:
 
 ```sh
 python3 scripts/install

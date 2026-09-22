@@ -11,6 +11,13 @@ Use Python 3.9+ and the explicitly selected public executables. Keep inputs,
 records, labels and proposals outside reusable source. Optional model calls
 remain explicit; the offline evaluation and review helpers need no credentials.
 
+Keep semantic selection narrow. A choice returns the best fit among its supplied
+options, not proof that a fix applies or will improve future runs. For research
+across event logs, first extract independent, atomic observations using the
+[event feature recipe](../event-features/README.md), then measure proposed
+changes on fresh cases. Do not combine diagnosis, intervention design and
+predicted improvement into a single selector question.
+
 These adapters default to Weigh off. Set `BENCH_WEIGH=1` to permit a selected
 Weigh model path; unset, empty or `0` disables it. Backend and model remain
 explicit. Any other value is an error only when a Weigh path is reached.

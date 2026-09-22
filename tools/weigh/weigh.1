@@ -1,4 +1,4 @@
-.TH WEIGH 1 "September 2026" "weigh 0.1.0" "User Commands"
+.TH WEIGH 1 "September 2026" "weigh 0.2.0" "User Commands"
 .SH NAME
 weigh \- obtain typed judgments and native probabilities
 .SH SYNOPSIS
@@ -40,20 +40,26 @@ Nested numeric literals retain precision. Questions is a nonempty object of
 named questions. IDs are at most 256 UTF-8 bytes, nonempty, without controls.
 .TP
 .B choice
-Fields: type (choice), question (nonempty text), options (an object mapping
-2 to 255 option IDs to nonempty text descriptions).
+Fields: type (choice), question (description), options (an object mapping
+2 to 255 option IDs to descriptions). Null descriptions use the option name alone.
 .TP
 .B score
-Fields: type (score), question (nonempty text), levels (an ordered array of
-2 to 10 nonempty text descriptions). Positions start at zero.
+Fields: type (score), question (description), levels (an ordered array of
+2 to 10 descriptions). Positions start at zero.
 .TP
 .B probability
-Fields: type (probability), question (nonempty proposition or question text).
+Fields: type (probability), question (proposition or question description).
+Optional criteria must contain exactly true and false descriptions.
+.PP
+A description is nonempty text, a JSON object, or an array. Null is allowed
+only as a choice option description. Structured fields are forwarded as data;
+Weigh assigns no meaning to their keys. Numeric literals retain precision.
 .PP
 Question IDs identify answers; meanings belong in the descriptions.
 All questions share state but do not consume one another's answers.
 The provider mapping uses instructions for question, criteria for options or
-levels, and noul for probability. Unknown fields, duplicate decoded keys,
+levels, preserves probability criteria, and uses noul for probability.
+Unknown fields, duplicate decoded keys,
 invalid UTF-8 or unmatched surrogate escapes, and trailing documents fail.
 .SH OUTPUT
 Fields: version (1), model (requested and reported names), answers, and
@@ -71,18 +77,22 @@ be in range and its interval must intersect that distribution's possible
 weighted means. Comparisons use 1e-6 absolute numerical slack.
 This is an empirical compatibility policy, not a provider precision guarantee;
 all native numbers are preserved without rounding or renormalization.
-A supplied score legend must match the requested levels.
+A supplied score legend must match the requested levels, ignoring object order
+and string escape spelling but requiring array order and numeric literal spelling.
 Missing distributions fail; they are never filled, normalized, or invented.
 .PP
 Optional metadata preserves service-reported request_id, provider, usage
 (input_tokens, output_tokens, optional cost), and confidence by question ID.
 Unknown native response fields fail explicitly. Missing metadata stays absent.
-Confidence is provider metadata, not a universal probability of correctness.
+Jev confidence summarizes distribution concentration, not measured correctness
+or the likelihood that a proposed change will improve future work.
 The reported model name does not establish immutable model weights.
 .SH LIMITS
 Input and response: 8 MiB each. JSON nesting: 64 containers.
 Questions: 1024. IDs: 256 UTF-8 bytes. Authorization header: 8192 bytes.
 Response headers: 64 KiB. Excess data is refused, not truncated.
+These local limits do not replace provider token limits; no token estimation
+or automatic truncation is performed.
 .SH ENVIRONMENT
 .TP
 .B OPENROUTER_API_KEY
@@ -107,6 +117,12 @@ Record may capture the input, output, diagnostics, and exit status externally.
 Its replay makes no model call. Callers own thresholds, fallback, retries,
 acceptance, and actions. A Ply checker must map Weigh failures to its own
 broken-check status, not pass exit 1 through as ordinary candidate rejection.
+.PP
+Ask atomic semantic questions together. Filter irrelevant state and compute
+counts, dates and arithmetic in caller code. Include a none-of-the-above option
+when appropriate; a choice compares only its supplied alternatives.
+Use probability for whether a proposition holds and score for degree.
+Evaluate downstream improvements separately before promoting them.
 .PP
 All response validation precedes output. A write error may leave partial bytes;
 consumers must check status. Error bodies and private input are not printed.
