@@ -16,7 +16,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | --- | --- |
 | [Experiment researcher](experiment-researcher/expert/README.md) | Search selected event logs with Trail and create one cited, bounded Improve experiment plan. |
 | [Excel workbook designer and editor](excel-workbook-designer/expert/README.md) | Create and prompt-edit reports and text-first team workbooks; exact lookups, RAG, WBS and time-off coverage; native charts/simple pivots; verify behavior and preserve content. |
-| [Product Manager](product-manager/expert/README.md) | Frame SAFe-informed product strategy and evaluations, then synthesize checked evidence into business decisions with explicit economic and lifecycle tradeoffs. |
+| [Product Manager](product-manager/expert/README.md) | Follow SAFe to connect vision and roadmap to ART features, benefit hypotheses, acceptance criteria, prioritization and leadership decisions; also frame evaluations and synthesize checked evidence. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
 | [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
