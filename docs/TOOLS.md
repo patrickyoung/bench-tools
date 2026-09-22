@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **21 components and 25 public commands**. MCP supplies
+This guide covers all **22 components and 26 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -21,7 +21,7 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
 | Evaluate explicit semantic criteria with typed probabilities | Optional **[Weigh](../tools/weigh/README.md)**; the calling check owns acceptance |
-| Test changes to a skill, check or threshold, then choose what to apply | [Improvement workflow](../.agents/skills/bench/references/improve.md) using existing programs |
+| Test changes to prompts, skills, subagents or checks on fresh cases | **[Improve](../tools/improve/README.md)** and the [improvement workflow](../.agents/skills/bench/references/improve.md) |
 
 Stdout is the usable output stream; stderr carries diagnostics; the exit status
 is the numeric outcome. [How it works](HOW-IT-WORKS.md) explains these interfaces.
@@ -167,6 +167,38 @@ unknown `ctx:` reference. Rejection leaves stdout empty. It checks the identity
 of links, not whether sources support the claims or every claim is cited.
 Use `answer.md` only after the final command succeeds. [Cite's guide](../tools/cite/GUIDE.md)
 shows how Ply can return a rejected answer to the model for correction.
+
+## Improve: test a proposed source change
+
+**[Improve](../tools/improve/README.md)** runs one bounded experiment through
+caller-selected proposer, trial/scorer and judge commands. It freezes source,
+cases and evaluation dependencies, compares fresh development pairs, then tests
+the frozen candidate on reserved cases. It exports exact supported source with
+evidence and leaves the selected worker unchanged.
+
+```sh
+improve -n < experiment.json
+improve -o /absolute/new-study < experiment.json > result.json
+improve verify /absolute/new-study
+```
+
+The specification names existing mutable files, two case splits, literal argv
+and limits. The [router example](../tools/improve/examples/router/README.md)
+composes Hire for authoring, Agent for execution, Ask for model evidence and a
+frozen independent cost/quality gate. Record captures each process boundary.
+Planning and synthetic fixtures require no model calls; executing a configured
+model-backed specification can incur cost. Unknown billing stays unknown.
+
+The creating application defines success from the intended use case before
+testing. The [acceptance adapter](../tools/improve/examples/acceptance/README.md)
+applies a frozen policy for quality, cost and their allowed trade-offs; a more
+accurate candidate may cost more. There are no universal business thresholds.
+Incomplete decision context must be resolved before model evaluation, not
+replaced by another round of scores.
+
+A rejected experiment is retained. Supported proposals still need the caller's
+existing review/promotion path; Improve never deploys, retries an unknown run,
+manufactures a Hone recovery or adds Weigh to live workers.
 
 ## Draft and Hone: improve the design and the procedure
 

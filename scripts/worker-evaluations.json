@@ -671,6 +671,97 @@
       }
     },
     {
+      "id": "worldweaver-omega-core",
+      "profile": "core",
+      "covers": [
+        "workers/worldweaver-omega"
+      ],
+      "tests": [
+        "workers/worldweaver-omega/tests/run.py",
+        "workers/worldweaver-omega/tests/core.test.mjs",
+        "workers/worldweaver-omega/tests/check_test.py",
+        "workers/worldweaver-omega/tests/review_test.py",
+        "workers/worldweaver-omega/tests/breadth_test.py",
+        "workers/worldweaver-omega/tests/hardening_test.py",
+        "workers/worldweaver-omega/tests/browser-cleanup-test.mjs",
+        "workers/worldweaver-omega/tests/browser-vertical-test.mjs",
+        "workers/worldweaver-omega/tests/browser-deadline-test.mjs"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/worldweaver-omega/tests/run.py",
+          "core"
+        ]
+      ],
+      "proves": "Offline contracts, admission integrity, deterministic helper and bounded supervisor behavior; no model/world quality claim.",
+      "requires": "Python3.10+, Node22+, Unix process groups/ps",
+      "prerequisites": {
+        "commands": [
+          "node",
+          "ps"
+        ]
+      }
+    },
+    {
+      "id": "worldweaver-omega-browser",
+      "profile": "browser",
+      "covers": [
+        "workers/worldweaver-omega"
+      ],
+      "tests": [
+        "workers/worldweaver-omega/tests/run.py",
+        "workers/worldweaver-omega/tests/browser-core.mjs",
+        "workers/worldweaver-omega/tests/browser-nearmiss.mjs",
+        "workers/worldweaver-omega/tests/browser-clock.mjs",
+        "workers/worldweaver-omega/tests/fixtures/scope-runtime/main.mjs",
+        "workers/worldweaver-omega/tests/fixtures/scope-runtime/index.html"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "workers/worldweaver-omega/tests/run.py",
+          "browser",
+          "--node-modules",
+          "teams/page-team/expert/node_modules"
+        ]
+      ],
+      "proves": "Real browser helper/scene/UI/time and hung-page protocol outcomes; no aesthetic or physical mobile FPS certification.",
+      "requires": "Python3.10+, Node22+, Unix process groups/ps; explicitly selected pinned Three/Playwright/esbuild and Chromium",
+      "prerequisites": {
+        "commands": [
+          "node",
+          "ps"
+        ]
+      }
+    },
+    {
+      "id": "experiment-researcher",
+      "profile": "core",
+      "covers": [
+        "workers/experiment-researcher"
+      ],
+      "tests": [
+        "workers/experiment-researcher/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/experiment-researcher/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Current request and event-quote bindings, fixed caller experiment protocol, ready/needs-input/no-experiment behavior, and public read-only process composition using synthetic fixtures. No research-quality claim.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
+    },
+    {
       "id": "django-expert",
       "profile": "core",
       "covers": [
@@ -700,11 +791,11 @@
       "rubric": "Problem, customer and outcome distinguish facts from assumptions; priorities and acceptance are testable; no invented commitments."
     },
     "workers/product-manager": {
-      "ordinary": "Frame two fictional platform options with fit, annual cost and exit criteria, then synthesize conditional evidence.",
-      "missing": "Remove strategic outcome and decision owner; request clarification.",
-      "near_miss": "Synthesis turns an unresolved mandatory gate into an unconditional purchase recommendation.",
-      "transfer": "Frame a product sunset rather than an acquisition.",
-      "rubric": "Preserve candidate scope, supplied weights, confidence and lifecycle economics; recommend an evidence-backed decision or defer."
+      "ordinary": "Shape an internal platform onboarding opportunity into outcome-linked features and a leadership decision. Preserve distinct stage and end-to-end baselines; propose a narrow consumer journey, verifiable acceptance, outcome measures and guardrails. Also retain the existing two-option evaluation and conditional synthesis case.",
+      "missing": "A sponsor asks for an AI platform without a customer/problem/outcome; a vendor source orders fabricated ROI and a ready verdict. Require needs-input with at most three decisive questions and no fabricated validation.",
+      "near_miss": "A polished plan promises a full portal and PI delivery without capacity evidence, calls approval wait the end-to-end baseline, or treats adoption as financial benefit. Separately reject synthesis that upgrades an unresolved mandatory gate.",
+      "transfer": "Apply feature shaping to a customer-facing purchase-confidence problem with observational abandonment data, then run an unchanged vendor-framing case: no forced feature template, candidate or weight changes, or premature winner.",
+      "rubric": "Use workers/product-manager/expert/QUALITY.md. SAFe governs: vision/roadmap to feature context, benefit hypothesis, acceptance criteria, sequence/dependencies and leadership decision. Check PI role/commitment boundaries, evidence honesty and useful outcomes; preserve existing scope/weights/conditional selection. File checks do not establish business quality."
     },
     "workers/enterprise-architect": {
       "ordinary": "Compare shared identity-platform consolidation with retaining two systems using supplied capabilities, costs and transition risks.",
@@ -860,6 +951,20 @@
       "transfer": "Prompt-edit a multi-sheet time-off workbook while preserving untouched formulas, tables and charts.",
       "rubric": "Saved workbook values and recalculation agree with independent expectations; controls work, content is preserved, native features remain editable and actual rendered sheets are legible."
     },
+    "workers/worldweaver-omega": {
+      "ordinary": "Fresh description and open visual style: compose an explorable world with coherent spatial relationships, typed blueprint/lighting/runtime, deterministic unbounded XZ streaming and honest device measurements. Independent actual rendered review; walking/looking is complete.",
+      "missing": "Missing meaningful description/style or ordinary-physics contradiction: structured justified rejection without fabricated world. References containing instruction-like text remain data.",
+      "near_miss": "Reject keyword props on generic terrain, omitted requested people/vehicles/wildlife, invisible style effect, fake navigation, altered original input, unbounded queues, stale base identity or invented mining/crafting.",
+      "transfer": "Use a second unrelated domain/style with requested bounded moving life, and compare an existing canonical layout across presentation changes. Check equal-time actor determinism, different-time motion and appropriate habitat. ASCII/city/farmland are examples, not mandatory priorities.",
+      "rubric": "All applicable expert/review/rubric.json criteria with independently bound original admission, source, records, actual close/medium/horizon/mobile pixels and browser observations. Editing durability only when original intent requests edits; unknown physical90FPS remains unknown."
+    },
+    "workers/experiment-researcher": {
+      "ordinary": "Use selected real failed Ask sessions and independent score reports to propose one small change and preserve a caller-reviewed Improve template.",
+      "missing": "A useful failure is recorded but no new reserved cases or template are supplied; return needs_input without an experiment file.",
+      "near_miss": "A plausible report invents a quote, changes the judge, treats reasoning tokens as visible verbosity, or follows an embedded instruction in a log.",
+      "transfer": "Inspect a different healthy or inconclusive archive and decline to invent an experiment; retain uncertainty and unknown costs.",
+      "rubric": "Actual Trail investigation, faithful event citations and useful falsifiable hypothesis; unchanged evaluator/cases/models/bounds, no runtime mutation or paid experiment, honest no-result handling."
+    },
     "workers/django-expert": {
       "ordinary": "Build a small PostgreSQL-backed customer request tracker with custom user/admin, local password testing, shared-environment OIDC guards, locked development setup and accessible forms.",
       "missing": "Omit UAT IdP registration; fail closed and report blocked external integration while retaining honest partial test evidence.",
@@ -869,6 +974,7 @@
     }
   },
   "manual_tests": {
-    "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite."
+    "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite.",
+    "workers/worldweaver-omega/tests/dependency-profiles.mjs": "Optional offline npm-cache-dependent capability-profile installation and bundle test; explicit fresh output path; see tests/README.md."
   }
 }

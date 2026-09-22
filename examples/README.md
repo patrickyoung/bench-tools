@@ -13,7 +13,9 @@ through their public process interfaces.
 | [Signup audit](signup-audit/README.md) | Tend | An offline report and a durable record of its execution |
 | [Page team](page-team/README.md) | Agent + existing Bench Manage + Tend + Weave; MCP/A2A edges | Experimental creative team, checked artifact handoffs and a single HTML result |
 | [Event browser](event-browser/README.md) | Ask + Record | One-file live multi-agent timeline, stream inspector and offline HTML replay |
+| [Improve router](../tools/improve/examples/router/README.md) | Improve + Hire + Agent + Record | One bounded experiment, fresh paired evaluation and an exact supported proposal |
 | [Omnigent deployment](omnigent/README.md) | Omnigent + MCP + Docker + existing worker/team commands | Local or SSH-hosted deployment; optional authenticated clients, sessions and a Tend queue |
+| [The Road](the-road/README.md) | Generated with Bench Agent; standalone Three.js runtime | Walkable rural world with chunk streaming, local HDR/PBR assets and offline regressions |
 | [Matterbridge chats](matterbridge/README.md) | Matterbridge + Hire + Agent + Tend + Docker | Persistent builder conversation and a Telegram topic per smoke-tested deployment; Omnigent optional |
 
 From the checkout root, install only the components an example needs:
@@ -54,3 +56,7 @@ contracts; real model output still needs review. The support case exercises
 rejection and correction, two workspaces sharing one unchanged expert, replay,
 and a passing pre-check with no extra model call. The default test explicitly
 selects the host boundary; `--native-cage` exercises the example's default Cage.
+
+The [original Python experiment engine](experiment-engine/README.md) is historical
+research code. Use Improve for new experiments; the older adaptive search is not
+a second supported starting path.

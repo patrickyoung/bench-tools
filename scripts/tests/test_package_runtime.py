@@ -53,6 +53,9 @@ class RuntimePackageTests(unittest.TestCase):
                 (skills / "tools.md").write_text("fixture Draft tool reference\n")
                 (skills.parent / "SKILL.md").write_text("fixture Draft skill\n")
             (leaf / "LICENSE").write_text("fixture license\n")
+            if name in ("weigh", "improve"):
+                (leaf / "examples").mkdir()
+                (leaf / "examples/README.md").write_text("fixture " + name + " examples\n")
             components.append({"name": name, "path": "tools/" + name, "module": module,
                                "source": {"commit": "fixture-import"}, "commands": component["commands"]})
         (cls.source / "components.json").write_text(json.dumps({"components": components}))
@@ -110,6 +113,8 @@ class RuntimePackageTests(unittest.TestCase):
             self.assertIn("oauth", metadata["tools"])
             self.assertIn("tools/oauth/bin/oauth", archive.getnames())
             self.assertIn("tools/draft/skills/draft/references/tools.md", archive.getnames())
+            self.assertIn("tools/improve/examples/README.md", archive.getnames())
+            self.assertIn("tools/weigh/examples/README.md", archive.getnames())
             for member in archive.getmembers():
                 self.assertTrue(member.isfile())
                 self.assertEqual(member.uid, 0)

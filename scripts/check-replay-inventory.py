@@ -33,6 +33,7 @@ BOUNDARIES = {
     "draft": "deterministic definition artifacts",
     "hire": "definition creation, validation and adaptation",
     "hone": "replay-verified recovery inspection",
+    "improve": "bounded experiment specification, pinned evaluation and tested source proposal",
     "may": "offline gate self-check with isolated temporary approval state",
     "mcp": "current protocol requests and results",
     "mcp-legacy": "legacy protocol requests and refusal against current-only servers",
@@ -107,6 +108,8 @@ def main():
             env["BRIEF_PATH"] = str(skills)
             run([bins / "brief", "cat", "fixture"])
             run([bins / "draft", "new", work / "draft-project"])
+            improve_spec = run([sys.executable, ROOT / "tools/improve/examples/router/spec.py", "--offline"]).stdout
+            run([bins / "improve", "-n"], improve_spec)
             run([bins / "may", "check"])
             run([bins / "cage", "status"])
             confined, receipt = support["recorded_argv"](

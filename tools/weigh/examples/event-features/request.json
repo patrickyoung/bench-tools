@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "state": {
+    "task": "Route a support note according to the supplied policy.",
+    "candidate": "I chose billing because the note contains the word invoice. The tests passed. I am unsure whether the account takeover rule applies."
+  },
+  "questions": {
+    "decision_basis": {
+      "type": "choice",
+      "question": {"ask": "What reason does the candidate explicitly give for its chosen route?", "read": "candidate"},
+      "options": {
+        "policy": {"covers": "A stated policy rule", "excludes": "A word occurrence alone"},
+        "keyword": ["A word occurrence alone", "Example: chose billing because invoice appears"],
+        "other_or_unstated": null
+      }
+    },
+    "claims_tests_ran": {
+      "type": "probability",
+      "question": "Does the candidate claim that tests ran?",
+      "criteria": {
+        "true": {"includes": ["Says tests ran", "Says tests passed"]},
+        "false": ["Proposes running tests", "Does not mention running tests"]
+      }
+    },
+    "stated_uncertainty": {
+      "type": "score",
+      "question": ["How much uncertainty about the route does the candidate express?", "Judge the candidate's wording, not whether the route is correct."],
+      "levels": [
+        {"meaning": "States the route without reservations"},
+        ["States the route with a reservation or doubt"],
+        "Says it cannot choose a route"
+      ]
+    }
+  }
+}

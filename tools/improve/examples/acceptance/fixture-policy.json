@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "use_case": {
+    "id": "synthetic-process-test",
+    "purpose": "Exercise both decision paths and exact exports with invented observations. No production deployment.",
+    "qualified_outcome": "The deterministic fixture reports qualified=true; this is not a model-quality judgment.",
+    "critical_failure": "The fixture explicitly injects a critical defect.",
+    "policy_basis": "Artificial test boundaries only: a two-repeat fixture must qualify both candidate jobs, can pay 50% extra for 5 percentage points, and may spend up to 2 invented dollars per job. Replace every value and the coverage for a real use case."
+  },
+  "quality_floor": 0.95,
+  "max_category_regression_pp": 0,
+  "efficiency": {"min_savings_percent": 20, "max_quality_loss_pp": 0},
+  "quality": {
+    "min_gain_pp": 5,
+    "max_cost_increase_percent": 50,
+    "max_cost_per_added_qualified_usd": 1
+  },
+  "limits": {"max_mean_cost_usd": 2, "max_job_seconds": 10},
+  "coverage": {
+    "development": {"cases": {"dev": "example"}, "repeats": 2},
+    "holdout": {"cases": {"held": "example"}, "repeats": 2}
+  }
+}

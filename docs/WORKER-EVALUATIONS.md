@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 22 workers
+`make check-workers` runs the library's offline regression suites. All 24 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
@@ -80,9 +80,10 @@ checks explicitly. Proprietary/bundled workbook runtimes are operator-selected.
 
 | Entry | Principal assertions | Further quality evidence required |
 | --- | --- | --- |
-| Product Owner | Four deliverable modes, needs-input, malformed data, evidence/output bindings | Problem framing, useful priorities and faithful assumptions |
-| Product Manager | Strategy/evaluation/synthesis, scope, weights and no premature selection | Economic/lifecycle reasoning and useful decisions |
 | Django expert | Current request/input/output hashes, four environments, honest status/evidence, minimal build output and malformed/path counterexamples | Real PostgreSQL/auth/admin tests, browser/user review, dependency compatibility and live IdP/operational acceptance |
+| Experiment researcher | Current request/event bindings, deterministic plan assembly, fixed experiment protocol, missing-input/no-result handling and public reader composition | Actual Trail investigation, faithful hypotheses, fresh-case discipline and useful experiments |
+| Product Owner | Four deliverable modes, needs-input, malformed data, evidence/output bindings | Problem framing, useful priorities and faithful assumptions |
+| Product Manager | Strategy/evaluation/synthesis, scope, weights and no premature selection | Outcome-linked features, useful slices, platform judgment and leadership decisions; see the worker quality rubric |
 | Enterprise Architect | Ten deliverable types, required roles, profile/input bindings, unsafe/malformed files | Architecture tradeoffs and feasible transitions |
 | Polars analyst | Independent t-distribution quadrature, paired IDs, Holm family, refusals and missingness | Whether the supplied study assumptions support the actual question |
 | Vendor comparison | Independent totals, anchored weights, failed/unknown gates, quotes and uncertainty | Source entailment and defensible judgments |
@@ -257,3 +258,7 @@ checks catalog completeness and runner failure/isolation behavior. The guard
 rejects unmapped library test files and library entries without suites. Register
 shared tests only when they actually execute the affected shipped code. Keep
 source changes, offline evidence and live-quality evidence separately identified.
+
+## WorldWeaver-Omega
+
+Focused core/browser suites use retained external scratch and exact source copies. See [its test guide](../workers/worldweaver-omega/tests/README.md) for native browser sandbox prerequisites and optional offline dependency-profile checks. Fresh generated worlds, selected-model records and independent visual reviews remain external evidence; fixtures do not certify aesthetics or physical mobile 90 FPS.

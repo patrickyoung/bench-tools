@@ -1,0 +1,669 @@
+{
+  "schemaVersion": 1,
+  "worldId": "world-5f9e8830024a50c03ff36d34",
+  "generationVersion": "1",
+  "seed": "worldweaver-default-1",
+  "style": "Realistic materials and lighting: tactile natural earth, fine dust, gravel and worn exposed cobbles; rough bark, exposed roots, irregular natural foliage, mossed stone and subtly reflective brown stream water. Physically based materials, low warm late-afternoon sun behind the left shoulder, long cool violet-blue shadows, and natural atmospheric haze. Preserve ivory dust, burnt umber, olive and grey-green hedges, gold ochre stubble and smoke-blue distance. Near and middle distance should look natural and materially convincing, without painterly brush grain, cartoon forms, voxel styling or ASCII effects. Painted scenery is reserved for distant landscape as requested.",
+  "physics": {
+    "mode": "euclidean",
+    "rules": [
+      "Metres, gravity-supported walking with 1.68 m eye height; terrain, road, bridge and drinking ramp use the same canonical support functions as visible surfaces.",
+      "Forward is increasing route station. Experiential left is positive lateral offset; the literary compass labels are deliberately not used.",
+      "Solid tree trunks, hedgebank and bridge parapets block a 0.28 m walking capsule; shallow water allows wading on the gravel bed, not walking on the water plane."
+    ],
+    "conflicts": [],
+    "alternateRules": []
+  },
+  "coordinates": {
+    "identity": "signed-bigint-chunks",
+    "chunkSize": 32,
+    "renderOrigin": "floating",
+    "topology": "unbounded-xz",
+    "units": "metres"
+  },
+  "noise": {
+    "algorithm": "perlin3",
+    "execution": "worker",
+    "streams": [
+      "land",
+      "detail",
+      "foliage",
+      "stone"
+    ],
+    "octaves": [
+      {
+        "numerator": 1,
+        "denominator": 256,
+        "amplitude": 14
+      },
+      {
+        "numerator": 1,
+        "denominator": 64,
+        "amplitude": 3
+      }
+    ]
+  },
+  "biomes": [
+    {
+      "id": "road-country",
+      "elevation": [
+        -20,
+        160
+      ],
+      "moisture": [
+        0.2,
+        0.8
+      ],
+      "temperature": [
+        10,
+        25
+      ],
+      "weight": 1,
+      "macro": "Authored mile, hollow, long climb, crest; agricultural country beyond.",
+      "meso": "Asymmetric hedge and field, oak rest, stream and three canopy tunnels.",
+      "micro": "Ruts, exposed cobbles, root fingers, mown verges, stubble and gorse."
+    }
+  ],
+  "composition": {
+    "largeForms": [
+      "Sky occupies over half the arrival view.",
+      "Inviting ivory road between olive enclosure on experiential left and golden open field on right.",
+      "Hollow delays the long climb; convex crest occludes successive blue painted ranges."
+    ],
+    "landmarks": [
+      "One great oak at 110 m; one bridge 91.44 m farther.",
+      "Leaning milestone at 730 m; crest at 1240 m.",
+      "Distant village behind at -1050 m, smoky ridge ahead."
+    ],
+    "relationships": [
+      "No repeated landmark chunks; landmark membership uses unique authored coordinates.",
+      "Bridge deck and road ramp share support; 4.572 m water-span.",
+      "The grove passages are 42 m long and alternate cool enclosure with open glare."
+    ],
+    "detail": [
+      "Fine scanned earth/grass/bark/moss surfaces and alpha-tested leafy sprigs, crooked organic timber, irregular feathered verge and bank scatter. Painted simplification is reserved for distant overlapping hills and the bare crown.",
+      "Stable tree bases retained; independent seeded multilevel Bezier limbs, joined radius taper and thin twigs replace radial wheel spokes. Three worn angular paving variants replace identical oval cobbles."
+    ],
+    "atmosphere": [
+      "Low warm sun behind left, cool elongated shadows, animated dust, ditch midges, brown flowing stream and rising village smoke."
+    ]
+  },
+  "palette": {
+    "dust": "#d9c7a0",
+    "earth": "#816247",
+    "hedge": "#737958",
+    "field": "#b9a35c",
+    "stone": "#989b8a",
+    "shadow": "#797eaa",
+    "distance": "#889eb0",
+    "sky": "#d3dace"
+  },
+  "materials": [
+    {
+      "id": "dust",
+      "type": "standard",
+      "color": "dust",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "earth",
+      "type": "standard",
+      "color": "earth",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "hedge",
+      "type": "standard",
+      "color": "hedge",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "field",
+      "type": "standard",
+      "color": "field",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "stone",
+      "type": "standard",
+      "color": "stone",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "shadow",
+      "type": "standard",
+      "color": "shadow",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "distance",
+      "type": "standard",
+      "color": "distance",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    },
+    {
+      "id": "sky",
+      "type": "standard",
+      "color": "sky",
+      "roughness": 0.95,
+      "metalness": 0,
+      "transmission": 0,
+      "flatShading": false
+    }
+  ],
+  "structures": [
+    {
+      "id": "bridge",
+      "primitive": "arched masonry",
+      "role": "stream crossing",
+      "minClearance": 6.096,
+      "supportRequired": true,
+      "size": [
+        6.9,
+        3.2,
+        4.572
+      ]
+    },
+    {
+      "id": "oak",
+      "primitive": "branching organic tree",
+      "role": "scenic rest",
+      "minClearance": 4.4,
+      "supportRequired": true,
+      "size": [
+        16,
+        11,
+        14
+      ]
+    }
+  ],
+  "interactions": {
+    "navigation": {
+      "id": "walk",
+      "action": "WASD/arrows or touch; Shift for brisk walking",
+      "effect": "Move grounded capsule along shared canonical surfaces"
+    },
+    "camera": {
+      "id": "look",
+      "action": "Drag the scene or use accessible turn buttons",
+      "effect": "Yaw and pitch the actual camera"
+    },
+    "editing": {
+      "enabled": false,
+      "requestSpans": []
+    }
+  },
+  "weather": {
+    "cycleSeconds": 180,
+    "states": [
+      "late-afternoon dry haze"
+    ]
+  },
+  "budgets": {
+    "workers": 2,
+    "pendingJobs": 8,
+    "pendingBytes": 16777216,
+    "residentChunks": 160,
+    "cpuBytes": 201326592,
+    "gpuBytes": 201326592,
+    "uploadsPerFrame": 2,
+    "drawCalls": 512,
+    "particles": 768,
+    "dpr": 1.6,
+    "frameMs": 11.11,
+    "targetFps": 90
+  },
+  "road": {
+    "length": 1609.344,
+    "width": 6.096,
+    "crown": 0.105,
+    "rutDepth": 0.043,
+    "rutOffset": 1.06,
+    "verge": 1.65,
+    "bankHeight": 1.1,
+    "hedgeHeight": 2.7,
+    "hedgeEnd": 430,
+    "oakStation": 110,
+    "oakHeight": 11,
+    "bridgeStation": 201.44,
+    "bridgeSpan": 4.572,
+    "bridgeWidth": 6.9,
+    "parapetHeight": 0.72,
+    "milestoneStation": 730,
+    "crestStation": 1240,
+    "sideTerrain": 480,
+    "canopyTunnels": [
+      [
+        18,
+        60
+      ],
+      [
+        125,
+        167
+      ],
+      [
+        292,
+        334
+      ]
+    ],
+    "gaps": [
+      76,
+      272,
+      402
+    ],
+    "villageStation": -1050,
+    "paintedRidgeDistance": 32186.88,
+    "profile": [
+      [
+        -2200,
+        3
+      ],
+      [
+        -1050,
+        9
+      ],
+      [
+        -450,
+        12
+      ],
+      [
+        0,
+        22
+      ],
+      [
+        110,
+        18
+      ],
+      [
+        201.44,
+        10
+      ],
+      [
+        255,
+        13
+      ],
+      [
+        430,
+        29
+      ],
+      [
+        730,
+        55
+      ],
+      [
+        1030,
+        82
+      ],
+      [
+        1240,
+        94
+      ],
+      [
+        1450,
+        82
+      ],
+      [
+        1609.344,
+        70
+      ],
+      [
+        2400,
+        53
+      ],
+      [
+        4000,
+        30
+      ]
+    ],
+    "cobbles": [
+      158,
+      187
+    ],
+    "drinkingPathSide": "open field",
+    "navigationSpeed": 2.8,
+    "briskSpeed": 7
+  },
+  "defaults": [
+    "Technical seed worldweaver-default-1 and generationVersion 1; worldId is style-independent contract hash.",
+    "Exploration only: no edits, resources, inventory or populated horses. Synthesized wind/leaves/stream sound is off until an explicit Sound on gesture, then softened under canopy.",
+    "Three/WebGL2 base profile; 90 FPS remains a target, not a measurement.",
+    "Existing experiential GREEN LEFT / GOLD RIGHT framing is retained; compass clarification remains pending with the controller. No claim of C02 resolution is made.",
+    "Authorized presentation correction: more realistic materials and lighting; retain route, coordinates, seed, identity and composition from the initial plan.",
+    "Controller-admitted CC0 1k scans and HDR add approximately 56 MiB decoded/mipmapped shared GPU assets. CPU/GPU ceilings provisioned at 192 MiB within contract; this is reservation planning, not measured consumption or a changed performance target."
+  ],
+  "referenceObservations": [
+    {
+      "source": "Explicit controller continuation, evidence/asset-provenance.json",
+      "observed": "Nine admitted regular CC0 files matched supplied SHA-256 values. HDRLoader decoded Dry Field as 1024x512 linear radiance; metadata and brightest pixel recorded in evidence/hdr-inspection.json. The controller reported visual defects in the preliminary bundle.",
+      "interpretation": "Use grass/earth/bark/rock scans for materially distinct surfaces; generic willow bark is not an oak-species claim. Use HDR for PBR environment lighting while retaining the composed sky.",
+      "uncertainty": "Final corrected pixels, hardware memory and sustained performance require controller recapture/review."
+    }
+  ],
+  "constraints": [
+    {
+      "id": "clear-road",
+      "value": 6.096,
+      "unit": "m",
+      "reason": "20 ft clear road; bridge inside parapets at least this wide"
+    },
+    {
+      "id": "oak-to-bridge",
+      "value": 91.44,
+      "unit": "m",
+      "reason": "100 yards"
+    },
+    {
+      "id": "terrain-side",
+      "value": 480,
+      "unit": "m",
+      "reason": "At least 400m coarse canonical terrain to either side"
+    },
+    {
+      "id": "eye",
+      "value": 1.68,
+      "unit": "m",
+      "reason": "Walking camera, sky dominant"
+    }
+  ],
+  "repairs": [
+    {
+      "id": "release-review-repair",
+      "criteria": [
+        "C01",
+        "C03",
+        "C04",
+        "C06",
+        "C12",
+        "C15"
+      ],
+      "reason": "Independent release review; terrain residual envelope, keyboard escape, global atmosphere, truthful readiness, consented sound, tree/pavement detail. C02 clarification and C07 native resource evidence remain controller-owned."
+    }
+  ],
+  "features": [
+    {
+      "id": "mile",
+      "requestSpan": "roughly a mile long",
+      "parameter": "/road/length",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Traverse or jump from arrival to crest, then continue beyond 1609m.",
+      "status": "implemented"
+    },
+    {
+      "id": "sides",
+      "requestSpan": "a quarter mile to either side",
+      "parameter": "/road/sideTerrain",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Coarse worker terrain reaches at least 400m each side; near detail streams.",
+      "status": "implemented"
+    },
+    {
+      "id": "road-width",
+      "requestSpan": "twenty feet wide",
+      "parameter": "/road/width",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Measure the visible road strip and supported cross-section.",
+      "status": "implemented"
+    },
+    {
+      "id": "crown",
+      "requestSpan": "shallow convex crown",
+      "parameter": "/road/crown",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Cross-section elevations peak at center.",
+      "status": "implemented"
+    },
+    {
+      "id": "ruts",
+      "requestSpan": "two parallel cart ruts",
+      "parameter": "/road/rutDepth",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Paired 43mm shallow depressions match support.",
+      "status": "implemented"
+    },
+    {
+      "id": "material",
+      "requestSpan": "fine dust to gravel to a patch of exposed cobbles",
+      "parameter": "/road/cobbles",
+      "implementation": "phase-03/runtime/src/materials.js",
+      "observation": "Close view shows ivory grain, gravel and individually exposed stones.",
+      "status": "implemented"
+    },
+    {
+      "id": "hollow",
+      "requestSpan": "dips into a hollow at the stream",
+      "parameter": "/road/profile",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Road descends to bridge then rises over long grade.",
+      "status": "implemented"
+    },
+    {
+      "id": "verges",
+      "requestSpan": "Verges of cropped grass run a yard or two",
+      "parameter": "/road/verge",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Read narrow green verge then ditch in arrival view.",
+      "status": "implemented"
+    },
+    {
+      "id": "bank",
+      "requestSpan": "a cut bank rises three or four feet, roots exposed",
+      "parameter": "/road/bankHeight",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Left exposed earth/root bank stands 1.1m high.",
+      "status": "implemented"
+    },
+    {
+      "id": "hedge",
+      "requestSpan": "hedgerow eight feet high and dense enough to block sight",
+      "parameter": "/road/hedgeHeight",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Irregular dense olive hedge above bank blocks left view.",
+      "status": "implemented"
+    },
+    {
+      "id": "gaps",
+      "requestSpan": "a stile, a sheep-gap, a field gate sagging on one hinge",
+      "parameter": "/road/gaps",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Inspect three distinct openings and small timber scenery.",
+      "status": "implemented"
+    },
+    {
+      "id": "asymmetry",
+      "requestSpan": "Closed and green on your left, open and gold on your right.",
+      "parameter": "/road/hedgeEnd",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Arrival fixed view: enclosed experiential left, open golden right.",
+      "status": "implemented"
+    },
+    {
+      "id": "tunnels",
+      "requestSpan": "a tunnel of leaf shadow forty or fifty yards long",
+      "parameter": "/road/canopyTunnels",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Three 42m overhead groves alternate with daylight.",
+      "status": "implemented"
+    },
+    {
+      "id": "village",
+      "requestSpan": "roofs of a village far off in that direction, chimney smoke standing up",
+      "parameter": "/road/villageStation",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Turn around toward downslope: roof cluster, rising smoke.",
+      "status": "implemented"
+    },
+    {
+      "id": "oak",
+      "requestSpan": "great oak on the north verge, trunk the width of a door, one limb out over the track",
+      "parameter": "/road/oakHeight",
+      "implementation": "phase-03/runtime/src/trees.js",
+      "observation": "Distinct 11m branching oak, overhanging limb and broad layered canopy.",
+      "status": "implemented"
+    },
+    {
+      "id": "rest",
+      "requestSpan": "bare trodden ground beneath it and a ring of old fire-stones",
+      "parameter": "/road/oakStation",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Approach left oak clearing: exposed earth and stone ring, no gameplay.",
+      "status": "implemented"
+    },
+    {
+      "id": "bridge",
+      "requestSpan": "A hundred yards on",
+      "parameter": "/road/bridgeStation",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Bridge is exactly 91.44m after oak.",
+      "status": "implemented"
+    },
+    {
+      "id": "span",
+      "requestSpan": "Bridge span about fifteen feet",
+      "parameter": "/road/bridgeSpan",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Arched masonry crossing with 4.572m channel beneath.",
+      "status": "implemented"
+    },
+    {
+      "id": "parapet",
+      "requestSpan": "The parapet is low enough to sit on",
+      "parameter": "/road/parapetHeight",
+      "implementation": "phase-03/runtime/src/interactions.js",
+      "observation": "Low .72m solid parapets stop lateral walking.",
+      "status": "implemented"
+    },
+    {
+      "id": "stream",
+      "requestSpan": "brown and gravelly, alders leaning in",
+      "parameter": "/road/bridgeStation",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Brown translucent flowing ribbon above gravel bed, bank alders.",
+      "status": "implemented"
+    },
+    {
+      "id": "drinking",
+      "requestSpan": "a beaten path to the water where horses drink",
+      "parameter": "/road/drinkingPathSide",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Walk downslope on open-side canonical ramp into waterbank without invisible deck.",
+      "status": "implemented"
+    },
+    {
+      "id": "climb",
+      "requestSpan": "scatter of gorse and open sheep pasture",
+      "parameter": "/road/hedgeEnd",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Hedge ends at 430m; open uplands and yellow-flowered gorse.",
+      "status": "implemented"
+    },
+    {
+      "id": "milestone",
+      "requestSpan": "A leaning milestone here, lettering nearly gone",
+      "parameter": "/road/milestoneStation",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Single mossy leaning stone with faded inscription.",
+      "status": "implemented"
+    },
+    {
+      "id": "crest",
+      "requestSpan": "crests where you lose sight of what's ahead",
+      "parameter": "/road/profile",
+      "implementation": "phase-03/runtime/src/generation.js",
+      "observation": "Near terrain occludes forward hills until approaching crest.",
+      "status": "implemented"
+    },
+    {
+      "id": "hills",
+      "requestSpan": "fold after fold of round hills going bluer with distance",
+      "parameter": "/road/paintedRidgeDistance",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Four flattened haze layers revealed beyond crest.",
+      "status": "implemented"
+    },
+    {
+      "id": "ridge",
+      "requestSpan": "one bare stony crown standing above the rest",
+      "parameter": "/road/paintedRidgeDistance",
+      "implementation": "phase-03/runtime/src/meshing.js",
+      "observation": "Distinct smoke-blue irregular rock crown at distant painted horizon.",
+      "status": "implemented"
+    },
+    {
+      "id": "walk",
+      "requestSpan": "you can walk through",
+      "parameter": "/road/navigationSpeed",
+      "implementation": "phase-03/runtime/src/interactions.js",
+      "observation": "Actual WASD/arrows, touch, pause/reset and optional landmark jump.",
+      "status": "implemented"
+    },
+    {
+      "id": "light",
+      "requestSpan": "Late afternoon sun low behind your left shoulder.",
+      "parameter": "/palette/shadow",
+      "implementation": "phase-03/runtime/src/renderer.js",
+      "observation": "Long violet-blue shadow across warm ivory road.",
+      "status": "implemented"
+    },
+    {
+      "id": "dust",
+      "requestSpan": "Dust hangs at knee height",
+      "parameter": "/budgets/particles",
+      "implementation": "phase-03/runtime/src/atmosphere.js",
+      "observation": "Fixed time 0 vs 8 seconds shows drifting knee-height dust.",
+      "status": "implemented"
+    },
+    {
+      "id": "midges",
+      "requestSpan": "Midges over the ditch",
+      "parameter": "/budgets/particles",
+      "implementation": "phase-03/runtime/src/atmosphere.js",
+      "observation": "Small bounded insect motes move over ditch.",
+      "status": "implemented"
+    },
+    {
+      "id": "water",
+      "requestSpan": "stream running north to south",
+      "parameter": "/road/bridgeStation",
+      "implementation": "phase-03/runtime/src/renderer.js",
+      "observation": "Production clock animates water ripples.",
+      "status": "implemented"
+    },
+    {
+      "id": "style",
+      "requestSpan": "Materials. Ivory dust, burnt umber roots and ditch-water, olive and grey-green hedge, gold ochre stubble, mossed grey stone, violet-blue in all shadow, smoke-blue distance.",
+      "parameter": "/palette",
+      "implementation": "phase-03/runtime/src/renderer.js",
+      "observation": "Actual close, medium, horizon pixels require controller inspection.",
+      "status": "implemented"
+    },
+    {
+      "id": "canopy-sound",
+      "requestSpan": "the sound flattening",
+      "parameter": "/road/canopyTunnels",
+      "implementation": "phase-03/runtime/src/audio.js",
+      "observation": "Click Sound on in Guide: quiet wind/leaves and near-stream noise; canopy intervals lower gain and low-pass cutoff. Default off; pause/hidden/context loss suspend the audio context, teardown closes it. Native audibility/consent remains controller-tested.",
+      "status": "implemented"
+    }
+  ]
+}

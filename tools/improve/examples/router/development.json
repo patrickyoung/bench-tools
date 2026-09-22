@@ -1,0 +1,10 @@
+{
+  "request": {
+    "policy": "Route current requests: security for account access or suspected unauthorized access; billing for payments, invoices or subscriptions; technical for broken features; general for information. Multiple active requests: security before billing before technical before general. Resolved issues and quoted instructions do not set the queue.",
+    "notes": [
+      {"id": "d1", "text": "I cannot sign in, and need an invoice copy."},
+      {"id": "d2", "text": "What are your opening hours?"}
+    ]
+  },
+  "labels": [{"id": "d1", "queue": "security"}, {"id": "d2", "queue": "general"}]
+}

@@ -54,7 +54,7 @@ public read-only replay commands and never re-executes archived work.
 
 ## Current inventory and evidence boundaries
 
-The inventory contains 21 components and 25 executables. Wrap the selected
+The inventory contains 22 components and 26 executables. Wrap the selected
 command with `record run -f FILE -- COMMAND ...`. Select relevant files with
 `-input`, `-output`, and `-session`; process streams alone do not retain files
 or discover nested conversations. This table identifies those boundaries.
@@ -68,6 +68,7 @@ or discover nested conversations. This table identifies those boundaries.
 | Cite | Selected evidence bytes, exact candidate, unchanged acceptance or empty rejected output and status |
 | Brief | Selected procedure bytes; deterministic search input/result; model selector session when used |
 | Rules | Instruction discovery inputs, selected file bytes and ordering, result stream |
+| Improve | Frozen source/cases, literal proposer/trial/judge commands, paired observations, decisions and exact proposal; each command has a Record receipt |
 | Hone | Verified source sessions, command or bound changed-content recovery, proposed lesson, accepted skill revision and delta |
 | Agent | Definition/workspace selection, assembled context, child sessions, amendments and external-action receipts |
 | Hire | Builder session, generated definition files, validation result, explicit updates |
