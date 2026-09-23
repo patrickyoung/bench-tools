@@ -59,11 +59,7 @@ func parseAuthorization(raw []byte) (string, error) {
 	return value, nil
 }
 
-func infer(ctx context.Context, endpoint, model, authorization string, input request) ([]byte, error) {
-	body, err := input.native(strings.TrimPrefix(model, "openrouter/"))
-	if err != nil {
-		return nil, errors.New("could not encode provider request")
-	}
+func infer(ctx context.Context, endpoint, model, authorization string, input request, body []byte) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, errors.New("could not create provider request")

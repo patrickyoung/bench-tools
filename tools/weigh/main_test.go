@@ -86,6 +86,29 @@ func TestNativeProtocolAndPreservation(t *testing.T) {
 	}
 }
 
+func TestEncodedRequestBoundBeforeCredentials(t *testing.T) {
+	// Rendered page text can contain many HTML-sensitive characters. Go's
+	// default JSON encoding expands each '<' to six bytes. The public input
+	// fits, but its native representation must not bypass the request limit.
+	input := strings.Replace(sampleRequest, "selected evidence", strings.Repeat("<", int(maxBytes/6)), 1)
+	if int64(len(input)) >= maxBytes {
+		t.Fatal("test input should fit the public input bound")
+	}
+	var out, diag bytes.Buffer
+	for _, header := range []bool{false, true} {
+		args := []string{"-m", "openrouter/test"}
+		if header {
+			args = append(args, "-header-fd", "3")
+		}
+		code := run(context.Background(), args, strings.NewReader(input), &out, &diag,
+			func(string) string { t.Fatal("oversized native request read credentials"); return "" },
+			func(int) (io.ReadCloser, error) { t.Fatal("oversized native request opened header"); return nil, nil })
+		if code != 2 || out.Len() != 0 || !strings.Contains(diag.String(), "encoded provider request exceeds") {
+			t.Fatalf("native request bound: code=%d out=%d diag=%s", code, out.Len(), diag.String())
+		}
+	}
+}
+
 func TestInvalidRequestsNeverCallProvider(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { calls.Add(1) }))

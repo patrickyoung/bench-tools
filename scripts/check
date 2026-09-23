@@ -328,7 +328,7 @@ class CheckRun:
             if name == "hire":
                 self.command("hire-syntax", ["sh", "-n", "builder/home.sh", "expert/bin/check"], source, env)
             if name == "weigh":
-                for example in ("semantic-check", "visual-check", "improve-checks"):
+                for example in ("semantic-check", "visual-check", "improve-checks", "web-tasks"):
                     self.command("weigh-" + example, ["python3", "-m", "unittest", "discover", "-s",
                                  "examples/" + example, "-p", "test_*.py", "-v"], source, env)
             if name == "improve":

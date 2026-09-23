@@ -199,6 +199,10 @@ Record retains the request, result, diagnostics, and process outcome; replay
 does not contact the model. Weigh creates no session or background service.
 See the [semantic checker](examples/semantic-check/README.md) and
 [visual checker](examples/visual-check/README.md) for caller-owned compositions.
+The [Web tasks](examples/web-tasks/README.md) compose the separate `web` command
+with Weigh to navigate to a requested page or shortlist rendered rows/cards.
+They include a September 2026 review of actual community browser builds and
+an end-to-end local-browser check, with inference fixtures labeled as such.
 The [improvement workflow](examples/improve-checks/README.md) adds optional
 diagnosis, next-fix selection, offline calibration and exact proposal review
 around existing tools. Its `select-fix.py` helper lets trusted rules settle
@@ -234,14 +238,16 @@ charged nothing. Error bodies and private request data are not printed.
 
 ## Bounds and outcomes
 
-Requests and responses are each limited to 8 MiB, JSON nesting to 64
-containers, questions to 1024, and question/option IDs to 256 UTF-8 bytes
-without control characters. Excess data is refused, never truncated.
+Input, encoded native requests, and responses are each limited to 8 MiB, JSON
+nesting to 64 containers, questions to 1024, and question/option IDs to 256 UTF-8
+bytes without control characters. Excess data is refused, never truncated.
 These are local byte/shape limits, not model token limits. TypeSafe currently
 documents Jev 1.13 limits of 64k tokens across the request and 32k for state plus
 the longest question; selected routes can impose their own limits. Weigh does
 not estimate tokens or truncate input. See the current
 [model reference](https://docs.typesafe.ai/models).
+Native encoding can expand HTML-sensitive characters and adds protocol/model
+fields. That bound is checked before credentials are read or networking starts.
 
 | Exit | Meaning |
 | --- | --- |

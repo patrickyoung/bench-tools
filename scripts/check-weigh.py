@@ -86,6 +86,11 @@ def main():
         receipt = root / "judgment.jsonl"
         with decisions() as (endpoint, calls):
             command = [bins / "weigh", "-m", "openrouter/~typesafe/jev-latest", "-endpoint", endpoint]
+            expanded = dict(request, state="<" * 1400000)
+            no_key = {key: value for key, value in env.items() if key != "OPENROUTER_API_KEY"}
+            bounded = invoke(command, cwd=root, env=no_key, data=json.dumps(expanded).encode(), code=2)
+            require(not bounded.stdout and not calls and b"encoded provider request exceeds" in bounded.stderr,
+                    "encoded request bound did not precede credentials and networking")
             answer = invoke(command, cwd=root, env=env, data=raw)
             result = json.loads(answer.stdout)
             require(result["answers"]["score"]["value"] == .75 and result["answers"]["prob"]["value"] == .8, "native typed values changed")
