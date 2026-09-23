@@ -112,20 +112,28 @@ type recordingConnection struct {
 }
 
 func (c *recordingConnection) Write(ctx context.Context, msg jsonrpc.Message) error {
-	if err := c.Connection.Write(ctx, msg); err != nil {
-		return err
-	}
 	req, ok := msg.(*jsonrpc.Request)
 	if !ok || !req.IsCall() {
-		return nil
+		return c.Connection.Write(ctx, msg)
 	}
 	key := idKey(req.ID)
+	// Register correlation before sending: a fast peer can reply while the
+	// underlying Write is still returning. Do not hold mu across transport I/O.
 	c.recorder.mu.Lock()
 	c.recorder.methods[key] = req.Method
 	if c.recorder.begin && c.recorder.targetID == "" {
 		c.recorder.targetID = key
-		c.recorder.sent = c.recorder.effect
 		c.recorder.begin = false
+	}
+	c.recorder.mu.Unlock()
+	if err := c.Connection.Write(ctx, msg); err != nil {
+		return err
+	}
+	// Correlation alone does not cross the effect boundary. Only a successful
+	// write of the armed request marks it sent.
+	c.recorder.mu.Lock()
+	if c.recorder.targetID == key {
+		c.recorder.sent = c.recorder.effect
 	}
 	c.recorder.mu.Unlock()
 	return nil

@@ -1,0 +1,37 @@
+{
+  "id": "django-expert",
+  "description": "Build Django 6.1.1/PostgreSQL applications with professional admin, iterative accessible UX, local/DevTest/UAT/production, OIDC and measured scaling.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "2ec79db01ed479dd1f639e1d6784645cc29071a0",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.10 standard library for checker; compatible Python 3.14 patch preferred for applications",
+    "application": "Git, uv, PostgreSQL >=15 (supported 18 patch preferred), psycopg 3; exact project dependencies must be verified and locked",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "review": "Independent PostgreSQL/auth/admin tests, browser/user review and live IdP/operations acceptance; checker validates only bound artifacts"
+  },
+  "files": [
+    "workers/django-expert/expert/AGENTS.md",
+    "workers/django-expert/expert/CONTRACT.md",
+    "workers/django-expert/expert/LICENSE",
+    "workers/django-expert/expert/PROFILE.md",
+    "workers/django-expert/expert/README.md",
+    "workers/django-expert/expert/bin/check",
+    "workers/django-expert/expert/references.md",
+    "workers/django-expert/expert/skills/django-auth-environments/SKILL.md",
+    "workers/django-expert/expert/skills/django-delivery/SKILL.md",
+    "workers/django-expert/expert/skills/django-foundations/SKILL.md",
+    "workers/django-expert/expert/skills/django-ux-admin/SKILL.md"
+  ]
+}

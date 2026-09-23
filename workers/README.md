@@ -14,6 +14,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 
 | Worker | Purpose |
 | --- | --- |
+| [Django expert](django-expert/expert/README.md) | Build Django 6.1.1/PostgreSQL applications with professional admin, iterative accessible UX, four environments, OIDC and measured scaling. |
 | [Experiment researcher](experiment-researcher/expert/README.md) | Search selected event logs with Trail and create one cited, bounded Improve experiment plan. |
 | [Excel workbook designer and editor](excel-workbook-designer/expert/README.md) | Create and prompt-edit reports and text-first team workbooks; exact lookups, RAG, WBS and time-off coverage; native charts/simple pivots; verify behavior and preserve content. |
 | [Product Manager](product-manager/expert/README.md) | Follow SAFe to connect vision and roadmap to ART features, benefit hypotheses, acceptance criteria, prioritization and leadership decisions; also frame evaluations and synthesize checked evidence. |

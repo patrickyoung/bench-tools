@@ -72,6 +72,22 @@ jobs:
         with:
           go-version-file: tools/ask/go.mod
           cache: false
+      - name: Install the Linux backend for confined Hire and Agent fixtures
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap apparmor
+          # Keep the same scoped namespace grant as the native-cage job.
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo tee /etc/apparmor.d/bench-tools-bwrap > /dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bench-tools-bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          PROFILE
+            sudo apparmor_parser -r /etc/apparmor.d/bench-tools-bwrap
+          fi
       - name: Compose independently built public commands with local fixtures
         run: python3 scripts/check --integration-only
       - if: always()

@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 22 workers
+`make check-workers` runs the library's offline regression suites. All 24 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
@@ -80,6 +80,7 @@ checks explicitly. Proprietary/bundled workbook runtimes are operator-selected.
 
 | Entry | Principal assertions | Further quality evidence required |
 | --- | --- | --- |
+| Django expert | Current request/input/output hashes, four environments, honest status/evidence, minimal build output and malformed/path counterexamples | Real PostgreSQL/auth/admin tests, browser/user review, dependency compatibility and live IdP/operational acceptance |
 | Experiment researcher | Current request/event bindings, deterministic plan assembly, fixed experiment protocol, missing-input/no-result handling and public reader composition | Actual Trail investigation, faithful hypotheses, fresh-case discipline and useful experiments |
 | Product Owner | Four deliverable modes, needs-input, malformed data, evidence/output bindings | Problem framing, useful priorities and faithful assumptions |
 | Product Manager | Strategy/evaluation/synthesis, scope, weights and no premature selection | Outcome-linked features, useful slices, platform judgment and leadership decisions; see the worker quality rubric |
