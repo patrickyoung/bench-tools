@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 24 workers
+`make check-workers` runs the library's offline regression suites. All 25 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.

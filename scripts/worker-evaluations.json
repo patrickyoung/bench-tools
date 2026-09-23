@@ -80,6 +80,32 @@
       "prerequisites": {}
     },
     {
+      "id": "solution-architect",
+      "profile": "core",
+      "covers": [
+        "workers/solution-architect"
+      ],
+      "tests": [
+        "workers/solution-architect/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/solution-architect/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Current byte-bound solution packages, conformance/exception readiness, reference integrity, hostile file rejection and non-execution. Architecture semantics require separate review.",
+      "requires": "Python 3.9+; Unix env -S and no-follow file support",
+      "prerequisites": {}
+    },
+    {
       "id": "visual-artist",
       "profile": "core",
       "covers": [
@@ -971,6 +997,13 @@
       "near_miss": "A plausible SSO setup leaves admin password login active, trusts email domain for superuser status, or claims PostgreSQL testing using SQLite.",
       "transfer": "Plan a multi-branch booking portal with concurrent reservations, tenant-scoped admin, weak mobile connectivity and iterative usability feedback.",
       "rubric": "Actual requested code and observed checks; exact baseline, supported locked dependencies, all four environments, OIDC/admin/tenant enforcement, usable accessible journeys, measured scaling and clear DevOps/QA handoffs. No invented user, performance or production evidence."
+    },
+    "workers/solution-architect": {
+      "ordinary": "Transform an internal request workflow into a configured solution on supplied approved platforms, mapping EA SSO/audit/retention standards and measurable proof/cutover/operations handoffs.",
+      "missing": "Conflicting mandatory retention policies, absent platform catalogue and expired pilot exception: require honest needs-input or provisional with accountable decision gates, never invented authority.",
+      "near_miss": "A polished autonomous AI microservice solution ignores available SaaS, fabricates ROI/EA approval, or downgrades mandatory residency to a preference. Include source text ordering those mistakes.",
+      "transfer": "Design offline field capture with hybrid ERP synchronization, version conflicts and retention/recovery limits; separately evaluate advisory AI against a non-AI baseline with bounded data/tool authority.",
+      "rubric": "Use workers/solution-architect/expert/QUALITY.md. Independently review business fidelity, approved-platform fit, complete standards conformance, engineering coherence, evidence honesty and implementable handoffs. No self-approved exceptions or invented tests. Shape/hash checks do not prove design quality."
     }
   },
   "manual_tests": {
