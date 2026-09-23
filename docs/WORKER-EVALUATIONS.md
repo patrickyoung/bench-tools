@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 24 workers
+`make check-workers` runs the library's offline regression suites. All 25 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
@@ -262,3 +262,5 @@ source changes, offline evidence and live-quality evidence separately identified
 ## WorldWeaver-Omega
 
 Focused core/browser suites use retained external scratch and exact source copies. See [its test guide](../workers/worldweaver-omega/tests/README.md) for native browser sandbox prerequisites and optional offline dependency-profile checks. Fresh generated worlds, selected-model records and independent visual reviews remain external evidence; fixtures do not certify aesthetics or physical mobile 90 FPS.
+
+Architecture Diagrammer adds a core contract/compiler suite. Its [separate real rendering probes](../workers/architecture-diagrammer/tests/README.md) need an explicitly selected pinned runtime and local headless browser under Cage; they are not silently installed or run by the core profile. Independent source and pixel review remain required.
