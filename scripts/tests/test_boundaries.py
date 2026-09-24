@@ -165,6 +165,54 @@ import (
         self.write("internal/common/common.go", "package common\n")
         self.refuses("shared runtime is forbidden")
 
+    def register_worker_helper(self):
+        paths = ["workers/painter/expert/bitmap/go.mod",
+                 "workers/painter/expert/bitmap/main.go"]
+        self.write("workers/painter/worker.json", json.dumps({"id": "painter", "files": paths}))
+        self.write(paths[0], "module bench.local/painter\ngo 1.22\n")
+        self.write(paths[1], 'package main\nimport "image/png"\n')
+        return paths
+
+    def test_registered_worker_standard_library_helpers_and_tests_pass(self):
+        self.register_worker_helper()
+        self.write("workers/painter/tests/go.mod", "module bench.local/painter-tests\ngo 1.22\n")
+        self.write("workers/painter/tests/contracts_test.go", 'package tests\nimport "testing"\n')
+        self.assertEqual(self.check(), [])
+
+    def test_worker_helpers_cannot_import_tools_or_other_workers(self):
+        paths = self.register_worker_helper()
+        for imported in ("example.test/alpha", "bench.local/other-worker", "./local", "C"):
+            with self.subTest(imported=imported):
+                self.write(paths[1], f'package main\nimport _ "{imported}"\n')
+                self.refuses("worker helpers may import only the standard library")
+
+    def test_worker_modules_cannot_require_or_replace_dependencies(self):
+        paths = self.register_worker_helper()
+        for directive in ("require example.test/alpha v1.0.0", "replace example.test/x => ../../../../tools/alpha"):
+            with self.subTest(directive=directive):
+                self.write(paths[0], "module bench.local/painter\ngo 1.22\n" + directive + "\n")
+                self.refuses("worker helper modules must use only the standard library")
+
+    def test_worker_export_inventory_and_local_module_are_required(self):
+        paths = self.register_worker_helper()
+        extra = self.write("workers/painter/expert/bitmap/unlisted.go", "package main\n")
+        self.refuses("shared runtime is forbidden")
+        extra.unlink()
+        (self.root / paths[0]).unlink()
+        self.refuses("shared runtime is forbidden")
+
+    def test_tools_cannot_import_or_require_worker_helpers(self):
+        self.register_worker_helper()
+        self.write("tools/alpha/main.go", 'package main\nimport _ "bench.local/painter"\n')
+        self.refuses("cross-tool Go import from worker painter")
+        self.write("tools/alpha/go.mod", "module example.test/alpha\ngo 1.26\nrequire bench.local/painter v1.0.0\n")
+        self.refuses("cross-tool module requirement on worker painter")
+
+    def test_worker_module_identity_cannot_shadow_a_tool(self):
+        paths = self.register_worker_helper()
+        self.write(paths[0], "module example.test/alpha\ngo 1.22\n")
+        self.refuses("worker module collides with tool module")
+
     def test_manifest_rejects_colliding_commands_and_wrong_module(self):
         self.components[1]["commands"][0]["name"] = "alpha"
         self.save_manifest()

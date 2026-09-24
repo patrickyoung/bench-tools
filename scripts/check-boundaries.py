@@ -82,6 +82,59 @@ def parse_go(paths: list[Path], root: Path, helper: Path | None) -> list[dict]:
     return json.loads(run(argv, cwd=root, input=json.dumps([str(p) for p in paths])))
 
 
+def worker_go_sources(root: Path, files: list[Path], errors: list[str]) -> tuple[dict[Path, Path], dict[str, str]]:
+    """Admit private, standard-library-only worker helpers, never shared code.
+
+    Exported source must be inventoried by that worker; synthetic test source
+    stays under its tests/. Each file needs an admitted module in the same
+    expert or tests subtree. The library check owns the remaining metadata.
+    """
+    admitted = {}
+    identities = {}
+    for metadata in (root / "workers").glob("*/worker.json"):
+        leaf = metadata.parent
+        if metadata.is_symlink() or leaf.is_symlink():
+            continue
+        try:
+            worker = json.loads(metadata.read_text())
+            if worker.get("id") != leaf.name or not NAME.fullmatch(leaf.name):
+                continue
+            approved = worker.get("files", [])
+            if not isinstance(approved, list) or not all(safe_relative(p) for p in approved):
+                continue
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+        candidates = []
+        for path in files:
+            if path.is_symlink() or not inside(path, leaf):
+                continue
+            if path.suffix != ".go" and path.name != "go.mod":
+                continue
+            relative = path.relative_to(root).as_posix()
+            if ((inside(path, leaf / "expert") and relative in approved)
+                    or inside(path, leaf / "tests")):
+                candidates.append(path)
+        modules = {p for p in candidates if p.name == "go.mod"}
+        for modfile in modules:
+            try:
+                model = json.loads(run(["go", "mod", "edit", "-json", str(modfile)], cwd=root))
+                if not model.get("Module", {}).get("Path"):
+                    raise ValueError("missing module declaration")
+                identity = model["Module"]["Path"]
+                if identity in identities:
+                    errors.append(f"{modfile.relative_to(root)}: duplicate worker module identity")
+                identities[identity] = f"worker {leaf.name}"
+                if any(model.get(key) for key in ("Require", "Replace", "Exclude", "Tool")):
+                    errors.append(f"{modfile.relative_to(root)}: worker helper modules must use only the standard library")
+            except (OSError, ValueError) as exc:
+                errors.append(f"{modfile.relative_to(root)}: invalid worker helper module: {exc}")
+        for path in candidates:
+            scope = leaf / ("expert" if inside(path, leaf / "expert") else "tests")
+            if any(inside(modfile, scope) and inside(path, modfile.parent) for modfile in modules):
+                admitted[path] = scope
+    return admitted, identities
+
+
 def baseline_errors(root: Path, components: list[dict], files: list[Path]) -> list[str]:
     errors = []
     for component in components:
@@ -236,6 +289,12 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
             if child.name not in names:
                 errors.append(f"{child.relative_to(root)}: unlisted component or shared source")
     files = inventory(root)
+    worker_go, worker_modules = worker_go_sources(root, files, errors)
+    for module, worker in worker_modules.items():
+        if module in family_modules:
+            errors.append(f"{worker}: worker module collides with tool module {module}")
+        else:
+            family_modules[module] = worker
     go_paths = []
     for path in files:
         relative, component = path.relative_to(root).as_posix(), owner(path)
@@ -243,7 +302,7 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
             errors.append(f"{relative}: nested Git marker changes repository instruction scope")
         if path.name == "go.work" or path.name == "go.work.sum":
             errors.append(f"{relative}: Go workspaces are forbidden")
-        if path.name == "go.mod" and (component is None or path != leaves[component] / "go.mod"):
+        if path.name == "go.mod" and path not in worker_go and (component is None or path != leaves[component] / "go.mod"):
             errors.append(f"{relative}: module outside a declared component root")
         if path.is_symlink():
             try:
@@ -256,9 +315,9 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
             elif component is None and (not inside(target, root) or owner(target) is not None):
                 errors.append(f"{relative}: root symlink crosses a component/external boundary")
         if path.suffix == ".go":
-            if component is None and relative != "scripts/go-boundaries/main.go":
+            if component is None and path not in worker_go and relative != "scripts/go-boundaries/main.go":
                 errors.append(f"{relative}: Go source outside a component (shared runtime is forbidden)")
-            elif component is not None:
+            elif component is not None or path in worker_go:
                 go_paths.append(path)
 
     for component in components:
@@ -297,7 +356,8 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
     safe_go_paths = []
     for path in go_paths:
         try:
-            if inside(path.resolve(strict=True), leaves[owner(path)].resolve()):
+            source_root = worker_go[path] if path in worker_go else leaves[owner(path)]
+            if inside(path.resolve(strict=True), source_root.resolve()):
                 safe_go_paths.append(path)
         except (OSError, RuntimeError):
             pass
@@ -307,6 +367,12 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
         errors.append(f"cannot parse Go sources: {exc}")
         parsed = []
     main_dirs = set()
+    standard_imports = set()
+    if worker_go:
+        try:
+            standard_imports = set(run(["go", "list", "std"], cwd=root).splitlines())
+        except (OSError, ValueError) as exc:
+            errors.append(f"cannot establish standard library imports for worker helpers: {exc}")
     for source in parsed:
         path = Path(source["path"])
         name, relative = owner(path), path.relative_to(root).as_posix()
@@ -316,6 +382,8 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
         if source["package"] == "main" and not path.name.endswith("_test.go"):
             main_dirs.add(path.parent)
         for imported in source["imports"]:
+            if path in worker_go and imported not in standard_imports:
+                errors.append(f"{relative}: worker helpers may import only the standard library: {imported}")
             peer = module_owner(imported, family_modules)
             if peer is not None and peer != name:
                 errors.append(f"{relative}: cross-tool Go import from {peer}: {imported}")
