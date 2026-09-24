@@ -38,6 +38,12 @@ func TestBrowser(t *testing.T) {
 	var acts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/fingerprint":
+			fmt.Fprint(w, `<!doctype html><body><script>document.body.innerText=JSON.stringify({webdriver:navigator.webdriver,languages:navigator.languages});</script></body>`)
+		case "/native-set":
+			fmt.Fprint(w, `<!doctype html><body>native<script>document.cookie='native=yes; Max-Age=86400; path=/';localStorage.setItem('native','retained');</script></body>`)
+		case "/native-get":
+			fmt.Fprintf(w, `<!doctype html><body>%s<script>document.body.innerText += ':'+localStorage.getItem('native')</script></body>`, r.Header.Get("Cookie"))
 		case "/redirect":
 			http.Redirect(w, r, "/page", 302)
 		case "/huge":
@@ -226,6 +232,86 @@ func TestBrowser(t *testing.T) {
 		var exit *exec.ExitError
 		if !errors.As(e, &exit) || exit.ExitCode() != 77 || !json.Valid(terminalOut) || acts.Load() != 1 {
 			t.Fatalf("noninteractive act was not refused: %v %s", e, terminalOut)
+		}
+	})
+	t.Run("stealth-is-opt-in-and-scoped", func(t *testing.T) {
+		baseline := assert(t, "", "text", server.URL+"/fingerprint")
+		if !strings.Contains(baseline, `"webdriver":true`) {
+			t.Fatal("fresh control did not expose automation", baseline)
+		}
+		for _, args := range [][]string{{"text", server.URL + "/fingerprint", "--stealth"}, {"text", server.URL + "/fingerprint", "--attach", port, "--stealth"}} {
+			got := assert(t, "", args...)
+			if strings.Contains(got, `"webdriver":true`) {
+				t.Fatal("stealth was not injected before the page script", got)
+			}
+		}
+		got := assert(t, fmt.Sprintf(`[{"goto":%q},{"read":"body"}]`, server.URL+"/fingerprint"), "run", "--stealth", "--attach", port)
+		if strings.Contains(got, `\"webdriver\":true`) {
+			t.Fatal("plan did not receive stealth", got)
+		}
+		value, e := pageString(s.page, `()=>String(navigator.webdriver)`)
+		if e != nil || value != "true" {
+			t.Fatal("stealth changed an unrelated tab", value, e)
+		}
+		fakeMay(t, mayDir, 75)
+		code, _, _ := invoke(t, fmt.Sprintf(`[{"goto":%q},{"click":"#act"}]`, server.URL), "run", "--attach", port, "--stealth")
+		if code != 75 || acts.Load() != 1 {
+			t.Fatal("stealth changed approval semantics", code, acts.Load())
+		}
+	})
+	t.Run("native-profile-reuse-and-ownership", func(t *testing.T) {
+		profile := filepath.Join(dir, "native profile")
+		fakeMay(t, mayDir, 75)
+		destination := filepath.Join(dir, "native-export.json")
+		code, _, _ := invoke(t, "\n", "auth", server.URL, destination, "--user-data-dir", profile, "--stealth")
+		if code != 75 {
+			t.Fatal("native export was not gated", code)
+		}
+		if _, e := os.Stat(profile); !os.IsNotExist(e) {
+			t.Fatal("refused export touched native profile", e)
+		}
+		if _, e := os.Stat(destination); !os.IsNotExist(e) {
+			t.Fatal("refused export created credential file", e)
+		}
+		assert(t, "", "text", server.URL+"/native-set", "--user-data-dir", profile)
+		if _, e := os.Stat(profile); e != nil {
+			t.Fatal("profile was deleted", e)
+		}
+		got := assert(t, "", "text", server.URL+"/native-get", "--user-data-dir", profile, "--stealth")
+		if !strings.Contains(got, "native=yes:retained") {
+			t.Fatal("native session was not reused", got)
+		}
+		other := assert(t, "", "text", server.URL+"/native-get", "--user-data-dir", profile, "--profile-directory", "Profile 1")
+		if strings.Contains(other, "native=yes") || strings.Contains(other, "retained") {
+			t.Fatal("explicit native profile was ignored", other)
+		}
+		fresh := assert(t, "", "text", server.URL+"/native-get")
+		if strings.Contains(fresh, "native=yes") || strings.Contains(fresh, "retained") {
+			t.Fatal("native identity leaked into fresh mode", fresh)
+		}
+		held, e := startSession(ctx, options{userDataDir: profile}, false, io.Discard)
+		if e != nil {
+			t.Fatal(e)
+		}
+		code, _, stderr := invoke(t, "", "text", server.URL, "--user-data-dir", profile)
+		if code != 1 || !strings.Contains(stderr, "already in use") {
+			held.close(false, io.Discard)
+			t.Fatal("simultaneous profile use was accepted", code, stderr)
+		}
+		// A stale native port file must never connect to and then close a
+		// browser Web did not launch for this invocation.
+		held.close(false, io.Discard)
+		ownPort, _ := os.ReadFile(filepath.Join(s.dir, "DevToolsActivePort"))
+		if e = os.WriteFile(filepath.Join(profile, "DevToolsActivePort"), ownPort, 0600); e != nil {
+			t.Fatal(e)
+		}
+		assert(t, "", "text", server.URL+"/native-get", "--user-data-dir", profile)
+		if _, e := (proto.BrowserGetVersion{}).Call(s.browser); e != nil {
+			t.Fatal("stale native port selected/closed the other browser", e)
+		}
+		code, _, _ = invoke(t, fmt.Sprintf(`[{"goto":%q,"profile":"missing.json"}]`, server.URL), "run", "--user-data-dir", profile)
+		if code != 2 {
+			t.Fatal("native and plan storage state were mixed", code)
 		}
 	})
 	t.Run("profile-export-and-replay", func(t *testing.T) {

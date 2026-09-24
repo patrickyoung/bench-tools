@@ -99,8 +99,8 @@ func runPlan(ctx context.Context, o options, in io.Reader, out, stderr io.Writer
 			o.profile = p
 		}
 	}
-	if o.profile != "" && o.attach != "" {
-		return bad("--attach and plan profile select conflicting identities")
+	if e := o.validateIdentity(); e != nil {
+		return e
 	}
 	start := time.Now()
 	steps := []map[string]any{}

@@ -19,6 +19,9 @@ func mode(o options) string {
 	if o.attach != "" {
 		return "attach"
 	}
+	if o.userDataDir != "" {
+		return "native"
+	}
 	if o.profile != "" {
 		return "profile"
 	}

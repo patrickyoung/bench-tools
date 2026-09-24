@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/go-rod/rod v0.116.2
+	github.com/go-rod/stealth v0.4.9
 	golang.org/x/net v0.59.0
 )
 

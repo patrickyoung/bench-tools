@@ -162,3 +162,65 @@ func TestPartitionedProfileRefused(t *testing.T) {
 		t.Fatal("partitioned cookie silently widened")
 	}
 }
+
+func TestNativeOptions(t *testing.T) {
+	for _, args := range [][]string{
+		{"get", "x", "--user-data-dir", "native", "--attach", "9222"},
+		{"get", "x", "--user-data-dir", "native", "--profile", "state.json"},
+		{"get", "x", "--profile-directory", "Default"},
+		{"get", "x", "--user-data-dir", "native", "--profile-directory", "../outside"},
+		{"auth", "x"},
+	} {
+		if _, e := parseOptions(args[0], args[1:]); e == nil {
+			t.Fatal("accepted conflicting/invalid native options", args)
+		}
+	}
+	o, e := parseOptions("auth", []string{"https://example.test", "--user-data-dir", "native", "--stealth"})
+	if e != nil || !o.stealth || mode(o) != "native" {
+		t.Fatal(o, e)
+	}
+}
+func TestNativePathBoundariesAndLocks(t *testing.T) {
+	root := t.TempDir()
+	personal := filepath.Join(root, "personal")
+	os.Mkdir(personal, 0700)
+	alias := filepath.Join(root, "alias")
+	if e := os.Symlink(personal, alias); e != nil {
+		t.Fatal(e)
+	}
+	for _, path := range []string{personal, filepath.Join(personal, "Default"), alias, filepath.Join(alias, "new")} {
+		if _, e := selectedNativePath(path, []string{personal}); e == nil {
+			t.Fatal("accepted default profile or alias", path)
+		}
+	}
+	selected := filepath.Join(root, "selected")
+	dir, lock, e := lockNativeProfile(selected)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, _, e = lockNativeProfile(dir); e == nil {
+		t.Fatal("second owner accepted")
+	}
+	lock.Close()
+	if e = os.Symlink("unrelated-host-999999", filepath.Join(dir, "SingletonLock")); e != nil {
+		t.Fatal(e)
+	}
+	if _, _, e = lockNativeProfile(dir); e == nil {
+		t.Fatal("Chrome lock was ignored")
+	}
+	if _, e = os.Lstat(filepath.Join(dir, "SingletonLock")); e != nil {
+		t.Fatal("Chrome lock removed", e)
+	}
+	args := nativeArgs("/explicit/chrome", dir, "Profile 1", true)
+	combined := strings.Join(args, "\n")
+	for _, required := range []string{"--user-data-dir=" + dir, "--profile-directory=Profile 1", "--remote-debugging-port=0"} {
+		if !strings.Contains(combined, required) {
+			t.Fatal("native launch omitted explicit selection", args)
+		}
+	}
+	for _, forbidden := range []string{"--no-sandbox", "--disable-web-security", "--enable-automation", "--headless"} {
+		if strings.Contains(combined, forbidden) {
+			t.Fatal("unexpected user-mode flag", args)
+		}
+	}
+}

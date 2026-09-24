@@ -1,4 +1,4 @@
-.TH WEB 1 "September 2026" "web 2.0.0" "User Commands"
+.TH WEB 1 "September 2026" "web 2.1.0" "User Commands"
 .SH NAME
 web \- render a page or execute a finite browser plan
 .SH SYNOPSIS
@@ -12,7 +12,7 @@ shot URL [out.png] [options]
 run [FILE|-] [--may-job JOB] [--attach ENDPOINT] [--keep | --tab ID]
 .br
 .B web
- auth URL FILE [--channel chrome] [--attach ENDPOINT] [--may-job JOB]
+ auth URL [FILE] [--user-data-dir DIR] [--channel chrome] [--attach ENDPOINT] [--may-job JOB]
 .br
 .B web
 setup|check|version|help
@@ -49,6 +49,23 @@ Conflicts with keep.
 .B --may-job JOB
 Use May's request JOB interface; exact action bytes go to its stdin. The
 versioned machine verdict and exit status must agree before acting.
+.TP
+.B --stealth
+Read/run/auth: inject pinned go-rod/stealth before new documents in the selected
+tab. Off by default; no changes to unrelated tabs or approval gates. Existing
+documents are not retroactively patched. No guaranteed bot-check bypass.
+.TP
+.B --user-data-dir DIR
+Read/run/auth: launch with an explicitly selected persistent native browser
+profile using Rod's NewUserMode argument preset. Conflicts with attach and JSON
+profile. Web closes its launched process but retains the directory, even on
+failure. Existing Chrome/Web locks are refused. Use attach for a running browser.
+Chrome's default personal data directory is refused; remote debugging requires
+a non-default directory in Chrome 136+. No credentials are copied to it.
+.TP
+.B --profile-directory NAME
+Select a profile inside the native data directory (default Default). Requires
+user-data-dir. A directory name, not a path.
 .SH PLANS
 A JSON array or object with steps. goto, click, type [CSS,text], select
 [CSS,value], wait (CSS or milliseconds), read, html, shot and submit are
@@ -57,9 +74,11 @@ out field writes complete markup to a file. Inline markup above 200000
 characters fails. Password input is refused. See README.md for step shapes.
 .PP
 Every click, submit and irreversible:true step calls may request JOB with --may-job (or the legacy Clerk job variables),
-otherwise asks y/N on /dev/tty. Plans cannot disable this. Attached auth
-exports require approval before connecting. Fresh auth waits for manual login
-and Enter; EOF does not save. Profiles are written atomically with mode 0600.
+otherwise asks y/N on /dev/tty. Plans cannot disable this. Attached/native auth
+exports require approval before connecting or launching. Fresh auth waits for manual login
+and Enter; EOF does not export JSON. Native auth may omit FILE and keeps browser
+state in its data directory regardless of Enter/EOF. A prior valid login can be
+reused; a new MFA challenge remains manual. Profiles are written atomically with mode 0600.
 .SH OUTPUT
 Snapshot version 1: requested_url, url, title, text, links and records. Each
 link has label and url; each record has text and links. Snapshot output,

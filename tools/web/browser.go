@@ -9,14 +9,15 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/cdp"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/go-rod/stealth"
 )
 
 type session struct {
@@ -28,6 +29,7 @@ type session struct {
 	dir             string
 	attached, named bool
 	cancel          context.CancelFunc
+	nativeLock      *os.File
 }
 
 func browserPath(channel string) (string, error) {
@@ -86,6 +88,9 @@ func resolveEndpoint(ctx context.Context, endpoint string) (string, error) {
 	return v.URL, nil
 }
 func startSession(ctx context.Context, o options, headed bool, stderr io.Writer) (s *session, err error) {
+	if e := o.validateIdentity(); e != nil {
+		return nil, e
+	}
 	life, cancel := context.WithCancel(ctx)
 	s = &session{attached: o.attach != "", named: o.tab != "", cancel: cancel}
 	defer func() {
@@ -115,42 +120,41 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 		if e != nil {
 			return s, e
 		}
-		s.dir, e = os.MkdirTemp("", "web-browser-")
+		var dataDir string
+		if o.userDataDir != "" {
+			dataDir, s.nativeLock, e = lockNativeProfile(o.userDataDir)
+		} else {
+			s.dir, e = os.MkdirTemp("", "web-browser-")
+			dataDir = s.dir
+		}
 		if e != nil {
 			return s, e
 		}
-		argv := []string{"--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1", "--user-data-dir=" + s.dir, "--no-first-run", "--no-default-browser-check", "--enable-automation"}
+		argv := []string{"--remote-debugging-port=0", "--remote-debugging-address=127.0.0.1", "--user-data-dir=" + dataDir, "--no-first-run", "--no-default-browser-check", "--enable-automation"}
 		if !headed {
 			argv = append(argv, "--headless=new")
 		}
 		argv = append(argv, "about:blank")
+		if o.userDataDir != "" {
+			argv = nativeArgs(path, dataDir, o.profileDirectory, headed)
+		}
+		parser := launcher.NewURLParser().Context(connect)
 		s.proc = exec.Command(path, argv...)
-		s.proc.Stderr = stderr
+		s.proc.Stderr = io.MultiWriter(stderr, parser)
 		if e = s.proc.Start(); e != nil {
 			return s, e
 		}
 		s.done = make(chan error, 1)
 		go func() { s.done <- s.proc.Wait() }()
-		tick := time.NewTicker(25 * time.Millisecond)
-		defer tick.Stop()
-	launch:
-		for {
-			select {
-			case <-connect.Done():
-				return s, fmt.Errorf("browser launch: %w", connect.Err())
-			case e := <-s.done:
-				s.done = nil
-				return s, fmt.Errorf("browser exited before CDP became available: %v", e)
-			case <-tick.C:
-				b, e := os.ReadFile(filepath.Join(s.dir, "DevToolsActivePort"))
-				if e == nil {
-					lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-					if len(lines) >= 2 {
-						address = "ws://127.0.0.1:" + lines[0] + lines[1]
-						break launch
-					}
-				}
-			}
+		// Accept only a CDP address announced by the process we just started.
+		// A persistent directory may contain another process's stale port file.
+		select {
+		case <-connect.Done():
+			return s, fmt.Errorf("browser launch: %w", connect.Err())
+		case e := <-s.done:
+			s.done = nil
+			return s, fmt.Errorf("browser exited before CDP became available: %v", e)
+		case address = <-parser.URL:
 		}
 	}
 	address, err = resolveEndpoint(connect, address)
@@ -200,6 +204,12 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 		return s, err
 	}
 	s.page = s.page.Context(life)
+	if o.stealth {
+		fmt.Fprintln(stderr, "web: stealth enabled for new documents (go-rod/stealth)")
+		if _, err = s.page.Context(connect).EvalOnNewDocument(stealth.JS); err != nil {
+			return s, err
+		}
+	}
 	if !s.attached {
 		if err = (proto.EmulationSetDeviceMetricsOverride{Width: 1280, Height: 720, DeviceScaleFactor: 1, Mobile: false}).Call(s.page.Context(connect)); err != nil {
 			return s, err
@@ -241,6 +251,9 @@ func (s *session) close(keep bool, stderr io.Writer) {
 			_ = s.proc.Process.Kill()
 			<-s.done
 		}
+	}
+	if s.nativeLock != nil {
+		_ = s.nativeLock.Close()
 	}
 	if s.dir != "" {
 		_ = os.RemoveAll(s.dir)

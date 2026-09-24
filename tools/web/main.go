@@ -14,17 +14,19 @@ import (
 	"time"
 )
 
-const version = "2.0.0"
+const version = "2.1.0"
 const maxInput = 8 << 20
 const help = `web — a filter with a browser
 Usage:
   web get|read|text|html|links|snapshot URL [render options]
   web shot URL [out.png] [render options]
   web run [plan.json|-] [--may-job JOB] [--attach ENDPOINT] [--keep | --tab ID]
-  web auth URL FILE [--channel chrome] [--attach ENDPOINT] [--may-job JOB]
+  web auth URL [FILE] [--user-data-dir DIR] [--channel chrome] [--attach ENDPOINT] [--may-job JOB]
   web setup | check | version
 Render options: --wait domcontentloaded|load|networkidle --timeout MS
-                --profile FILE | --attach ENDPOINT
+                --profile FILE | --attach ENDPOINT | --user-data-dir DIR
+Browser options (reads, run, auth): --stealth --user-data-dir DIR
+                --profile-directory NAME (requires --user-data-dir; default Default)
 Snapshot option: --records-selector CSS
 WEB_BROWSER selects installed Chromium. WEB_ATTACH_TIMEOUT defaults to 10000 ms.
 WEB_STATE selects the audit JSONL. See README.md and web(1) for contracts.
@@ -40,7 +42,8 @@ func bad(format string, a ...any) error { return &failure{2, fmt.Sprintf(format,
 
 type options struct {
 	attach, profile, tab, wait, selector, channel, job string
-	keep                                               bool
+	keep, stealth                                      bool
+	userDataDir, profileDirectory                      string
 	timeout                                            time.Duration
 	args                                               []string
 }
@@ -66,6 +69,9 @@ func parseOptions(cmd string, args []string) (o options, err error) {
 			allowed["--records-selector"] = true
 		}
 	}
+	allowed["--stealth"] = true
+	allowed["--user-data-dir"] = true
+	allowed["--profile-directory"] = true
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
@@ -79,6 +85,10 @@ func parseOptions(cmd string, args []string) (o options, err error) {
 		if !allowed[a] {
 			return o, bad("unknown option %s for %s", a, cmd)
 		}
+		if a == "--stealth" {
+			o.stealth = true
+			continue
+		}
 		if a == "--keep" {
 			o.keep = true
 			continue
@@ -89,6 +99,10 @@ func parseOptions(cmd string, args []string) (o options, err error) {
 		}
 		v := args[i]
 		switch a {
+		case "--user-data-dir":
+			o.userDataDir = v
+		case "--profile-directory":
+			o.profileDirectory = v
 		case "--may-job":
 			o.job = v
 		case "--attach":
@@ -110,8 +124,8 @@ func parseOptions(cmd string, args []string) (o options, err error) {
 			}
 		}
 	}
-	if o.attach != "" && o.profile != "" {
-		return o, bad("--attach and --profile select conflicting identities")
+	if e := o.validateIdentity(); e != nil {
+		return o, e
 	}
 	if (o.keep || o.tab != "") && o.attach == "" {
 		return o, bad("--keep and --tab require --attach")
@@ -134,11 +148,34 @@ func parseOptions(cmd string, args []string) (o options, err error) {
 	case "auth":
 		min = 2
 		max = 2
+		if o.userDataDir != "" {
+			min = 1
+		}
 	}
 	if len(o.args) < min || len(o.args) > max {
 		return o, bad("wrong number of arguments for %s; see web help", cmd)
 	}
 	return o, nil
+}
+func (o options) validateIdentity() error {
+	identities := 0
+	for _, v := range []string{o.attach, o.profile, o.userDataDir} {
+		if v != "" {
+			identities++
+		}
+	}
+	if identities > 1 {
+		return bad("--attach, --profile and --user-data-dir select conflicting identities")
+	}
+	if o.profileDirectory != "" {
+		if o.userDataDir == "" {
+			return bad("--profile-directory requires --user-data-dir")
+		}
+		if o.profileDirectory == "." || o.profileDirectory == ".." || strings.ContainsAny(o.profileDirectory, "/\\") {
+			return bad("--profile-directory must be a directory name within the selected user data directory")
+		}
+	}
+	return nil
 }
 func milliseconds(s string) (time.Duration, error) {
 	n, e := strconv.ParseInt(s, 10, 64)

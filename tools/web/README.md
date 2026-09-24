@@ -40,9 +40,12 @@ and omits hidden elements. An empty selection is `[]`. It does not traverse
 iframes or shadow roots. Output over 8 MiB fails without partial stdout.
 An operator-selected record selector is data, never JavaScript source.
 
+Browser options for reads, run and auth include `--stealth`, `--user-data-dir DIR`
+and `--profile-directory NAME` (default `Default`, requires a native data directory).
+
 Render options (before or after URL): `--wait domcontentloaded|load|networkidle`
-(default domcontentloaded), `--timeout MS` (default 30000), and either
-`--profile FILE` or `--attach ENDPOINT`. A ready event does not prove an app has
+(default domcontentloaded), `--timeout MS` (default 30000), and one of
+`--profile FILE`, `--attach ENDPOINT` or `--user-data-dir DIR`. A ready event does not prove an app has
 finished rendering; use a plan with an explicit selector wait when necessary.
 A page can execute JavaScript or cause server effects even on a read. Web is
 not a sandbox, and its action gate is not a proof that other steps are harmless.
@@ -138,10 +141,64 @@ completion and prints the target ID on stderr. A later
 on failure. `--keep` and `--tab` conflict and both require attachment. SIGINT
 and SIGTERM clean up owned tabs/processes; SIGKILL cannot run cleanup.
 
+## Opt-in stealth
+
+```sh
+web snapshot https://example.com --stealth
+web run plan.json --attach 9222 --stealth
+```
+
+`--stealth` uses the pinned [go-rod/stealth](https://github.com/go-rod/stealth)
+module to mask browser automation properties. Its script runs before each new
+document in Web's selected tab, including frames in that tab. With a named
+`--tab`, navigate in the plan to apply it; an already loaded document is not
+retroactively patched. Other tabs are untouched. The option is off by default
+and announced on stderr. Browser/page snapshots and approval gates keep their
+existing contracts.
+
+This is best effort compatibility, not a guarantee of passing Cloudflare or
+Akamai checks. Web does not solve CAPTCHAs or automate MFA; any challenge page
+remains page content for the caller to handle.
+
+## Reuse a native browser profile
+
+```sh
+# Log in by hand once, including any MFA. Native state stays in this directory.
+web auth https://example.com/login --user-data-dir "$HOME/.local/share/web-browser"
+
+# Later invocations reuse that profile's browser-managed session.
+web get https://example.com/account --user-data-dir "$HOME/.local/share/web-browser"
+web snapshot https://example.com/account --user-data-dir "$HOME/.local/share/web-browser" --stealth
+```
+
+This uses Rod's `launcher.NewUserMode()` argument preset. An existing explicitly
+selected non-default user data directory works too. `--profile-directory 'Profile 1'`
+selects a different profile within it; otherwise Web selects `Default`. Chrome
+manages its own cookies, localStorage, IndexedDB and other native state, without
+Web converting them to JSON. Native mode is recorded as `native` in the audit.
+Session reuse preserves a valid login; it does not bypass a new MFA request.
+Cookie expiry and persistence still follow Chrome and the website's rules.
+
+Close the browser using that directory before launching Web with it, or use
+`--attach` with its existing CDP endpoint. Web refuses Chrome/Web profile locks
+and never removes them. It closes the process it launched, retains the selected
+data directory, and never connects through a stale port file. Native profiles
+are persistent even if the command fails or login input ends at EOF.
+
+Chrome 136+ [does not expose remote debugging for its default personal data
+directory](https://developer.chrome.com/blog/remote-debugging-port). Select a
+non-default directory and log in there normally; Web refuses the default path
+and does not copy credentials or disable that restriction. `--user-data-dir`
+conflicts with `--attach` and JSON `--profile`, including a plan's profile field.
+`--keep` continues to require an explicitly attached caller-owned browser.
+
 ## Capture a session
 
 `web auth URL FILE [--channel chrome]` opens a headed browser for manual login;
-press Enter on stdin after logging in. EOF cancels saving.
+press Enter on stdin after logging in. EOF cancels JSON export. Add
+`--user-data-dir DIR` to use native mode; there FILE is optional and the native
+profile persists regardless of Enter/EOF. Exporting an existing native profile
+to FILE uses the same pre-connection approval gate as attached export.
 `web auth URL FILE --attach ENDPOINT [--may-job JOB]` asks permission **before connecting** to
 export the attached browser's session. The export includes all cookies in the
 default context and localStorage from its open HTTP(S) origins. It omits closed
@@ -172,7 +229,8 @@ a local provider fixture (CI does this). It checks rendering, profile replay,
 approval refusals, kept/named tabs, signal cleanup and an unrelated tab's
 survival. Ordinary tests need no browser, network or paid model.
 
-Version 2.0.0 ports standalone Web to Go. [DESIGN.md](DESIGN.md) lists intentional
+Version 2.1.0 adds opt-in stealth and explicitly selected native profiles to the
+2.0.0 Go port. [DESIGN.md](DESIGN.md) lists intentional
 migration changes: external browser setup, user audit path, CSS selectors,
 input bounds, complete-or-error inline HTML, final-base URL reduction and
 explicit password/EOF refusal. [ORIGIN.md](ORIGIN.md) records source provenance.

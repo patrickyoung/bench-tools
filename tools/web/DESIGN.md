@@ -16,7 +16,9 @@ Fresh reads launch installed Chromium with a newly created temporary profile;
 they carry no ambient login. WEB_BROWSER selects the executable; otherwise
 Web discovers installed Chrome/Chromium. --profile explicitly replays a JSON
 storage-state file. --attach connects to the supplied endpoint in the default
-browser context and never launches a fallback. --profile and --attach conflict.
+browser context and never launches a fallback. --user-data-dir explicitly selects
+a persistent native browser directory; --profile-directory selects a child
+profile (default Default). These three identity modes conflict.
 
 Web normally creates one tab and closes it, even on error or SIGINT/SIGTERM.
 An attached browser is never closed. --keep requires --attach and retains
@@ -24,7 +26,26 @@ only a successfully completed plan's own tab, printing its target ID on stderr.
 --tab requires --attach, selects exactly the supplied target and never closes
 it. --keep and --tab conflict. Closing the CDP socket does not close targets.
 Ordinary attachment does not inspect other pages; protocol target metadata can
-arrive from the browser. No stealth or browser security bypass is installed.
+arrive from the browser.
+
+Native mode uses Rod's NewUserMode argument preset with an explicit installed
+binary, user data directory and random loopback debugging port. Web owns the
+process it launches and closes it, but never deletes the selected profile.
+It does not discover/copy logins or close an existing personal browser. Profile
+locks fail closed; a browser already running remains accessible only through
+explicit --attach. The CDP endpoint comes from the new process's stderr, never
+from a potentially stale persistent DevToolsActivePort file. The default Chrome
+personal data directory (including aliases/descendants) is refused: Chrome 136+
+disables remote debugging there. No restriction-disabling switch is used.
+
+At the user's explicit request, version 2.1.0 adds --stealth with pinned
+`go-rod/stealth`. It installs the upstream JavaScript before new documents on
+only the selected tab. It is opt-in and announced on stderr; it does not patch
+unrelated tabs or retroactively change an already loaded document. This changes
+the earlier no-stealth design. Masking some browser automation properties does
+not guarantee access through Cloudflare/Akamai or solve CAPTCHA/MFA. A site's
+challenge/refusal is returned as observed page content; there is no challenge
+solver, authentication bypass, proxy rotation or automatic retry loop.
 
 ## Actions and approvals
 
@@ -39,8 +60,13 @@ WORKER/JOB_ID when --may-job is absent. Outside a job, ask y/N on /dev/tty; neve
 stdin. No terminal means 77. Descriptions come from the plan's may field or
 operation, selector and preceding goto host, never from mutable page text.
 
-The gate also protects auth --attach before connecting or reading credentials.
-Fresh auth opens a headed browser for manual login. Web never automates login
+The gate also protects auth --attach and native-profile JSON export before
+connecting, launching or reading credentials.
+Fresh or native auth opens a headed browser for manual login. Native auth can
+omit the export filename: Chrome keeps the session in the selected directory.
+Native profile writes persist even on EOF/failure, following normal Chrome
+cookie/session rules; Enter only confirms completion (and any requested JSON
+export). Session reuse relies on a prior valid login; new MFA remains manual. Web never automates login
 or types into password fields. Storage-state exports contain cookies and
 localStorage from origins with open pages in the chosen context. They do not
 include closed origins, IndexedDB, sessionStorage or browser passwords. Partitioned
@@ -64,7 +90,7 @@ bound browser operations; WEB_ATTACH_TIMEOUT bounds endpoint discovery and CDP
 connection. Networkidle waits for Chromium's lifecycle networkIdle event.
 
 Optional best-effort audit JSONL retains time, command, URL, byte count,
-duration, outcome, identity mode, and gate words/digest. WEB_STATE selects its
+duration, outcome, identity mode (fresh/profile/native/attach), and gate words/digest. WEB_STATE selects its
 file; default is XDG_STATE_HOME/web/web.jsonl, or ~/.local/state/web/web.jsonl.
 Audit is diagnostic evidence, not authorization or a mandatory shared service.
 

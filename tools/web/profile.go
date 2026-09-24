@@ -204,8 +204,16 @@ func authenticate(ctx context.Context, o options, in io.Reader, stderr io.Writer
 		}
 		audit("auth", o.args[0], size, start, outcome, mode(o), "", "")
 	}()
-	if o.attach != "" {
-		if e := gate(ctx, "copy the whole logged-in state of the browser at "+o.attach+" into "+o.args[1], "auth", o.args[0], "attach", o.job, stderr); e != nil {
+	if o.attach != "" || o.userDataDir != "" && len(o.args) == 2 {
+		source := "the browser at " + o.attach
+		if o.userDataDir != "" {
+			profile := o.profileDirectory
+			if profile == "" {
+				profile = "Default"
+			}
+			source = "native browser profile " + profile + " in " + o.userDataDir
+		}
+		if e := gate(ctx, "copy the whole logged-in state of "+source+" into "+o.args[1], "auth", o.args[0], mode(o), o.job, stderr); e != nil {
 			return e
 		}
 	}
@@ -221,7 +229,11 @@ func authenticate(ctx context.Context, o options, in io.Reader, stderr io.Writer
 		if e != nil {
 			fmt.Fprintln(stderr, "web: could not preload login page:", e)
 		}
-		fmt.Fprintln(stderr, "web: log in BY HAND in the browser, then press Enter here to save the session.")
+		if o.userDataDir != "" {
+			fmt.Fprintln(stderr, "web: log in BY HAND, then press Enter here to finish. The selected native profile persists browser changes as they happen.")
+		} else {
+			fmt.Fprintln(stderr, "web: log in BY HAND in the browser, then press Enter here to save the session.")
+		}
 		done := make(chan error, 1)
 		go func() { _, e := bufio.NewReader(in).ReadString('\n'); done <- e }()
 		select {
@@ -232,6 +244,10 @@ func authenticate(ctx context.Context, o options, in io.Reader, stderr io.Writer
 				return fmt.Errorf("login was not confirmed: %w", e)
 			}
 		}
+	}
+	if len(o.args) == 1 {
+		fmt.Fprintln(stderr, "web: session retained in selected native browser profile", o.userDataDir)
+		return nil
 	}
 	state, e := captureState(s)
 	if e != nil {
