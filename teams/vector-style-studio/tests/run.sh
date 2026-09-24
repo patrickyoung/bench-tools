@@ -134,3 +134,144 @@ expect 1 "$check" "$t/missing run"
 expect 2 "$t/template/bin/studio" "$t/job.json" "$t/unassembled"
 grep 'missing assembled member' "$t/stderr" >/dev/null
 echo "PASS $n offline process/check contracts (fixture media only)"
+
+# Targeted extension uses the SAME entry, query boundary and fake member contract.
+cp "$root/tests/target-job.json" "$t/target.json"
+expect 0 "$entry" "$t/target.json" "$t/target run"
+expect 0 "$check" "$t/target run"
+jq -e --rawfile goal "$t/target run/control/vector-goal.txt" '
+ all(.styles[].target_ids[]; tojson as $id | $goal | contains($id))' "$t/target.json" >/dev/null
+jq -e '.variants[0].target_ids==["caption"] and
+ .variants[0].text_ids_allowed_to_change==["caption"] and
+ .variants[1].target_ids==["sun","cloud","rain"] and
+ .variants[1].text_ids_allowed_to_change==[]' "$t/target run/manifest.json" >/dev/null
+jq -e '.targets[0].measured_box=={x:10,y:10,width:80,height:20} and
+ .selected_wording==[{id:"caption",text:"TEST"}]' "$t/target run/control/targets/headline.json" >/dev/null
+jq -e '.targets|map(.edit_box)==[
+ {x:100,y:50,width:16,height:16},{x:126,y:50,width:16,height:16},{x:152,y:50,width:16,height:16}]'  "$t/target run/control/targets/icons.json" >/dev/null
+jq -e '.style | contains("\"text\":\"TEST\"")' "$t/target run/styles/headline/work/brief.json" >/dev/null
+cmp "$t/target run/styles/headline/work/inputs/source.png" "$t/target run/styles/icons/work/inputs/source.png"
+find "$t/target run" -type f -exec shasum -a 256 {} \; | sort > "$t/before"
+expect 0 "$check" "$t/target run"
+find "$t/target run" -type f -exec shasum -a 256 {} \; | sort > "$t/after"
+cmp "$t/before" "$t/after"
+for alteration in \
+ '.styles[0].target_ids=null' \
+ '.styles[0].target_ids=[]' \
+ '.styles[0].target_ids="caption"' \
+ '.styles[0].target_ids=["caption","caption"]' \
+ '.styles[0].target_ids=["bad/id"]' \
+ '.styles[0].target_ids=[1]' \
+ '.styles[0].target_ids=["bad\"xpath"]' \
+ '.styles[0].target_ids=[range(0;33)|"id"+tostring]' \
+ '.styles[0].target_ids=["a"*65]' \
+ '.styles[0].target_padding=null' \
+ '.styles[0].target_padding=-1' \
+ '.styles[0].target_padding=33' \
+ '.styles[0].target_padding=0.5' \
+ '.styles[0].target_padding=true' \
+ '.styles[0] |= (del(.target_ids) | .target_padding=0)'
+do
+    jq "$alteration" "$t/target.json" > "$t/bad-target.json"
+    : > "$FIX_EVENTS"
+    expect 1 "$entry" "$t/bad-target.json" "$t/invalid-target-$n"
+    [ ! -s "$FIX_EVENTS" ]
+done
+# Bad SECOND style must stop even the valid headline from generating.
+for mode in missing empty short duplicate bad-duplicate zero negative nan infinite bad outside negative-origin intersect; do
+    : > "$FIX_EVENTS"
+    expect 1 env FIX_TARGET_BOUNDS="$mode" "$entry" "$t/target.json" "$t/target-bounds-$mode"
+    ! grep 'bitmap:' "$FIX_EVENTS"
+done
+for mode in missing duplicate non-svg; do
+    : > "$FIX_EVENTS"
+    expect 1 env FIX_TARGET_XML="$mode" "$entry" "$t/target.json" "$t/target-xml-$mode"
+    ! grep 'bitmap:' "$FIX_EVENTS"
+done
+for mode in missing duplicate; do
+    : > "$FIX_EVENTS"
+    expect 1 env FIX_TARGET_FINAL="$mode" "$entry" "$t/target.json" "$t/target-final-$mode"
+    ! grep 'bitmap:' "$FIX_EVENTS"
+done
+# Fresh native queries, not saved coordinates, govern independent reacceptance.
+expect 1 env FIX_TARGET_BOUNDS=drift "$check" "$t/target run"
+expect 1 env FIX_TARGET_BOUNDS=missing "$check" "$t/target run"
+for rel in control/targets/headline.json styles/headline/work/brief.json manifest.json; do
+    file="$t/target run/$rel"
+    cp "$file" "$t/saved"
+    chmod u+w "$file"
+    # Valid JSON tampering, not merely malformed syntax.
+    jq 'if has("targets") then .targets[0].edit_box.width+=1
+        elif has("style") then .style+=" tamper" else .variants[0].target_ids=["sun"] end'       "$file" > "$t/changed"
+    cp "$t/changed" "$file"
+    expect 1 "$check" "$t/target run"
+    cp "$t/saved" "$file"
+done
+# Overlap is safe when unrelated text does not intersect the union.
+jq '.styles=[{id:"overlap",style:"Overlapping targets",target_ids:["sun","overlap"]}] |
+ .required_text=[.required_text[0]]' "$t/target.json" > "$t/overlap.json"
+expect 0 "$entry" "$t/overlap.json" "$t/overlap run"
+# Target-only work still requires a query. Padding is clipped and fractional
+# native boxes are rounded outward to integer pixel edges.
+jq '.required_text=[] | .preserve_regions=[] |
+ .styles=[{id:"edge",style:"Edge target",target_ids:["edge"],target_padding:3}]'  "$t/target.json" > "$t/edge.json"
+expect 0 "$entry" "$t/edge.json" "$t/edge run"
+jq -e '.targets[0].edit_box=={x:0,y:0,width:8,height:9}' "$t/edge run/control/targets/edge.json" >/dev/null
+jq '.styles[0].target_ids=["sun"]' "$t/edge.json" > "$t/no-text.json"
+: > "$FIX_EVENTS"
+expect 1 env FIX_TARGET_BOUNDS=missing "$entry" "$t/no-text.json" "$t/no-text run"
+! grep 'bitmap:' "$FIX_EVENTS"
+jq '.styles[1].target_padding=5' "$t/target.json" > "$t/padded-text.json"
+: > "$FIX_EVENTS"
+expect 1 "$entry" "$t/padded-text.json" "$t/padded-text run"
+! grep 'bitmap:' "$FIX_EVENTS"
+# Explicitly targeted text must STILL satisfy baseline global protection.
+jq '.preserve_regions=[]' "$t/target.json" > "$t/unprotected.json"
+expect 1 "$entry" "$t/unprotected.json" "$t/unprotected run"
+# Full union rejection (two boxes rather than a trivial single full-frame box).
+jq '.required_text=[] | .preserve_regions=[] |
+ .styles=[{id:"full",style:"No protection",target_ids:["left","right"]}]'  "$t/target.json" > "$t/full.json"
+: > "$FIX_EVENTS"
+expect 1 "$entry" "$t/full.json" "$t/full run"
+! grep 'bitmap:' "$FIX_EVENTS"
+grep 'target union covers entire frame' "$t/stderr" >/dev/null
+# Exact caller text is never shortened to accommodate a suffix.
+jq '.styles[0].style=("x"*8000)' "$t/target.json" > "$t/long-style.json"
+: > "$FIX_EVENTS"
+expect 1 "$entry" "$t/long-style.json" "$t/long-style run"
+! grep 'bitmap:' "$FIX_EVENTS"
+grep '8000-byte style limit' "$t/stderr" >/dev/null
+# Mixed global/target styles retain the old brief for the global variant.
+jq '.styles += [{id:"global",style:"Unchanged literal global \"style\""}]' "$t/target.json" > "$t/mixed.json"
+expect 0 "$entry" "$t/mixed.json" "$t/mixed run"
+jq -e '.variants[2] | has("target_ids") | not' "$t/mixed run/manifest.json" >/dev/null
+expect 0 "$check" "$t/target run"
+# A lattice of 15 vertical + 15 horizontal targets leaves exactly 256
+# disconnected protected regions. Sixteen each leaves 289: never truncate.
+jq '.required_text=[] | .preserve_regions=[] |
+ .styles=[{id:"grid",style:"Grid treatment",
+ target_ids:([range(0;15),range(16;31)] | map("grid"+tostring))}]' \
+ "$t/target.json" > "$t/grid.json"
+expect 0 env FIX_GRID=1 "$entry" "$t/grid.json" "$t/grid run"
+jq -e '.preserve_regions|length==256' "$t/grid run/control/targets/grid.json" >/dev/null
+jq '.styles[0].target_ids=[range(0;32)|"grid"+tostring]' "$t/grid.json" > "$t/over-limit.json"
+: > "$FIX_EVENTS"
+expect 1 env FIX_GRID=1 "$entry" "$t/over-limit.json" "$t/over-limit run"
+! grep 'bitmap:' "$FIX_EVENTS"
+grep 'exceeds 256 preserve regions' "$t/stderr" >/dev/null
+# JSON-escaped control characters fit the literal 8000-byte style budget,
+# but the derived regions plus encoding exceed the member 64 KiB brief limit.
+jq '.styles[0].style=("x"+("\u0001"*7999))' "$t/grid.json" > "$t/byte-limit.json"
+: > "$FIX_EVENTS"
+expect 1 env FIX_GRID=1 "$entry" "$t/byte-limit.json" "$t/byte-limit run"
+! grep 'bitmap:' "$FIX_EVENTS"
+grep 'oversized file' "$t/stderr" >/dev/null
+# A failed targeted member outcome is not rescued by target admission.
+expect 42 env FIX_BITMAP_FAIL=icons "$entry" "$t/target.json" "$t/target bitmap fail"
+[ ! -f "$t/target bitmap fail/manifest.json" ]
+# Boundary-touching text is safe (half-open boxes); padding 4 ends at y=70.
+jq '.styles=[.styles[1]] | .styles[0].target_ids=["sun"] |
+ .styles[0].target_padding=4' "$t/target.json" > "$t/touch.json"
+expect 0 "$entry" "$t/touch.json" "$t/touch run"
+jq -ne -L "$root/expert/lib" -f "$root/tests/complement.jq"
+echo "PASS $n total offline process/check contracts (42 legacy plus targeted extension; fixture media only)"

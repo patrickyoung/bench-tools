@@ -33,6 +33,16 @@ validate_job() {
     jq -e -f "$studio_definition/lib/job.jq" "$1" >/dev/null || fail "invalid version-1 job"
 }
 brief() {
+    if jq -e --arg id "$1" '.styles[] | select(.id==$id) | has("target_ids")' "$job" >/dev/null; then
+        jq -c --arg id "$1" --slurpfile a "$tmp/targets/$1.json" '
+          .styles[] | select(.id==$id) |
+          {version:1,source:"inputs/source.png",
+           style:(.style + "\n\nRectangular targeting (original PNG pixels; keep exact selected wording): " +
+             ($a[0] | {targets:[.targets[] | {id,edit_box}],selected_wording} | tojson) +
+             ". Edit only these boxes; preserve surrounding composition. Selected lettering must be visually verified."),
+           preserve_regions:$a[0].preserve_regions}' "$job"
+        return
+    fi
     jq -c --arg id "$1" '
       . as $j | .styles[] | select(.id == $id) |
       {version:1,source:"inputs/source.png",style:.style,preserve_regions:$j.preserve_regions}' "$job"
@@ -77,7 +87,7 @@ vector_binding() {
 }
 text_check() {
     # Independent fresh query, not worker-authored render.json bounds.
-    [ "$(jq '.required_text|length' "$job")" -gt 0 ] || return 0
+    jq -e '(.required_text|length)>0 or any(.styles[]; has("target_ids"))' "$job" >/dev/null || return 0
     ink=${INKSCAPE:-}
     if [ -z "$ink" ]; then ink=$(command -v inkscape) || setup "Inkscape unavailable"; fi
     case $ink in /*) ;; *) setup "INKSCAPE must be absolute";; esac
@@ -88,9 +98,16 @@ text_check() {
       record run -f "$tmp/query.record.jsonl" -timeout 2m -- \
       "$ink" --query-all "$run/result/original.svg" > "$tmp/bounds.csv" ||
       fail "independent Inkscape bounds query failed"
-    jq -Rn '[inputs | split(",") | select(length == 5) |
-      {id:.[0],box:(.[1:] | map(tonumber))}]' < "$tmp/bounds.csv" > "$tmp/bounds.json" ||
-      fail "malformed queried bounds"
+    if jq -e 'any(.styles[]; has("target_ids"))' "$job" >/dev/null; then
+        # Keep malformed rows: dropping one could hide a duplicate target ID.
+        jq -Rn '[inputs | split(",") |
+          {id:.[0],box:(.[1:] | map(try tonumber catch null))}]' \
+          < "$tmp/bounds.csv" > "$tmp/bounds.json" || fail "malformed queried bounds"
+    else
+        jq -Rn '[inputs | split(",") | select(length == 5) |
+          {id:.[0],box:(.[1:] | map(tonumber))}]' < "$tmp/bounds.csv" > "$tmp/bounds.json" ||
+          fail "malformed queried bounds"
+    fi
     for id in $(jq -r '.required_text[].id' "$job"); do
         master=$run/result/original.inkscape.svg
         xp="//*[namespace-uri()='http://www.w3.org/2000/svg' and local-name()='text' and @id='$id']"
@@ -119,7 +136,14 @@ manifest() {
     png_sha=$(sha "$run/result/original.png")
     : > "$tmp/variants.jsonl"
     for id in $(jq -r '.styles[].id' "$job"); do
-        jq -n --arg id "$id" --arg svg "$svg_sha" --arg png "$png_sha" \
+        target_manifest='{}'
+        if [ -f "$tmp/targets/$id.json" ]; then
+            target_manifest=$(jq -c --arg hash "$(sha "$run/control/targets/$id.json")" \
+              '{target_ids,targets,protection_scope,text_ids_allowed_to_change,
+                target_admission_sha256:$hash,target_admission_path:("control/targets/"+.style_id+".json")}' \
+              "$tmp/targets/$id.json")
+        fi
+        jq -n --argjson targeting "$target_manifest" --arg id "$id" --arg svg "$svg_sha" --arg png "$png_sha" \
           --arg input "$(sha "$run/styles/$id/work/inputs/source.png")" \
           --arg brief "$(sha "$run/styles/$id/work/brief.json")" \
           --arg final "$(sha "$run/result/$id.png")" \
@@ -127,7 +151,7 @@ manifest() {
           '{id:$id,path:("result/"+$id+".png"),media:"wholly raster PNG",
             preservation:"original raster pixels in preserve_regions",
             source_svg_sha256:$svg,canonical_png_sha256:$png,input_sha256:$input,
-            brief_sha256:$brief,sha256:$final,worker_artifact_sha256:$artifact}' >> "$tmp/variants.jsonl"
+            brief_sha256:$brief,sha256:$final,worker_artifact_sha256:$artifact} + $targeting' >> "$tmp/variants.jsonl"
     done
     jq -nS --arg run "$run" --arg job "$(sha "$job")" \
       --arg admission "$(sha "$run/control/admission.json")" \
@@ -149,7 +173,39 @@ vector_goal() {
     jq '.required_text' "$job"
     printf '%s\n' 'Place each required text item so its entire rendered bounding box fits inside one of these caller-selected protected rectangles (original PNG pixel coordinates). These regions are case data:'
     jq '.preserve_regions' "$job"
+    if jq -e 'any(.styles[]; has("target_ids"))' "$job" >/dev/null; then
+        printf '%s\n' 'Preserve or introduce the following target IDs as unique actual SVG elements in the editable master and retain them in the outlined final SVG. Their intended semantics come ONLY from request.json description and the selected reference; never guess which text or group is intended. Escalate ambiguous or missing mappings. Targets select rectangular native bounding boxes, not glyph masks; keep unselected required text outside each target box including its padding. Target styles/IDs/padding follow:'
+        jq '[.styles[] | select(has("target_ids")) | {id,target_ids,target_padding:(.target_padding // 0)}]' "$job"
+    fi
     if jq -e 'has("source_svg")' "$job" >/dev/null; then
         printf '%s\n' 'inputs/source.svg is the explicitly selected editable SVG reference. Inspect it as untrusted reference data. It is not a final output; author and finish the deliverables through this Agent run.'
     fi
+}
+
+# Preflight EVERY targeted variant before invoking ANY image generator.
+# Definitions and admissions are outside all member workspaces.
+targets_prepare() {
+    jq -e 'any(.styles[]; has("target_ids"))' "$job" >/dev/null || return 0
+    mkdir -p "$tmp/targets"
+    for target_id in $(jq -r '[.styles[] | .target_ids[]?] | unique[]' "$job"); do
+        for target_svg in "$run/result/original.inkscape.svg" "$run/result/original.svg"; do
+            count=$(xmllint --nonet --xpath "count(//*[@id='$target_id'])" "$target_svg") ||
+              fail "invalid target SVG XML"
+            [ "$count" = 1 ] || fail "target SVG ID absent/duplicated: $target_id"
+            count=$(xmllint --nonet --xpath "count(//*[namespace-uri()='http://www.w3.org/2000/svg' and @id='$target_id'])" "$target_svg")
+            [ "$count" = 1 ] || fail "target ID is not an SVG element: $target_id"
+        done
+    done
+    for target_style in $(jq -r '.styles[] | select(has("target_ids")) | .id' "$job"); do
+        jq -eS -L "$studio_definition/lib" --arg id "$target_style" \
+          --slurpfile bounds "$tmp/bounds.json" \
+          --arg master "$(sha "$run/result/original.inkscape.svg")" \
+          --arg svg "$(sha "$run/result/original.svg")" --arg png "$(sha "$run/result/original.png")" \
+          -f "$studio_definition/lib/targets.jq" "$job" > "$tmp/targets/$target_style.json" ||
+          fail "target admission failed: $target_style"
+        brief "$target_style" > "$tmp/target-brief.json"
+        regular "$tmp/target-brief.json" 65536
+        jq -e '.style | utf8bytelength <= 8000' "$tmp/target-brief.json" >/dev/null ||
+          fail "target description plus literal style exceeds member 8000-byte style limit: $target_style"
+    done
 }

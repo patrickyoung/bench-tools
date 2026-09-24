@@ -12,6 +12,7 @@ regular "$run/manifest.json" 1048576
 regular "$run/control/job.json" 1048576
 members
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/studio-check.XXXXXXXX")
+tmp=$(CDPATH= cd -- "$tmp" && pwd -P)
 trap 'rm -rf "$tmp"' 0
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -32,6 +33,7 @@ for pair in 'illustration.inkscape.svg original.inkscape.svg' 'illustration.svg 
     cmp "$run/vector/work/output/$1" "$run/result/$2" >&2 || fail "baseline is not unchanged checked vector output"
 done
 text_check
+targets_prepare
 if [ -f "$tmp/bounds.csv" ]; then
     regular "$run/control/text-bounds.csv" 4194304
     cmp "$tmp/bounds.csv" "$run/control/text-bounds.csv" >&2 || fail "queried text bounds drift"
@@ -39,6 +41,12 @@ fi
 for id in $(jq -r '.styles[].id' "$job"); do
     work=$run/styles/$id/work
     control=$run/styles/$id/control
+    if [ -f "$tmp/targets/$id.json" ]; then
+        regular "$run/control/targets/$id.json" 1048576
+        cmp "$tmp/targets/$id.json" "$run/control/targets/$id.json" >&2 || fail "target admission drift"
+    else
+        [ ! -e "$run/control/targets/$id.json" ] || fail "unselected target admission"
+    fi
     regular "$work/brief.json" 65536
     brief "$id" > "$tmp/brief.json"
     cmp "$tmp/brief.json" "$work/brief.json" >&2 || fail "style brief drift"

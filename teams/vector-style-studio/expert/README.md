@@ -99,12 +99,79 @@ Exactly one UTF-8 JSON object, <=1 MiB; duplicate keys and unknown fields reject
   Use stable IDs retained by Inkscape outlining. Bounds come from an independent
   actual Inkscape query, not caller/worker-authored coordinates. Missing, duplicate,
   zero-size, invalid or uncovered bounds reject before bitmap work.
-- `styles`: 1..8 exact `{id,style}` objects. Unique IDs match
+- `styles`: 1..8 objects with required `{id,style}` and optional
+  `target_ids`, `target_padding` only. Unique IDs match
   `[a-z][a-z0-9-]{0,31}`, excluding reserved `original`. Nonblank style string
   <=8000 UTF-8 bytes; preservation/composition directions may be included here.
-  Each string is preserved verbatim as a JSON value, without team suffix/prefix.
-  Exact preserve_regions also passes through unchanged. Encoded per-style brief
-  must fit the member's 64 KiB bound.
+  Without target_ids, each string is preserved verbatim as a JSON value, without
+  team suffix/prefix; exact global preserve_regions passes through unchanged.
+  Encoded per-style brief must fit the member's 64 KiB bound.
+- `styles[].target_ids`: optional array of 1..32 unique safe SVG IDs using the
+  required_text ID grammar. Null, empty, unsafe, duplicate or non-string values
+  reject. Every ID must identify exactly one actual SVG element in the editable
+  master and final SVG, and exactly one independently queried final-SVG box.
+- `styles[].target_padding`: optional integer 0..32 pixels, only with target_ids;
+  default 0. Null and fractional values reject.
+
+### Rectangular targeting
+
+This is an extension of the same team and unchanged Bitmap Stylizer, not a new
+image-edit pipeline. The caller's vector_request.description must identify the
+intended semantics of each selected ID; an ID alone is not a semantic mapping.
+The vector goal requests their preservation/introduction and outlining retention.
+Put all wording that must be exact in required_text, including selected lettering.
+
+Native Inkscape queries of the checked original.svg supply boxes, never a model
+coordinate file. Empty/missing/duplicate, zero, nonfinite, malformed or outside
+boxes reject before **any** bitmap variant runs. Measured boxes must be wholly
+in the canvas before padding. Expand by padding, round minima down and maxima
+up to whole pixel edges, then clip to canvas. Half-open rectangles select all
+pixels inside their union, including background within a text or icon box:
+**not glyph alpha masks, object segmentation, or semantic selection**.
+
+A deterministic jq slab complement protects every pixel outside that union via
+the existing member's preserve_regions compositor. Overlaps are supported;
+identical adjacent strips coalesce. A full-frame target union, >256 complement
+regions, >64 KiB encoded brief, or >8000-byte effective style fails clearly;
+protection and caller style are never truncated. Global preserve_regions still
+must cover every baseline required_text item exactly as before. For a targeted
+variant, they are replaced by the complement, not added to it. Each unselected
+required_text box must be disjoint from every expanded target box; touching
+edges are allowed. A group that overlaps nearby unselected weather data rejects.
+Only explicitly selected required_text IDs may intersect, even when the group
+contains that text as a descendant.
+
+Target briefs preserve the caller style string verbatim as a prefix, then append
+two newlines and this deterministic suffix (JSON is compact and escaped):
+`Rectangular targeting (original PNG pixels; keep exact selected wording): `
+followed by `{targets:[{id,edit_box}],selected_wording:[{id,text}]}`, then
+`. Edit only these boxes; preserve surrounding composition. Selected lettering must be visually verified.`
+Selected wording is taken from exact checked required_text entries, not inferred.
+This supplies the unchanged request author with coordinates and exact wording
+for its editing prompt. It is not the pixel protection mechanism or proof of
+prompt compliance. Selected lettering remains exact in the original SVG; its
+variant pixels are **not** guaranteed exact by restoration. Caller must visually
+verify targeted lettering. No OCR or model-based acceptance is added.
+
+Each targeted style has `control/targets/ID.json`, outside all member workspaces:
+selected IDs/padding, measured and expanded boxes, derived preserve_regions,
+canvas size, canonical master/SVG/PNG hashes, selected wording, text IDs allowed
+to change, and honest protection scope. Manifest variants expose the target
+IDs/boxes/scope plus admission path/hash. Non-targeted briefs, vector goals and
+manifest fields retain their old contract. The independent check freshly queries
+Inkscape, recomputes all target admissions/briefs, compares their bytes and hashes,
+and still delegates **every** bitmap acceptance to the unchanged check-output.
+All styles receive the same original.png, never another style's result.
+
+Example style entries (the description must map these IDs and required_text
+must supply exact selected lettering):
+
+    {"id":"headline","style":"Hand-painted lettering","target_ids":["title"]}
+    {"id":"icons","style":"Soft outlined icons","target_ids":["sun","cloud","rain"],"target_padding":2}
+
+A headline-only target with baseline-protected exact title is valid. An icons
+target whose expanded box intersects an unselected required temperature rejects,
+even when the caller also supplied a global temperature protection rectangle.
 
 For art-only work explicitly supply empty required_text and preserve_regions.
 For lettering, the vector goal supplies required text and caller-selected
@@ -114,6 +181,7 @@ together, the run stops; the caller must revise composition or rectangles.
 ## Files, provenance and acceptance
 
     control/                 frozen job/reference, admission hashes, vector goal/status/bindings
+    control/targets/ID.json   targeted styles only: caller-owned measured admission
     vector/work/             request, optional reference, state, checked vector outputs/handoff
     vector/evidence/         public Agent evidence, outside writable vector work
     styles/ID/work/          brief, canonical input PNG, member request/state
@@ -136,7 +204,10 @@ The checker has these hard criteria:
   input bytes agree; missing/stale/unselected references fail.
 - VECTOR: original member check independently establishes master/final/preview
   correspondence; initial checked output bindings remain unchanged.
-- TEXT: exact master lettering and independently queried bounds meet protection.
+- TEXT: exact master lettering and independently queried bounds meet baseline
+  global protection; unselected text cannot intersect any expanded target.
+- TARGET: independently recomputed rectangles, complement, admission and brief;
+  selected lettering requires visual verification, not a restoration claim.
 - BASELINE: published original files byte-match the checked vector outputs.
 - VARIANT: exact expected brief and same canonical source for every style;
   original bitmap check-output verifies pixels, receipts and Record evidence.
@@ -166,7 +237,12 @@ different literal styles each receive the same original bytes and pass all
 bindings. Negative examples: duplicate/unsafe style ID, mismatched or uncovered
 caption, changed baseline, chained style source, refreshed wrong manifest, or
 member failure must reject. In the source repository, run
+`sh tests/run.sh` beside an assembled expert, or
 `sh teams/vector-style-studio/tests/run.sh` from the repository root.
+`jq -ne -L expert/lib -f tests/complement.jq` independently enumerates small
+canvas pixels against the complement. The process suite includes headline/icons,
+nearby text, padding, overlap, malformed/duplicate bounds, drift, full-frame and
+member size limits.
 These repository-only tests and build notes are not included in clean exports.
 The tests assemble explicitly fake capabilities and run the real entry/check,
 starting from either an unassembled template or an assembled export. Fixtures

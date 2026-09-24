@@ -12,10 +12,12 @@
         "teams/vector-style-studio/tests/fake-stylize",
         "teams/vector-style-studio/tests/fake-bitmap-check",
         "teams/vector-style-studio/tests/fake-inkscape",
-        "teams/vector-style-studio/tests/job.json"
+        "teams/vector-style-studio/tests/job.json",
+        "teams/vector-style-studio/tests/target-job.json",
+        "teams/vector-style-studio/tests/complement.jq"
       ],
       "commands": [["sh", "teams/vector-style-studio/tests/run.sh"]],
-      "proves": "Real team entry and check with offline member fixtures: fixed stage order, exact unchanged baseline, independent canonical inputs, required text/bounds, tamper rejection and exact failure propagation. Fixtures do not establish native render correctness or style quality.",
+      "proves": "Real team entry and check with offline member fixtures: fixed stage order, unchanged baseline, independent canonical inputs, exact required text and native-bound targeting, rectangular complement coverage, unselected text exclusion, malformed targets and tamper rejection, legacy compatibility and exact failure propagation. Fixtures do not establish native render correctness, targeted lettering fidelity or style quality.",
       "requires": "POSIX sh, jq 1.6+, xmllint, shasum, installed Ask and Record",
       "prerequisites": {"commands": ["jq", "xmllint", "shasum", "ask", "record"]}
     },
@@ -816,11 +818,11 @@
   ],
   "quality_cases": {
     "teams/vector-style-studio": {
-      "ordinary": "Create an editable infographic SVG, its unchanged native PNG and three independently styled bitmaps, protecting the supplied factual text IDs and measured bounds.",
-      "missing": "A missing member, generator, reference, required text item or protected text area stops the flow with retained evidence before dependent work.",
-      "near_miss": "A convincing style is sourced from a previous generated variant, the plain PNG has been enhanced, or restored text creates a visible seam; independently check source identity and actual pixels.",
-      "transfer": "Run a fresh art-only brief with no text/regions and a different aspect ratio and style list; retain independent source bindings and actual visual review.",
-      "rubric": "True editable vectors, exact native raster baseline, every variant bound to the same baseline, protected wording and readable composition, visible distinct requested styles, honest bitmap/vector provenance and full-size/thumbnail review."
+      "ordinary": "Create an editable infographic SVG, its unchanged native PNG and independent bitmap styles. Include a headline-only treatment and an icons-only treatment selected by actual SVG IDs; compare every pixel outside their measured padded rectangles with the original.",
+      "missing": "A missing member, generator, reference, required text item, target ID or protected text area stops the flow with retained evidence before dependent work. Invalid targeted variants stop before any image generation.",
+      "near_miss": "A convincing style is chained from a prior variant, the baseline is enhanced, icon bounds overlap unselected weather text, or selected lettering is misspelled despite correct outside-target restoration. Check source identity, independently measured rectangles, exact outside pixels and actual targeted lettering.",
+      "transfer": "Run a fresh art-only brief with no text/regions and a different aspect ratio and style list; also retain legacy jobs without target_ids. Keep independent source bindings and actual visual review.",
+      "rubric": "True editable vectors, exact native raster baseline, every variant bound to the same baseline, exact pixels outside selected rectangular targets, readable and correctly spelled selected lettering, recognizable targeted icons, visible requested styles, honest bitmap/vector provenance and full-size/thumbnail review. Rectangular restoration does not establish targeted text fidelity."
     },
     "workers/product-owner": {
       "ordinary": "Turn a fictional support team problem (repeat tickets, uncertain cause) into outcome intake and backlog experiments.",

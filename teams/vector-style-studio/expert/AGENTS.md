@@ -26,11 +26,21 @@ manifest. Markdown grants no execution, network or model authority.
 3. Reuse vector's original check before publication. Retain editable master,
    outlined SVG, native PNG, design notes, handoff and render receipts. Original
    PNG is copied byte-for-byte, never restyled, filtered or normalized. Independently
-   query Inkscape bounds and reject missing/mismatched/unprotected required text
-   before any bitmap invocation.
+   query Inkscape bounds whenever required_text or target_ids exists, and reject
+   missing/mismatched/unprotected required text before any bitmap invocation.
+   Preflight every targeted style: unique actual master/final SVG IDs, finite
+   in-canvas native boxes, clipped integer padding, and the deterministic
+   rectangular complement. Reject full-frame unions, oversized complements,
+   and intersections with any required text ID not explicitly selected.
+   Target semantics come from the job description/reference, never inferred
+   weather/text identities. Preserve or introduce requested IDs in the goal.
 4. In job order, host makes a separate work/control for each style. Each gets
-   the SAME canonical original.png and exactly the caller's style string and
-   preserve_regions. Invoke the existing bitmap bin/stylize once per style.
+   the SAME canonical original.png. With no target_ids, pass exactly the caller's
+   style string and global preserve_regions. Otherwise retain the literal style
+   as a prefix, append the documented deterministic targeting/wording suffix,
+   and pass the measured complement as preserve_regions. Caller-owned target
+   admissions live in run/control/targets, outside every member workspace.
+   Invoke the existing bitmap bin/stylize once per style.
    Its author Agent, generator and compositor are already defined by that member;
    do not replace them. No style consumes another style's output.
 5. Reuse each bitmap check-output and the independent team bin/check. Publish
@@ -53,7 +63,11 @@ rectangles requires the caller. Do not silently omit a style or accept an SVG
 reference as finished output.
 
 All final PNGs are wholly raster. Protected regions are original raster pixels,
-not editable vector text. The image backend consumes SVG-rendered pixels, not
+not editable vector text. Targeting is rectangular, not per-glyph masking or
+semantic segmentation. Explicitly selected required text retains exact content
+in the original master, but its variant pixels may change: request its exact
+wording and require caller visual verification, never claim restoration proves
+that targeted lettering remains exact. The image backend consumes SVG-rendered pixels, not
 SVG paths. Deterministic checks do not see aesthetics or establish literal
 visibility, unprotected factual correctness, style fidelity or seamless edges.
 Keep semantic/visual review marked pending even on a deterministic pass. Caller

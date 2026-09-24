@@ -10,3 +10,30 @@ case ${FIX_BOUNDS:-good} in
  uncovered) printf 'caption,10,10,180,20\n';;
  *) exit 89;;
 esac
+
+printf 'weather-data,100,70,60,12\ncloud,126,50,16,16\nrain,152,50,16,16\n'
+printf 'edge,0.25,0.5,4.5,5.25\noverlap,108,55,25,15\nleft,0,0,128,256\nright,128,0,128,256\n'
+case ${FIX_TARGET_BOUNDS:-good} in
+ good) printf 'sun,100,50,16,16\n';;
+ missing) :;;
+ empty) printf 'sun,,,,\n';;
+ short) printf 'sun,100,50,16\n';;
+ duplicate) printf 'sun,100,50,16,16\nsun,100,50,16,16\n';;
+ bad-duplicate) printf 'sun,100,50,16,16\nsun,broken\n';;
+ zero) printf 'sun,100,50,0,16\n';;
+ negative) printf 'sun,100,50,-1,16\n';;
+ nan) printf 'sun,NaN,50,16,16\n';;
+ infinite) printf 'sun,1e999,50,16,16\n';;
+ bad) printf 'sun,not-a-number,50,16,16\n';;
+ outside) printf 'sun,250,50,16,16\n';;
+ negative-origin) printf 'sun,-1,50,16,16\n';;
+ intersect) printf 'sun,100,50,16,24\n';;
+ drift) printf 'sun,101,50,16,16\n';;
+ *) exit 89;;
+esac
+
+if [ "${FIX_GRID:-0}" = 1 ]; then
+    jq -nr 'range(0;32) as $i |
+      if $i<16 then ["grid\($i)",(8+$i*15),0,2,256]
+      else ["grid\($i)",0,(8+($i-16)*15),256,2] end | join(",")'
+fi

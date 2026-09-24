@@ -35,7 +35,13 @@ def job:
     keys_are(["id","text"]; []) and (.id | tid) and (.text | text(8000)))
     and (map(.id) | length == (unique | length)))
   and (.styles | type == "array" and length >= 1 and length <= 8 and all(
-    keys_are(["id","style"]; []) and (.id | sid and . != "original") and (.style | text(8000)))
+    keys_are(["id","style"]; ["target_ids","target_padding"])
+    and (.id | sid and . != "original") and (.style | text(8000))
+    and ((has("target_ids") | not) or
+      (.target_ids | type == "array" and length >= 1 and length <= 32
+       and all(.[]; tid) and length == (unique | length)))
+    and ((has("target_padding") | not) or
+      (has("target_ids") and (.target_padding | integer and . >= 0 and . <= 32))))
     and (map(.id) | length == (unique | length)));
 # Exact union area by horizontal slabs and merged y intervals, no pixel decoder.
 def union_area:
@@ -52,5 +58,6 @@ select((.preserve_regions | union_area) <
   ((.vector_request.width // 1200) * (.vector_request.height // 900))) |
 . as $job |
 select(all(.styles[];
+  has("target_ids") or
   ({version:1,source:"inputs/source.png",style:.style,preserve_regions:$job.preserve_regions}
    | tojson | utf8bytelength) < 65536))

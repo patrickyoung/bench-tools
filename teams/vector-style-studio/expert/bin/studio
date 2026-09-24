@@ -33,6 +33,7 @@ if jq -e 'has("source_svg")' "$original_job" >/dev/null; then
       fail "reference must be SVG"
 fi
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/studio.XXXXXXXX")
+tmp=$(CDPATH= cd -- "$tmp" && pwd -P)
 trap 'rm -rf "$tmp"' 0
 trap 'exit 130' INT
 trap 'exit 143' TERM
@@ -77,6 +78,11 @@ cp "$run/vector/work/output/illustration.svg" "$run/result/original.svg"
 cp "$run/vector/work/output/preview.png" "$run/result/original.png"
 cmp "$run/vector/work/output/preview.png" "$run/result/original.png" >&2
 text_check
+targets_prepare
+if [ -d "$tmp/targets" ]; then
+    cp -R "$tmp/targets" "$run/control/targets"
+    chmod a-w "$run/control/targets/"*.json
+fi
 if [ -f "$tmp/bounds.csv" ]; then cp "$tmp/bounds.csv" "$run/control/text-bounds.csv"; fi
 for id in $(jq -r '.styles[].id' "$job"); do
     work=$run/styles/$id/work

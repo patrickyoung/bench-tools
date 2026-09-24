@@ -1,0 +1,16 @@
+{
+  "version":1,
+  "vector_request":{
+    "description":"Synthetic fixture only. caption is the headline with wording TEST. sun, cloud and rain are the three weather-icon groups; weather-data is nearby exact text VALUE. edge is a corner shape, overlap is a separate overlapping shape, left and right are half-frame shapes.",
+    "width":256,"height":256
+  },
+  "required_text":[{"id":"caption","text":"TEST"},{"id":"weather-data","text":"VALUE"}],
+  "preserve_regions":[
+    {"x":8,"y":8,"width":100,"height":32,"label":"Headline"},
+    {"x":98,"y":68,"width":70,"height":16,"label":"Nearby weather text"}
+  ],
+  "styles":[
+    {"id":"headline","style":"Literal \"headline\" style;\nline two — keep \\ escapes.","target_ids":["caption"]},
+    {"id":"icons","style":"Literal icons-only treatment.","target_ids":["sun","cloud","rain"]}
+  ]
+}

@@ -24,7 +24,9 @@
     "teams/vector-style-studio/expert/bin/studio",
     "teams/vector-style-studio/expert/lib/common.sh",
     "teams/vector-style-studio/expert/lib/job.jq",
-    "teams/vector-style-studio/expert/lib/unique.jq"
+    "teams/vector-style-studio/expert/lib/unique.jq",
+    "teams/vector-style-studio/expert/lib/complement.jq",
+    "teams/vector-style-studio/expert/lib/targets.jq"
   ],
   "members": {
     "vector": {"worker": "inkscape-illustrator"},
