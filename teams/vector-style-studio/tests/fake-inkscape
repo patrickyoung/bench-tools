@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+[ "$#" -eq 2 ] && [ "$1" = --query-all ] && [ -f "$2" ]
+case ${FIX_BOUNDS:-good} in
+ good) printf 'caption,10,10,80,20\n';;
+ missing) printf 'other,10,10,80,20\n';;
+ invalid) printf 'caption,10,10,0,20\n';;
+ nan) printf 'caption,NaN,10,80,20\n';;
+ duplicate) printf 'caption,10,10,80,20\ncaption,10,10,80,20\n';;
+ uncovered) printf 'caption,10,10,180,20\n';;
+ *) exit 89;;
+esac

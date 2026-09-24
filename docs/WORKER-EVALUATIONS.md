@@ -1,7 +1,7 @@
 # Worker and team evaluation runbook
 
 `make check-workers` runs the library's offline regression suites. All 25 workers
-and three teams have mapped tests and separate quality cases in
+and four teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
 It makes no paid model calls and installs no dependencies.
@@ -45,6 +45,12 @@ The bitmap stylizer's core suite also needs Go 1.22+ and the public `ask` and
 offline author/generator fixtures with real recording commands. An existing
 Bench installation supplies those commands; CI builds them independently with
 `python3 scripts/build ask record` and adds `.build/bin` to PATH.
+
+Vector Style Studio's core suite uses `jq`, `xmllint`, `shasum`, Ask and Record.
+It runs the actual fixed team command with offline worker fixtures to check
+the unchanged baseline, independent source inputs, protected text bounds,
+tamper rejection and failure propagation. Actual SVG rendering and generated
+style quality require a separately selected live case and visual review.
 
 Focused runs select every matching suite in the selected profiles. Shared suites
 may also test other roles. Unknown IDs and empty selections fail explicitly.

@@ -1,0 +1,8 @@
+#!/bin/sh
+# This intentionally checks only fixture production, NOT SVG/PNG validity.
+set -eu
+[ -f output/illustration.inkscape.svg ] && [ -f output/illustration.svg ]
+[ -f output/preview.png ] && [ -f output/render.json ]
+[ -f handoff.json ] && [ -f request.json ]
+printf 'vector-check\n' >> "$FIX_EVENTS"
+echo 'fixture vector check' >&2

@@ -1,0 +1,60 @@
+#!/bin/sh
+# Independent read-only acceptance; temporary native renders/queries only.
+set -eu
+umask 077
+studio_definition=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+. "$studio_definition/lib/common.sh"
+[ "$#" -le 1 ] || setup "usage: check ABS_RUN"
+run=${1:-$(pwd -P)}
+clean "$run"
+# Reject empty prechecks cheaply, even in an unassembled source definition.
+regular "$run/manifest.json" 1048576
+regular "$run/control/job.json" 1048576
+members
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/studio-check.XXXXXXXX")
+trap 'rm -rf "$tmp"' 0
+trap 'exit 130' INT
+trap 'exit 143' TERM
+job=$run/control/job.json
+guard_inputs
+vector_goal > "$tmp/vector-goal.txt"
+regular "$run/control/vector-goal.txt" 1048576
+cmp "$tmp/vector-goal.txt" "$run/control/vector-goal.txt" >&2 || fail "vector goal drift"
+regular "$run/control/vector.exit" 16
+[ "$(cat "$run/control/vector.exit")" = 0 ] || fail "vector did not finish"
+(cd "$run/vector/work" && "$studio_definition/agents/vector/bin/check") >&2
+vector_binding > "$tmp/vector-bindings.txt"
+regular "$run/control/vector-bindings.txt" 4096
+cmp "$tmp/vector-bindings.txt" "$run/control/vector-bindings.txt" >&2 || fail "checked vector outputs mutated"
+for pair in 'illustration.inkscape.svg original.inkscape.svg' 'illustration.svg original.svg' 'preview.png original.png'; do
+    set -- $pair
+    regular "$run/result/$2" 67108864
+    cmp "$run/vector/work/output/$1" "$run/result/$2" >&2 || fail "baseline is not unchanged checked vector output"
+done
+text_check
+if [ -f "$tmp/bounds.csv" ]; then
+    regular "$run/control/text-bounds.csv" 4194304
+    cmp "$tmp/bounds.csv" "$run/control/text-bounds.csv" >&2 || fail "queried text bounds drift"
+fi
+for id in $(jq -r '.styles[].id' "$job"); do
+    work=$run/styles/$id/work
+    control=$run/styles/$id/control
+    regular "$work/brief.json" 65536
+    brief "$id" > "$tmp/brief.json"
+    cmp "$tmp/brief.json" "$work/brief.json" >&2 || fail "style brief drift"
+    regular "$work/inputs/source.png" 33554432
+    cmp "$run/result/original.png" "$work/inputs/source.png" >&2 || fail "chained or changed style source"
+    regular "$run/styles/$id/stylize.exit" 16
+    [ "$(cat "$run/styles/$id/stylize.exit")" = 0 ] || fail "bitmap stage did not finish"
+    "$studio_definition/agents/bitmap/bin/check-output" "$work" "$control" > "$tmp/artifact.json"
+    regular "$control/artifact.json" 1048576
+    regular "$run/styles/$id/stylize.stdout" 1048576
+    cmp "$tmp/artifact.json" "$control/artifact.json" >&2 || fail "bitmap artifact drift"
+    cmp "$tmp/artifact.json" "$run/styles/$id/stylize.stdout" >&2 || fail "bitmap stdout drift"
+    regular "$control/final.png" 33554432
+    regular "$run/result/$id.png" 33554432
+    cmp "$control/final.png" "$run/result/$id.png" >&2 || fail "published variant drift"
+done
+manifest > "$tmp/manifest.json"
+cmp "$tmp/manifest.json" "$run/manifest.json" >&2 || fail "manifest hashes/flow/review status drift"
+echo 'Accepted byte-bound fixed flow; semantic/visual review remains pending.' >&2

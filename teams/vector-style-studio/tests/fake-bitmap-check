@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+work=$1 control=$2
+cmp "$control/brief.json" "$work/brief.json" >&2
+cmp "$control/source.png" "$work/inputs/source.png" >&2
+sha=$(shasum -a 256 "$control/final.png" | cut -d ' ' -f 1)
+[ "$sha" = "$(cat "$control/final.sha")" ]
+jq -n --arg work "$work" --arg control "$control" --arg sha "$sha" \
+ '{work:$work,control:$control,sha256:$sha}'
