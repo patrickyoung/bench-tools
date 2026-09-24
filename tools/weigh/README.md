@@ -199,10 +199,6 @@ Record retains the request, result, diagnostics, and process outcome; replay
 does not contact the model. Weigh creates no session or background service.
 See the [semantic checker](examples/semantic-check/README.md) and
 [visual checker](examples/visual-check/README.md) for caller-owned compositions.
-The [Web tasks](examples/web-tasks/README.md) compose the separate `web` command
-with Weigh to navigate to a requested page or shortlist rendered rows/cards.
-They include a September 2026 review of actual community browser builds and
-an end-to-end local-browser check, with inference fixtures labeled as such.
 The [improvement workflow](examples/improve-checks/README.md) adds optional
 diagnosis, next-fix selection, offline calibration and exact proposal review
 around existing tools. Its `select-fix.py` helper lets trusted rules settle
