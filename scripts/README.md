@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 26 commands under .build/bin
+scripts/build                              # all 27 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local

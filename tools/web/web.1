@@ -1,0 +1,84 @@
+.TH WEB 1 "September 2026" "web 2.0.0" "User Commands"
+.SH NAME
+web \- render a page or execute a finite browser plan
+.SH SYNOPSIS
+.B web
+get|read|text|html|links|snapshot URL [options]
+.br
+.B web
+shot URL [out.png] [options]
+.br
+.B web
+run [FILE|-] [--may-job JOB] [--attach ENDPOINT] [--keep | --tab ID]
+.br
+.B web
+ auth URL FILE [--channel chrome] [--attach ENDPOINT] [--may-job JOB]
+.br
+.B web
+setup|check|version|help
+.SH DESCRIPTION
+Web is an independent Go program using installed Chromium over CDP. It has no
+model, task loop or shared runtime. Reads emit data to stdout; run emits one
+JSON transcript. Diagnostics go to stderr. setup checks the installed browser;
+check verifies embedded reduction fixtures offline.
+.SH OPTIONS
+.TP
+.B --wait MODE
+Read/goto readiness: domcontentloaded (default), load or networkidle.
+.TP
+.B --timeout MS
+Read deadline, default 30000 milliseconds. Positive, at most 86400000.
+.TP
+.B --records-selector CSS
+Snapshot records selected in the same evaluation as the page observation.
+.TP
+.B --profile FILE
+Explicit cookies/origins storage-state JSON. Conflicts with --attach.
+.TP
+.B --attach ENDPOINT
+Use the default context in a caller-owned browser. A port, HTTP(S) endpoint
+or browser WebSocket URL. Never launches a fallback or closes that browser.
+.TP
+.B --keep
+Run only: requires attach, retains its own tab only on success. Prints target ID.
+.TP
+.B --tab ID
+Run only: requires attach, selects exactly this target and never closes it.
+Conflicts with keep.
+.TP
+.B --may-job JOB
+Use May's request JOB interface; exact action bytes go to its stdin. The
+versioned machine verdict and exit status must agree before acting.
+.SH PLANS
+A JSON array or object with steps. goto, click, type [CSS,text], select
+[CSS,value], wait (CSS or milliseconds), read, html, shot and submit are
+supported. Steps have optional timeout, may and irreversible fields. html's
+out field writes complete markup to a file. Inline markup above 200000
+characters fails. Password input is refused. See README.md for step shapes.
+.PP
+Every click, submit and irreversible:true step calls may request JOB with --may-job (or the legacy Clerk job variables),
+otherwise asks y/N on /dev/tty. Plans cannot disable this. Attached auth
+exports require approval before connecting. Fresh auth waits for manual login
+and Enter; EOF does not save. Profiles are written atomically with mode 0600.
+.SH OUTPUT
+Snapshot version 1: requested_url, url, title, text, links and records. Each
+link has label and url; each record has text and links. Snapshot output,
+plan input and profile input are limited to 8 MiB. No partial snapshot stdout.
+Run transcript: ok, ms and steps, with zero-based i, ok and operation result.
+The first failure halts execution. A parked run restarts from the beginning.
+.SH ENVIRONMENT
+WEB_BROWSER selects Chromium. WEB_ATTACH_TIMEOUT bounds CDP connection
+(default 10000 milliseconds). WEB_STATE selects audit JSONL; default is
+XDG_STATE_HOME/web/web.jsonl or ~/.local/state/web/web.jsonl.
+CLERK_WORKER, JOB_ID and CLERK_WROOT together select the May job gate.
+.SH EXIT STATUS
+0 complete; 1 operation/browser failure; 2 invalid input; 3 declined;
+64 unknown command; 75 parked; 77 no approver.
+.SH FILES
+Profiles contain cookies and localStorage from open origins. Closed origins,
+IndexedDB, sessionStorage and passwords are not exported. Partitioned cookies
+are refused on export/replay; use attach for those sessions. Browser profiles,
+audit logs, screenshots and HTML output belong in caller-selected writable
+locations, outside the installed source library.
+.SH SEE ALSO
+README.md, DESIGN.md
