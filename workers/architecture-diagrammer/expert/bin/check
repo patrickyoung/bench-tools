@@ -1,0 +1,24 @@
+#!/usr/bin/env -S python3 -I
+import importlib.util
+from pathlib import Path
+import sys
+sys.dont_write_bytecode = True
+try:
+    spec = importlib.util.spec_from_file_location("diagram_core", Path(__file__).resolve().parents[1] / "tools/core.py")
+    core = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(core)
+    # Immutable dependencies are infrastructure, never unfinished job data.
+    core.definition_hash()
+except Exception as e:
+    print("Broken definition/checker: " + str(e), file=sys.stderr)
+    sys.exit(2)
+try:
+    core.need(sys.argv[1:] in ([], ["--rendered"]), "usage: check [--rendered]")
+    core.check(Path.cwd(), bool(sys.argv[1:]))
+    print("Accepted structurally; not independent semantic/pixel review or approval.")
+except (core.Reject, OSError, UnicodeError, ValueError, TypeError, KeyError, RecursionError) as e:
+    print("Unfinished: " + str(e), file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print("Broken checker: " + str(e), file=sys.stderr)
+    sys.exit(2)

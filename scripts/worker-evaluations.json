@@ -94,6 +94,26 @@
       "prerequisites": {}
     },
     {
+      "id": "architecture-diagrammer",
+      "profile": "core",
+      "covers": [
+        "workers/architecture-diagrammer"
+      ],
+      "tests": [
+        "workers/architecture-diagrammer/tests/test_offline.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-I",
+          "workers/architecture-diagrammer/tests/test_offline.py"
+        ]
+      ],
+      "proves": "Closed source/model contract, exact compiled Mermaid agreement, stable IDs, meaningful positive/negative cases, byte bindings, safe file admission and checker failure classification; no pixel or source-truth verdict.",
+      "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
       "id": "solution-architect",
       "profile": "core",
       "covers": [
@@ -1019,6 +1039,13 @@
       "transfer": "Plan a multi-branch booking portal with concurrent reservations, tenant-scoped admin, weak mobile connectivity and iterative usability feedback.",
       "rubric": "Actual requested code and observed checks; exact baseline, supported locked dependencies, all four environments, OIDC/admin/tenant enforcement, usable accessible journeys, measured scaling and clear DevOps/QA handoffs. No invented user, performance or production evidence."
     },
+    "workers/architecture-diagrammer": {
+      "ordinary": "Transform selected Enterprise Architect and Solution Architect handoffs into focused source-qualified diagrams; independently inspect actual SVG and PNG.",
+      "missing": "Equally authoritative documents disagree on data ownership and direction; request decisive owner input rather than invent a definitive diagram.",
+      "near_miss": "A polished diagram reverses an arrow, hides provisional status, invents a protocol, loses a data restriction, or displays escaped characters or clipped labels.",
+      "transfer": "Decompose a dense multi-platform estate with shared stable IDs and complete relationship coverage, including current lifecycle and conditional retirement gates.",
+      "rubric": "Faithful entities, arrows, state, authority and qualifiers; complete scoped cross-view coverage; actual fresh readable pixels and independent review of exact hashes. Structural/render success is not architectural approval."
+    },
     "workers/solution-architect": {
       "ordinary": "Transform an internal request workflow into a configured solution on supplied approved platforms, mapping EA SSO/audit/retention standards and measurable proof/cutover/operations handoffs.",
       "missing": "Conflicting mandatory retention policies, absent platform catalogue and expired pilot exception: require honest needs-input or provisional with accountable decision gates, never invented authority.",
@@ -1029,6 +1056,7 @@
   },
   "manual_tests": {
     "teams/page-team/tests/smoke-brief.py": "Prints a brief for a separately selected paid page-team composition run; see runbook. Does not run a suite.",
-    "workers/worldweaver-omega/tests/dependency-profiles.mjs": "Optional offline npm-cache-dependent capability-profile installation and bundle test; explicit fresh output path; see tests/README.md."
+    "workers/worldweaver-omega/tests/dependency-profiles.mjs": "Optional offline npm-cache-dependent capability-profile installation and bundle test; explicit fresh output path; see tests/README.md.",
+    "workers/architecture-diagrammer/tests/test_render.py": "Opt-in real Dagre/ELK/sequence SVG+PNG probes with explicit external runtime, Node, browser and fresh external output directory under Cage. Includes literal and extent assertions; requires independent pixel review. See worker tests README."
   }
 }

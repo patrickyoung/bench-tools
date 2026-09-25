@@ -1,0 +1,34 @@
+#!/usr/bin/env -S python3 -I
+"""Only this admitted tool writes generated authoring artifacts."""
+import importlib.util
+from pathlib import Path
+import sys
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("diagram_core", Path(__file__).resolve().with_name("core.py"))
+c = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(c)
+try:
+    c.need(not sys.argv[1:], "usage: compile (from workspace)")
+    w = Path.cwd()
+    snap = c.snapshot(w)
+    old = c.tree(w / "output", True)
+    c.need("model.json" in old, "write output/model.json first")
+    m = c.load(old["model.json"])
+    products = {"model.json": old["model.json"], **c.products(m, snap)}
+    # Explicit compile invalidates earlier renders and bindings; unknown files
+    # are never deleted. Keep previous work outside output before regeneration.
+    allowed = {"model.json", "manifest.json", "report.md", "coverage.md", "render.json"}
+    allowed |= {"view-%02d%s" % (n, ext) for n in range(1, 9)
+                for ext in (".mmd", ".alt.md", ".svg", ".png")}
+    c.need(set(old) <= allowed, "unknown output; preserve it outside output before compile")
+    for n in set(old) - {"model.json"}:
+        (w / "output" / n).unlink()
+    for n, b in products.items():
+        if n != "model.json":
+            (w / "output" / n).write_bytes(b)
+    (w / "output/manifest.json").write_bytes(c.dump(c.manifest(snap, products)))
+    c.check(w)
+    print("Compiled; authoring stage only.")
+except (c.Reject, OSError, UnicodeError, ValueError, TypeError, KeyError, RecursionError) as e:
+    print(str(e), file=sys.stderr)
+    sys.exit(1)

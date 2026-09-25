@@ -1,0 +1,43 @@
+{
+  "id": "architecture-diagrammer",
+  "description": "Create evidence-linked enterprise and solution architecture views with consistent Mermaid sources, local SVG/PNG rendering, cross-view coverage and independent source and pixel review.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "2ec79db01ed479dd1f639e1d6784645cc29071a0",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library; Unix env -S and no-follow regular files",
+    "renderer": "Node >=22; external npm ci from bundled lock: Mermaid CLI 11.17.0, Mermaid 11.17.2, Puppeteer 25.11.0; explicitly selected local chrome-headless-shell; host invokes renderer under network-denied Cage",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "inputs": "Current request and explicitly staged architecture handoffs, facts and standards; no sibling runtime dependency",
+    "review": "Independent source fidelity and actual SVG/PNG pixel review against QUALITY.md; authoring/render checks do not establish approval or professional quality"
+  },
+  "files": [
+    "workers/architecture-diagrammer/expert/AGENTS.md",
+    "workers/architecture-diagrammer/expert/CONTRACT.md",
+    "workers/architecture-diagrammer/expert/LICENSE",
+    "workers/architecture-diagrammer/expert/PROFILE.md",
+    "workers/architecture-diagrammer/expert/QUALITY.md",
+    "workers/architecture-diagrammer/expert/README.md",
+    "workers/architecture-diagrammer/expert/bin/check",
+    "workers/architecture-diagrammer/expert/package-lock.json",
+    "workers/architecture-diagrammer/expert/package.json",
+    "workers/architecture-diagrammer/expert/references.md",
+    "workers/architecture-diagrammer/expert/skills/architecture-views/SKILL.md",
+    "workers/architecture-diagrammer/expert/skills/diagram-review/SKILL.md",
+    "workers/architecture-diagrammer/expert/tools/compile",
+    "workers/architecture-diagrammer/expert/tools/core.py",
+    "workers/architecture-diagrammer/expert/tools/render",
+    "workers/architecture-diagrammer/expert/tools/render.mjs"
+  ]
+}

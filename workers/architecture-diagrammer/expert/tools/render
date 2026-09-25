@@ -1,0 +1,76 @@
+#!/usr/bin/env -S python3 -I
+"""Host-only renderer launcher; never imported by bin/check."""
+import argparse
+import importlib.util
+from pathlib import Path
+import os
+import subprocess
+import sys
+import tempfile
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("diagram_core", Path(__file__).resolve().with_name("core.py"))
+c = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(c)
+
+def main():
+    p = argparse.ArgumentParser(description="Host rendering of a structurally checked package; no installs/network.")
+    p.add_argument("--runtime", required=True, help="absolute operator-admitted npm runtime root with package-lock.json")
+    p.add_argument("--node", required=True, help="absolute admitted Node executable, version >=22")
+    p.add_argument("--browser", required=True, help="absolute installed Puppeteer-compatible Chromium executable")
+    p.add_argument("--outer-cage", action="store_true", required=True,
+                   help="controller attests invocation under network-denied outer Cage; inner sandbox disabled")
+    a = p.parse_args()
+    for value in (a.runtime, a.node, a.browser):
+        c.need(Path(value).is_absolute(), "runtime, node and browser paths must be absolute")
+    runtime, node, browser = [Path(x).resolve(strict=True) for x in (a.runtime, a.node, a.browser)]
+    c.need(runtime.is_dir() and node.is_file() and browser.is_file(), "runtime/executable missing")
+    w = Path.cwd()
+    m, snap, files = c.check(w)
+    c.need(m["status"] != "needs-input", "needs-input has no renderable diagram")
+    with tempfile.TemporaryDirectory(prefix="diagram-render-") as td:
+        tmp = Path(td).resolve()
+        job = {"runtime": str(runtime), "browser": str(browser), "output": str(tmp), "outerCage": a.outer_cage, "views": []}
+        for n, v in enumerate(m["views"], 1):
+            base = "view-%02d" % n
+            cfg = c.config(v)
+            job["views"].append({"base": base, "view": v, "scope": m["scope"], "status": m["status"],
+                                 "key": c.figure_key(v), "notes": c.frame_notes(v, {e["id"]: e for e in m["entities"]}),
+                                 "labels": c.visible_labels(v, {e["id"]: e for e in m["entities"]},
+                                                           {r["id"]: r for r in m["relationships"]}),
+                                 "source": files[base + ".mmd"].decode(), "config": cfg})
+        (tmp / "job.json").write_bytes(c.dump(job))
+        env = {k: v for k, v in os.environ.items()
+               if k in {"PATH", "HOME", "TMPDIR", "TEMP", "SystemRoot"}}
+        subprocess.run([str(node), str(c.HOME / "tools/render.mjs"), str(tmp / "job.json")],
+                       env=env, check=True, timeout=210)
+        rt = c.load(c.read(tmp / "runtime.json"))
+        receipt = {"schema": "architecture-render/v1", "stage": "rendered-unreviewed",
+                   "manifest_sha256": c.sha(files["manifest.json"]),
+                   "renderer_sha256": c.sha(c.read(c.HOME / "tools/render.mjs")),
+                   "runtime": rt, "views": []}
+        result = {}
+        for n, v in enumerate(m["views"], 1):
+            base = "view-%02d" % n
+            row = {"id": v["id"], "source_sha256": c.sha(files[base + ".mmd"]),
+                   "config_sha256": c.sha(c.dump(c.config(v)))}
+            for ext in ("svg", "png"):
+                name = base + "." + ext
+                data = c.read(tmp / name, (32 if ext == "png" else 8) * c.MIB)
+                row[ext] = {"path": name, "sha256": c.sha(data),
+                            "dimensions": c.image_dimensions(data, ext)}
+                result[name] = data
+            receipt["views"].append(row)
+        # Fail closed if source changed while a browser was running.
+        _, now, current = c.check(w)
+        c.need(snap == now and current == files, "workspace changed during rendering")
+        for name, data in result.items():
+            (w / "output" / name).write_bytes(data)
+        (w / "output/render.json").write_bytes(c.dump(receipt))
+        c.check(w, True)
+        print("Rendered locally; independent semantic and pixel review still required.")
+
+try:
+    main()
+except (c.Reject, OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as e:
+    print("Render unfinished: " + str(e), file=sys.stderr)
+    sys.exit(1)
