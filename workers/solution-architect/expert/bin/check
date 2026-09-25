@@ -1,0 +1,340 @@
+#!/usr/bin/env -S python3 -I
+"""Read-only structural acceptance; semantic review remains independent."""
+import datetime
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import stat
+import sys
+
+MIB = 1024 * 1024
+LENSES = {
+    "business-to-requirements", "platform-options", "solution-design",
+    "quality-security-operations", "ea-conformance", "delivery-migration",
+    "pragmatic-ai",
+}
+
+
+class Rejected(Exception):
+    pass
+
+
+def require(condition, message):
+    if not condition:
+        raise Rejected(message)
+
+
+def text(value, label):
+    require(isinstance(value, str) and 0 < len(value) <= 8000
+            and bool(value.strip()), label + ": expected nonempty string <=8000")
+    return value
+
+
+def shape(value, keys, label):
+    require(isinstance(value, dict) and set(value) == set(keys.split()),
+            label + ": wrong object fields")
+
+
+def enum(value, choices, label):
+    text(value, label)
+    require(value in choices.split(), label + ": invalid enum")
+
+
+def array(value, label, minimum=0, maximum=128):
+    require(isinstance(value, list) and minimum <= len(value) <= maximum,
+            label + ": invalid array size/type")
+
+
+def strings(value, label, minimum=0, maximum=128):
+    array(value, label, minimum, maximum)
+    for item in value:
+        text(item, label)
+    require(len(set(value)) == len(value), label + ": duplicates")
+
+
+def path_name(value, root):
+    text(value, "path")
+    require(not any(ord(c) < 32 or ord(c) == 127 for c in value)
+            and "\\" not in value and ":" not in value,
+            "unsafe path characters")
+    parts = value.split("/")
+    require(parts[0] == root and len(parts) > 1
+            and all(p not in ("", ".", "..") for p in parts), "unsafe path")
+
+
+def signature(info):
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
+
+
+def read_file(path, limit, utf8=False, nonempty=False):
+    before = path.lstat()
+    require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1,
+            str(path) + ": not a single-link regular file")
+    require(before.st_size <= limit, str(path) + ": oversized file")
+    flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    with os.fdopen(fd, "rb") as stream:
+        opened = os.fstat(stream.fileno())
+        require(stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+                and signature(before) == signature(opened), "file changed on open")
+        data = stream.read(limit + 1)
+        require(signature(opened) == signature(os.fstat(stream.fileno())),
+                "file changed during read")
+    require(len(data) <= limit and len(data) == opened.st_size, "file size changed")
+    if nonempty:
+        require(bool(data), str(path) + ": empty file")
+    if utf8:
+        decoded = data.decode("utf-8")
+        if nonempty:
+            require(bool(decoded.strip()), str(path) + ": whitespace-only text")
+    return data
+
+
+def tree(root, maxfiles, maxentries, maxdepth, utf8):
+    base = Path(root)
+    require(stat.S_ISDIR(base.lstat().st_mode), root + ": not a regular directory")
+    result = {}
+    entries = 0
+    total = 0
+
+    def visit(directory, depth):
+        nonlocal entries, total
+        with os.scandir(directory) as listing:
+            for entry in listing:
+                entries += 1
+                require(entries <= maxentries, root + ": too many entries")
+                path = Path(entry.path)
+                name = path.as_posix()
+                path_name(name, root)
+                info = entry.stat(follow_symlinks=False)
+                if stat.S_ISDIR(info.st_mode):
+                    require(depth < maxdepth, root + ": too deep")
+                    visit(path, depth + 1)
+                else:
+                    require(stat.S_ISREG(info.st_mode), name + ": unsafe file")
+                    require(len(result) < maxfiles, root + ": too many files")
+                    limit = 256 * 1024 if name == "output/solution.json" else MIB
+                    data = read_file(path, limit, utf8, utf8)
+                    total += len(data)
+                    require(total <= 16 * MIB, root + ": excessive total bytes")
+                    result[name] = data
+    visit(base, 0)
+    return result
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def bindings(records, files, root):
+    array(records, root + " manifest")
+    for row in records:
+        shape(row, "path sha256", root + " record")
+        path_name(row["path"], root)
+        text(row["sha256"], "sha256")
+        require(re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) is not None,
+                "invalid sha256")
+    expected = [{"path": p, "sha256": digest(files[p])} for p in sorted(files)]
+    require(records == expected, root + ": incomplete, unsorted or stale manifest")
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, "duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
+def no_constant(value):
+    raise Rejected("nonfinite JSON constant: " + value)
+
+
+def finite_float(value):
+    number = float(value)
+    require(math.isfinite(number), "nonfinite JSON number")
+    return number
+
+
+def date(value, label):
+    text(value, label)
+    require(re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is not None,
+            label + ": expected ISO date")
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        raise Rejected(label + ": invalid date")
+
+
+def rows(value, keys, prefix, nested=()):
+    array(value, prefix + " rows")
+    ids = set()
+    for row in value:
+        shape(row, keys, prefix + " row")
+        for key in row:
+            if key not in nested:
+                text(row[key], prefix + "." + key)
+        require(re.fullmatch(prefix + r"-[A-Za-z0-9_-]{1,48}", row["id"]) is not None,
+                prefix + ": invalid ID")
+        require(row["id"] not in ids, prefix + ": duplicate ID")
+        ids.add(row["id"])
+    return ids
+
+
+def refs(value, ids, label, minimum=0):
+    strings(value, label, minimum)
+    require(set(value) <= ids, label + ": dangling reference")
+
+
+def bound_source(value, inputs, label):
+    path_name(value, "inputs")
+    require(value in inputs, label + ": not a bound input")
+
+
+def check(profile):
+    request = read_file(Path("request.md"), MIB, True, True)
+    inputs = tree("inputs", 64, 256, 16, False)
+    output = tree("output", 32, 128, 8, True)
+    require("output/solution.json" in output, "missing output/solution.json")
+    manifest = output.pop("output/solution.json")
+    obj = json.loads(manifest.decode("utf-8"), object_pairs_hook=unique_object,
+                     parse_constant=no_constant, parse_float=finite_float)
+    shape(obj, "schema status request_sha256 profile_sha256 inputs artifacts summary "
+          "lenses requirements controls standards decisions next_actions assumptions questions",
+          "solution")
+    require(obj["schema"] == "solution-architect/v1", "invalid schema")
+    enum(obj["status"], "ready provisional needs-input", "status")
+    for key, data in (("request_sha256", request), ("profile_sha256", profile)):
+        text(obj[key], key)
+        require(obj[key] == digest(data), key + ": stale byte binding")
+    bindings(obj["inputs"], inputs, "inputs")
+    bindings(obj["artifacts"], output, "output")
+    require("output/report.md" in output, "missing report")
+    text(obj["summary"], "summary")
+    strings(obj["lenses"], "lenses", 1)
+    require(set(obj["lenses"]) <= LENSES, "unknown lens")
+    strings(obj["assumptions"], "assumptions")
+    strings(obj["questions"], "questions", maximum=3)
+    rid = rows(obj["requirements"],
+               "id kind statement outcome measure target_basis verification owner control_ids",
+               "R", ("control_ids",))
+    cid = rows(obj["controls"], "id component description evidence owner", "C")
+    sid = rows(obj["standards"],
+               "id source level applicability rationale control_ids verification owner status exception",
+               "S", ("source", "control_ids", "exception"))
+    rows(obj["decisions"],
+         "id choice rationale alternatives tradeoffs requirement_ids standard_ids review_trigger",
+         "D", ("requirement_ids", "standard_ids"))
+    rows(obj["next_actions"], "id owner action acceptance requirement_ids standard_ids",
+         "A", ("requirement_ids", "standard_ids"))
+    require(bool(obj["next_actions"]), "missing next action")
+    for row in obj["requirements"]:
+        enum(row["kind"], "functional quality", "requirement kind")
+        enum(row["target_basis"], "supplied proposed unknown", "target basis")
+        refs(row["control_ids"], cid, "requirement controls", 1)
+    covered = set()
+    for group in ("decisions", "next_actions"):
+        for row in obj[group]:
+            refs(row["requirement_ids"], rid, group + " requirements",
+                 1 if group == "decisions" else 0)
+            refs(row["standard_ids"], sid, group + " standards")
+            if group == "decisions":
+                covered.update(row["requirement_ids"])
+
+    ready = obj["status"] == "ready"
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    for row in obj["standards"]:
+        source = row["source"]
+        shape(source, "path locator version date scope", "standard source")
+        for key in source:
+            text(source[key], "source." + key)
+        bound_source(source["path"], inputs, "standard source")
+        if source["date"] != "unknown":
+            date(source["date"], "source date")
+        enum(row["level"], "mandatory advisory", "standard level")
+        enum(row["applicability"], "applies not-applicable unknown", "applicability")
+        enum(row["status"], "conforms fails unknown excepted not-applicable",
+             "conformance status")
+        applies = row["applicability"] == "applies"
+        refs(row["control_ids"], cid, "standard controls", 1 if applies else 0)
+        require((row["applicability"] == "not-applicable")
+                == (row["status"] == "not-applicable"), "inconsistent applicability")
+        if row["applicability"] == "unknown":
+            require(row["status"] == "unknown", "unknown applicability/status mismatch")
+        exc = row["exception"]
+        if row["status"] == "excepted":
+            require(exc is not None, "excepted without exception")
+        if exc is not None:
+            shape(exc, "status risk mitigation decision_owner scope review_trigger expires "
+                  "migration_exit approval_path approval_locator", "exception")
+            for key in ("risk", "mitigation", "decision_owner", "scope",
+                        "review_trigger", "migration_exit"):
+                text(exc[key], "exception." + key)
+            enum(exc["status"], "pending approved expired", "exception status")
+            require(row["status"] in ("excepted", "fails", "unknown"),
+                    "exception inconsistent with conformance status")
+            expires = None if exc["expires"] is None else date(exc["expires"], "expiry")
+            for key in ("approval_path", "approval_locator"):
+                if exc[key] is not None:
+                    text(exc[key], "exception." + key)
+            require((exc["approval_path"] is None) == (exc["approval_locator"] is None),
+                    "partial approval evidence")
+            if exc["approval_path"] is not None:
+                bound_source(exc["approval_path"], inputs, "approval")
+            if exc["status"] == "pending":
+                require(exc["approval_path"] is None, "pending has approval evidence")
+            if exc["status"] == "approved":
+                require(exc["approval_path"] is not None and expires is not None,
+                        "approved exception missing evidence/expiry")
+            if ready:
+                require(exc["status"] == "approved" and expires is not None
+                        and expires > today and exc["scope"].strip().lower() != "unknown",
+                        "ready with unresolved/expired/unscoped exception")
+        if ready and row["level"] == "mandatory":
+            require(row["applicability"] != "unknown", "ready with unknown mandatory scope")
+            if applies:
+                require(row["status"] in ("conforms", "excepted"),
+                        "ready with unresolved mandatory conformance")
+                require(all(source[k].strip().lower() != "unknown"
+                            for k in ("version", "date", "scope")),
+                        "ready with unscoped/undated mandatory source")
+
+    if obj["status"] == "needs-input":
+        require(1 <= len(obj["questions"]) <= 3, "needs-input requires 1-3 questions")
+        require("output/design.md" not in output, "needs-input must not assert full design")
+    else:
+        require("output/design.md" in output, "missing substantive design")
+        require({r["kind"] for r in obj["requirements"]} == {"functional", "quality"},
+                "design requires functional and quality requirements")
+        require(bool(cid) and bool(obj["decisions"]), "design missing controls/decisions")
+        require(covered == rid, "requirements not covered by decisions")
+        if ready:
+            require(bool(sid) and not obj["questions"], "ready missing standards or has questions")
+        else:
+            require(bool(obj["assumptions"]), "provisional missing explicit gaps")
+    print("Structurally accepted; independent semantic review and authorization remain required.")
+
+
+def main():
+    try:
+        profile = read_file(Path(__file__).absolute().parent.parent / "PROFILE.md",
+                            MIB, True, True)
+    except (Rejected, OSError, UnicodeError) as error:
+        print("Broken check: definition profile: " + str(error), file=sys.stderr)
+        return 2
+    try:
+        check(profile)
+        return 0
+    except (Rejected, OSError, UnicodeError, ValueError, RecursionError) as error:
+        print("Rejected: " + str(error), file=sys.stderr)
+        return 1
+    except Exception as error:
+        print("Broken check: " + type(error).__name__ + ": " + str(error), file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

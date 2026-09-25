@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 var errTooLarge = errors.New("size limit")
 
@@ -41,8 +41,8 @@ probability: optional criteria with true and false descriptions
 stdout: one fully validated JSON result, followed by a newline
 stderr: diagnostics only; input and provider error bodies are never dumped
 
-limits: 8 MiB input/response, depth 64, 1024 questions, 2-255 choices,
-        2-10 ordered score levels, 8192-byte authorization header
+limits: 8 MiB input/native request/response, depth 64, 1024 questions,
+        2-255 choices, 2-10 score levels, 8192-byte authorization header
 distributions: complete support; bounded hundredth rounding (see weigh.1)
                native values retained; 1e-6 numerical slack
 
@@ -132,6 +132,13 @@ func run(ctx context.Context, args []string, in io.Reader, out, diag io.Writer, 
 	if err != nil {
 		return fail(2, err.Error())
 	}
+	body, err := req.native(strings.TrimPrefix(*model, "openrouter/"))
+	if err != nil {
+		return fail(2, "could not encode provider request")
+	}
+	if int64(len(body)) > maxBytes {
+		return fail(2, "encoded provider request exceeds the 8 MiB limit")
+	}
 	var authorization string
 	if hasHeader {
 		f, err := openHeader(*headerFD)
@@ -154,7 +161,7 @@ func run(ctx context.Context, args []string, in io.Reader, out, diag io.Writer, 
 		}
 		authorization = "Bearer " + key
 	}
-	result, err := infer(ctx, *endpoint, *model, authorization, req)
+	result, err := infer(ctx, *endpoint, *model, authorization, req, body)
 	if err != nil {
 		return fail(1, err.Error())
 	}

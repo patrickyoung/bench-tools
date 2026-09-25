@@ -21,6 +21,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
 | [Architecture Diagrammer](architecture-diagrammer/expert/README.md) | Turn enterprise and solution architecture evidence into consistent Mermaid views, local SVG/PNG figures and explicit source and visual review handoffs. |
+| [Solution Architect](solution-architect/expert/README.md) | Translate business needs into implementable solutions using approved platforms, explicit Enterprise Architecture conformance, measurable quality targets and delivery handoffs. |
 | [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
 | [Vendor comparison](vendor-comparison/expert/README.md) | Produce evidence-linked technical comparisons with business weights, anchored scores, mandatory gates and visible uncertainty. |
 | [Editorial Director](editorial-director/expert/README.md) | Own one audience-specific argument, message map and visual direction across publications. |
@@ -37,6 +38,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | [Inkscape-controlled illustrator](inkscape-controlled-illustrator/expert/README.md) | Create editable vector illustrations through a bounded drawing plan, trusted document adapter, and native Inkscape export. |
 | [Image editor](image-editor/expert/README.md) | Preserve originals and produce an editable GIMP master and optimized export. |
 | [Image concept](image-concept/expert/README.md) | Prepare a checked image request and composition notes for a separately selected generator. |
+| [Bitmap stylizer](bitmap-stylizer/expert/README.md) | Restyle a reference PNG through a selected image generator while preserving labeled text/data regions as exact original pixels. |
 | [Page planner](page-planner/expert/README.md) | Propose bounded tasks against an explicitly supplied Bench Manage snapshot. |
 | [Page reviewer](page-reviewer/expert/README.md) | Assess supplied page observations and produce a structured review with limitations. |
 

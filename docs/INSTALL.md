@@ -70,7 +70,12 @@ Hire builds the definition; Agent runs it with those companions. Add `cite`
 for the [support-reply starter](../examples/support-reply/README.md). Python
 runs the source installer, not Hire or Agent: both commands are native Go.
 
-Without names, the source installer builds and installs all 26 commands:
+For browser work, install `web` and separately install Chrome/Chromium.
+`web setup` checks browser discovery; `WEB_BROWSER` selects its executable.
+Web is native Go and needs no Python/Node browser runtime. See
+[Web setup and commands](../tools/web/README.md).
+
+Without names, the source installer builds and installs all 27 commands:
 
 ```sh
 python3 scripts/install

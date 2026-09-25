@@ -1,6 +1,6 @@
 # Worker and team evaluation runbook
 
-`make check-workers` runs the library's offline regression suites. All 25 workers
+`make check-workers` runs the library's offline regression suites. All 27 workers
 and three teams have mapped tests and separate quality cases in
 [`scripts/worker-evaluations.json`](../scripts/worker-evaluations.json).
 The runner uses **current working-tree bytes**, including uncommitted edits.
@@ -39,6 +39,12 @@ normal platform setup. For the smaller standard-library/Node group:
 ```sh
 make check-workers EVAL_ARGS='--profile core'
 ```
+
+The bitmap stylizer's core suite also needs Go 1.22+ and the public `ask` and
+`record` commands on PATH. It compiles its standard-library Go helper and uses
+offline author/generator fixtures with real recording commands. An existing
+Bench installation supplies those commands; CI builds them independently with
+`python3 scripts/build ask record` and adds `.build/bin` to PATH.
 
 Focused runs select every matching suite in the selected profiles. Shared suites
 may also test other roles. Unknown IDs and empty selections fail explicitly.
@@ -100,6 +106,7 @@ checks explicitly. Proprietary/bundled workbook runtimes are operator-selected.
 | Inkscape-controlled illustrator | Bounded plan, native author/export, occluded targets and independent pixels | Composition and fidelity on new subjects |
 | Image editor | Standalone bound originals and file signatures | Open real XCF, inspect editability, originals and actual edited pixels |
 | Image concept | Request limits, missing/malformed fields, explicit not-generated result | Prompt fidelity; generation is a separate capability |
+| Bitmap stylizer | Input/request bindings, complete PNGs, independent composition and exact protected pixels, stale-output and backend-failure rejection | Actual stylistic transformation, layout continuity and seams in the generated/composited pixels |
 | Page planner | Snapshot identity, valid plans/finish, admitted workers/criteria and bounds | Useful dependency graph and honest completion decisions |
 | Page reviewer | Bound review output, verdict structure and stale-output rejection | Correct interpretation of current observations and candid limitations |
 | Page team | Assembled file transfers, accepted review bound to original goal/final bytes, image/MCP failures and Chromium | End-to-end planning, actual creative contribution and visual review |

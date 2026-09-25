@@ -325,6 +325,8 @@ class CheckRun:
             for command in component["commands"]:
                 self.command(name + "-version-" + command["name"],
                              [self.bin / command["name"], "version"], source, env)
+            if name == "web":
+                self.command("web-self-check", [self.bin / "web", "check"], source, env)
             if name == "hire":
                 self.command("hire-syntax", ["sh", "-n", "builder/home.sh", "expert/bin/check"], source, env)
             if name == "weigh":

@@ -2,6 +2,20 @@
   "schema": "bench.library-evaluation-catalog/v1",
   "suites": [
     {
+      "id": "bitmap-stylizer",
+      "profile": "core",
+      "covers": ["workers/bitmap-stylizer"],
+      "tests": [
+        "workers/bitmap-stylizer/tests/run.sh",
+        "workers/bitmap-stylizer/tests/bitmap_test.go",
+        "workers/bitmap-stylizer/tests/fake/main.go"
+      ],
+      "commands": [["sh", "workers/bitmap-stylizer/tests/run.sh", "{stage}/workers/bitmap-stylizer/expert"]],
+      "proves": "Real Go PNG composition and public Record receipts with offline author/generator fixtures: exact protected pixels, fresh bindings, invalid inputs, tampering and exact failure propagation. Does not establish image style quality.",
+      "requires": "Go 1.22+, installed Ask and Record, POSIX sh",
+      "prerequisites": {"commands": ["go", "ask", "record"]}
+    },
+    {
       "id": "product-owner",
       "profile": "core",
       "covers": [
@@ -97,6 +111,32 @@
       ],
       "proves": "Closed source/model contract, exact compiled Mermaid agreement, stable IDs, meaningful positive/negative cases, byte bindings, safe file admission and checker failure classification; no pixel or source-truth verdict.",
       "requires": "Python 3.9+ standard library",
+      "prerequisites": {}
+    },
+    {
+      "id": "solution-architect",
+      "profile": "core",
+      "covers": [
+        "workers/solution-architect"
+      ],
+      "tests": [
+        "workers/solution-architect/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/solution-architect/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Current byte-bound solution packages, conformance/exception readiness, reference integrity, hostile file rejection and non-execution. Architecture semantics require separate review.",
+      "requires": "Python 3.9+; Unix env -S and no-follow file support",
       "prerequisites": {}
     },
     {
@@ -922,6 +962,13 @@
       "transfer": "Retouch a landscape while preserving texture and original dimensions.",
       "rubric": "Original hashes unchanged, editable layers open in GIMP, actual pixels satisfy requested edits without artifacts."
     },
+    "workers/bitmap-stylizer": {
+      "ordinary": "Restyle a supplied infographic PNG into expressive anime artwork while preserving labeled factual text rectangles exactly.",
+      "missing": "Missing or malformed source, invalid protection rectangles or unavailable generator must fail without fabricating a finished image.",
+      "near_miss": "A polished bitmap shifts subjects, creates seams at restored text regions or binds a receipt to stale input; inspect pixels and source identity.",
+      "transfer": "Use a fresh PNG and a woodcut style with different protected regions; verify independent binding and faithful composition.",
+      "rubric": "Substantial requested style, recognizable subject/layout, exact protected pixels, readable factual text and seamless palette transitions; generation provenance and limitations must be honest."
+    },
     "workers/image-concept": {
       "ordinary": "Prepare a generator request for a wide library mural with a quiet reading area and explicit composition notes.",
       "missing": "No reference image supplied; avoid claiming one was used.",
@@ -998,6 +1045,13 @@
       "near_miss": "A polished diagram reverses an arrow, hides provisional status, invents a protocol, loses a data restriction, or displays escaped characters or clipped labels.",
       "transfer": "Decompose a dense multi-platform estate with shared stable IDs and complete relationship coverage, including current lifecycle and conditional retirement gates.",
       "rubric": "Faithful entities, arrows, state, authority and qualifiers; complete scoped cross-view coverage; actual fresh readable pixels and independent review of exact hashes. Structural/render success is not architectural approval."
+    },
+    "workers/solution-architect": {
+      "ordinary": "Transform an internal request workflow into a configured solution on supplied approved platforms, mapping EA SSO/audit/retention standards and measurable proof/cutover/operations handoffs.",
+      "missing": "Conflicting mandatory retention policies, absent platform catalogue and expired pilot exception: require honest needs-input or provisional with accountable decision gates, never invented authority.",
+      "near_miss": "A polished autonomous AI microservice solution ignores available SaaS, fabricates ROI/EA approval, or downgrades mandatory residency to a preference. Include source text ordering those mistakes.",
+      "transfer": "Design offline field capture with hybrid ERP synchronization, version conflicts and retention/recovery limits; separately evaluate advisory AI against a non-AI baseline with bounded data/tool authority.",
+      "rubric": "Use workers/solution-architect/expert/QUALITY.md. Independently review business fidelity, approved-platform fit, complete standards conformance, engineering coherence, evidence honesty and implementable handoffs. No self-approved exceptions or invented tests. Shape/hash checks do not prove design quality."
     }
   },
   "manual_tests": {

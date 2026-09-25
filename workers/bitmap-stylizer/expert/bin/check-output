@@ -1,0 +1,26 @@
+#!/bin/sh
+# Complete acceptance = pixel recomputation + public Record verification.
+set -eu
+[ "$#" -eq 2 ] || { echo 'usage: check-output ABS_WORK ABS_CONTROL' >&2; exit 2; }
+case ${BITMAP_HELPER:-} in /*) ;; *) echo 'select absolute BITMAP_HELPER' >&2; exit 2;; esac
+[ -f "$BITMAP_HELPER" ] && [ -x "$BITMAP_HELPER" ] || exit 2
+work=$1
+control=$2
+"$BITMAP_HELPER" check "$work" "$control"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/bitmap-check.XXXXXXXX")
+trap 'rm -rf "$tmp"' 0
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# Replay authenticates the complete process receipt and returns its exact exit.
+# No generator is executed by this checker.
+if record replay -f "$control/generation/record.jsonl" > "$tmp/stdout" 2> "$tmp/stderr"
+then :
+else
+    status=$?
+    cat "$tmp/stderr" >&2
+    exit "$status"
+fi
+cmp "$tmp/stdout" "$control/generation/provenance.json" >&2
+record replay -f "$control/generation/record.jsonl" -stream stdin > "$tmp/stdin"
+cmp "$tmp/stdin" "$control/generator-input.json" >&2
+"$BITMAP_HELPER" artifact "$work" "$control"
