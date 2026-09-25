@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+work=$1 control=$2
+run=${work%/styles/*}
+id=${work%/work}; id=${id##*/}
+[ ! -e "$control" ]
+[ "$BITMAP_AUTHOR_MODEL" = fixture-bitmap ]
+case $control/ in "$work/"*) exit 89;; esac
+cmp "$run/result/original.png" "$work/inputs/source.png"
+if jq -e --arg id "$id" '.styles[] | select(.id==$id) | has("target_ids")' "$run/control/job.json" >/dev/null; then
+    # Inspect admitted inputs only; do not import the implementation's filter.
+    jq -e --arg id "$id" --slurpfile j "$run/control/job.json" \
+      --slurpfile a "$run/control/targets/$id.json" '
+      ($j[0].styles[] | select(.id==$id)) as $s |
+      .version==1 and .source=="inputs/source.png" and
+      (.style | startswith($s.style+"\n\nRectangular targeting")) and
+      .preserve_regions==$a[0].preserve_regions and
+      ($a[0].target_ids==$s.target_ids)' "$work/brief.json" >/dev/null
+else
+    jq -ce --arg id "$id" '. as $j | .styles[] | select(.id==$id) |
+     {version:1,source:"inputs/source.png",style:.style,preserve_regions:$j.preserve_regions}' "$run/control/job.json" |
+     cmp - "$work/brief.json"
+fi
+printf 'bitmap:%s\n' "$id" >> "$FIX_EVENTS"
+mkdir "$control"
+if [ "${FIX_BITMAP_FAIL:-}" = "$id" ]; then exit 42; fi
+cp "$work/brief.json" "$control/brief.json"
+cp "$work/inputs/source.png" "$control/source.png"
+printf 'FAKE variant %s\n' "$id" > "$control/final.png"
+shasum -a 256 "$control/final.png" | cut -d ' ' -f 1 > "$control/final.sha"
+"$(dirname "$0")/check-output" "$work" "$control"

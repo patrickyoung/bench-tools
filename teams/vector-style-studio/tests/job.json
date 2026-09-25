@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "vector_request": {"description":"Synthetic colored shape with exact caption TEST","width":256,"height":256},
+  "preserve_regions": [{"x":8,"y":8,"width":100,"height":32,"label":"Synthetic caption"}],
+  "required_text": [{"id":"caption","text":"TEST"}],
+  "styles": [
+    {"id":"first","style":"Synthetic treatment one; retain literal \"quotes\" and\nnewline."},
+    {"id":"second","style":"Synthetic treatment two"}
+  ]
+}

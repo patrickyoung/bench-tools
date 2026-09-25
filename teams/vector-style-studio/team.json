@@ -1,0 +1,35 @@
+{
+  "id": "vector-style-studio",
+  "description": "Fixed host-managed SVG creation, unchanged native raster publication and independent same-source bitmap style variants.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "e823f19f07a65db939183b11b64d84b505a3fd11",
+      "commands": ["agent", "hire", "ask", "brief", "ply", "cage", "record"]
+    },
+    "shell": "POSIX sh, jq >=1.6, xmllint, cmp, shasum and standard Unix utilities",
+    "vector": "Unchanged inkscape-illustrator; Python >=3.9 and Inkscape >=1.2",
+    "bitmap": "Unchanged bitmap-stylizer; separately installed reviewed BITMAP_HELPER built with Go >=1.22 and selected BITMAP_GENERATOR",
+    "models": "Explicit VECTOR_STYLE_MODEL and BITMAP_AUTHOR_MODEL; inherited AGENT_ASK/PRESENT_ASK preserved",
+    "boundary": "Caller-owned host entry bin/studio, default Cage for child Agent actions, trusted definitions/tools outside runs",
+    "review": "Deterministic acceptance only; caller must review actual baseline and variants full-size and thumbnail"
+  },
+  "files": [
+    "teams/vector-style-studio/expert/LICENSE",
+    "teams/vector-style-studio/expert/README.md",
+    "teams/vector-style-studio/expert/AGENTS.md",
+    "teams/vector-style-studio/expert/bin/check",
+    "teams/vector-style-studio/expert/bin/studio",
+    "teams/vector-style-studio/expert/lib/common.sh",
+    "teams/vector-style-studio/expert/lib/job.jq",
+    "teams/vector-style-studio/expert/lib/unique.jq",
+    "teams/vector-style-studio/expert/lib/complement.jq",
+    "teams/vector-style-studio/expert/lib/targets.jq"
+  ],
+  "members": {
+    "vector": {"worker": "inkscape-illustrator"},
+    "bitmap": {"worker": "bitmap-stylizer"}
+  }
+}

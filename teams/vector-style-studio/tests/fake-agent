@@ -1,0 +1,67 @@
+#!/bin/sh
+# Offline process fixture; deliberately NOT an illustrator or PNG producer.
+set -eu
+[ "$1" = run ]; shift
+work= state= evidence= model= goal= turns= cycles= timeout=
+while [ "$#" -gt 0 ]; do
+    case $1 in
+      -C) work=$2; shift 2;;
+      -state) state=$2; shift 2;;
+      -evidence) evidence=$2; shift 2;;
+      -m) model=$2; shift 2;;
+      -goal-file) goal=$2; shift 2;;
+      -turns) turns=$2; shift 2;;
+      -cycles) cycles=$2; shift 2;;
+      -timeout) timeout=$2; shift 2;;
+      -record-input|-record-output) shift 2;;
+      -*) echo "unexpected agent flag: $1" >&2; exit 89;;
+      *) definition=$1; shift;;
+    esac
+done
+[ "$state" = "$work/state" ]
+[ "$model" = fixture-vector ]
+[ "$turns/$cycles/$timeout" = 10/1/10m ]
+case $evidence/ in "$work/"*) exit 89;; esac
+[ ! -e "$evidence" ]
+[ -f "$goal" ] && [ -d "$definition" ]
+[ "${AGENT_ASK:-}" = fixture-inherited-ask ]
+[ "${PRESENT_ASK:-}" = fixture-inherited-present ]
+printf 'vector\n' >> "$FIX_EVENTS"
+mkdir -p "$state" "$evidence"
+printf 'fixture evidence\n' > "$evidence/receipt"
+if [ "${FIX_VECTOR_STATUS:-0}" != 0 ]; then exit "$FIX_VECTOR_STATUS"; fi
+mkdir "$work/output"
+cat > "$work/output/illustration.inkscape.svg" <<'SVG'
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><text id="caption" x="10" y="30">TEST</text><text id="weather-data">VALUE</text><g id="sun"/><g id="cloud"/><g id="rain"/><g id="edge"/><g id="overlap"/><g id="left"/><g id="right"/></svg>
+SVG
+# Synthetic grid elements exercise the member region/byte limits.
+if [ "${FIX_GRID:-0}" = 1 ]; then
+    sed 's@</svg>@@' "$work/output/illustration.inkscape.svg" > "$work/output/temp"
+    jq -nr 'range(0;32) | "<g id=\"grid\(.)\"/>"' >> "$work/output/temp"
+    printf '</svg>\n' >> "$work/output/temp"
+    mv "$work/output/temp" "$work/output/illustration.inkscape.svg"
+fi
+case ${FIX_TEXT:-good} in
+  missing) sed 's/id="caption"/id="other"/' "$work/output/illustration.inkscape.svg" > "$work/output/temp"; mv "$work/output/temp" "$work/output/illustration.inkscape.svg";;
+  mismatch) sed 's/>TEST</>WRONG</' "$work/output/illustration.inkscape.svg" > "$work/output/temp"; mv "$work/output/temp" "$work/output/illustration.inkscape.svg";;
+esac
+case ${FIX_TARGET_XML:-good} in
+  missing) sed 's/id="sun"/id="other"/' "$work/output/illustration.inkscape.svg" > "$work/output/temp";;
+  duplicate) sed 's/id="cloud"/id="sun"/' "$work/output/illustration.inkscape.svg" > "$work/output/temp";;
+  non-svg) sed 's/<g id="sun"\//<g xmlns="urn:foreign" id="sun"\//' "$work/output/illustration.inkscape.svg" > "$work/output/temp";;
+esac
+if [ -f "$work/output/temp" ]; then mv "$work/output/temp" "$work/output/illustration.inkscape.svg"; fi
+cp "$work/output/illustration.inkscape.svg" "$work/output/illustration.svg"
+case ${FIX_TARGET_FINAL:-good} in
+  missing) sed 's/id="sun"/id="other"/' "$work/output/illustration.svg" > "$work/output/temp";;
+  duplicate) sed 's/id="cloud"/id="sun"/' "$work/output/illustration.svg" > "$work/output/temp";;
+esac
+if [ -f "$work/output/temp" ]; then mv "$work/output/temp" "$work/output/illustration.svg"; fi
+printf 'FAKE native PNG bytes\n' > "$work/output/preview.png"
+printf '{}\n' > "$work/output/render.json"
+printf '{}\n' > "$work/handoff.json"
+printf 'Fixture log\n' > "$work/output/inkscape.log"
+printf 'Fixture notes\n' > "$work/output/design-notes.md"
+if [ "${FIX_MUTATE:-}" = request ]; then printf ' ' >> "$work/request.json"; fi
+if [ "${FIX_MUTATE:-}" = source ]; then printf ' ' >> "$work/inputs/source.svg"; fi
+printf 'fixture vector response, not stdout manifest\n'

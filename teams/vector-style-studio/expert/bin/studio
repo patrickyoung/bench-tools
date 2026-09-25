@@ -1,0 +1,111 @@
+#!/bin/sh
+# Fixed caller-owned host composition. Never invoke inside an Agent action.
+set -eu
+umask 077
+studio_definition=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+. "$studio_definition/lib/common.sh"
+[ "$#" -eq 2 ] || setup "usage: studio ABS_JOB ABS_FRESH_RUN"
+original_job=$1
+run=$2
+clean "$run"
+[ ! -e "$run" ] || fail "run already exists"
+parent=$(dirname "$run")
+[ -d "$parent" ] && [ "$(CDPATH= cd -- "$parent" && pwd -P)" = "$parent" ] ||
+  fail "run parent must exist and be physical"
+case $run/ in "$studio_definition/"*) fail "run must be outside definition";; esac
+validate_job "$original_job"
+members
+[ -n "${VECTOR_STYLE_MODEL:-}" ] || setup "select VECTOR_STYLE_MODEL"
+[ -n "${BITMAP_AUTHOR_MODEL:-}" ] || setup "select BITMAP_AUTHOR_MODEL"
+for tool in "${BITMAP_HELPER:-}" "${BITMAP_GENERATOR:-}"; do
+    case $tool in /*) ;; *) setup "select absolute BITMAP_HELPER and BITMAP_GENERATOR";; esac
+    [ -f "$tool" ] && [ -x "$tool" ] || setup "missing executable: $tool"
+done
+command -v agent >/dev/null || setup "agent unavailable"
+source=
+if jq -e 'has("source_svg")' "$original_job" >/dev/null; then
+    source=$(jq -r .source_svg "$original_job")
+    regular "$source" 16777216
+    # A reference is XML data, never code or an already accepted deliverable.
+    if grep -E '<!DOCTYPE|<!ENTITY' "$source" >/dev/null; then fail "DTD/entity reference forbidden"; fi
+    xmllint --nonet --noout "$source" || fail "invalid SVG reference"
+    [ "$(xmllint --nonet --xpath "count(/*[local-name()='svg' and namespace-uri()='http://www.w3.org/2000/svg'])" "$source")" = 1 ] ||
+      fail "reference must be SVG"
+fi
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/studio.XXXXXXXX")
+tmp=$(CDPATH= cd -- "$tmp" && pwd -P)
+trap 'rm -rf "$tmp"' 0
+trap 'exit 130' INT
+trap 'exit 143' TERM
+mkdir "$run"
+mkdir -p "$run/control" "$run/vector/work/inputs" "$run/result" "$run/styles"
+cp "$original_job" "$run/control/job.json"
+job=$run/control/job.json
+jq '.vector_request' "$job" > "$run/vector/work/request.json"
+if [ -n "$source" ]; then
+    cp "$source" "$run/control/source.svg"
+    cp "$run/control/source.svg" "$run/vector/work/inputs/source.svg"
+fi
+admission > "$run/control/admission.json"
+chmod a-w "$run/control/job.json" "$run/control/admission.json"
+[ ! -f "$run/control/source.svg" ] || chmod a-w "$run/control/source.svg"
+guard_inputs
+vector_goal > "$run/control/vector-goal.txt"
+# Selected inputs and every mandatory vector output are retained by public Agent.
+set -- -record-input request.json
+if [ -n "$source" ]; then set -- "$@" -record-input inputs/source.svg; fi
+if agent run -C "$run/vector/work" -state "$run/vector/work/state" \
+    -evidence "$run/vector/evidence" -m "$VECTOR_STYLE_MODEL" \
+    -turns 10 -cycles 1 -timeout 10m "$@" \
+    -record-output handoff.json -record-output output/illustration.inkscape.svg \
+    -record-output output/illustration.svg -record-output output/preview.png \
+    -record-output output/render.json -record-output output/inkscape.log \
+    -record-output output/design-notes.md -goal-file "$run/control/vector-goal.txt" \
+    "$studio_definition/agents/vector" > "$run/control/vector.stdout" 2> "$run/control/vector.stderr"
+then
+    printf '0\n' > "$run/control/vector.exit"
+else
+    status=$?
+    printf '%s\n' "$status" > "$run/control/vector.exit"
+    cat "$run/control/vector.stderr" >&2
+    exit "$status"
+fi
+guard_inputs
+(cd "$run/vector/work" && "$studio_definition/agents/vector/bin/check") > "$run/control/vector-check.log" 2>&1
+vector_binding > "$run/control/vector-bindings.txt"
+cp "$run/vector/work/output/illustration.inkscape.svg" "$run/result/original.inkscape.svg"
+cp "$run/vector/work/output/illustration.svg" "$run/result/original.svg"
+cp "$run/vector/work/output/preview.png" "$run/result/original.png"
+cmp "$run/vector/work/output/preview.png" "$run/result/original.png" >&2
+text_check
+targets_prepare
+if [ -d "$tmp/targets" ]; then
+    cp -R "$tmp/targets" "$run/control/targets"
+    chmod a-w "$run/control/targets/"*.json
+fi
+if [ -f "$tmp/bounds.csv" ]; then cp "$tmp/bounds.csv" "$run/control/text-bounds.csv"; fi
+for id in $(jq -r '.styles[].id' "$job"); do
+    work=$run/styles/$id/work
+    control=$run/styles/$id/control
+    mkdir -p "$work/inputs"
+    cp "$run/result/original.png" "$work/inputs/source.png"
+    brief "$id" > "$work/brief.json"
+    if "$studio_definition/agents/bitmap/bin/stylize" "$work" "$control" \
+        > "$run/styles/$id/stylize.stdout" 2> "$run/styles/$id/stylize.stderr"
+    then
+        printf '0\n' > "$run/styles/$id/stylize.exit"
+    else
+        status=$?
+        printf '%s\n' "$status" > "$run/styles/$id/stylize.exit"
+        cat "$run/styles/$id/stylize.stderr" >&2
+        exit "$status"
+    fi
+    regular "$control/final.png" 33554432
+    "$studio_definition/agents/bitmap/bin/check-output" "$work" "$control" > "$tmp/artifact.json"
+    cmp "$tmp/artifact.json" "$run/styles/$id/stylize.stdout" >&2 || fail "bitmap artifact stdout drift"
+    cp "$tmp/artifact.json" "$control/artifact.json"
+    cp "$control/final.png" "$run/result/$id.png"
+done
+manifest > "$run/manifest.json"
+"$studio_definition/bin/check" "$run" >&2
+cat "$run/manifest.json"
