@@ -1,4 +1,4 @@
-.TH WEIGH 1 "September 2026" "weigh 0.2.0" "User Commands"
+.TH WEIGH 1 "September 2026" "weigh 0.2.1" "User Commands"
 .SH NAME
 weigh \- obtain typed judgments and native probabilities
 .SH SYNOPSIS
@@ -88,7 +88,9 @@ Jev confidence summarizes distribution concentration, not measured correctness
 or the likelihood that a proposed change will improve future work.
 The reported model name does not establish immutable model weights.
 .SH LIMITS
-Input and response: 8 MiB each. JSON nesting: 64 containers.
+Input, encoded native request and response: 8 MiB each.
+Native encoding is bounded before credential reads or networking.
+JSON nesting: 64 containers.
 Questions: 1024. IDs: 256 UTF-8 bytes. Authorization header: 8192 bytes.
 Response headers: 64 KiB. Excess data is refused, not truncated.
 These local limits do not replace provider token limits; no token estimation

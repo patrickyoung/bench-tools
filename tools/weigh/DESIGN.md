@@ -74,12 +74,14 @@ precision; it validates possible rounding without changing any output value.
 
 ## Bounds and transport
 
-Input and response are each bounded at 8 MiB, JSON at 64 nested containers,
-questions at 1024, IDs at 256 UTF-8 bytes without control characters, choice
-support at 2-255 alternatives, and score support at 2-10 levels. String
-descriptions must be nonempty; object and array descriptions are passed through
+Input, encoded native request and response are each bounded at 8 MiB, JSON at
+64 nested containers, questions at 1024, IDs at 256 UTF-8 bytes without control
+characters, choice support at 2-255 alternatives, and score support at 2-10
+levels. String descriptions must be nonempty; object and array descriptions are passed through
 after whole-document validation. Input limits fail before credentials or networking.
 These are process limits, not a token estimator or promise of provider capacity.
+The native request is encoded once and its size checked before credentials or
+networking: HTML escaping and protocol/model fields can expand a fitting input.
 All response checks complete before stdout. Output I/O failure can still leave
 partial bytes, so downstream consumers must check status.
 

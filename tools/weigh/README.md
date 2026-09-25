@@ -234,14 +234,16 @@ charged nothing. Error bodies and private request data are not printed.
 
 ## Bounds and outcomes
 
-Requests and responses are each limited to 8 MiB, JSON nesting to 64
-containers, questions to 1024, and question/option IDs to 256 UTF-8 bytes
-without control characters. Excess data is refused, never truncated.
+Input, encoded native requests, and responses are each limited to 8 MiB, JSON
+nesting to 64 containers, questions to 1024, and question/option IDs to 256 UTF-8
+bytes without control characters. Excess data is refused, never truncated.
 These are local byte/shape limits, not model token limits. TypeSafe currently
 documents Jev 1.13 limits of 64k tokens across the request and 32k for state plus
 the longest question; selected routes can impose their own limits. Weigh does
 not estimate tokens or truncate input. See the current
 [model reference](https://docs.typesafe.ai/models).
+Native encoding can expand HTML-sensitive characters and adds protocol/model
+fields. That bound is checked before credentials are read or networking starts.
 
 | Exit | Meaning |
 | --- | --- |
