@@ -47,6 +47,7 @@ Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-
 | Find, build and run a worker or team | [The practical walkthrough](docs/BUILD-WITH-AN-LLM.md) |
 | Ask Claude, Codex or another harness to do it | [START-HERE.md](START-HERE.md) |
 | See the available specialties | [Worker catalog](workers/README.md) |
+| Browse, export and author workers in a local browser | [Hire UI](interfaces/hire/README.md) |
 | Select a ready assembly | [Team catalog and recipes](teams/README.md) |
 | Add, improve, version or retire reusable source | [Library and GitHub guide](docs/WORKER-LIBRARY.md) |
 | Test and retain improvements from fresh evaluations | [Improve command](tools/improve/README.md) and [review workflow](.agents/skills/bench/references/improve.md) |
@@ -63,6 +64,11 @@ For a harness, start with a request like:
 The harness is the authoring environment. A worker runs through Agent with
 its own configured model connection. The [harness instructions](START-HERE.md)
 cover setup for Codex, Claude Code, Cowork, Pi and OpenClaw.
+
+Optional [human interfaces](interfaces/README.md) have their own source,
+builds and versions. [Hire UI](interfaces/hire/README.md) serves a local Go web
+application that calls the existing public commands. The headless tools remain
+independently usable.
 
 ## What is a worker? What is a team?
 

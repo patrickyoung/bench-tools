@@ -256,6 +256,133 @@ import (
         entry.chmod(0o755)
         self.assertEqual(self.check(), [])
 
+    def add_interface(self, name="alpha"):
+        component = {"name": name, "path": f"interfaces/{name}",
+                     "module": f"example.test/{name}-ui",
+                     "commands": [{"name": f"{name}-ui", "package": "."}]}
+        self.write(f"interfaces/{name}/go.mod", f"module {component['module']}\n\ngo 1.26\n")
+        self.write(f"interfaces/{name}/main.go", "package main\nfunc main() {}\n")
+        self.save_interfaces([component])
+        return component
+
+    def save_interfaces(self, components):
+        self.write("interfaces/manifest.json", json.dumps({"schema": 1, "interfaces": components}))
+
+    def test_interfaces_have_independent_namespace_and_own_internal_imports(self):
+        self.add_interface()
+        self.write("interfaces/README.md", "Independent applications\n")
+        self.write("interfaces/AGENTS.md", "Preserve boundaries\n")
+        self.write("interfaces/alpha/internal/view/view.go", "package view\n")
+        self.write("interfaces/alpha/main.go", 'package main\nimport _ "example.test/alpha-ui/internal/view"\nfunc main() {}\n')
+        self.assertEqual(self.check(), [])
+
+    def test_cross_interface_and_tool_imports_are_refused_both_ways(self):
+        alpha = self.add_interface()
+        beta = self.add_interface("beta")
+        self.save_interfaces([alpha, beta])
+        for path, module, expected in (
+            ("interfaces/alpha/coupled_test.go", "example.test/alpha", "from alpha"),
+            ("tools/alpha/coupled_test.go", "example.test/alpha-ui", "from interfaces/alpha"),
+            ("interfaces/beta/coupled_windows.go", "example.test/alpha-ui/internal/view", "from interfaces/alpha"),
+        ):
+            with self.subTest(path=path):
+                file = self.write(path, f'package main\nimport _ "{module}"\n')
+                self.refuses("cross-tool Go import " + expected)
+                file.unlink()
+
+    def test_interface_requirements_and_replacements_share_tool_boundaries(self):
+        self.add_interface()
+        for path, module, peer, expected in (
+            ("interfaces/alpha/go.mod", "example.test/alpha-ui", "example.test/alpha", "alpha"),
+            ("tools/alpha/go.mod", "example.test/alpha", "example.test/alpha-ui", "interfaces/alpha"),
+        ):
+            for directive, fragment in (
+                (f"require {peer} v1.0.0", "cross-tool module requirement on " + expected),
+                (f"replace example.test/library => {peer} v1.0.0", "cross-tool module replacement involving " + expected),
+                ("replace example.test/library => ../local", "local module replacement"),
+            ):
+                with self.subTest(path=path, directive=directive):
+                    self.write(path, f"module {module}\ngo 1.26\n{directive}\n")
+                    self.refuses(fragment)
+            self.write(path, f"module {module}\ngo 1.26\n")
+
+    def test_interface_manifest_cannot_bypass_roots_modules_or_command_uniqueness(self):
+        interface = self.add_interface()
+        for key, value, expected in (
+            ("path", "tools/alpha", "own interfaces/alpha directory"),
+            ("module", "example.test/alpha", "duplicate module path"),
+            ("commands", [{"name": "alpha", "package": "."}], "command collision for alpha"),
+            ("commands", [{"name": "alpha-ui", "package": "../../tools/alpha"}], "expected one local package path"),
+        ):
+            with self.subTest(key=key):
+                self.save_interfaces([dict(interface, **{key: value})])
+                self.refuses(expected)
+        self.save_interfaces([interface, interface])
+        self.refuses("duplicate component name")
+
+    def test_interface_modules_and_main_packages_are_checked(self):
+        self.add_interface()
+        self.write("interfaces/alpha/go.mod", "module example.test/wrong\ngo 1.26\n")
+        self.refuses("module path differs")
+        self.write("interfaces/alpha/go.mod", "module example.test/alpha-ui\ngo 1.26\n")
+        self.write("interfaces/alpha/main.go", "package library\n")
+        self.refuses("does not name an actual main package")
+        self.write("interfaces/alpha/main.go", "package main\n")
+        undeclared = self.write("interfaces/alpha/cmd/hidden/main.go", "package main\n")
+        self.refuses("command main package missing from manifest")
+        undeclared.unlink()
+        self.write("interfaces/alpha/nested/go.mod", "module example.test/nested\n")
+        self.refuses("module outside a declared component root")
+
+    def test_interface_symlinks_cannot_cross_tool_or_interface_boundaries(self):
+        self.add_interface()
+        for path, target, expected in (
+            ("interfaces/alpha/library", "../../tools/alpha", "interfaces/alpha"),
+            ("tools/alpha/library", "../../interfaces/alpha", "alpha"),
+        ):
+            with self.subTest(path=path):
+                link = self.root / path
+                link.symlink_to(target)
+                self.refuses("symlink escapes component " + expected)
+                link.unlink()
+
+    def test_interface_manifest_is_required_and_cannot_be_symlinked(self):
+        self.add_interface()
+        manifest = self.root / "interfaces/manifest.json"
+        manifest.unlink()
+        self.refuses("interfaces/manifest.json")
+        outside = self.write("other-manifest.json", '{"schema":1,"interfaces":[]}')
+        manifest.symlink_to(outside)
+        self.refuses("manifest must not be a symlink")
+
+    def test_interface_parent_shared_source_and_unlisted_leaves_are_refused(self):
+        self.add_interface()
+        self.write("interfaces/shared.go", "package shared\n")
+        self.refuses("unlisted component or shared source")
+        self.write("interfaces/hidden/go.mod", "module example.test/hidden\n")
+        self.refuses("module outside a declared component root")
+
+    def test_interface_parent_and_manifest_shape_are_validated(self):
+        self.add_interface()
+        for manifest in ({"schema": 2, "interfaces": []},
+                         {"schema": 1, "interfaces": {}},
+                         {"schema": 1, "interfaces": ["not an object"]}):
+            with self.subTest(manifest=manifest):
+                self.write("interfaces/manifest.json", json.dumps(manifest))
+                self.refuses("interfaces/manifest.json")
+        parent = self.root / "interfaces"
+        moved = self.root / "moved-interfaces"
+        parent.rename(moved)
+        parent.symlink_to(moved, target_is_directory=True)
+        self.refuses("interfaces: component parent must not be a symlink")
+
+    def test_interface_source_does_not_change_original_tool_provenance(self):
+        self.add_interface()
+        self.prepare_baseline()
+        self.assertEqual(self.check(baseline=True), [])
+        self.write("interfaces/alpha/main.go", 'package main\nfunc main() { println("new UI") }\n')
+        self.assertEqual(self.check(baseline=True), [])
+
     def prepare_baseline(self):
         env = dict(boundaries.GO_ENV, GIT_AUTHOR_NAME="Boundary test",
                    GIT_AUTHOR_EMAIL="test@example.invalid", GIT_COMMITTER_NAME="Boundary test",

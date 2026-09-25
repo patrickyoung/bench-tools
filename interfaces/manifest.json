@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "interfaces": [
+    {
+      "name": "hire",
+      "path": "interfaces/hire",
+      "module": "github.com/patrickyoung/bench-hire-ui",
+      "commands": [
+        {
+          "name": "hire-ui",
+          "package": "."
+        }
+      ]
+    }
+  ]
+}
