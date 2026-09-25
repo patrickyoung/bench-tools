@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **22 components and 26 public commands**. MCP supplies
+This guide covers all **23 components and 27 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -20,6 +20,7 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Build the expert's instructions, skills, and check | **Hire** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
+| Render pages or execute a supplied browser plan | **[Web](../tools/web/README.md)**; caller selects URLs and actions |
 | Evaluate explicit semantic criteria with typed probabilities | Optional **[Weigh](../tools/weigh/README.md)**; the calling check owns acceptance |
 | Test changes to prompts, skills, subagents or checks on fresh cases | **[Improve](../tools/improve/README.md)** and the [improvement workflow](../.agents/skills/bench/references/improve.md) |
 
@@ -37,6 +38,24 @@ The [improvement example](../tools/weigh/examples/improve-checks/README.md)
 composes optional diagnosis, offline calibration and exact proposal review.
 Teacher and runner are caller-selected model roles; Weigh can judge supplied
 criteria or suggest an investigation, while independent tests establish gains.
+
+## Web: browser observations and explicit actions
+
+**[Web](../tools/web/README.md)** renders one page to Markdown, text, HTML,
+links, a screenshot or a versioned JSON snapshot. It uses installed Chromium
+and is an independent Go command. `web run` executes a finite supplied plan;
+clicks and submits pass a human approval gate, using May's public interface
+when a job is selected. An attached browser remains owned by its caller.
+
+```sh
+web get https://example.com
+web snapshot https://example.com/catalog --records-selector '.product' > page.json
+```
+
+Pass that observation to a separate judgment/check command. Web contains no
+model or task loop; Weigh owns judgment and the caller owns selection and
+acceptance. See Web's [composition example](../tools/web/README.md#compose-with-weigh)
+and [browser setup](../tools/web/README.md#identity-and-ownership).
 
 ## Ask, Ply, Agent, and Hire: answer, work, run, or build?
 

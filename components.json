@@ -358,6 +358,23 @@
       ]
     },
     {
+      "name": "web",
+      "path": "tools/web",
+      "module": "github.com/patrickyoung/web",
+      "source": {
+        "repository": "https://github.com/patrickyoung/web.git",
+        "commit": "34946f80bf74fbe1d81f7ead6f33c48b24224277",
+        "tree": "03454578219b40b976080b20983e0558a38683f3",
+        "extraction": "Go port of the standalone Web command contract, reducer and snapshot; original Python runtime retained in the source repository."
+      },
+      "commands": [
+        {
+          "name": "web",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "weigh",
       "path": "tools/weigh",
       "module": "github.com/patrickyoung/weigh",
