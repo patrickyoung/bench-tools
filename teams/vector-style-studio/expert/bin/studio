@@ -60,6 +60,8 @@ if agent run -C "$run/vector/work" -state "$run/vector/work/state" \
     -record-output handoff.json -record-output output/illustration.inkscape.svg \
     -record-output output/illustration.svg -record-output output/preview.png \
     -record-output output/render.json -record-output output/inkscape.log \
+    -record-output output/inkscape-plan.json -record-output output/authoring-receipt.json \
+    -record-output output/composition-audit.json \
     -record-output output/design-notes.md -goal-file "$run/control/vector-goal.txt" \
     "$studio_definition/agents/vector" > "$run/control/vector.stdout" 2> "$run/control/vector.stderr"
 then

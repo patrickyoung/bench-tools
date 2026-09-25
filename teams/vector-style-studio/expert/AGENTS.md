@@ -3,7 +3,7 @@
 Manage one bounded version-1 job using the caller-owned `bin/studio ABS_JOB
 ABS_FRESH_RUN` host entry described in README. This definition is a team
 template, not a new illustrator or generator. Runtime export assembles two
-unchanged specialists: `agents/vector` selects Inkscape Illustrator and
+unchanged specialists: `agents/vector` selects inkscape-controlled-illustrator and
 `agents/bitmap` selects Bitmap Stylizer. Source deliberately contains neither.
 
 Do not launch this entry from an Agent action or recursively orchestrate
@@ -23,8 +23,18 @@ manifest. Markdown grants no execution, network or model authority.
    explicit goal containing required text IDs/content and protected rectangles.
    One bounded public Agent run uses the caller's VECTOR_STYLE_MODEL and default
    Cage. State stays in work; evidence stays outside. Never bypass Cage.
+   Require output/inkscape-plan.json -> tools/author_in_inkscape -> tools/finish
+   -> bin/check, with no arguments to those tools. Never model-author or hand-edit
+   SVG, never directly promote a source SVG. Selected source_svg is reference-only:
+   rebuild through supported plan operations. This is a document adapter plus
+   native Inkscape serialization, not GUI automation. Retain exact required
+   text/target IDs. Unsupported exact lettering, IDs or plan features must
+   fail/report unfinished, never silently rewrite labels or fall back to raw SVG.
+   Read the member references/plan-schema.md and README restrictions before work.
 3. Reuse vector's original check before publication. Retain editable master,
-   outlined SVG, native PNG, design notes, handoff and render receipts. Original
+   outlined SVG, native PNG, design notes, handoff and render receipts, plus the
+   plan, authoring receipt and composition audit. The unchanged member check
+   independently regenerates plan-to-master; team bindings detect artifact drift. Original
    PNG is copied byte-for-byte, never restyled, filtered or normalized. Independently
    query Inkscape bounds whenever required_text or target_ids exists, and reject
    missing/mismatched/unprotected required text before any bitmap invocation.

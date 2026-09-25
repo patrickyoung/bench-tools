@@ -7,11 +7,12 @@ Styles and subject matter are entirely case inputs. MIT; see LICENSE.
 ## Assemble and select capabilities
 
 The source template has no child copies. Library export uses the team.json roster:
-`vector -> inkscape-illustrator`, `bitmap -> bitmap-stylizer`. Reviewed member
-baseline: `e823f19f07a65db939183b11b64d84b505a3fd11`. Runtime export must contain
+`vector -> inkscape-controlled-illustrator`, `bitmap -> bitmap-stylizer`.
+The selected source commit pins the roster and both members. Runtime export must contain
 unchanged definitions at `expert/agents/vector` and `expert/agents/bitmap`.
 They remain independently runnable; read both complete member READMEs.
-Missing assembled members cause an explicit runtime setup error.
+Missing assembled members or vector tools/author_in_inkscape cause an explicit
+runtime setup error, including an accidentally assembled baseline illustrator.
 
 After curation at a reviewed full commit, use the catalog's public export:
 
@@ -72,6 +73,43 @@ Check without any model or generator call:
 A no-argument check uses the physical current directory for Agent prechecks.
 Do not run the team's full flow via `agent run`; its host entry owns composition.
 `hire verify expert` checks structure only, even without assembled members.
+
+## Controlled vector authoring
+
+Required path: `output/inkscape-plan.json` -> `tools/author_in_inkscape` ->
+`tools/finish` -> `bin/check`; tools take no arguments. Never model-authored or
+hand-edited SVG, including small corrections. Selected `source_svg` is reference-only,
+rebuilt through supported plan operations, never directly promoted to an output.
+This is a fixed document adapter plus native Inkscape serialization, not GUI
+automation. Keep exact required text and target IDs. Unsupported exact lettering,
+IDs or plan features must fail/report unfinished, never silently rewrite labels,
+escape unsupported lettering, or fall back to raw SVG.
+
+Read the unchanged member `references/plan-schema.md` for the normative schema:
+- Plain text fields are 1–500 characters: Unicode word characters, spaces and
+  `,.!?()'’–—:+-` only. No slash, backslash, angle brackets, double quotes,
+  equals, semicolons, newlines, URI-like word-colon sequences or double dots.
+- Object/layer IDs are globally unique `[a-z][a-z0-9-]{0,39}`, excluding `drawing`.
+  The job schema remains unchanged and broader; schema-valid jobs can therefore
+  be unsupported by this worker. Never rename required IDs to make them fit.
+- 2–12 distinct named layers, at most 500 objects; rect, ellipse, polygon,
+  absolute explicit M/L/C/Q/Z paths and sans-serif live text only. Coordinates
+  and control points stay inside the requested canvas. Positive rect/ellipse
+  dimensions, 3–256 polygon points, paths <=16000 characters/256 segments,
+  unsigned decimal path numbers, text font size <= half the smaller dimension.
+- Fill/stroke are none or #RRGGBB, at most 32 colors; opacity 0–1 and stroke
+  width <= one tenth the smaller dimension. No gradients, clipping, filters,
+  transforms, arbitrary groups, arcs, external references or raster content.
+- Plan <=16 MiB, no unknown/duplicate keys; review targets name 1–24 real
+  objects, exactly one primary. The audit catches complete coverage of primary
+  or required geometry by later opaque rectangles, not general visibility.
+
+Generated `output/authoring-receipt.json` and `output/composition-audit.json`
+must not be handwritten. The member check owns plan-to-master regeneration;
+the team does not import or duplicate its implementation. Receipts demonstrate
+consistency, not cryptographic historical execution. The member handoff specialist
+identifier intentionally remains `inkscape-illustrator`. Fonts are host-dependent;
+visual quality and exact visible variant lettering still require caller review.
 
 ## Version-1 job
 
@@ -157,8 +195,7 @@ Each targeted style has `control/targets/ID.json`, outside all member workspaces
 selected IDs/padding, measured and expanded boxes, derived preserve_regions,
 canvas size, canonical master/SVG/PNG hashes, selected wording, text IDs allowed
 to change, and honest protection scope. Manifest variants expose the target
-IDs/boxes/scope plus admission path/hash. Non-targeted briefs, vector goals and
-manifest fields retain their old contract. The independent check freshly queries
+IDs/boxes/scope plus admission path/hash. Non-targeted bitmap briefs and manifest fields retain their old contract. The independent check freshly queries
 Inkscape, recomputes all target admissions/briefs, compares their bytes and hashes,
 and still delegates **every** bitmap acceptance to the unchanged check-output.
 All styles receive the same original.png, never another style's result.
@@ -202,8 +239,10 @@ pixels, not vector paths. Each style is independent, never a chain.
 The checker has these hard criteria:
 - INPUT: current selected job/reference, external snapshots, hashes and vector
   input bytes agree; missing/stale/unselected references fail.
-- VECTOR: original member check independently establishes master/final/preview
-  correspondence; initial checked output bindings remain unchanged.
+- VECTOR: unchanged controlled member check independently regenerates the master
+  from the plan and establishes master/final/preview correspondence. Team bindings
+  include the plan, authoring receipt and composition audit and reject missing or
+  changed files. Public Agent record-output retains all three alongside prior outputs.
 - TEXT: exact master lettering and independently queried bounds meet baseline
   global protection; unselected text cannot intersect any expanded target.
 - TARGET: independently recomputed rectangles, complement, admission and brief;

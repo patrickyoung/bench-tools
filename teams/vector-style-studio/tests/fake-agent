@@ -2,6 +2,7 @@
 # Offline process fixture; deliberately NOT an illustrator or PNG producer.
 set -eu
 [ "$1" = run ]; shift
+records=
 work= state= evidence= model= goal= turns= cycles= timeout=
 while [ "$#" -gt 0 ]; do
     case $1 in
@@ -13,7 +14,8 @@ while [ "$#" -gt 0 ]; do
       -turns) turns=$2; shift 2;;
       -cycles) cycles=$2; shift 2;;
       -timeout) timeout=$2; shift 2;;
-      -record-input|-record-output) shift 2;;
+      -record-input|-record-output) records="$records$1 $2
+"; shift 2;;
       -*) echo "unexpected agent flag: $1" >&2; exit 89;;
       *) definition=$1; shift;;
     esac
@@ -29,6 +31,18 @@ case $evidence/ in "$work/"*) exit 89;; esac
 printf 'vector\n' >> "$FIX_EVENTS"
 mkdir -p "$state" "$evidence"
 printf 'fixture evidence\n' > "$evidence/receipt"
+printf '%s' "$records" > "$evidence/record-flags"
+cp "$goal" "$evidence/authoring-goal"
+for rel in output/inkscape-plan.json output/authoring-receipt.json output/composition-audit.json; do
+    grep -Fx -- "-record-output $rel" "$evidence/record-flags" >/dev/null
+done
+grep -F 'output/inkscape-plan.json -> tools/author_in_inkscape -> tools/finish -> bin/check' "$goal" >/dev/null
+grep -F 'never rewrite labels silently or fall back to raw SVG' "$goal" >/dev/null
+grep -F 'Required lettering must remain live SVG text' "$goal" >/dev/null
+if [ -f "$work/inputs/source.svg" ]; then
+    grep -F 'reference-only' "$goal" >/dev/null
+    grep -F 'Rebuild the selected source_svg through supported plan operations' "$goal" >/dev/null
+fi
 if [ "${FIX_VECTOR_STATUS:-0}" != 0 ]; then exit "$FIX_VECTOR_STATUS"; fi
 mkdir "$work/output"
 cat > "$work/output/illustration.inkscape.svg" <<'SVG'
@@ -58,6 +72,10 @@ case ${FIX_TARGET_FINAL:-good} in
 esac
 if [ -f "$work/output/temp" ]; then mv "$work/output/temp" "$work/output/illustration.svg"; fi
 printf 'FAKE native PNG bytes\n' > "$work/output/preview.png"
+for name in inkscape-plan authoring-receipt composition-audit; do
+    printf '{"fixture":"FAKE wiring only, not native authoring","artifact":"%s"}\n' "$name" > "$work/output/$name.json"
+done
+if [ -n "${FIX_MISSING_AUTHORING:-}" ]; then rm "$work/output/$FIX_MISSING_AUTHORING.json"; fi
 printf '{}\n' > "$work/output/render.json"
 printf '{}\n' > "$work/handoff.json"
 printf 'Fixture log\n' > "$work/output/inkscape.log"

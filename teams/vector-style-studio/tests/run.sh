@@ -12,13 +12,16 @@ t="$tmp/literal paths with spaces"
 cp -R "$root/expert" "$t/template"
 rm -rf "$t/template/agents" "$t/template/bin/workers"
 cp -R "$t/template" "$t/expert"
-mkdir -p "$t/expert/agents/vector/bin" "$t/expert/agents/bitmap/bin" "$t/commands"
+mkdir -p "$t/expert/agents/vector/tools" "$t/expert/agents/vector/bin" "$t/expert/agents/bitmap/bin" "$t/commands"
 cp "$root/tests/fake-agent" "$t/commands/agent"
 cp "$root/tests/fake-vector-check" "$t/expert/agents/vector/bin/check"
 cp "$root/tests/fake-stylize" "$t/expert/agents/bitmap/bin/stylize"
 cp "$root/tests/fake-bitmap-check" "$t/expert/agents/bitmap/bin/check-output"
 cp "$root/tests/fake-inkscape" "$t/commands/inkscape"
 printf '#!/bin/sh\nexit 88\n' > "$t/commands/unused-capability"
+# Setup sentinel only: never executed and never claims native authoring.
+cp "$t/commands/unused-capability" "$t/expert/agents/vector/tools/author_in_inkscape"
+chmod +x "$t/expert/agents/vector/tools/author_in_inkscape"
 chmod +x "$t/commands/"* "$t/expert/agents/"*/bin/*
 export PATH="$t/commands:$PATH"
 export INKSCAPE="$t/commands/inkscape"
@@ -107,7 +110,8 @@ expect 1 env FIX_MUTATE=source "$entry" "$t/source job.json" "$t/mutated source"
 # Stale/single-file tampering must fail, without refreshing trusted receipts.
 for rel in result/original.png result/first.png styles/first/control/final.png \
  styles/second/work/inputs/source.png styles/first/work/brief.json \
- vector/work/output/render.json control/source.svg control/job.json \
+ vector/work/output/inkscape-plan.json vector/work/output/authoring-receipt.json \
+ vector/work/output/composition-audit.json vector/work/output/render.json control/source.svg control/job.json \
  manifest.json
 do
     file="$t/good run/$rel"
@@ -117,6 +121,25 @@ do
     expect 1 "$check" "$t/good run"
     cp "$t/saved" "$file"
 done
+# Authoring files are bound by the team even though the fake member deliberately
+# does not validate them. Missing production must stop before bitmap invocation.
+for name in inkscape-plan authoring-receipt composition-audit; do
+    file="$t/good run/vector/work/output/$name.json"
+    mv "$file" "$t/saved-authoring"
+    expect 1 "$check" "$t/good run"
+    mv "$t/saved-authoring" "$file"
+    : > "$FIX_EVENTS"
+    expect 1 env FIX_MISSING_AUTHORING="$name" "$entry" "$t/job.json" "$t/missing-$name"
+    ! grep 'bitmap:' "$FIX_EVENTS"
+done
+# A baseline-only assembled member must fail setup, not run any fake worker.
+mv "$t/expert/agents/vector/tools/author_in_inkscape" "$t/saved-author-tool"
+: > "$FIX_EVENTS"
+expect 2 "$entry" "$t/job.json" "$t/baseline-only"
+grep 'agents/vector/tools/author_in_inkscape' "$t/stderr" >/dev/null
+[ ! -s "$FIX_EVENTS" ]
+expect 2 "$check" "$t/good run"
+mv "$t/saved-author-tool" "$t/expert/agents/vector/tools/author_in_inkscape"
 # Same-source check rejects a chain even if the fake member snapshots agree.
 file="$t/good run/styles/second/work/inputs/source.png"
 cp "$file" "$t/saved"
@@ -274,4 +297,4 @@ jq '.styles=[.styles[1]] | .styles[0].target_ids=["sun"] |
  .styles[0].target_padding=4' "$t/target.json" > "$t/touch.json"
 expect 0 "$entry" "$t/touch.json" "$t/touch run"
 jq -ne -L "$root/expert/lib" -f "$root/tests/complement.jq"
-echo "PASS $n total offline process/check contracts (42 legacy plus targeted extension; fixture media only)"
+echo "PASS $n total offline process/check contracts (legacy plus controlled-authoring and targeted extensions; fixture media only)"

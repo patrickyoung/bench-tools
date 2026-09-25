@@ -14,7 +14,7 @@ prerequisites and provides focused and optional native/browser commands.
 
 | Team | Purpose | Authoritative roster |
 | --- | --- | --- |
-| [Vector Style Studio](vector-style-studio/expert/README.md) | Create an editable SVG, its unchanged native PNG render, and independent bitmap styles from that same render, with protected factual text. | [team.json](vector-style-studio/team.json) |
+| [Vector Style Studio](vector-style-studio/expert/README.md) | Create editable vectors through a controlled drawing plan and native Inkscape, then independent bitmap styles with protected factual text. | [team.json](vector-style-studio/team.json) |
 | [Vendor comparison team](vendor-comparison-team/expert/README.md) | Lead technical evaluations through Product Manager framing/synthesis, Polars analysis, comparison and independent review. | [team.json](vendor-comparison-team/team.json) |
 | [Vendor decision studio](vendor-decision-studio/expert/README.md) | Add dedicated editorial, information design, executive writing, presentation and publication review expertise to the comparison process. | [team.json](vendor-decision-studio/team.json) |
 | [Page team](page-team/expert/README.md) | Plan, create, integrate and review a single-file site using the useful available roles. | [team.json](page-team/team.json) |
