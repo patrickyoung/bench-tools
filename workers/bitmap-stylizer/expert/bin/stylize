@@ -1,0 +1,53 @@
+#!/bin/sh
+# Caller-owned host adapter. Run outside Agent's action Cage.
+set -eu
+umask 077
+[ "$#" -eq 2 ] || { echo 'usage: stylize ABS_WORK ABS_FRESH_CONTROL' >&2; exit 2; }
+work=$1
+control=$2
+case ${BITMAP_HELPER:-} in /*) ;; *) echo 'select absolute BITMAP_HELPER' >&2; exit 2;; esac
+case ${BITMAP_GENERATOR:-} in /*) ;; *) echo 'select absolute BITMAP_GENERATOR' >&2; exit 2;; esac
+[ -n "${BITMAP_AUTHOR_MODEL:-}" ] || { echo 'select explicit BITMAP_AUTHOR_MODEL' >&2; exit 2; }
+[ -f "$BITMAP_HELPER" ] && [ -x "$BITMAP_HELPER" ] || exit 2
+[ -f "$BITMAP_GENERATOR" ] && [ -x "$BITMAP_GENERATOR" ] || exit 2
+definition=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+"$BITMAP_HELPER" guard "$work" "$definition" "$BITMAP_HELPER" "$BITMAP_GENERATOR"
+"$BITMAP_HELPER" snapshot "$work" "$control"
+echo 'Authoring editing request (default no-network Cage)' >&2
+# State is deliberately IN work: giving Agent a writable control state would
+# invalidate the external snapshot boundary. Only Agent's evidence is external.
+if agent run -C "$work" -state "$work/state" -evidence "$control/agent" \
+    -m "$BITMAP_AUTHOR_MODEL" -turns 10 -cycles 1 -timeout 10m \
+    -record-input brief.json -record-output output/request.json \
+    -record-output output/image-notes.md "$definition" -- \
+    'Read brief.json and its admitted source PNG. Author only the bound editing request and composition notes according to this definition. Do not change inputs, generate images, or run the host adapter.' \
+    > "$control/agent.stdout" 2> "$control/agent.stderr"
+then
+    printf '0\n' > "$control/agent-exit-status"
+else
+    status=$?
+    printf '%s\n' "$status" > "$control/agent-exit-status"
+    cat "$control/agent.stderr" >&2
+    exit "$status"
+fi
+"$BITMAP_HELPER" prepare "$work" "$control"
+echo 'Running caller-selected image generator once, outside action Cage' >&2
+cd -- "$control/generation"
+# Do not select raw.png with Record -output: if a failed backend writes no PNG,
+# that would replace its exact failure with recorder-incomplete status 125.
+# Record retains stdin/stdout/stderr/status; helper binds actual PNG afterwards.
+if record run -f "$control/generation/record.jsonl" \
+    -timeout "${BITMAP_GENERATOR_TIMEOUT:-8m}" \
+    -input "$control/generator-input.json" -- "$BITMAP_GENERATOR" \
+    < "$control/generator-input.json" > "$control/generation/provenance.json" \
+    2> "$control/generation/stderr.log"
+then
+    printf '0\n' > "$control/generation/exit-status"
+else
+    status=$?
+    printf '%s\n' "$status" > "$control/generation/exit-status"
+    cat "$control/generation/stderr.log" >&2
+    exit "$status"
+fi
+"$BITMAP_HELPER" finish "$work" "$control"
+exec "$definition/bin/check-output" "$work" "$control"

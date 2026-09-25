@@ -129,6 +129,15 @@ exported. Generated pages, artwork, recordings, job briefs, customer data,
 sessions, runtime memories, caches, installed packages, credentials and
 development records are excluded. No `.git` history is copied.
 
+A worker may own a small Go helper for deterministic file or format work.
+Inventory its source and private module under `expert/`; keep synthetic Go
+tests and their module under `tests/`. The architecture gate admits these only
+for registered workers, requires the standard library exclusively, and rejects
+cross-tool or cross-worker imports, module dependencies and replacements.
+Tools cannot import a worker's module either. Build the helper outside reusable
+source and keep execution through public commands; this grants no shared
+runtime, root module, workspace or additional authority.
+
 Review the content of allowed Markdown and programs too: filenames cannot
 prove that paragraphs contain no prior job data. Promote generalized learning
 as a reviewed instruction or skill change. Never automatically promote run

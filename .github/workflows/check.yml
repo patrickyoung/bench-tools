@@ -187,6 +187,14 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: tools/ask/go.mod
+          cache: false
+      - name: Build public recording commands for bitmap process fixtures
+        run: |
+          python3 scripts/build ask record
+          echo "$PWD/.build/bin" >> "$GITHUB_PATH"
       - name: Run all core worker and team evaluations
         run: python3 scripts/check-worker-evaluations.py --profile core --out "$RUNNER_TEMP/worker-evaluations"
       - name: Export the committed Product Owner without tests or run content

@@ -36,6 +36,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | [Inkscape-controlled illustrator](inkscape-controlled-illustrator/expert/README.md) | Create editable vector illustrations through a bounded drawing plan, trusted document adapter, and native Inkscape export. |
 | [Image editor](image-editor/expert/README.md) | Preserve originals and produce an editable GIMP master and optimized export. |
 | [Image concept](image-concept/expert/README.md) | Prepare a checked image request and composition notes for a separately selected generator. |
+| [Bitmap stylizer](bitmap-stylizer/expert/README.md) | Restyle a reference PNG through a selected image generator while preserving labeled text/data regions as exact original pixels. |
 | [Page planner](page-planner/expert/README.md) | Propose bounded tasks against an explicitly supplied Bench Manage snapshot. |
 | [Page reviewer](page-reviewer/expert/README.md) | Assess supplied page observations and produce a structured review with limitations. |
 

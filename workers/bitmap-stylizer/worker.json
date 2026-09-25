@@ -1,0 +1,27 @@
+{
+  "id": "bitmap-stylizer",
+  "description": "Restyle a reference PNG through a selected image generator while preserving labeled text/data regions as exact original pixels.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "f3fe7325c12739678040a669496a7605c79e4b19",
+      "commands": ["agent", "ask", "brief", "ply", "cage", "record"]
+    },
+    "go": ">=1.22 to compile the standalone standard-library PNG helper",
+    "shell": "POSIX sh, cmp, mktemp, and a SHA-256 utility",
+    "image-generator": "Caller-selected executable accepting prompt/output/references JSON on stdin and returning a PNG plus JSON provenance; credentials and deadline remain caller-selected"
+  },
+  "files": [
+    "workers/bitmap-stylizer/expert/AGENTS.md",
+    "workers/bitmap-stylizer/expert/LICENSE",
+    "workers/bitmap-stylizer/expert/README.md",
+    "workers/bitmap-stylizer/expert/bin/check",
+    "workers/bitmap-stylizer/expert/bin/check-output",
+    "workers/bitmap-stylizer/expert/bin/stylize",
+    "workers/bitmap-stylizer/expert/bitmap/bitmap.go",
+    "workers/bitmap-stylizer/expert/bitmap/go.mod",
+    "workers/bitmap-stylizer/expert/skills/bitmap-style/SKILL.md"
+  ]
+}
