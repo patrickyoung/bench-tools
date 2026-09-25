@@ -20,6 +20,7 @@ runs, retained evidence, native/browser suites and separate model-quality cases.
 | [Product Manager](product-manager/expert/README.md) | Follow SAFe to connect vision and roadmap to ART features, benefit hypotheses, acceptance criteria, prioritization and leadership decisions; also frame evaluations and synthesize checked evidence. |
 | [Product Owner](product-owner/expert/README.md) | Clarify customer problems, test outcome assumptions, recommend backlog priorities and delivery trade-offs, and review AI product decisions. |
 | [Enterprise Architect](enterprise-architect/expert/README.md) | Guide enterprise platforms, portfolio investments and sunsets, capability reuse, emerging-product evaluation, standards and transition gates. Delivery teams implement. |
+| [Solution Architect](solution-architect/expert/README.md) | Translate business needs into implementable solutions using approved platforms, explicit Enterprise Architecture conformance, measurable quality targets and delivery handoffs. |
 | [Polars analyst](polars-analyst/expert/README.md) | Audit observational data, assess design and compute defensible descriptive or Welch/paired statistics with uncertainty. |
 | [Vendor comparison](vendor-comparison/expert/README.md) | Produce evidence-linked technical comparisons with business weights, anchored scores, mandatory gates and visible uncertainty. |
 | [Editorial Director](editorial-director/expert/README.md) | Own one audience-specific argument, message map and visual direction across publications. |

@@ -1,0 +1,41 @@
+{
+  "id": "solution-architect",
+  "description": "Translate business needs into implementable solutions using approved technology platforms, explicit Enterprise Architecture conformance, measurable quality targets and accountable delivery handoffs.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "2ec79db01ed479dd1f639e1d6784645cc29071a0",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9 standard library on Linux or macOS with env -S and no-follow file support",
+    "model": "Operator-configured Ask model and credentials; none bundled",
+    "inputs": "Current business request and explicitly selected EA standards, approved platform catalog and service constraints; missing authority stays provisional or needs-input",
+    "review": "Independent source, design and standards review against QUALITY.md; structural acceptance is not organizational approval or tested behavior"
+  },
+  "files": [
+    "workers/solution-architect/expert/AGENTS.md",
+    "workers/solution-architect/expert/CONTRACT.md",
+    "workers/solution-architect/expert/LICENSE",
+    "workers/solution-architect/expert/PROFILE.md",
+    "workers/solution-architect/expert/QUALITY.md",
+    "workers/solution-architect/expert/README.md",
+    "workers/solution-architect/expert/bin/check",
+    "workers/solution-architect/expert/references.md",
+    "workers/solution-architect/expert/skills/business-to-requirements/SKILL.md",
+    "workers/solution-architect/expert/skills/delivery-migration/SKILL.md",
+    "workers/solution-architect/expert/skills/ea-conformance/SKILL.md",
+    "workers/solution-architect/expert/skills/platform-options/SKILL.md",
+    "workers/solution-architect/expert/skills/pragmatic-ai/SKILL.md",
+    "workers/solution-architect/expert/skills/quality-security-operations/SKILL.md",
+    "workers/solution-architect/expert/skills/solution-design/SKILL.md"
+  ]
+}
