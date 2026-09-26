@@ -213,6 +213,40 @@ class BuildWorkflowTests(unittest.TestCase):
         self.assertNotIn("bin/agent-action-shell", {entry["path"] for entry in agent_receipt["files"]})
         self.assertEqual(agent_receipt["commands"], ["agent"])
 
+    def test_moniker_manifest_survives_build_install_and_relocation(self):
+        leaf = self.root / "tools/moniker"
+        leaf.mkdir()
+        (leaf / "go.mod").write_text("module example.invalid/moniker\n\ngo 1.26\n")
+        (leaf / "main.go").write_text('package main\nfunc main() {}\n')
+        (leaf / "mcp").mkdir()
+        manifest = b'{"tools":[{"name":"fixture","description":"packaged manifest"}]}\n'
+        (leaf / "mcp/manifest.json").write_bytes(manifest)
+        # Only the documented static asset belongs in the payload.
+        (leaf / "mcp/private-registry.json").write_text("caller state\n")
+        self.components.append({"name": "moniker", "path": "tools/moniker",
+                                "module": "example.invalid/moniker",
+                                "source": {"commit": "original-fixture"},
+                                "commands": [{"name": "moniker", "package": "."}]})
+        (self.root / "components.json").write_text(json.dumps({"schema": 1, "components": self.components}))
+        self.build("moniker")
+        receipt = json.loads((self.output / "tools/moniker/package.json").read_text())
+        assets = {entry["path"]: entry for entry in receipt["files"]}
+        self.assertEqual(set(assets), {"bin/moniker", "mcp/manifest.json"})
+        self.assertEqual(assets["mcp/manifest.json"]["sha256"], hashlib.sha256(manifest).hexdigest())
+        for name in ("install", "uninstall", "install_support.py"):
+            shutil.copy2(ROOT / "scripts" / name, self.root / "scripts" / name)
+        prefix = self.base / "installed prefix"
+        installed = subprocess.run([sys.executable, str(self.root / "scripts/install"), "moniker",
+                                    "--from-build", str(self.output), "--prefix", str(prefix)],
+                                   env=self.env, text=True, capture_output=True)
+        self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
+        moved = self.base / "moved prefix with spaces"
+        prefix.rename(moved)
+        shutil.rmtree(leaf)
+        shutil.rmtree(self.output)
+        self.assertEqual((moved / "lib/bench-tools/moniker/mcp/manifest.json").read_bytes(), manifest)
+        self.assertEqual(subprocess.run([str(moved / "bin/moniker")]).returncode, 0)
+
     def test_weigh_examples_survive_build_install_and_relocation(self):
         # Package the real leaf: its visual wrapper imports a sibling module,
         # and its checker must remain executable when composed by literal argv.

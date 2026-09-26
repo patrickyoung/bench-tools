@@ -1,0 +1,34 @@
+{
+  "name": "moniker",
+  "version": "0.1.0",
+  "instructions": "Reserve friendly team names in the operator-selected local registry. Each successful call creates a new reservation; retrying is not idempotent. No model or network is used.",
+  "tools": [
+    {
+      "name": "generate_team_name",
+      "title": "Reserve a team name",
+      "description": "Generate and reserve a unique friendly team name in the explicit local registry selected by the operator. Reservations persist across calls and process restarts. This writes a local reservation; do not automatically retry an uncertain call.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "playful",
+              "space",
+              "nature"
+            ],
+            "default": "playful"
+          }
+        },
+        "additionalProperties": false
+      },
+      "annotations": {
+        "title": "Reserve a team name",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

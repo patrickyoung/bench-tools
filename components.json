@@ -245,6 +245,23 @@
       ]
     },
     {
+      "name": "moniker",
+      "path": "tools/moniker",
+      "module": "github.com/patrickyoung/moniker",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "moniker",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "oauth",
       "path": "tools/oauth",
       "module": "github.com/patrickyoung/oauth",

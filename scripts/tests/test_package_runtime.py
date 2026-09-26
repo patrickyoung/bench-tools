@@ -56,6 +56,9 @@ class RuntimePackageTests(unittest.TestCase):
             if name in ("weigh", "improve"):
                 (leaf / "examples").mkdir()
                 (leaf / "examples/README.md").write_text("fixture " + name + " examples\n")
+            if name == "moniker":
+                (leaf / "mcp").mkdir()
+                (leaf / "mcp/manifest.json").write_text('{"tools":[]}\n')
             components.append({"name": name, "path": "tools/" + name, "module": module,
                                "source": {"commit": "fixture-import"}, "commands": component["commands"]})
         (cls.source / "components.json").write_text(json.dumps({"components": components}))

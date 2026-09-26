@@ -75,7 +75,7 @@ For browser work, install `web` and separately install Chrome/Chromium.
 Web is native Go and needs no Python/Node browser runtime. See
 [Web setup and commands](../tools/web/README.md).
 
-Without names, the source installer builds and installs all 27 commands:
+Without names, the source installer builds and installs all 28 commands:
 
 ```sh
 python3 scripts/install
@@ -104,9 +104,10 @@ The equivalent Make commands are `make install`, or
 
 ### Install published Linux packages without Go
 
-The pinned release includes all 20 components and their 24 public commands,
-including OAuth, MCP, A2A and Draft. Select components whose source still matches
-that release; the newer optional Weigh component requires a source build:
+The pinned release includes 20 components and their 24 public commands,
+including OAuth, MCP, A2A and Draft. Newer tools such as Moniker require a source
+build (`python3 scripts/install moniker`). For release installation, select
+components whose source still matches that release:
 
 ```sh
 python3 scripts/install oauth --from-release --prefix "$HOME/.local/share/bench/runtime"

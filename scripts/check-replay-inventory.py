@@ -39,6 +39,7 @@ BOUNDARIES = {
     "mcp-legacy": "legacy protocol requests and refusal against current-only servers",
     "mcpbox": "explicit protocol admission and materialization",
     "mcpserve": "bidirectional initialized protocol session",
+    "moniker": "selected registry and theme, reserved name and process outcome",
     "oauth": "non-secret profile selection, private header descriptor and offline child outcome",
     "ply": "model/action/verifier loop and interpreter observations",
     "record": "recording/extraction through its own public executable boundary",
@@ -111,6 +112,7 @@ def main():
             improve_spec = run([sys.executable, ROOT / "tools/improve/examples/router/spec.py", "--offline"]).stdout
             run([bins / "improve", "-n"], improve_spec)
             run([bins / "may", "check"])
+            moniker_contract(bins, work, run)
             run([bins / "cage", "status"])
             confined, receipt = support["recorded_argv"](
                 [bins / "cage", "-ro", "--", "/usr/bin/printf", "confined fixture\\n"], env)
@@ -190,6 +192,50 @@ def main():
     (out / "coverage.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2), flush=True)
     require(not failures, "replay inventory gate failed; see " + str(out / "coverage.json"))
+
+
+def moniker_contract(bins, work, run, manifest=None, legacy=True):
+    """Compose the real name filter, dispatcher, server, and protocol clients."""
+    registry = work / "name registry"
+    seen = []
+
+    def identity(value, theme):
+        require(all(isinstance(value.get(key), str) and value[key]
+                    for key in ("id", "name", "slug", "theme")), "Moniker lost the reserved identity")
+        require(len(value["id"]) == 32 and all(c in "0123456789abcdef" for c in value["id"]),
+                "Moniker returned an invalid ID")
+        require(value["theme"] == theme, "Moniker lost the caller-selected theme")
+        require(all(value["id"] != prior["id"] and value["slug"] != prior["slug"] for prior in seen),
+                "Moniker reused a reserved identity")
+        seen.append(value)
+
+    identity(json.loads(run([bins / "moniker", "-dir", registry, "-json"]).stdout), "playful")
+    manifest = manifest or ROOT / "tools/moniker/mcp/manifest.json"
+    server = [bins / "mcpserve", manifest, "--", bins / "moniker", "mcp", "-dir", registry]
+    blocked = work / "registry-is-a-file"
+    blocked.write_text("unrelated caller file\n")
+    cases = [("mcp", server, "space")]
+    if legacy:
+        cases.append(("mcp-legacy", [server[0], "-allow-legacy", *server[1:]], "nature"))
+    for client, selected, theme in cases:
+        listing = json.loads(run([bins / client, "request", "tools/list", "--", *selected], b"{}").stdout)
+        require(any(tool["name"] == "generate_team_name" for tool in listing["tools"]),
+                "Moniker MCP discovery lost its descriptor")
+        request = json.dumps({"name": "generate_team_name", "arguments": {"theme": theme}}).encode()
+        reply = json.loads(run([bins / client, "request", "tools/call", "--", *selected], request).stdout)
+        require(not reply.get("isError"), "Moniker MCP call returned an error")
+        identity(reply["structuredContent"], theme)
+        require(any(part.get("text") == seen[-1]["name"] for part in reply["content"]),
+                "Moniker MCP text and structured result disagree")
+        failure = json.loads(run([bins / client, "request", "tools/call", "--", *selected[:-1], blocked],
+                                 request, code=1).stdout)
+        require(failure.get("isError") is True and failure.get("content"),
+                "Moniker MCP lost a completed application failure")
+        require(blocked.read_text() == "unrelated caller file\n", "Moniker replaced an unrelated file")
+    if legacy:
+        run([bins / "mcp-legacy", "request", "tools/list", "--", *server], b"{}", code=2)
+    print("ok Moniker: literal CLI, distinct reservations, " + ("modern/legacy" if legacy else "modern")
+          + " MCP and application failures", flush=True)
 
 
 def readable_line(stream, label):

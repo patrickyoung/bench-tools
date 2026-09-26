@@ -4,7 +4,7 @@
 
 **Use [patrickyoung/bench-tools](https://github.com/patrickyoung/bench-tools)
 for the shared toolkit source and installer.** This repository maintains the
-23 components together, so documentation, command compatibility fixes, and
+24 components together, so documentation, command compatibility fixes, and
 integration checks can change in one commit.
 
 ## Choose an installation
@@ -61,9 +61,10 @@ dependency lock or a toolkit version number.
 
 `releases/builder.json` pins GitHub release assets by SHA-256, size, source
 revision, platform and the independent packages' source and receipt digests.
-The archive includes every component declared in `components.json`: currently
-20 independent packages and 24 public commands. The existing `builder.json`
-and `bench-builder-PLATFORM.tar.gz` names are retained for compatibility;
+New archives include every component declared in `components.json`: currently
+24 independent packages and 28 public commands. The pinned release still contains
+20 packages and 24 commands; newer tools, including Moniker, need a source build.
+The existing `builder.json` and `bench-builder-PLATFORM.tar.gz` names are retained for compatibility;
 their inventory is no longer limited to the nine default setup tools.
 Automatic downloads are limited to Linux. Macs build from source until
 Developer ID signing and notarization are configured; Mac CI packages remain
