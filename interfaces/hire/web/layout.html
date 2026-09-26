@@ -1,6 +1,11 @@
 {{define "layout"}}<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>{{.Title}} · Bench Hire</title><link rel="stylesheet" href="/assets/style.css"><script defer src="/assets/app.js"></script></head>
-<body><a class="skip" href="#main">Skip to content</a>
+<body{{if eq .View "tasks"}} class="chat-app"{{end}}><a class="skip" href="#main">Skip to content</a>
+{{if eq .View "tasks"}}
+<aside class="sidebar chat-sidebar" id="chat-sidebar"><a class="brand" href="/">Hire</a><a class="button new-chat" href="/">＋ New chat</a>
+<nav id="chat-list" class="chat-list" aria-label="Chats"><span class="nav-section">Chats</span>{{range .Work.Recent}}<a href="/work/{{.Record.Thread}}" {{if eq $.Work.Thread .Record.Thread}}aria-current="page"{{end}}><span>{{or .Result.Title .Record.Message}}</span>{{if .Job.Active}}<i class="dot" aria-label="Working"></i>{{end}}</a>{{else}}<p class="field-help">Your chats will appear here.</p>{{end}}</nav>
+<details class="chat-tools"><summary>Library &amp; tools</summary><nav aria-label="Tools"><a href="/workers">Workers</a><a href="/teams">Teams</a><a href="/jobs">Activity records</a><a href="/assist">Manage your bench</a></nav></details></aside>
+{{else}}
 <aside class="sidebar"><a class="brand" href="/" aria-label="Bench home"><span class="brand-mark" aria-hidden="true">−</span>Bench<span class="brand-label">HIRE</span></a>
 <nav aria-label="Primary">
 <a href="/" {{if eq .Nav "work"}}aria-current="page"{{end}}><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg></span>Your work</a>
@@ -11,7 +16,9 @@
 <span class="nav-section">DETAILS</span>
 <a href="/jobs" {{if eq .Nav "jobs"}}aria-current="page"{{end}}><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></span>Activity</a>
 <a href="/assist">Manage your bench</a></nav><div class="sidebar-foot"><span class="eyebrow">YOUR LOCAL LIBRARY</span><code>bench-tools @ {{short .Catalog.Revision}}</code><span><i class="dot"></i> Local connection</span></div></aside>
-<main id="main" tabindex="-1"><div class="topline"><span>Workspace <span aria-hidden="true">/</span> <strong>{{if .Nav}}{{name .Nav}}{{else}}Hire{{end}}</strong></span><span class="local-pill"><i class="dot"></i> On your computer</span></div>
+{{end}}
+<main id="main" tabindex="-1">{{if ne .View "tasks"}}<div class="topline"><span>Workspace <span aria-hidden="true">/</span> <strong>{{if .Nav}}{{name .Nav}}{{else}}Hire{{end}}</strong></span><span class="local-pill"><i class="dot"></i> On your computer</span></div>
+{{end}}
 {{if eq .View "tasks"}}{{template "tasks" .}}{{end}}
 {{if eq .View "assistant"}}{{template "assistant" .}}{{end}}
 {{if eq .View "team-form"}}{{template "team-form" .}}{{end}}
@@ -26,7 +33,7 @@
 {{if eq .View "review"}}{{template "review" .}}{{end}}
 {{if eq .View "job"}}{{template "job" .}}{{end}}
 {{if eq .View "error"}}<header class="page-heading"><div><p class="eyebrow">LET’S GET THIS SORTED</p><h1>{{.Title}}</h1></div></header><section class="panel empty"><h2>We couldn’t complete that action.</h2><p role="alert">{{.Error}}</p><a class="button" href="/">Back to your bench</a></section>{{end}}
-<footer class="page-foot">Built once. Put to work again.<span>Hire builds · Agent runs</span></footer></main></body></html>{{end}}
+{{if ne .View "tasks"}}<footer class="page-foot">Built once. Put to work again.<span>Hire builds · Agent runs</span></footer>{{end}}</main></body></html>{{end}}
 
 {{define "fields"}}<input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="nonce" value="{{.Nonce}}">{{end}}
 

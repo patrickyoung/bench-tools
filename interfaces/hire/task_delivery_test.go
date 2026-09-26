@@ -97,6 +97,18 @@ func TestDeliveryPublicExecutableIntegration(t *testing.T) {
 	if gallery.Code != 200 || !strings.Contains(gallery.Body.String(), "/work/jobs/"+first.Job.ID+"/delivery/a/") {
 		t.Fatalf("private gallery broken: %d %s", gallery.Code, gallery.Body.String())
 	}
+	policy := gallery.Header().Get("Content-Security-Policy")
+	if !strings.Contains(policy, "frame-ancestors 'self'") || strings.Contains(policy, "frame-ancestors 'none'") {
+		t.Fatalf("private gallery cannot embed in its chat: %s", policy)
+	}
+	chat := serveTest(a, "GET", "/work/"+first.Record.Thread+"?site=1", nil).Body.String()
+	if !strings.Contains(chat, `title="This chat’s Plonk site"`) || !strings.Contains(chat, `src="/work/jobs/`+first.Job.ID+`/delivery/?embed=1"`) {
+		t.Fatal("prepared Plonk site is not attached to its chat")
+	}
+	embedded := serveTest(a, "GET", "/work/jobs/"+first.Job.ID+"/delivery/?embed=1", nil)
+	if !strings.Contains(embedded.Body.String(), `<style data-plonk-embed>`) {
+		t.Fatal("embedded site kept its standalone promotional layout")
+	}
 	original := serveTest(a, "GET", "/work/jobs/"+first.Job.ID+"/delivery/files/result.md?download=1", nil)
 	if original.Code != 200 || !strings.Contains(original.Body.String(), "first welcome") {
 		t.Fatalf("private file broken: %d %s", original.Code, original.Body.String())

@@ -479,3 +479,23 @@ name. A successful saved reservation is not rerolled. Moniker owns atomic name
 uniqueness within this explicitly selected private directory. It uses no model,
 network, shared runtime, or hidden state. The same tool can be exposed by the
 existing public `mcpserve` executable using its supplied MCP manifest/dispatcher.
+
+## Chat workspace
+
+Work conversations use a persistent, scrollable chat list and a viewport-height
+transcript above the bottom composer. Library and command records are secondary
+controls. New chats have no hero, starter cards or explanatory rail. Enter sends;
+Shift+Enter inserts a newline, and IME composition does not submit. Drafts, scroll
+position and the site-panel preference stay per chat in this browser tab. Status
+polls retain a reader's position; readers following the end see new updates.
+Native navigation and multipart forms remain available without scripting.
+
+Every chat owns a Plonk panel, available from its header even before it has files.
+The panel selects that chat's latest artifact-bearing turn; refinements and other
+chats cannot mix their outputs. Plonk opens/closes inside the workspace, taking
+the full content area on phones. Opening it can prepare the private Plonk gallery
+through the existing explicit delivery POST. Public sharing still requires its
+separate share action. Delivery completion stays in the chat. Private galleries
+are framed through the existing authenticated proxy, sandboxed without scripts;
+only their frame-ancestors directive changes to self. Upstream content policies,
+credential handling, generated-site isolation and artifact download rules remain.

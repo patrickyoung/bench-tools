@@ -61,6 +61,9 @@ type taskTurn struct {
 	Outputs    []taskOutput
 }
 type taskView struct {
+	Title                       string
+	Site                        *taskTurn
+	SiteOpen                    bool
 	Research                    bool
 	Attachments                 []taskAttachment
 	Deferred                    bool
@@ -185,7 +188,7 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 		a.fail(w, 404, "That conversation was not found.")
 		return
 	}
-	v := taskView{Thread: thread, Focus: r.URL.Query().Get("focus"), Draft: draft, Error: problem}
+	v := taskView{Title: "New chat", SiteOpen: r.URL.Query().Get("site") == "1", Thread: thread, Focus: r.URL.Query().Get("focus"), Draft: draft, Error: problem}
 	if thread != "" {
 		v.Attachments, _ = taskAttachments(a.cfg.Data, thread)
 		v.Turns = a.taskTurns(thread)
@@ -197,7 +200,15 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 			return
 		}
 	}
-	for _, turn := range v.Turns {
+	for i := range v.Turns {
+		turn := v.Turns[i]
+		v.Title = truncateMessage(turn.Record.Message, 70)
+		if turn.Result.Title != "" {
+			v.Title = turn.Result.Title
+		}
+		if len(turn.Result.Artifacts) > 0 {
+			v.Site = &v.Turns[i]
+		}
 		if turn.Job.Active() {
 			v.ActiveJob = turn.Job.ID
 			v.Deferred = turn.Deferred
@@ -207,7 +218,7 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 	all := a.taskTurns("")
 	for i := len(all) - 1; i >= 0; i-- {
 		t := all[i]
-		if !seen[t.Record.Thread] && len(v.Recent) < 12 {
+		if !seen[t.Record.Thread] {
 			v.Recent = append(v.Recent, t)
 			seen[t.Record.Thread] = true
 		}
@@ -218,7 +229,7 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 			break
 		}
 	}
-	a.render(w, code, page{Title: "Your work", View: "tasks", Nav: "work", Work: v})
+	a.render(w, code, page{Title: v.Title, View: "tasks", Nav: "work", Work: v})
 }
 func (a *app) taskChoices() []taskChoice {
 	c := a.catalog()
@@ -393,7 +404,7 @@ func (a *app) taskStatus(w http.ResponseWriter, r *http.Request) {
 	if j.Kind == "delivery" && !j.Active() && j.ExitCode != nil && *j.ExitCode == 0 {
 		var rec deliveryRecord
 		if b, e := os.ReadFile(filepath.Join(filepath.Dir(j.Dir), "delivery-request.json")); e == nil && json.Unmarshal(b, &rec) == nil && rec.Action == "prepare" {
-			response["destination"] = "/work/jobs/" + rec.TaskID + "/delivery/"
+			response["destination"] = "/work/" + rec.Thread + "?site=1"
 		}
 	}
 	_ = json.NewEncoder(w).Encode(response)
