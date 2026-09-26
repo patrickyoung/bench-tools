@@ -119,7 +119,7 @@ func TestBuildRequiresServerEnablementAndConsent(t *testing.T) {
 	j := admittedJob(t, a, serveTest(a, "POST", "/hire", f))
 	base := filepath.Dir(j.Dir)
 	brief := filepath.Join(base, "brief.txt")
-	want := []string{a.cfg.Hire, "build", "-C", j.Dir, "-evidence", filepath.Join(base, "evidence"), "-goal-file", brief, "-m", "openai-codex/gpt-6-sol", "-turns", "8", "-timeout", "10m"}
+	want := []string{a.cfg.Hire, "build", "-C", j.Dir, "-evidence", filepath.Join(base, "evidence"), "-goal-file", brief, "-m", "openai-codex/gpt-6-sol", "-turns", "50", "-timeout", "10m", "-checkpoint", "build"}
 	if !reflect.DeepEqual(j.Args, want) {
 		t.Fatalf("build argv: %#v", j.Args)
 	}
@@ -274,6 +274,9 @@ func TestHTTPBoundaryRejectsUntrustedMutations(t *testing.T) {
 		t.Fatal("rejected request started work")
 	}
 	w := serveTest(a, "GET", "/", nil)
+	if w.Header().Get("Referrer-Policy") != "same-origin" {
+		t.Fatal("native Safari forms must retain their same-origin POST origin")
+	}
 	if w.Header().Get("Content-Security-Policy") == "" || w.Header().Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatal("missing response protection")
 	}
@@ -284,7 +287,7 @@ func TestCatalogAndReadmeAreEscaped(t *testing.T) {
 	payload := "<script>alert('unsafe')</script>"
 	a.cat.Workers[0].Description = payload
 	writeFixture(t, filepath.Join(a.cfg.Source, "workers", "writer", "expert", "README.md"), payload, 0600)
-	for _, path := range []string{"/", "/workers/writer"} {
+	for _, path := range []string{"/workers", "/workers/writer"} {
 		w := serveTest(a, "GET", path, nil)
 		if w.Code != 200 {
 			t.Fatalf("%s: %d: %s", path, w.Code, w.Body.String())
@@ -296,7 +299,7 @@ func TestCatalogAndReadmeAreEscaped(t *testing.T) {
 	if w := serveTest(a, "GET", "/workers/missing", nil); w.Code != 404 {
 		t.Fatalf("missing worker: %d", w.Code)
 	}
-	if w := serveTest(a, "GET", "/?q="+strings.Repeat("a", 501), nil); w.Code != 400 {
+	if w := serveTest(a, "GET", "/workers?q="+strings.Repeat("a", 501), nil); w.Code != 400 {
 		t.Fatalf("unbounded search: %d", w.Code)
 	}
 }

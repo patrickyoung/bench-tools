@@ -1,0 +1,37 @@
+{
+  "id": "bench-hire",
+  "description": "Help users get work done through conversational planning and presentation, and guide worker creation, teaching, team assembly and triage.",
+  "owner": "patrickyoung",
+  "status": "experimental",
+  "requires": {
+    "bench-tools": {
+      "repository": "https://github.com/patrickyoung/bench-tools.git",
+      "commit": "878780e5878314aec88024bb30f05590eecd50ef",
+      "commands": [
+        "agent",
+        "ask",
+        "brief",
+        "ply",
+        "cage",
+        "record"
+      ]
+    },
+    "python": ">=3.9"
+  },
+  "files": [
+    "workers/bench-hire/expert/AGENTS.md",
+    "workers/bench-hire/expert/AGENT.md",
+    "workers/bench-hire/expert/HIRE.md",
+    "workers/bench-hire/expert/BENCH.md",
+    "workers/bench-hire/expert/TRAIL.md",
+    "workers/bench-hire/expert/ASK.md",
+    "workers/bench-hire/expert/PLY.md",
+    "workers/bench-hire/expert/README.md",
+    "workers/bench-hire/expert/LICENSE",
+    "workers/bench-hire/expert/knowledge.md",
+    "workers/bench-hire/expert/bin/check",
+    "workers/bench-hire/expert/task/AGENTS.md",
+    "workers/bench-hire/expert/task/README.md",
+    "workers/bench-hire/expert/task/bin/check"
+  ]
+}

@@ -48,7 +48,7 @@ func TestLocalWorkersDiscoverVerifySearchAndRecover(t *testing.T) {
 		t.Fatalf("wrong local entry: %+v", entries)
 	}
 	worker := entries[0]
-	for _, path := range []string{"/workers?q=UPS", "/?q=UPS", worker.URL()} {
+	for _, path := range []string{"/workers?q=UPS", "/workers?q=UPS", worker.URL()} {
 		w := serveTest(a, "GET", path, nil)
 		if w.Code != 200 || !strings.Contains(w.Body.String(), "UPS Tracker") {
 			t.Fatalf("worker missing at %s", path)

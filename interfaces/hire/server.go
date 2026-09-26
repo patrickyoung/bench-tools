@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 )
 
@@ -23,6 +25,7 @@ import (
 var web embed.FS
 
 type app struct {
+	actionMu  sync.Mutex
 	cfg       config
 	cat       catalog
 	jobs      *jobManager
@@ -34,6 +37,20 @@ type app struct {
 }
 
 type page struct {
+	Work                                                                     taskView
+	ContinueRunModel, RunRecoveryError                                       string
+	RunRecoveryReview                                                        bool
+	ContinueModel, ContinuedURL                                              string
+	ContinueCheckpoint                                                       bool
+	Assistant                                                                assistantView
+	Team                                                                     teamSpec
+	TeamChoices                                                              []teamChoice
+	RelatedReviews                                                           []Job
+	Evidence                                                                 []evidenceFile
+	Changes                                                                  []definitionChange
+	ReviewRun, Analysis, ReviewError, ProposalHash                           string
+	Investigable                                                             bool
+	WebAttach                                                                string
 	AllowRun, Runnable                                                       bool
 	Check, Output, OutputName, OutputError                                   string
 	Title, View, Nav, Query, Filter, Error, CSRF, Nonce, Readme, ReadmeError string
@@ -57,6 +74,9 @@ func randomID() string {
 }
 
 func newApp(cfg config, cat catalog, jobs *jobManager, addr string) (*app, error) {
+	if _, err := tailscaleHost(cfg); err != nil {
+		return nil, err
+	}
 	funcs := template.FuncMap{"name": displayName, "short": func(s string) string {
 		if len(s) > 7 {
 			return s[:7]
@@ -76,10 +96,31 @@ func newApp(cfg config, cat catalog, jobs *jobManager, addr string) (*app, error
 
 func (a *app) handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", a.home)
+	mux.HandleFunc("GET /{$}", a.taskPage)
+	mux.HandleFunc("GET /work", a.taskPage)
+	mux.HandleFunc("GET /work/{thread}", a.taskPage)
+	mux.HandleFunc("GET /work/attachments/{thread}/{file}", a.taskAttachmentDownload)
+	mux.HandleFunc("POST /work", a.taskSend)
+	mux.HandleFunc("POST /work/jobs/{id}/continue", a.taskContinue)
+	mux.HandleFunc("POST /work/jobs/{id}/stop", a.taskStop)
+	mux.HandleFunc("POST /work/jobs/{id}/message", a.taskMessage)
+	mux.HandleFunc("GET /work/jobs/{id}/status", a.taskStatus)
+	mux.HandleFunc("GET /work/jobs/{id}/files/{file}", a.taskDownload)
+	mux.HandleFunc("POST /work/jobs/{id}/delivery", a.taskDeliver)
+	mux.HandleFunc("POST /work/jobs/{id}/delivery/stop", a.taskDeliveryStop)
+	mux.HandleFunc("GET /work/jobs/{id}/delivery/{rest...}", a.taskDeliveryPreview)
+	mux.HandleFunc("GET /assist", a.assistantPage)
+	mux.HandleFunc("GET /assist/{thread}", a.assistantPage)
+	mux.HandleFunc("POST /assist", a.assistantSend)
+	mux.HandleFunc("POST /assist/turns/{id}/actions/{action}", a.assistantAct)
 	mux.HandleFunc("GET /workers", a.home)
 	mux.HandleFunc("GET /local-workers/{id}", a.localDetail)
 	mux.HandleFunc("GET /teams", a.home)
+	mux.HandleFunc("GET /teams/new", a.teamForm)
+	mux.HandleFunc("POST /teams", a.createTeam)
+	mux.HandleFunc("GET /local-teams/{id}", a.teamDetail)
+	mux.HandleFunc("POST /local-teams/{id}/build", a.buildTeam)
+	mux.HandleFunc("POST /local-teams/{id}/save", a.saveTeam)
 	mux.HandleFunc("GET /workers/{id}", func(w http.ResponseWriter, r *http.Request) { a.detail(w, r, "worker") })
 	mux.HandleFunc("GET /teams/{id}", func(w http.ResponseWriter, r *http.Request) { a.detail(w, r, "team") })
 	mux.HandleFunc("GET /hire", func(w http.ResponseWriter, r *http.Request) {
@@ -91,30 +132,63 @@ func (a *app) handler() http.Handler {
 		a.render(w, 200, page{Title: "Your activity", View: "jobs", Nav: "jobs", Jobs: a.jobs.List()})
 	})
 	mux.HandleFunc("GET /jobs/{id}", a.job)
+	mux.HandleFunc("GET /jobs/{id}/investigate", a.investigate)
+	mux.HandleFunc("POST /jobs/{id}/investigate", a.analyze)
+	mux.HandleFunc("GET /jobs/{id}/review", a.reviewPage)
+	mux.HandleFunc("POST /jobs/{id}/prepare-fix", a.prepareFix)
+	mux.HandleFunc("POST /jobs/{id}/save-revision", a.saveRevision)
 	mux.HandleFunc("GET /jobs/{id}/run", a.runForm)
 	mux.HandleFunc("POST /jobs/{id}/run", a.runWorker)
 	mux.HandleFunc("GET /jobs/{id}/output", a.runDownload)
 	mux.HandleFunc("GET /jobs/{id}/status", a.status)
+	mux.HandleFunc("POST /jobs/{id}/continue", a.continueBuild)
 	mux.HandleFunc("POST /jobs/{id}/cancel", a.cancel)
 	mux.HandleFunc("POST /jobs/{id}/verify", a.verify)
 	assets, _ := fs.Sub(web, "web")
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServerFS(assets)))
-	protected := http.NewCrossOriginProtection().Handler(mux)
+	crossOrigin := http.NewCrossOriginProtection()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "no-referrer")
+		// Safari applies no-referrer to native form POST origins too. Keep the
+		// origin on internal forms while withholding referrers from other sites.
+		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Cache-Control", "no-store")
-		if !a.hosts[r.Host] {
-			http.Error(w, "Unrecognized local address", http.StatusForbidden)
+		if reason := a.requestDenial(r); reason != "" {
+			// Keep diagnostics useful without recording credentials, identities,
+			// user paths, or request bodies.
+			slog.Warn("request access denied", "reason", reason)
+			http.Error(w, "Hire could not verify this connection ("+reason+"). Open the Hire link with Tailscale connected to your account.", http.StatusForbidden)
+			return
+		}
+		if err := crossOrigin.Check(r); err != nil {
+			a.fail(w, 403, "Open this form from Hire before submitting.")
 			return
 		}
 		if r.Method == "POST" {
 			// URL encoding can use twelve bytes for one four-byte Unicode rune.
 			// Decoded per-field limits below remain the authoring contract.
-			r.Body = http.MaxBytesReader(w, r.Body, 384<<10)
-			if err := r.ParseForm(); err != nil {
-				a.fail(w, 413, "This request is too large or malformed. Keep the brief under 24,000 characters.")
+			upload := (r.URL.Path == "/work" || (strings.HasPrefix(r.URL.Path, "/work/jobs/") && strings.HasSuffix(r.URL.Path, "/message"))) && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
+			limit := int64(384 << 10)
+			if upload {
+				limit = taskUploadRequestLimit
+				// Mobile uploads need time to transfer; keep deadlines bounded.
+				control := http.NewResponseController(w)
+				_ = control.SetReadDeadline(time.Now().Add(5 * time.Minute))
+				_ = control.SetWriteDeadline(time.Now().Add(5 * time.Minute))
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			var err error
+			if upload {
+				err = r.ParseMultipartForm(1 << 20)
+				if r.MultipartForm != nil {
+					defer r.MultipartForm.RemoveAll()
+				}
+			} else {
+				err = r.ParseForm()
+			}
+			if err != nil {
+				a.fail(w, 413, "This message is too large or malformed. Attach up to 5 files, 25 MB each and 50 MB total.")
 				return
 			}
 			if subtle.ConstantTimeCompare([]byte(r.PostForm.Get("csrf")), []byte(a.csrf)) != 1 {
@@ -122,7 +196,7 @@ func (a *app) handler() http.Handler {
 				return
 			}
 		}
-		protected.ServeHTTP(w, r)
+		mux.ServeHTTP(w, r)
 	})
 }
 
@@ -232,6 +306,10 @@ func (a *app) admit(w http.ResponseWriter, r *http.Request, start func() (Job, e
 			a.runError(w, r, 409, err.Error())
 			return
 		}
+		if r.URL.Path == "/assist" {
+			a.assistantError(w, r, 409, err.Error())
+			return
+		}
 		if r.URL.Path == "/hire" {
 			a.hireError(w, r, 409, err.Error())
 			return
@@ -316,7 +394,7 @@ func (a *app) hire(w http.ResponseWriter, r *http.Request) {
 		kind := "new"
 		if mode == "build" {
 			kind = "build"
-			args = []string{a.cfg.Hire, "build", "-C", dir, "-evidence", filepath.Join(filepath.Dir(dir), "evidence"), "-goal-file", briefPath, "-m", model, "-turns", "8", "-timeout", "10m"}
+			args = buildArgs(a.cfg.Hire, dir, briefPath, model)
 		}
 		return a.jobs.Start(kind, title, dir, args, "")
 	})
@@ -359,7 +437,7 @@ func (a *app) export(w http.ResponseWriter, r *http.Request) {
 }
 
 func resultPath(j Job) string {
-	if j.Kind == "run" {
+	if j.Kind == "run" || j.Kind == "analyze" || j.Kind == "assist" || j.Kind == "task" {
 		return j.Dir
 	}
 	if j.Kind == "export" {
@@ -378,6 +456,47 @@ func (a *app) job(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := page{Title: j.Title, View: "job", Nav: "jobs", Job: j, Stdout: a.jobs.Log(j.ID, "stdout"), Stderr: a.jobs.Log(j.ID, "stderr"), Result: resultPath(j)}
+	if j.Kind == "task" {
+		if rec, err := a.taskRecord(j); err == nil {
+			p.WorkerURL = "/work/" + rec.Thread
+		}
+	}
+	if args, checkpoint, err := a.continuation(j); err == nil {
+		p.ContinueModel, p.ContinueCheckpoint = args[9], checkpoint
+	}
+	if a.cfg.AllowRun && runCanRecover(j) {
+		if args, review, err := a.runContinuation(j); err == nil {
+			p.ContinueRunModel, p.RunRecoveryReview = args[9], review
+		} else {
+			p.RunRecoveryError = err.Error()
+		}
+	}
+	for _, newer := range a.jobs.List() {
+		if newer.Dir == j.Dir && newer.ID != j.ID && newer.Started.After(j.Started) {
+			p.ContinuedURL = "/jobs/" + newer.ID
+			break
+		}
+	}
+	_, _, investigateErr := a.localRun(j.ID)
+	p.Investigable = investigateErr == nil
+	for _, review := range a.jobs.List() {
+		if review.Kind != "analyze" && review.Kind != "revise" {
+			continue
+		}
+		meta, err := a.readReview(review)
+		if err == nil && (meta.RunID == j.ID || review.Dir == j.Dir) {
+			p.RelatedReviews = append(p.RelatedReviews, review)
+		}
+	}
+	if strings.HasPrefix(j.Kind, "team-") {
+		p.WorkerURL = "/local-teams/" + j.ID
+		p.Team, _ = a.readTeam(j)
+	}
+	if j.Kind == "assist" {
+		if rec, err := a.assistantRecord(j); err == nil {
+			p.WorkerURL = "/assist/" + rec.Thread
+		}
+	}
 	p.JobLabel, p.JobNote = jobSummary(j, p.Stderr)
 	_, p.Runnable = a.runnable(j.ID)
 	if j.Kind == "run" {
@@ -428,6 +547,10 @@ func (a *app) status(w http.ResponseWriter, r *http.Request) {
 }
 
 func jobSummary(j Job, stderr string) (string, string) {
+	if j.Kind == "run" && j.State == "failed" && j.ExitCode != nil && *j.ExitCode == 125 && strings.Contains(stderr, "recording incomplete") {
+		return "Recording incomplete", "The run stopped, but its evidence recording did not finish. Work may already exist in the workspace. Review the output and diagnostics before continuing; more turns cannot resolve missing inputs on their own."
+	}
+
 	if j.Kind == "build" && j.State == "failed" && strings.Contains(stderr, "ask: openai-codex requires -header-fd") {
 		return "Connect your model account", "The model is selected, but Ask has no OAuth authorization header for Codex. Configure an authenticated Ask wrapper through AGENT_ASK before starting a new build. Selecting a model does not sign you in. Your brief and diagnostics are retained; this build has not been retried."
 	}
@@ -445,7 +568,7 @@ func (a *app) cancel(w http.ResponseWriter, r *http.Request) {
 }
 func (a *app) verify(w http.ResponseWriter, r *http.Request) {
 	j, ok := a.jobs.Get(r.PathValue("id"))
-	if !ok || j.Active() || j.Kind == "run" {
+	if !ok || j.Active() || j.Kind == "run" || j.Kind == "analyze" || j.Kind == "revise" || j.Kind == "assist" || j.Kind == "task" || strings.HasPrefix(j.Kind, "team-") {
 		a.fail(w, 409, "Wait for the command to finish before inspecting its definition.")
 		return
 	}
@@ -465,6 +588,20 @@ func jobLabel(j Job) string {
 	}
 	if j.ExitCode != nil && *j.ExitCode == 0 && j.State != "unknown" {
 		switch j.Kind {
+		case "task":
+			return "Ready to review"
+		case "assist":
+			return "Turn completed"
+		case "team-new":
+			return "Team draft saved"
+		case "team-build":
+			return "Team ready for review"
+		case "team-verify":
+			return "Team structure verified"
+		case "analyze":
+			return "Analysis ready"
+		case "revise":
+			return "Proposal ready"
 		case "new":
 			return "Draft created"
 		case "export":
@@ -506,6 +643,20 @@ func jobNote(j Job) string {
 	}
 	if j.ExitCode != nil && *j.ExitCode == 0 {
 		switch j.Kind {
+		case "task":
+			return "Return to the conversation to review your work and say what you’d like changed."
+		case "assist":
+			return "Open the conversation to inspect the reply and any proposed next steps. Nothing is applied automatically."
+		case "team-new":
+			return "The roster and handoffs are saved. Build the team to prepare its wiring."
+		case "team-build":
+			return "Review the selected members, guide, wiring and check before saving. No team job has run."
+		case "team-verify":
+			return "The team is saved locally. Follow its guide and evaluate a fresh case; structure does not prove quality."
+		case "analyze":
+			return "Review the explanation and choose a correction. No worker files were changed."
+		case "revise":
+			return "Review the changed files before saving a separate local revision. Fresh evaluation is still needed."
 		case "new":
 			return "A starting definition is on disk. Add a README and replace the deliberately failing check."
 		case "verify":

@@ -2,19 +2,36 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
 var inputName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`)
 
 func validRunFile(name string) bool { return inputName.MatchString(name) && name != "state" }
+
+// The operator selects this endpoint at startup, never a page or a worker.
+func browserAddress(endpoint string) (string, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil || len(endpoint) > 2048 || strings.ContainsAny(endpoint, "\r\n") {
+		return "", fmt.Errorf("-web-attach requires a loopback HTTP or WebSocket endpoint")
+	}
+	ip := net.ParseIP(u.Hostname())
+	port, portErr := strconv.Atoi(u.Port())
+	if (u.Scheme != "http" && u.Scheme != "ws") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Hostname() != "localhost" && (ip == nil || !ip.IsLoopback())) || portErr != nil || port < 1 || port > 65535 {
+		return "", fmt.Errorf("-web-attach requires a loopback HTTP or WebSocket endpoint with an explicit port and no credentials")
+	}
+	return net.JoinHostPort(u.Hostname(), u.Port()), nil
+}
 
 func (a *app) runnable(id string) (Job, bool) {
 	j, ok := a.jobs.Get(id)
@@ -54,19 +71,19 @@ func (a *app) runPage(w http.ResponseWriter, r *http.Request, status int, messag
 		return
 	}
 	if form == nil {
-		form = map[string]string{"model": a.cfg.Model, "turns": "20", "output": "report.md"}
+		form = map[string]string{"model": a.cfg.Model, "turns": "50", "output": "report.md"}
 		if strings.Contains(guide, "`tracking_numbers.txt`") {
 			form["input-name"] = "tracking_numbers.txt"
 			form["output"] = "tracking_report.md"
-			form["goal"] = "Look up the supplied UPS tracking numbers and write the tracking report according to the worker guide."
+			form["goal"] = "Look up the supplied tracking numbers using the carrier and procedure in the worker guide, and write the tracking report."
 		}
 	}
-	a.render(w, status, page{Title: "Run " + j.Title, View: "run", Nav: "workers", Job: j, Readme: guide, Check: check, Form: form, Error: message})
+	a.render(w, status, page{Title: "Run " + j.Title, View: "run", Nav: "workers", Job: j, Readme: guide, Check: check, Form: form, Error: message, WebAttach: a.cfg.WebAttach})
 }
 func (a *app) runForm(w http.ResponseWriter, r *http.Request) { a.runPage(w, r, 200, "", nil) }
 func (a *app) runError(w http.ResponseWriter, r *http.Request, status int, message string) {
 	f := map[string]string{}
-	for _, key := range []string{"goal", "model", "turns", "input-name", "input", "output", "network", "run-consent"} {
+	for _, key := range []string{"goal", "model", "turns", "input-name", "input", "output", "network", "connected-browser", "run-consent"} {
 		f[key] = r.PostForm.Get(key)
 	}
 	a.runPage(w, r, status, message, f)
@@ -95,6 +112,21 @@ func (a *app) runWorker(w http.ResponseWriter, r *http.Request) {
 	if r.PostForm.Get("run-consent") != "yes" {
 		a.runError(w, r, 422, "Review the worker guide and check, then confirm the run.")
 		return
+	}
+	useBrowser := r.PostForm.Get("connected-browser") == "yes"
+	if useBrowser {
+		address, err := browserAddress(a.cfg.WebAttach)
+		if err != nil {
+			a.runError(w, r, 422, "No browser connection is configured for this server.")
+			return
+		}
+		connection, err := net.DialTimeout("tcp", address, time.Second)
+		if err != nil {
+			a.runError(w, r, 422, "The selected browser is unavailable. Reconnect it before starting, or turn off Use connected browser.")
+			return
+		}
+		connection.Close()
+		goal += "\n\nBrowser connection selected for this run by the caller:\nUse the configured Web command with --attach " + strconv.Quote(a.cfg.WebAttach) + ". The browser is already running outside Cage; do not start another browser inside Cage. Use only Web's own new tab, do not close the browser or touch existing tabs, and retain Web's action approval gates. Do not discover other sessions or fall back to a new browser if this connection fails. Prefer bounded content/selector waits; networkidle can time out on otherwise usable pages. Cage remains enabled; networking is explicitly allowed for this connection and page access.\n"
 	}
 	agent := a.cfg.Agent
 	if agent == "" {
@@ -126,7 +158,7 @@ func (a *app) runWorker(w http.ResponseWriter, r *http.Request) {
 			}
 			args = append(args, "-record-input", name)
 		}
-		if r.PostForm.Get("network") == "yes" {
+		if r.PostForm.Get("network") == "yes" || useBrowser {
 			args = append(args, "-net")
 		}
 		args = append(args, resultPath(j))

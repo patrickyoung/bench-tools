@@ -12,10 +12,11 @@ import (
 func (a *app) catalog() catalog {
 	c := a.cat
 	c.Workers = append([]entry(nil), a.cat.Workers...)
+	c.Teams = append(a.localTeams(), a.cat.Teams...)
 	jobs := a.jobs.List()
 	authored := make(map[string]bool)
 	for _, j := range jobs {
-		if j.Kind == "build" || j.Kind == "new" {
+		if j.Kind == "build" || j.Kind == "new" || j.Kind == "revise" {
 			authored[filepath.Join(j.Dir, "expert")] = true
 		}
 	}
@@ -47,6 +48,33 @@ func (a *app) catalog() catalog {
 			description = "Structure verified. Evaluate on a real case before relying on it."
 		}
 		local = append(local, entry{ID: fmt.Sprintf("%x", digest[:16]), Title: j.Title, Description: description, Owner: "Your local library", Status: "experimental", Kind: "worker", Local: true, JobID: j.ID, Path: target})
+	}
+	// Conversationally prepared definitions are reusable private library entries.
+	// Deduplicate unchanged copies retained by refinement turns.
+	definitions := map[string]bool{}
+	for _, j := range jobs {
+		if j.Kind != "task" || j.Active() || j.State == "unknown" {
+			continue
+		}
+		r := a.taskResult(j)
+		if !r.Prepared || r.Expert == "" || r.Flash != nil {
+			continue
+		}
+		_, hash, err := definitionSnapshot(a.cfg.Data, r.Expert)
+		if err != nil || definitions[hash] {
+			continue
+		}
+		rec, err := a.taskRecord(j)
+		if err != nil {
+			continue
+		}
+		definitions[hash] = true
+		e := entry{ID: j.ID, Title: r.Title, Description: "Prepared for your work. Open the conversation to review or refine it.", Owner: "Your local library", Status: "experimental", Kind: r.Kind, Local: true, JobID: j.ID, Path: r.Expert, WorkThread: rec.Thread}
+		if r.Kind == "team" {
+			c.Teams = append(c.Teams, e)
+		} else {
+			local = append(local, e)
+		}
 	}
 	c.Workers = append(local, c.Workers...)
 	return c

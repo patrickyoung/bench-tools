@@ -34,6 +34,7 @@ type entry struct {
 	Title       string `json:"-"`
 	Local       bool   `json:"-"`
 	JobID       string `json:"-"`
+	WorkThread  string `json:"-"`
 	Path        string `json:"-"`
 }
 
@@ -44,6 +45,12 @@ func (e entry) Name() string {
 	return displayName(e.ID)
 }
 func (e entry) URL() string {
+	if e.WorkThread != "" {
+		return "/work/" + e.WorkThread
+	}
+	if e.Local && e.Kind == "team" {
+		return "/local-teams/" + e.ID
+	}
 	if e.Local {
 		return "/local-workers/" + e.ID
 	}

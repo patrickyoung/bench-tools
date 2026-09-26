@@ -20,26 +20,52 @@ import (
 var version = "0.1.0-dev"
 
 type config struct {
+	Moniker                                        string
+	TailscaleOrigin, TailscaleUser                 string
 	Source, Data, Addr, Hire, Agent, Python, Model string
+	WebAttach                                      string
+	Assistant                                      string
+	Ask, Record                                    string
 	AllowBuild                                     bool
 	AllowRun                                       bool
+	Plonk, PlonkURL, PlonkTokenFile                string
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "delivery" {
+		os.Exit(deliveryProcess(os.Args[2]))
+	}
+	if len(os.Args) == 3 && os.Args[1] == "task" {
+		os.Exit(taskProcess(os.Args[2]))
+	}
 	if len(os.Args) == 2 && os.Args[1] == "version" {
 		fmt.Println("hire-ui " + version)
 		return
 	}
 	var cfg config
+	ask := os.Getenv("AGENT_ASK")
+	if ask == "" {
+		ask = "ask"
+	}
 	flag.StringVar(&cfg.Source, "source", "", "selected Bench source checkout (required)")
 	flag.StringVar(&cfg.Data, "data", "", "private runtime directory outside source (required)")
 	flag.StringVar(&cfg.Addr, "addr", "127.0.0.1:8787", "loopback listen address")
+	flag.StringVar(&cfg.Moniker, "moniker", "moniker", "public name generator for temporary teams")
 	flag.StringVar(&cfg.Hire, "hire", "hire", "installed Hire executable")
-	flag.StringVar(&cfg.Agent, "agent", "agent", "installed Agent executable for worker runs")
+	flag.StringVar(&cfg.Assistant, "assistant", "", "selected bench-hire definition (default SOURCE/workers/bench-hire/expert)")
+	flag.StringVar(&cfg.Ask, "ask", ask, "public Ask executable or configured wrapper for issue analysis")
+	flag.StringVar(&cfg.Record, "record", "record", "public Record executable for issue analysis evidence")
+	flag.StringVar(&cfg.Agent, "agent", "agent", "installed Agent executable for workers and conversation")
+	flag.StringVar(&cfg.WebAttach, "web-attach", "", "explicit loopback browser endpoint offered to worker runs (browser must already be running)")
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")
-	flag.BoolVar(&cfg.AllowBuild, "allow-build", false, "enable explicit model-backed Hire builds using the configured provider")
+	flag.BoolVar(&cfg.AllowBuild, "allow-build", false, "enable conversation, analysis and model-backed authoring")
+	flag.StringVar(&cfg.Plonk, "plonk", "", "selected Plonk executable for results and sharing")
+	flag.StringVar(&cfg.PlonkURL, "plonk-url", "", "selected Plonk delivery service")
+	flag.StringVar(&cfg.PlonkTokenFile, "plonk-token-file", "", "private connection file; never passed to workers")
+	flag.StringVar(&cfg.TailscaleOrigin, "tailscale-origin", "", "exact HTTPS origin served by a local Tailscale Serve proxy")
+	flag.StringVar(&cfg.TailscaleUser, "tailscale-user", "", "Tailscale login permitted to use the remote interface")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		slog.Error("unexpected positional arguments")
@@ -52,6 +78,35 @@ func main() {
 }
 
 func prepare(cfg config) (config, error) {
+	if _, err := tailscaleHost(cfg); err != nil {
+		return cfg, err
+	}
+	if err := validateDeliveryConfig(cfg); err != nil {
+		return cfg, err
+	}
+	if cfg.Plonk != "" {
+		p, err := exec.LookPath(cfg.Plonk)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.Plonk, err = filepath.Abs(p)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.PlonkTokenFile, err = filepath.Abs(cfg.PlonkTokenFile)
+		if err != nil {
+			return cfg, err
+		}
+		cfg.PlonkTokenFile, err = filepath.EvalSymlinks(cfg.PlonkTokenFile)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	if cfg.WebAttach != "" {
+		if _, err := browserAddress(cfg.WebAttach); err != nil {
+			return cfg, err
+		}
+	}
 	if cfg.Source == "" || cfg.Data == "" {
 		return cfg, fmt.Errorf("select -source and -data explicitly")
 	}

@@ -1244,3 +1244,114 @@
     margin-bottom:24px;
   }
 }
+
+.analysis-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.75;
+  max-width: 90ch;
+  padding: 28px;
+}
+.team-role { border: 1px solid var(--border, #e7e8ed); border-radius: 10px; padding: 20px; margin: 20px 0; }
+.team-role label { display: block; margin: 12px 0 6px; }
+
+.team-form { max-width: 960px; }
+.team-role .text-button { margin-top: 12px; }
+.assistant-grid { display:grid; grid-template-columns:minmax(0, 1fr) 310px; gap:28px; align-items:start; }
+.conversation { min-width:0; max-width:880px; }
+.assistant-welcome { padding:32px; border:1px solid #dedfeb; border-radius:16px; background:linear-gradient(140deg,#fff,#f1f0ff); margin-bottom:22px; }
+.assistant-welcome h2 { font-size:23px; margin:12px 0; }
+.assistant-welcome p { line-height:1.9; color:#555b6b; }
+.assistant-mark { color:#554dec; font-size:30px; }
+.starter-grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px; }
+.starter-grid a { background:#fff; border:1px solid #e1e2ec; border-radius:10px;padding:15px;font-weight:600; }
+.conversation-turn { margin-bottom:28px; }
+.user-message { margin:0 0 18px 8%;background:#eae9fb;border-radius:16px 16px 4px 16px;padding:22px; }
+.conversation-text { white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.8; }
+.hire-message { padding:24px;background:#fff;border:1px solid #e5e7ed;border-radius:16px; }
+.message-heading { display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px; }
+.message-heading strong { color:#4842bf; }
+.message-heading a { font-size:12px;color:#707687; }
+.hire-question { border-left:3px solid #7169ea;padding:12px 18px;background:#f7f6ff;line-height:1.7; }
+.proposal-card { border:1px solid #d9d8f0;border-radius:12px;margin-top:22px;overflow:hidden; }
+.proposal-card .panel-head { padding:16px 20px;background:#faf9ff; }
+.proposal-card h3 { margin:0; font-size:16px; }
+.proposal-fields { margin:16px 0; }
+.proposal-fields label { display:block;margin:12px 0;font-weight:600;text-transform:capitalize; }
+.proposal-fields textarea { display:block;margin-top:6px;font-weight:400;font-size:14px; }
+.proposal-roster { font-size:14px;line-height:1.7; }
+.conversation-composer { padding:20px;background:white;border:1px solid #c9c7e8;border-radius:16px;box-shadow:0 8px 28px #24225408; }
+.conversation-composer textarea { border:0;padding:8px;min-height:100px;font-size:16px; }
+.composer-context { display:flex;gap:12px;align-items:center;border-top:1px solid #eef0f4;padding:15px 0; }
+.composer-context label { flex-shrink:0;font-size:12px;color:#6a7080; }
+.composer-context select { min-width:0;font-size:13px; }
+.connection-settings { font-size:12px;color:#6a7080;margin-bottom:15px; }
+.connection-settings input { margin:8px 0; }
+.composer-foot { display:flex;align-items:center;gap:20px;justify-content:space-between; }
+.composer-foot small { color:#737988;line-height:1.5; }
+.bench-stats { display:flex;gap:30px;margin-bottom:24px; }
+.bench-stats a { color:#747987;font-size:13px; }.bench-stats strong { display:block;font-size:28px;color:#252839; }
+.diagnostics { font-size:12px;overflow-wrap:anywhere; }.diagnostics dt { font-weight:600;margin-top:14px; }.diagnostics dd { margin:4px 0;color:#747987; }
+.assistant-rail .activity-link strong { display:block;overflow:hidden;text-overflow:ellipsis;max-width:240px;white-space:nowrap; }
+@media(max-width:1050px){.assistant-grid { grid-template-columns:1fr; }.conversation {max-width:none;}.assistant-rail {display:grid;grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.starter-grid,.assistant-rail {grid-template-columns:1fr;}.assistant-welcome,.hire-message {padding:20px;}.message-heading {align-items:start;}.composer-context {display:block;}.composer-context select {margin-top:8px;}.composer-foot {align-items:flex-end;}.user-message {margin-left:4%;}}
+
+/* Keep the composer first and visible on a fresh conversation. */
+.assistant-welcome { margin:22px 0 0;padding:22px; }
+.assistant-welcome h2 {font-size:18px;margin:8px 0;}
+.assistant-mark {font-size:22px;}
+.assistant-welcome p {margin:8px 0;line-height:1.5;}
+.starter-grid {margin-top:16px;}
+.starter-grid a {padding:12px;}
+.context-focus {border-left:3px solid #7169ea;padding:6px 12px;margin:16px 0;overflow-wrap:anywhere;}
+.proposal-preview {line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+/* Outcome-first conversation. Technical tools remain in Details. */
+.work-page{max-width:1180px;margin:0 auto}.work-heading{margin:34px 0 38px}.work-heading h1{font-size:clamp(30px,4vw,46px);letter-spacing:-1.6px;margin:12px 0}.work-heading>p:last-of-type{max-width:650px;font-size:16px;line-height:1.7;color:#686c79}.work-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:32px}.work-conversation{min-width:0}.work-starters{display:grid;gap:12px;margin-bottom:28px}.work-starters button{text-align:left;background:#fff;border:1px solid #e6e6ef;border-radius:14px;padding:20px;color:#252538;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer}.work-starters span{display:block;font-weight:400;font-size:13px;color:#747887;margin-top:7px}.work-starters button:hover{border-color:#7065ef;background:#faf9ff}.work-turn{margin-bottom:24px}.work-turn .hire-message{border-radius:16px;background:#fff;padding:24px;border:1px solid #e8e8ef}.work-details{font-size:12px;color:#747887}.work-details summary{cursor:pointer}.work-composer{background:#fff;border-radius:16px;box-shadow:0 8px 30px #24205209}.work-composer textarea{width:100%;min-height:105px;resize:vertical}.work-note{padding:20px 8px;color:#6c7080;line-height:1.8}.work-note h2{font-size:18px;color:#262635;letter-spacing:-.4px}.work-note .assistant-mark{display:inline-grid;width:44px;height:44px}.work-outputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px}.work-output{overflow:hidden;border:1px solid #e4e5ec;border-radius:12px;background:#fafafe}.work-output img{display:block;width:100%;height:230px;object-fit:contain;background:#f0f0f6}.output-caption{padding:14px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;overflow-wrap:anywhere}.output-caption strong{flex-basis:100%;font-size:13px}.output-caption a{color:#5750d4}.output-symbol{padding:25px;text-align:center;font-size:27px;color:#7066de}.work-progress{color:#656075;line-height:1.8}.work-progress:before{content:' ';display:inline-block;width:8px;height:8px;margin-right:9px;border-radius:50%;background:#7567ea}@media(max-width:1000px){.work-grid{grid-template-columns:minmax(0,1fr)}.work-rail{display:none}}@media(max-width:600px){.work-heading{margin:20px 0}.work-turn .hire-message{padding:18px}.work-outputs{grid-template-columns:minmax(0,1fr)}.work-composer .composer-foot{align-items:flex-end;gap:12px}.work-composer small{max-width:180px}}
+
+.output-text{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.6;padding:22px;margin:0;max-height:480px;overflow:auto;background:var(--paper,#fffdf8)}
+
+.delivery-actions{margin:22px 0;padding:20px;border:1px solid var(--line,#dedfd5);border-radius:14px;background:#f1f3e8}.delivery-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.delivery-buttons form{margin:0}.share-url{width:100%;font-size:13px;padding:12px;border:1px solid #ccd2bf;border-radius:8px;background:white;margin:8px 0}.delivery-actions .text-button{min-height:44px}
+
+.task-recovery{margin:1rem 0 1.4rem;padding:1rem;border:1px solid var(--line,#dedee5);border-radius:14px;background:var(--surface,#fff)}
+.task-recovery .field-help{margin-bottom:0}
+
+.task-update {margin: 12px 0 18px; font-size: 14px; line-height: 1.5;}
+.task-update > div:not([hidden]) {display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; margin: 5px 0;}
+.task-update dt {font-weight: 600; color: var(--muted);}
+.task-update dd {margin: 0; overflow-wrap: anywhere;}
+
+.work-chat-invite {margin-top: 24px;}
+.work-chat-invite p {margin: 4px 0 12px; color: var(--muted); font-size: 14px;}
+.work-note-message {margin-top: 16px;}
+.work-note-message small {display: block; margin-top: 8px; opacity: .7;}
+
+.work-attachments {margin: 12px 0; display:grid; gap:6px; min-width:0;}
+.work-attachments label {font-weight:600;font-size:14px;}
+.work-attachments input {max-width:100%;min-width:0;font-size:13px;}
+.work-attachments input::file-selector-button {padding:9px 12px;border:1px solid #d9dbe6;border-radius:8px;background:#f5f4ff;color:#4842bf;margin-right:8px;cursor:pointer;}
+.work-attachments small,.conversation-files small {font-size:12px;color:#707687;}
+.work-attachments p:empty {display:none;}
+.conversation-files {margin-top:22px;padding:16px;border:1px solid #e3e4ed;border-radius:12px;background:#fff;}
+.conversation-files ul {padding-left:20px;margin:8px 0;overflow-wrap:anywhere;}
+
+.task-specialist {padding:12px 14px;margin-bottom:16px;background:#f6f5fc;border:1px solid #e6e3f4;border-radius:12px;overflow-wrap:anywhere;}
+.task-specialist>small {display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#707687;}
+.task-specialist>strong {display:block;margin-top:4px;font-size:14px;}
+.task-specialist p {margin:6px 0;font-size:13px;line-height:1.5;}
+.task-specialist summary {font-size:12px;cursor:pointer;color:#4842bf;}
+.task-specialist ul {padding-left:18px;font-size:13px;}
+
+.research-choice {display:flex;align-items:center;gap:8px;font-size:13px;margin:12px 0;}
+.research-choice input {width:auto;}
+
+.task-expertise{margin:18px 0;padding:18px 20px;border:1px solid #d8e3dd;border-radius:16px;background:#f3f8f4;overflow-wrap:anywhere}
+.task-expertise[hidden]{display:none}
+.expertise-announcement>strong{font-size:1rem;color:#234537}
+.expertise-announcement p{margin:8px 0 12px;line-height:1.55;white-space:pre-line}
+.task-expertise ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:7px}
+.task-expertise li{display:flex;gap:8px 14px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.task-expertise li span{font-weight:600}
+.task-expertise li small{color:#526759}
+.task-expertise .field-help{margin:9px 0;font-size:.82rem;line-height:1.5}
