@@ -1,6 +1,6 @@
 {
   "id": "vector-style-studio",
-  "description": "Fixed host-managed SVG creation, unchanged native raster publication and independent same-source bitmap style variants.",
+  "description": "Fixed host-managed controlled vector drawing, unchanged native raster publication and independent same-source bitmap style variants.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {
@@ -10,7 +10,7 @@
       "commands": ["agent", "hire", "ask", "brief", "ply", "cage", "record"]
     },
     "shell": "POSIX sh, jq >=1.6, xmllint, cmp, shasum and standard Unix utilities",
-    "vector": "Unchanged inkscape-illustrator; Python >=3.9 and Inkscape >=1.2",
+    "vector": "Unchanged inkscape-controlled-illustrator; Python >=3.9 and Inkscape >=1.2",
     "bitmap": "Unchanged bitmap-stylizer; separately installed reviewed BITMAP_HELPER built with Go >=1.22 and selected BITMAP_GENERATOR",
     "models": "Explicit VECTOR_STYLE_MODEL and BITMAP_AUTHOR_MODEL; inherited AGENT_ASK/PRESENT_ASK preserved",
     "boundary": "Caller-owned host entry bin/studio, default Cage for child Agent actions, trusted definitions/tools outside runs",
@@ -29,7 +29,7 @@
     "teams/vector-style-studio/expert/lib/targets.jq"
   ],
   "members": {
-    "vector": {"worker": "inkscape-illustrator"},
+    "vector": {"worker": "inkscape-controlled-illustrator"},
     "bitmap": {"worker": "bitmap-stylizer"}
   }
 }
