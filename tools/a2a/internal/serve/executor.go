@@ -348,7 +348,11 @@ func (e *Executor) environment(queue, taskDir string, c *a2asrv.ExecutorContext)
 		}
 	}
 	extra := append(append([]string(nil), e.config.PassEnv...), "A2A_TASK_ID", "A2A_CONTEXT_ID", "A2A_WORKSPACE", "A2A_STATE", "A2A_EVIDENCE")
-	return append(env, "TEND_ROOT="+queue, "TEND_JOB_MAX="+e.config.Timeout.String(), "TEND_LEASE=600ms", "TEND_PASS="+strings.Join(extra, " "), "TMPDIR="+filepath.Join(taskDir, "tmp"), "A2A_TASK_ID="+string(c.TaskID), "A2A_CONTEXT_ID="+c.ContextID, "A2A_WORKSPACE="+filepath.Join(taskDir, "work"), "A2A_STATE="+filepath.Join(taskDir, "state"), "A2A_EVIDENCE="+filepath.Join(taskDir, "control"))
+	// Tend owns lease renewal. A subsecond override can expire during process
+	// startup on a busy host, before the submitted worker is allowed to run.
+	// Retain Tend's default lease; the explicit job deadline and cancellation
+	// still bound execution independently of that lease.
+	return append(env, "TEND_ROOT="+queue, "TEND_JOB_MAX="+e.config.Timeout.String(), "TEND_PASS="+strings.Join(extra, " "), "TMPDIR="+filepath.Join(taskDir, "tmp"), "A2A_TASK_ID="+string(c.TaskID), "A2A_CONTEXT_ID="+c.ContextID, "A2A_WORKSPACE="+filepath.Join(taskDir, "work"), "A2A_STATE="+filepath.Join(taskDir, "state"), "A2A_EVIDENCE="+filepath.Join(taskDir, "control"))
 }
 
 func (e *Executor) tend(ctx context.Context, env []string, input []byte, args ...string) ([]byte, error) {

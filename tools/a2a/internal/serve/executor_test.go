@@ -21,8 +21,31 @@ import (
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
 	"github.com/a2aproject/a2a-go/v2/a2aclient"
+	"github.com/a2aproject/a2a-go/v2/a2asrv"
 	"github.com/patrickyoung/a2a/internal/client"
 )
+
+func TestSupervisorTimingDoesNotInheritAmbientLease(t *testing.T) {
+	t.Setenv("TEND_LEASE", "1ms")
+	t.Setenv("TEND_JOB_MAX", "24h")
+	e := &Executor{config: ExecutorConfig{Timeout: 10 * time.Second}}
+	env := e.environment("/selected/queue", "/selected/task", &a2asrv.ExecutorContext{})
+	foundDeadline := false
+	for _, item := range env {
+		if strings.HasPrefix(item, "TEND_LEASE=") {
+			t.Fatal("adapter replaced Tend's lease default", item)
+		}
+		if strings.HasPrefix(item, "TEND_JOB_MAX=") {
+			if item != "TEND_JOB_MAX=10s" {
+				t.Fatal("lost selected job deadline", item)
+			}
+			foundDeadline = true
+		}
+	}
+	if !foundDeadline {
+		t.Fatal("missing selected job deadline")
+	}
+}
 
 // The fixture is an ordinary executable supervised by the separately built Tend.
 func TestWorkerFixture(t *testing.T) {
