@@ -94,13 +94,17 @@ func TestBrowser(t *testing.T) {
 	baseline := count()
 	mayDir := filepath.Join(dir, "commands")
 	os.Mkdir(mayDir, 0700)
+	// Linux's installed Chrome is a shell launcher that needs core utilities.
+	// Keep a fixture approver first, rather than inheriting the user's PATH.
+	fakeMay(t, mayDir, 77)
+	commandPath := mayDir + string(os.PathListSeparator) + "/usr/bin:/bin"
 	invoke := func(t *testing.T, plan string, args ...string) (int, string, string) {
 		t.Helper()
 		run, cancel := context.WithTimeout(context.Background(), 75*time.Second)
 		defer cancel()
 		c := exec.CommandContext(run, bin, args...)
 		c.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-		c.Env = append(os.Environ(), "WEB_STATE="+filepath.Join(dir, "audit.jsonl"), "PATH="+mayDir, "CLERK_WORKER=test", "JOB_ID=test", "CLERK_WROOT="+dir)
+		c.Env = append(os.Environ(), "WEB_STATE="+filepath.Join(dir, "audit.jsonl"), "PATH="+commandPath, "CLERK_WORKER=test", "JOB_ID=test", "CLERK_WROOT="+dir)
 		c.Stdin = strings.NewReader(plan)
 		var out, stderr bytes.Buffer
 		c.Stdout = &out
