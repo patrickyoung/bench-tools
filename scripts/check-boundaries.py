@@ -194,26 +194,50 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
     errors: list[str] = []
     try:
         manifest = json.loads((root / "components.json").read_text())
-        components = manifest["components"]
-        if manifest.get("schema") != 1 or not isinstance(components, list) or not components:
+        tool_components = manifest["components"]
+        if manifest.get("schema") != 1 or not isinstance(tool_components, list) or not tool_components:
             raise ValueError("expected schema 1 and a nonempty components list")
     except (OSError, ValueError, KeyError) as exc:
         return [f"components.json: {exc}"]
 
+    # Interfaces are independent applications, not installed headless tools.
+    # Keep their source declarations separate while checking the same boundaries
+    # in both directions. Qualified interface owners cannot collide with a tool.
+    declarations = [(c, "tools", "components.json") for c in tool_components]
+    interface_dir = root / "interfaces"
+    if interface_dir.is_symlink():
+        return ["interfaces: component parent must not be a symlink"]
+    if interface_dir.exists():
+        try:
+            interface_manifest = interface_dir / "manifest.json"
+            if interface_manifest.is_symlink():
+                raise ValueError("manifest must not be a symlink")
+            manifest = json.loads(interface_manifest.read_text())
+            interfaces = manifest["interfaces"]
+            if manifest.get("schema") != 1 or not isinstance(interfaces, list) or not interfaces:
+                raise ValueError("expected schema 1 and a nonempty interfaces list")
+            declarations.extend((c, "interfaces", "interfaces/manifest.json") for c in interfaces)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return [f"interfaces/manifest.json: {exc}"]
+
     names, modules, commands = set(), {}, {}
+    components = []
     leaves: dict[str, Path] = {}
-    for component in components:
+    for component, scope, manifest_path in declarations:
         if not isinstance(component, dict):
-            errors.append("components.json: each component must be an object")
+            errors.append(f"{manifest_path}: each component must be an object")
             continue
         name, relative, module = component.get("name"), component.get("path"), component.get("module")
-        if not isinstance(name, str) or not NAME.fullmatch(name) or name in names:
-            errors.append(f"components.json: invalid or duplicate component name {name!r}")
+        if not isinstance(name, str) or not NAME.fullmatch(name) or (scope, name) in names:
+            errors.append(f"{manifest_path}: invalid or duplicate component name {name!r}")
             continue
-        names.add(name)
-        if relative != f"tools/{name}":
-            errors.append(f"{name}: component must have its own tools/{name} directory")
+        names.add((scope, name))
+        expected = f"{scope}/{name}"
+        if relative != expected:
+            errors.append(f"{name}: component must have its own {expected} directory")
             continue
+        name = name if scope == "tools" else expected
+        components.append(dict(component, name=name))
         leaf = root / relative
         leaves[name] = leaf
         if leaf.is_symlink() or not leaf.is_dir():
@@ -281,13 +305,17 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
                 return name
         return None
 
-    tools_dir = root / "tools"
-    if tools_dir.is_symlink():
-        errors.append("tools: component parent must not be a symlink")
-    if tools_dir.is_dir():
-        for child in tools_dir.iterdir():
-            if child.name not in names:
-                errors.append(f"{child.relative_to(root)}: unlisted component or shared source")
+    for scope in ("tools", "interfaces"):
+        parent = root / scope
+        if parent.is_symlink():
+            errors.append(f"{scope}: component parent must not be a symlink")
+            continue
+        if parent.is_dir():
+            for child in parent.iterdir():
+                if scope == "interfaces" and child.name in {"README.md", "AGENTS.md", "manifest.json"} and child.is_file() and not child.is_symlink():
+                    continue
+                if (scope, child.name) not in names:
+                    errors.append(f"{child.relative_to(root)}: unlisted component or shared source")
     files = inventory(root)
     worker_go, worker_modules = worker_go_sources(root, files, errors)
     for module, worker in worker_modules.items():
@@ -337,7 +365,7 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
             errors.append(f"{name}: cannot parse go.mod: {exc}")
             continue
         if metadata.get("Module", {}).get("Path") != module:
-            errors.append(f"{name}: module path differs from components.json")
+            errors.append(f"{name}: module path differs from its manifest")
         for requirement in metadata.get("Require") or []:
             peer = module_owner(requirement["Path"], family_modules)
             if peer is not None and peer != name:
@@ -387,7 +415,7 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
             peer = module_owner(imported, family_modules)
             if peer is not None and peer != name:
                 errors.append(f"{relative}: cross-tool Go import from {peer}: {imported}")
-            if imported.startswith(("./", "../", "/", "tools/")):
+            if imported.startswith(("./", "../", "/", "tools/", "interfaces/")):
                 errors.append(f"{relative}: local/path Go import {imported} is forbidden")
     for component in components:
         if component["module"] is None:
@@ -404,7 +432,9 @@ def check(root: Path, *, baseline: bool = False, helper: Path | None = None) -> 
                 errors.append(f"{directory.relative_to(root)}: command main package missing from manifest")
 
     if baseline:
-        errors.extend(baseline_errors(root, components, files))
+        # Provenance belongs only to the original imported tools. New interface
+        # source has no historical tool import to compare against.
+        errors.extend(baseline_errors(root, tool_components, files))
     return errors
 
 

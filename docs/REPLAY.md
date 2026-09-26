@@ -54,7 +54,7 @@ public read-only replay commands and never re-executes archived work.
 
 ## Current inventory and evidence boundaries
 
-The inventory contains 23 components and 27 executables. Wrap the selected
+The inventory contains 24 components and 28 executables. Wrap the selected
 command with `record run -f FILE -- COMMAND ...`. Select relevant files with
 `-input`, `-output`, and `-session`; process streams alone do not retain files
 or discover nested conversations. This table identifies those boundaries.
@@ -78,9 +78,11 @@ or discover nested conversations. This table identifies those boundaries.
 | Cage | Selected command and confinement policy, observed exit/failure; no claim of replaying kernel enforcement |
 | MCP: mcp, mcp-legacy, mcpbox, mcpserve | Exact request/result, structured/binary payloads, admission descriptors, protocol stream and uncertain outcomes |
 | A2A: a2a, a2aserve | Exact request/result, task/context handles, retained artifacts and local execution links; no implicit remote retries |
+| Moniker | Selected registry and theme, reserved ID/name/slug and exit status; replay emits the observed name without reserving another |
 | OAuth | Resource-bound non-secret profile/decision and child outcome; header descriptor stays private |
 | Tend | Job definition/input, attempts, separate output artifacts, durable transitions, checks and unknown outcomes |
 | Weave | Exact task and observation inputs, projection result, caller's execution links |
+| Web | Offline HTML-to-Markdown and link reduction fixtures with exact stdout/stderr/status; browser lifecycle and approval behavior remain covered by the separate real-browser suite |
 | Trail | Selected immutable archive snapshot and read-only verification/projection result |
 | Record | Own process receipt semantics, full binary stream retention, explicit artifact/session snapshots, and offline extraction |
 

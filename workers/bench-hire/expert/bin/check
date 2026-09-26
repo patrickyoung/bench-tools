@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Validate the UI reply's exact shape and binding without executing it."""
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+
+class Invalid(ValueError):
+    pass
+
+
+def unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise Invalid("duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
+def require(condition, reason):
+    if not condition:
+        raise Invalid(reason)
+
+
+def text(value, limit, name, nonempty=True):
+    require(type(value) is str and len(value) <= limit and
+            (not nonempty or bool(value.strip())), name + ": invalid text")
+
+
+def exact(obj, keys, name):
+    require(type(obj) is dict and set(obj) == set(keys), name + ": wrong keys")
+
+
+def no_nul(value):
+    if isinstance(value, str):
+        require(chr(0) not in value, "NUL string")
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            no_nul(key)
+            no_nul(item)
+    elif isinstance(value, list):
+        for item in value:
+            no_nul(item)
+
+
+def bounded_json(path, limit):
+    with Path(path).open("rb") as stream:
+        raw = stream.read(limit + 1)
+    require(len(raw) <= limit, path + ": too large")
+    value = json.loads(raw.decode("utf-8"), object_pairs_hook=unique)
+    no_nul(value)
+    return raw, value
+
+
+def main():
+    raw, request = bounded_json("request.json", 2 * 1024 * 1024)
+    _, reply = bounded_json("response.json", 128 * 1024)
+    require(type(request) is dict, "request must be object")
+    require(type(request.get("version")) is int and request["version"] == 1, "request version")
+    text(request.get("message"), 1000000, "request message", False)
+    require(type(request.get("history")) is list, "history")
+    for item in request["history"]:
+        require((type(item) is str) or
+                (type(item) is dict and item.get("role") in ("user", "assistant") and
+                 type(item.get("text", item.get("content"))) is str),
+                "history entry")
+    text(request.get("focus"), 1000000, "focus", False)
+    require(type(request.get("catalog")) is list, "catalog")
+    worker_keys = set()
+    for entry in request["catalog"]:
+        exact(entry, ("key", "name", "kind", "description"), "catalog entry")
+        for key in ("key", "name", "kind", "description"):
+            text(entry[key], 1000000, "catalog " + key, False)
+        if entry["key"].startswith("worker:") and entry["kind"] == "worker":
+            worker_keys.add(entry["key"])
+    require(type(request.get("diagnostics")) is dict, "diagnostics")
+    text(request.get("knowledge_source"), 1000000, "knowledge_source", False)
+    require(type(request.get("context")) is dict, "context")
+    allowed = request.get("allowed_targets")
+    require(type(allowed) is dict, "allowed_targets")
+    kinds = {"create_worker", "create_team", "revise_worker", "analyze_run", "open"}
+    for key, values in allowed.items():
+        require(key in kinds and type(values) is list and
+                all(type(v) is str for v in values), "invalid allowed_targets")
+    exact(reply, ("version", "request_sha256", "message", "question", "actions"), "response")
+    require(type(reply["version"]) is int and reply["version"] == 1, "response version")
+    require(type(reply["request_sha256"]) is str and
+            reply["request_sha256"] == hashlib.sha256(raw).hexdigest(), "input binding")
+    text(reply["message"], 12000, "message")
+    text(reply["question"], 1000, "question", False)
+    actions = reply["actions"]
+    require(type(actions) is list and len(actions) <= 3, "actions count/type")
+    spec = {
+        "create_worker": {"title": 120, "goal": 12000, "reads": 1000,
+                          "writes": 1000, "good": 1500, "bad": 1500},
+        "create_team": {"title": 120, "goal": 12000, "handoffs": 8000,
+                        "acceptance": 4000},
+        "revise_worker": {"change": 12000},
+        "analyze_run": {"question": 12000},
+        "open": {},
+    }
+    for action in actions:
+        exact(action, ("kind", "label", "target", "fields", "roles"), "action")
+        kind = action["kind"]
+        require(type(kind) is str and kind in kinds, "unknown action")
+        text(action["label"], 80, "label")
+        text(action["target"], 1000000, "target", False)
+        if kind in ("create_worker", "create_team"):
+            require(action["target"] == "", "create target must be empty")
+        else:
+            require(bool(action["target"]), "target required")
+            require(action["target"] in allowed.get(kind, []), "unlisted target")
+        fields = action["fields"]
+        exact(fields, spec[kind], "fields")
+        for name, limit in spec[kind].items():
+            text(fields[name], limit, name)
+        roles = action["roles"]
+        require(type(roles) is list, "roles")
+        if kind != "create_team":
+            require(not roles, "roles only for team")
+        else:
+            require(2 <= len(roles) <= 16, "team size")
+            names = set()
+            for member in roles:
+                exact(member, ("role", "worker", "responsibility"), "member")
+                role = member["role"]
+                require(type(role) is str and len(role) <= 40 and
+                        re.fullmatch(r"[a-z][a-z0-9-]*", role) is not None and
+                        role not in names and role != "state", "role")
+                names.add(role)
+                require(type(member["worker"]) is str and
+                        member["worker"] in worker_keys and
+                        member["worker"] in allowed.get("create_team", []),
+                        "unlisted member")
+                text(member["responsibility"], 2000, "responsibility")
+    print("response schema and request binding valid")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, RecursionError) as exc:
+        print("unfinished: " + str(exc), file=sys.stderr)
+        sys.exit(1)

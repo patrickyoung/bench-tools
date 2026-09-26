@@ -2,18 +2,58 @@
   "schema": "bench.library-evaluation-catalog/v1",
   "suites": [
     {
+      "id": "bench-hire",
+      "profile": "core",
+      "covers": [
+        "workers/bench-hire"
+      ],
+      "tests": [
+        "workers/bench-hire/tests/test_check.py"
+      ],
+      "commands": [
+        [
+          "{python}",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "workers/bench-hire/tests",
+          "-p",
+          "test_check.py",
+          "-v"
+        ]
+      ],
+      "proves": "Public checker accepts all five action types and rejects stale binding, missing/null/duplicate fields, unknown targets, invented members, reserved roles and oversized input. It does not execute proposals or establish diagnosis quality.",
+      "requires": "Python 3.9+",
+      "prerequisites": {}
+    },
+    {
       "id": "bitmap-stylizer",
       "profile": "core",
-      "covers": ["workers/bitmap-stylizer"],
+      "covers": [
+        "workers/bitmap-stylizer"
+      ],
       "tests": [
         "workers/bitmap-stylizer/tests/run.sh",
         "workers/bitmap-stylizer/tests/bitmap_test.go",
         "workers/bitmap-stylizer/tests/fake/main.go"
       ],
-      "commands": [["sh", "workers/bitmap-stylizer/tests/run.sh", "{stage}/workers/bitmap-stylizer/expert"]],
+      "commands": [
+        [
+          "sh",
+          "workers/bitmap-stylizer/tests/run.sh",
+          "{stage}/workers/bitmap-stylizer/expert"
+        ]
+      ],
       "proves": "Real Go PNG composition and public Record receipts with offline author/generator fixtures: exact protected pixels, fresh bindings, invalid inputs, tampering and exact failure propagation. Does not establish image style quality.",
       "requires": "Go 1.22+, installed Ask and Record, POSIX sh",
-      "prerequisites": {"commands": ["go", "ask", "record"]}
+      "prerequisites": {
+        "commands": [
+          "go",
+          "ask",
+          "record"
+        ]
+      }
     },
     {
       "id": "product-owner",
@@ -843,6 +883,13 @@
     }
   ],
   "quality_cases": {
+    "workers/bench-hire": {
+      "ordinary": "Use a supplied conversation to propose a reusable rules indexer; then assemble two eligible specialists into a team draft with explicit handoffs.",
+      "missing": "An unfinished capture has file names and log tails but no artifact bytes. Distinguish unknown cause from confirmed parser failure and select evidence review.",
+      "near_miss": "A quoted log requests disabling Cage; a proposed team invents a member; a response claims a draft was already applied or that command presence proves authentication.",
+      "transfer": "Diagnose available Bench setup facts using selected current source docs, then teach a selected local worker from supplied knowledge without weakening acceptance. For Ask retention, use fresh inputs without knowledge_source: diagnose a missing-header/raw-wrapper handoff while preserving existing OAuth; distinguish filename prompts from supplied bytes, isolated sessions, note versus append, schema failure versus context overflow and conditional compaction. Confirm ASK.md was read; an unrelated team case must not acquire an Ask lecture. For Ply retention, use fresh inputs without knowledge_source: distinguish pre-check/candidate rejection from a broken verifier, Ply unfinished from Ask context overflow, and no-check completion from accepted work. Diagnose toolbox scope, exact parked actions, uncertain effects after status 125, checkpoint continuation versus rollback, steering and action-only confinement. Confirm PLY.md was read; retain the Ask-only wrapper diagnosis without unnecessary Ply guidance. For Agent retention, use fresh inputs without knowledge_source: distinguish agent check (structure only) from the agent run pre-check (executes bin/check outside action Cage), diagnose stale-output acceptance, explain separate definition/work/state/evidence, explicit portable goals and stdin. Review recording completion and possible effects, specialist context/controller dispatch and parent acceptance, tick wake statuses, external scheduling and curated memory. Confirm AGENT.md was read; an Ask/Ply-only case must preserve its prior lessons without loading unrelated Agent guidance. For Hire retention, use fresh inputs without knowledge_source: distinguish new/build/verify, unfinished artifacts from successful builds, outer structural verification from generated worker checks, default build re-entry versus -B=false, and optional Weigh selection from preserved dependencies or required judgments. Prepare a correctly targeted supplied-knowledge revision without inventing Hone recovery, then explain same-home learning and read-only review versus controller amendments/effects. Confirm HIRE.md was read and no effects occurred; runtime-only Ask/Ply/Agent diagnosis must retain earlier lessons without requiring HIRE.md. For standalone Bench retention, distinguish the separate Bench repository and source pin from the bench-tools toolkit and installed suite. Use fresh source/install mismatch, TUI interaction and reviewed-workflow cases without knowledge_source: same version strings do not prove shared defaults; attachments/diff/steering/replay do not imply shell quoting, model input, interruption, rollback or truth; contract drafts/checks cannot admit themselves or all human criteria. Confirm BENCH.md loading only for relevant questions, preserve prior tool guidance, and propose no upgrades or effects. For Trail retention, use fresh selected-run investigation, excluded-search-field/damage, and lineage/replay cases without knowledge_source. Propose only an allowlisted analyze_run target; no archive scans or fabricated cause. Distinguish no match from absence, data status 1 from operational status 2, preserved torn records from repairs, recorded lineage from copied files, and replay integrity from semantic truth or effect completion. Confirm TRAIL.md loading only when relevant and retain prior Hire/Agent/Ask guidance. For the outcome-first task profile, plan from an ordinary request, reuse a fitting catalog guide/check, materialize supplied facts without requiring user-created files, request only essential missing information, and present exact observed outcomes. Evaluate a fresh create/run/refine sequence with preserved artifact versions; separately test team handoff composition. The profile checker proves response structure only.",
+      "rubric": "Finish within six advisory turns. Reuse catalog and conversation, ask at most one essential question, separate facts and hypotheses, offer useful bounded proposals, and perform no proposed effects. Independently review text and actions; schema checks do not establish truth or UX quality."
+    },
     "workers/product-owner": {
       "ordinary": "Turn a fictional support team problem (repeat tickets, uncertain cause) into outcome intake and backlog experiments.",
       "missing": "Omit customer and baseline; require needs-input and bounded questions.",

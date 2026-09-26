@@ -34,6 +34,7 @@ def main():
     paths += sorted((ROOT / "examples").rglob("*.md"))
     paths += sorted((ROOT / "workers").rglob("*.md"))
     paths += sorted((ROOT / "teams").rglob("*.md"))
+    paths += sorted((ROOT / "interfaces").rglob("*.md"))
     paths += sorted((ROOT / "tools").rglob("README.md"))
     paths += sorted((ROOT / "tools").glob("*/GUIDE.md"))
     paths += [ROOT / "tools/agent/MCP.md", ROOT / "tools/agent/RUNNER.md",

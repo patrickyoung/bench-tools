@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Structural task-profile response validator. Runs in the task workspace."""
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+
+def require(ok, reason):
+    if not ok:
+        raise ValueError(reason)
+
+
+def pairs(items):
+    result = {}
+    for key, value in items:
+        require(key not in result, "duplicate JSON key")
+        result[key] = value
+    return result
+
+
+def load(path):
+    raw = Path(path).read_bytes()
+    value = json.loads(raw.decode("utf-8"), object_pairs_hook=pairs,
+                       parse_constant=lambda value: require(False, "non-JSON number"))
+    def inspect(item):
+        if isinstance(item, str):
+            require("\x00" not in item, "NUL in JSON string")
+        elif isinstance(item, list):
+            for part in item:
+                inspect(part)
+        elif isinstance(item, dict):
+            for key, part in item.items():
+                inspect(key)
+                inspect(part)
+    inspect(value)
+    require(type(value) is dict, "JSON root must be object")
+    return value, raw
+
+
+def exact(obj, keys, label):
+    require(type(obj) is dict and set(obj) == set(keys), label + " keys")
+
+
+def string(value, limit, label, nonempty=False):
+    require(type(value) is str and len(value) <= limit and
+            (not nonempty or bool(value)), label + " text/length")
+    # Human-facing fields must not contain control codes; multiline prose is fine.
+    require(not any(ord(c) < 32 and c not in "\n\t" or ord(c) == 127
+                    for c in value), label + " control character")
+
+
+def selection(reply, catalog):
+    chosen = reply.get("selection")
+    exact(chosen, ("reviewed", "gap", "roles"), "selection")
+    reviewed, gap, roles = chosen["reviewed"], chosen["gap"], chosen["roles"]
+    require(type(reviewed) is list and type(roles) is list, "selection lists")
+    string(gap, 2000, "selection gap")
+    if reply["question"]:
+        require(not reviewed and not roles and gap == "", "question selection must be empty")
+        return
+
+    entries = {entry["key"]: entry for entry in catalog}
+    bases = {key for key in entries if not key.startswith("adapt:")}
+    fits = {}
+    for item in reviewed:
+        exact(item, ("target", "fit", "reason"), "reviewed item")
+        string(item["target"], 1000000, "reviewed target", nonempty=True)
+        string(item["fit"], 5, "reviewed fit", nonempty=True)
+        string(item["reason"], 600, "reviewed reason", nonempty=True)
+        require(bool(item["reason"].strip()), "reviewed reason must contain text")
+        require(item["target"] in bases and item["target"] not in fits,
+                "unknown or duplicate reviewed target")
+        require(item["fit"] in ("reuse", "adapt", "none"), "reviewed fit")
+        fits[item["target"]] = item["fit"]
+    require(set(fits) == bases, "review every base catalog entry exactly once")
+
+    target = reply["target"]
+    if target == "new:worker":
+        require(bool(gap.strip()) and all(fit == "none" for fit in fits.values()),
+                "new worker requires a gap and no reusable or adaptable candidate")
+    elif target != "new:team":
+        base = target.removeprefix("adapt:")
+        require(base in fits, "selected target must have a review")
+        if target.startswith("adapt:"):
+            require(fits[base] == "adapt" and bool(gap.strip()),
+                    "adaptation requires an adapt review and capability gap")
+        else:
+            prepared = target == "previous" or entries.get(target, {}).get("kind") == "team"
+            allowed = ("reuse", "adapt") if prepared else ("reuse",)
+            require(fits[base] in allowed, "selected target must match its review")
+
+    if target != "new:team":
+        require(not roles, "roles are only for a new team")
+        return
+    require(not any(entries[key]["kind"] == "team" and fit == "reuse" for key, fit in fits.items()), "select the matching existing team before assembling a flash team")
+    require(2 <= len(roles) <= 16, "new team requires 2 to 16 roles")
+    seen = set()
+    existing = False
+    for item in roles:
+        exact(item, ("role", "target", "responsibility"), "role item")
+        role, member = item["role"], item["target"]
+        string(role, 40, "role", nonempty=True)
+        string(member, 1000000, "role target", nonempty=True)
+        string(item["responsibility"], 2000, "role responsibility", nonempty=True)
+        require(bool(item["responsibility"].strip()), "role responsibility must contain text")
+        require(re.fullmatch(r"[a-z][a-z0-9-]{0,39}", role) is not None and
+                not role.endswith("-") and role != "state" and role not in seen,
+                "invalid or duplicate role")
+        seen.add(role)
+        if member == "new:worker":
+            require(bool(gap.strip()), "new role requires a capability gap")
+            continue
+        require(member in entries and entries[member]["kind"] == "worker",
+                "role must select a catalog worker or a new worker")
+        existing = True
+        base = member.removeprefix("adapt:")
+        require(base in fits, "role target must have a review")
+        require(fits[base] == ("adapt" if member.startswith("adapt:") else "reuse"),
+                "role target must match its review")
+        if member.startswith("adapt:"):
+            require(bool(gap.strip()), "adapted role requires a capability gap")
+    require(existing or all(fit == "none" for fit in fits.values()),
+            "new team must use existing expertise identified as reusable or adaptable")
+
+
+def main():
+    request, raw = load("request.json")
+    reply, _ = load("response.json")
+    stage = request.get("stage")
+    require(stage in ("plan", "present"), "stage")
+    if "selection_version" in request:
+        require(type(request["selection_version"]) is int and
+                request["selection_version"] == 1, "unsupported selection version")
+    for key in ("message", "source", "now"):
+        string(request.get(key), 1000000, "request " + key)
+    require(type(request.get("history")) is list, "history")
+    for entry in request["history"]:
+        exact(entry, ("role", "text"), "history item")
+        string(entry["role"], 1000000, "history role")
+        string(entry["text"], 1000000, "history text")
+    require(type(request.get("catalog")) is list, "catalog")
+    targets = set()
+    for entry in request["catalog"]:
+        exact(entry, ("key", "name", "kind", "description", "path"), "catalog item")
+        for key in ("key", "name", "kind", "description", "path"):
+            string(entry[key], 1000000, "catalog " + key)
+        require(entry["key"] not in targets, "duplicate catalog key")
+        targets.add(entry["key"])
+    if stage == "present":
+        execution = request.get("execution")
+        exact(execution, ("exit_code", "stdout", "stderr", "files"), "execution")
+        require(execution["exit_code"] is None or
+                type(execution["exit_code"]) is int, "exit_code")
+        string(execution["stdout"], 1000000, "stdout")
+        string(execution["stderr"], 1000000, "stderr")
+        require(type(execution["files"]) in (list, dict), "files")
+    else:
+        require("execution" not in request, "execution only for present")
+    if "previous" in request:
+        require(type(request["previous"]) in (dict, type(None)), "previous")
+    if stage == "plan":
+        keys = ("request_sha256", "message", "question", "title", "target", "brief", "inputs")
+        if "selection_version" in request:
+            keys += ("selection",)
+        exact(reply, keys, "plan response")
+    else:
+        exact(reply, ("request_sha256", "message"), "present response")
+    require(type(reply["request_sha256"]) is str and
+            reply["request_sha256"] == hashlib.sha256(raw).hexdigest(),
+            "request binding")
+    string(reply["message"], 6000, "message", nonempty=True)
+    if stage == "plan":
+        string(reply["question"], 1000, "question")
+        string(reply["title"], 120, "title")
+        string(reply["target"], 1000000, "target")
+        string(reply["brief"], 16000, "brief")
+        question = bool(reply["question"])
+        require((reply["target"] == "") == question, "question/target")
+        if not question:
+            require(reply["target"] in targets or
+                    reply["target"] in ("new:worker", "new:team"),
+                    "target not in catalog")
+            string(reply["title"], 120, "title", nonempty=True)
+            string(reply["brief"], 16000, "brief", nonempty=True)
+        inputs = reply["inputs"]
+        require(type(inputs) is list and len(inputs) <= 12, "inputs")
+        names, bindings = set(), set()
+        for item in inputs:
+            exact(item, ("name", "text", "binding"), "input")
+            name, binding = item["name"], item["binding"]
+            string(name, 100, "input name", nonempty=True)
+            require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name)
+                    is not None and name not in (".", "..") and name not in names,
+                    "invalid or duplicate input name")
+            names.add(name)
+            string(item["text"], 131072, "input text")
+            string(binding, 100, "input binding")
+            if binding:
+                require(re.fullmatch(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_INPUT",
+                                     binding) is not None and
+                        binding not in bindings and
+                        binding not in {"PATH_INPUT", "HOME_INPUT", "SHELL_INPUT",
+                                        "SYSTEM_INPUT", "PROVIDER_INPUT", "MODEL_INPUT",
+                                        "PYTHONPATH_INPUT", "LD_LIBRARY_PATH_INPUT"},
+                        "invalid or duplicate binding")
+                bindings.add(binding)
+        if "selection_version" in request:
+            selection(reply, request["catalog"])
+    print("task response structure valid")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, RecursionError) as exc:
+        print("unfinished: " + str(exc), file=sys.stderr)
+        sys.exit(1)

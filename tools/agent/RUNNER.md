@@ -33,6 +33,13 @@ Brief loads private instructions and selects procedures. Ply owns the loop,
 limits and verifier. Ask owns intelligence and replayable sessions. Admitted
 MCP capabilities are ordinary executable tools; Agent has no MCP-specific code.
 
+`-steer FILE` passes an existing controller-owned guidance file to Ply. Relative
+paths resolve from the caller's directory; the selected regular file must stay
+outside mutable work and state and cannot be a symlink or multiply linked.
+Append complete newline-terminated lines. Ply decides when to consume them at
+its existing boundaries; Agent adds no message client or acknowledgement.
+Steering changes neither the action boundary nor the verifier or recording.
+
 Stdout is the answer, stderr is progress, files are deliverables, and exit
 status is the process outcome. A passing `bin/check` pre-check needs no model
 call. A textual success claim cannot override a rejected check. Hire starts a

@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **23 components and 27 public commands**. MCP supplies
+This guide covers all **24 components and 28 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -18,6 +18,7 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Edit files or run programs until a check passes | **Ply** |
 | Run a reusable expert in a workspace | **Agent** |
 | Build the expert's instructions, skills, and check | **Hire** |
+| Give a temporary team a memorable name | **[Moniker](../tools/moniker/README.md)** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
 | Render pages or execute a supplied browser plan | **[Web](../tools/web/README.md)**; caller selects URLs and actions |
@@ -426,3 +427,18 @@ record replay -f lookup.jsonl
 
 See the [verification scope and archive selection](REPLAY.md) for nested worker
 histories, compaction links, and private credential handoffs.
+
+## Moniker: reserve a memorable name
+
+**[Moniker](../tools/moniker/README.md)** generates and reserves a friendly name
+in an explicitly selected local registry. It needs no model or network:
+
+```sh
+moniker -dir /absolute/path/to/name-registry -json
+```
+
+The JSON result includes an ID, display name, slug and theme. The registry is
+caller-owned state outside worker definitions. Names identify work; they do not
+create teams, select workers or grant execution authority. Its optional MCP
+manifest and dispatcher compose with the separate `mcpserve` executable; see
+the component README for that command.

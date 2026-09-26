@@ -63,6 +63,9 @@ no provider calls, goal retries, new work queue, or scheduler are added.
 The listener requires the existing Tend executable. Each admitted message has
 one private Tend root, one literal submission, and one `tend work` transition.
 It never repeats that transition or resolves unknown effects automatically.
+A2A leaves lease timing to Tend's default rather than imposing a subsecond
+startup lease. The configured job deadline and explicit cancellation remain
+independent bounds; a missing terminal receipt still reports uncertainty.
 A local worker that exits requesting authentication is an input-required
 continuation with explicit metadata; the SDK's open auth-required execution
 would retain a slot after the process has exited. Other peers' native auth

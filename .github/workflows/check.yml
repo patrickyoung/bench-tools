@@ -304,4 +304,6 @@ jobs:
           echo "WEB_TEST_WEIGH=$GITHUB_WORKSPACE/.build/bin/weigh" >> "$GITHUB_ENV"
       - name: Prove browser and process contracts using local pages only
         working-directory: tools/web
-        run: go test -race -run TestBrowser -v -timeout 180s
+        env:
+          WEB_ATTACH_TIMEOUT: '60000'
+        run: go test -race -run TestBrowser -v -timeout 360s

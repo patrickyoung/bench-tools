@@ -1,0 +1,54 @@
+.TH MONIKER 1 "September 2026" "moniker 0.1.0" "User Commands"
+.SH NAME
+moniker \- reserve a friendly, unique team name
+.SH SYNOPSIS
+.B moniker -dir
+.I ABS_REGISTRY
+.RB [ -theme " playful|space|nature" ]
+.RB [ -json ]
+.br
+.B moniker mcp -dir
+.I ABS_REGISTRY
+.B tools/call
+.br
+.B moniker version
+.SH DESCRIPTION
+Reserve one friendly team name in an explicitly selected private directory.
+There is no model, network, ambient configuration or daemon.
+Themes are playful (default), space and nature.
+.PP
+The registry must be absolute. Missing directories are created with mode 0700.
+An existing registry must have mode 0700 and must not be a symlink.
+Reservations are mode 0600 JSON files named after generated slugs. Atomic
+exclusive creation prevents duplicate names among concurrent processes and
+later invocations using the same intact registry.
+.PP
+After 32 dictionary collisions, try up to 16 randomly suffixed names. Names
+are never automatically released. An interrupted response can leave a name
+occupied; retrying creates a different reservation.
+.SH OUTPUT
+Plain stdout contains one display name and a newline.
+.B -json
+prints id (32 lowercase hexadecimal characters), name, slug (lowercase ASCII
+words separated by hyphens), and theme. Diagnostics go to stderr.
+.SH MCP DISPATCHER
+Use mcp/manifest.json with the separate mcpserve and dispatcher argv
+.BR "moniker mcp -dir ABS_REGISTRY" .
+tools/call implements generate_team_name with an optional theme argument.
+Parameters are one UTF-8 JSON object of at most 4096 bytes. Unknown fields,
+duplicates, invalid types and trailing data are rejected. Arguments cannot
+change the registry. Results contain content and structuredContent. Tool
+errors set isError and exit zero. Unknown methods return error -32601 and
+exit one. Calls are local writes and are not idempotent.
+.SH EXIT STATUS
+0: name reserved or MCP result returned.
+.br
+1: runtime or unsupported dispatcher method failure.
+.br
+2: invalid invocation.
+.SH FILES
+.I ABS_REGISTRY/SLUG.json
+is the durable reservation. Deleting or changing records voids the corresponding
+uniqueness guarantee. There is no default registry location.
+.SH SEE ALSO
+.BR mcpserve (1)

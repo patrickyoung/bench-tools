@@ -69,6 +69,9 @@ def copy_payload(source, package, component):
     if name in ("weigh", "improve"):
         shutil.copytree(source / "examples", package / "examples",
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
+    if name == "moniker":
+        (package / "mcp").mkdir()
+        shutil.copy2(source / "mcp/manifest.json", package / "mcp/manifest.json")
     for path in sorted(source.iterdir()):
         if path.is_file() and (path.name == "LICENSE" or path.suffix in (".md", ".1")):
             shutil.copy2(path, package / path.name)

@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -147,5 +148,50 @@ func TestBuildUsesOnlyPublicAgent(t *testing.T) {
 	remaining, _ := filepath.Glob(filepath.Join(root, "hire-definition.*"))
 	if len(remaining) != 0 {
 		t.Fatalf("private builder transport left after failed run: %v", remaining)
+	}
+}
+
+func TestBuildForwardsSteeringAsLiteralAgentArguments(t *testing.T) {
+	root := t.TempDir()
+	work := filepath.Join(root, "workspace")
+	if err := os.Mkdir(work, 0700); err != nil {
+		t.Fatal(err)
+	}
+	stub := "#!/bin/sh\nprintf '%s\\000' \"$@\" > \"$HOME/argv\"\nexit 2\n"
+	if err := os.WriteFile(filepath.Join(root, "agent"), []byte(stub), 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Hire must neither interpret this path nor read/create the selected file;
+	// Agent owns file validation and Ply owns its contents and consumption.
+	steer := filepath.Join(root, "operator's guidance $(touch injected); lines.txt")
+	_, stderr, code := invokeTest(t, root, "build", "-C", work, "-steer", steer, "--", "Build a reviewer", "-steer", "literal goal text")
+	if code != 2 {
+		t.Fatalf("lost Agent outcome: code=%d stderr=%s", code, stderr)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, "argv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	argv := strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00")
+	if len(argv) != 13 || !reflect.DeepEqual(argv[6:8], []string{"-steer", steer}) || !reflect.DeepEqual(argv[9:], []string{"--", "Build a reviewer", "-steer", "literal goal text"}) {
+		t.Fatalf("steering or goal argv changed: %#v", argv)
+	}
+	if _, err := os.Lstat(steer); !os.IsNotExist(err) {
+		t.Fatalf("Hire unexpectedly accessed steering output: %v", err)
+	}
+}
+
+func TestBuildMissingSteeringArgumentDoesNotLaunchAgent(t *testing.T) {
+	root := t.TempDir()
+	stub := "#!/bin/sh\ntouch \"$HOME/agent-launched\"\n"
+	if err := os.WriteFile(filepath.Join(root, "agent"), []byte(stub), 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, code := invokeTest(t, root, "build", "-C", root, "-steer")
+	if code != 2 || !strings.Contains(stderr, "flag needs an argument: -steer") {
+		t.Fatalf("missing argument: code=%d stderr=%s", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(root, "agent-launched")); !os.IsNotExist(err) {
+		t.Fatalf("invalid invocation launched Agent: %v", err)
 	}
 }

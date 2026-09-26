@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 27 commands under .build/bin
+scripts/build                              # all 28 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
@@ -112,7 +112,8 @@ more restrictive permissions from your umask, and uninstall accepts those
 changes. Other assets and executable modes remain
 verified. After updating companions, run `draft sync` and put the packaged skill
 on `BRIEF_PATH` as printed by the installer. Agent is a native runner; Hire
-owns expert authoring. The existing manuals and top-level documentation remain
+owns expert authoring. Moniker also carries its optional MCP manifest at
+`mcp/manifest.json` inside its package. The existing manuals and top-level documentation remain
 inside each package (for example, `man ~/.local/lib/bench-tools/ask/ask.1`).
 
 `python3 scripts/check-install.py` tests all built commands and their help/version

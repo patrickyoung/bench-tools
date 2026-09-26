@@ -7,7 +7,7 @@ PREFIX ?= $(HOME)/.local
 EVAL_PYTHON ?= $(PYTHON)
 EVAL_ARGS ?=
 
-.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers build-interfaces check-interfaces install uninstall list
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -18,6 +18,8 @@ help:
 	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
 	@echo 'make check-worker-portability Verify worker skill exports and original checks'
 	@echo 'make check-workers         Run worker/team offline evaluations (see docs/WORKER-EVALUATIONS.md)'
+	@echo 'make build-interfaces      Build the independent Hire browser interface'
+	@echo 'make check-interfaces      Check Hire UI offline (tests, race, vet)'
 	@echo 'make install               Build and install under ~/.local'
 	@echo 'make uninstall             Remove verified installs made here'
 	@echo 'make list                  List components and public commands'
@@ -33,7 +35,7 @@ build:
 test:
 	@$(PYTHON) scripts/check --quick $(TOOLS)
 
-check: check-docs check-worker-portability
+check: check-docs check-worker-portability check-interfaces
 	@$(PYTHON) -m unittest discover -s scripts/tests -v
 	@$(PYTHON) scripts/check $(TOOLS)
 
@@ -54,6 +56,12 @@ check-worker-portability:
 
 check-workers:
 	@$(PYTHON) scripts/check-worker-evaluations.py --python "$(EVAL_PYTHON)" $(EVAL_ARGS)
+
+build-interfaces:
+	@$(MAKE) -C interfaces/hire build
+
+check-interfaces:
+	@$(MAKE) -C interfaces/hire check
 
 install:
 	@$(PYTHON) scripts/install $(TOOLS) --prefix "$(PREFIX)"
