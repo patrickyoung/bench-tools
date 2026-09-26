@@ -81,7 +81,7 @@ func build(args []string) int {
 	flags.SetOutput(os.Stderr)
 	flags.StringVar(&work, "C", "", "existing build workspace")
 	flags.StringVar(&evidence, "evidence", "", "controller evidence directory")
-	for _, name := range strings.Fields("state goal-file m effort checkpoint turns cycles timeout cap verbosity compact-at compactions") {
+	for _, name := range strings.Fields("state goal-file steer m effort checkpoint turns cycles timeout cap verbosity compact-at compactions") {
 		flags.Func(name, "Agent option", func(value string) error {
 			forward = append(forward, "-"+name, value)
 			return nil
@@ -298,6 +298,10 @@ Exit status is Agent's outcome, including 2 unfinished and 130 interrupted.
 $HIRE_DIR/KEY or ~/.hire/KEY, keyed by the physical build workspace. -checkpoint
 NAME resumes through Agent/Ply. Model, effort, limits, state and explicit Cage
 flags pass to Agent. HIRE_AGENT selects the public Agent executable.
+-steer FILE passes a caller-selected guidance file to Agent/Ply. Create it
+outside the build workspace and append complete UTF-8 lines while building.
+Ply applies the guidance at its existing turn and action boundaries; this does
+not interrupt an action already running or grant additional permissions.
 BENCH_WEIGH=1 permits the builder to add optional Weigh use. Unset, empty or
 0 disables new selection; other values are configuration errors. An unrelated
 revision preserves existing dependencies. This does not select a Weigh model,

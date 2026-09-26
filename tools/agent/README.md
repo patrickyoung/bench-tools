@@ -214,6 +214,16 @@ A checkpoint keeps the current Ply/Ask conversation across interruption and
 compaction. It is not a snapshot or a reason to repeat an uncertain effect.
 History uses Trail and Ask's replay verification without modifying sessions.
 
+To guide an active run, pass `-steer FILE` and append newline-terminated guidance
+to that existing controller-owned regular file. Agent resolves relative paths
+from its invocation directory, refuses symlinks, multiple hard links and paths
+through mutable work/state, then passes the absolute path to Ply. Keep the file
+outside the action workspace and state, including when using `-no-cage`.
+Ply consumes new lines at its existing turn/action/report boundaries; steering
+does not interrupt a command, expand permissions, replace the verifier, or
+promise that an appended line has already been used. Ply owns text limits and
+consumption; Agent retains its normal process recording and exact exit status.
+
 For recurring work, fill in `HEARTBEAT.md` and supply `bin/wake`:
 
 | Wake status | Meaning |

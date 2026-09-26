@@ -41,6 +41,12 @@ func run(kind string, args []string) int {
 	if err := d.validateProcedures(); err != nil {
 		return problem(err, 1)
 	}
+	if o.steer != "" {
+		o.steer, err = steeringPath(o.steer, d)
+		if err != nil {
+			return problem(err, 2)
+		}
+	}
 	if !o.quiet {
 		fmt.Fprintf(os.Stderr, "agent: %s is a valid agent definition\n", d.Home)
 	}
@@ -245,6 +251,9 @@ func run(kind string, args []string) int {
 	argv = append(argv, "-effort", o.effort)
 	if checkpoint != "" {
 		argv = append(argv, "-checkpoint", checkpoint)
+	}
+	if o.steer != "" {
+		argv = append(argv, "-steer", o.steer)
 	}
 	if o.quiet {
 		argv = append(argv, "-q")

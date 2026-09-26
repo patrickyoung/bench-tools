@@ -96,9 +96,9 @@ func specialist(args []string) int {
 }
 
 type options struct {
-	work, state, control, goalFile, model, effort, checkpoint string
-	noCage, network, quiet                                    bool
-	forward                                                   []string
+	work, state, control, goalFile, model, effort, checkpoint, steer string
+	noCage, network, quiet                                           bool
+	forward                                                          []string
 }
 
 func parse(args []string) (options, []string, error) {
@@ -112,6 +112,7 @@ func parse(args []string) (options, []string, error) {
 	fs.StringVar(&o.model, "m", "", "model, passed to Ply")
 	fs.StringVar(&o.effort, "effort", "", "effort, passed to Ply")
 	fs.StringVar(&o.checkpoint, "checkpoint", "", "checkpoint name")
+	fs.StringVar(&o.steer, "steer", "", "controller steering file, passed to Ply")
 	fs.BoolVar(&o.noCage, "no-cage", false, "ordinary host actions")
 	fs.BoolVar(&o.network, "net", false, "allow network inside Cage")
 	fs.BoolVar(&o.quiet, "q", false, "quiet progress")
@@ -248,6 +249,7 @@ Piped stdin is evidence; if a portable definition has no goal, stdin is it.
   -m MODEL         pass the model literally to Ply/Ask
   -effort LEVEL    pass reasoning effort literally
   -checkpoint NAME resume a named Ply conversation pointer
+  -steer FILE      pass a controller-owned guidance file to Ply
   -goal-file FILE  private goal file, instead of goal text arguments
   -net             allow network in Cage actions
   -no-cage         ordinary host action permissions

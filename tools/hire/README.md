@@ -84,6 +84,15 @@ expert. `-B=false` explicitly permits a passing pre-check to skip model work.
 Default model actions use Agent's Cage boundary. `-net` and `-no-cage` are
 explicit caller selections with the same meaning as in Agent.
 
+Pass `-steer FILE` to supply follow-up guidance during a build. Create an
+empty regular file outside the build workspace and mutable state, select it
+with an absolute path, and append complete UTF-8 lines as the user clarifies
+the job. Agent validates the selected file and passes it to Ply, which reads
+new guidance at its existing turn and action boundaries and records applied
+guidance through Ask. A message does not interrupt an action already running
+or grant additional permissions. Hire only forwards this option; it does not
+read, create, or edit the file.
+
 ## Enable optional Weigh use
 
 Weigh is off by default. Enable it for one build or for the shell session:
