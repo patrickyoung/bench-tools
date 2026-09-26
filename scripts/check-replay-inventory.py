@@ -47,6 +47,7 @@ BOUNDARIES = {
     "tend": "durable job input, work and observed transitions",
     "trail": "read-only archive verification",
     "weave": "deterministic task/observation projection",
+    "web": "offline HTML and link reduction fixtures and exact process outcome",
     "weigh": "explicit typed questions, native probabilities and inference outcome",
 }
 
@@ -112,6 +113,9 @@ def main():
             improve_spec = run([sys.executable, ROOT / "tools/improve/examples/router/spec.py", "--offline"]).stdout
             run([bins / "improve", "-n"], improve_spec)
             run([bins / "may", "check"])
+            web = run([bins / "web", "check"])
+            require(b"reduction fixtures passed (offline)" in web.stdout,
+                    "Web did not verify its offline reduction fixtures")
             moniker_contract(bins, work, run)
             run([bins / "cage", "status"])
             confined, receipt = support["recorded_argv"](

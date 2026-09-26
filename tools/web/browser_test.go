@@ -63,9 +63,10 @@ func TestBrowser(t *testing.T) {
 	defer server.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s, e := startSession(ctx, options{}, false, io.Discard)
+	var startup bytes.Buffer
+	s, e := startSession(ctx, options{}, false, &startup)
 	if e != nil {
-		t.Fatal(e)
+		t.Fatalf("%v\nChrome startup diagnostics:\n%s", e, &startup)
 	}
 	defer s.close(false, io.Discard)
 	b, e := os.ReadFile(filepath.Join(s.dir, "DevToolsActivePort"))
@@ -95,7 +96,7 @@ func TestBrowser(t *testing.T) {
 	os.Mkdir(mayDir, 0700)
 	invoke := func(t *testing.T, plan string, args ...string) (int, string, string) {
 		t.Helper()
-		run, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		run, cancel := context.WithTimeout(context.Background(), 75*time.Second)
 		defer cancel()
 		c := exec.CommandContext(run, bin, args...)
 		c.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
@@ -209,7 +210,7 @@ func TestBrowser(t *testing.T) {
 				if actual != 1 || count() != baseline+1 {
 					t.Fatal("failed named tab was closed")
 				}
-				_, e = (proto.TargetCloseTarget{TargetID: proto.TargetTargetID(id)}).Call(s.browser)
+				e = closeTarget(s.browser.Timeout(2*time.Second), proto.TargetTargetID(id))
 				if e != nil {
 					t.Fatal(e)
 				}

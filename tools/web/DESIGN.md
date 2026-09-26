@@ -28,6 +28,11 @@ it. --keep and --tab conflict. Closing the CDP socket does not close targets.
 Ordinary attachment does not inspect other pages; protocol target metadata can
 arrive from the browser.
 
+Closing an owned attached tab waits for its matching CDP target-destroyed event
+within the existing cleanup deadline. A close acknowledgement alone is not
+proof that the tab has disappeared. A timeout or disconnect is diagnosed on
+stderr without changing the command's original outcome.
+
 Native mode uses Rod's NewUserMode argument preset with an explicit installed
 binary, user data directory and random loopback debugging port. Web owns the
 process it launches and closes it, but never deletes the selected profile.

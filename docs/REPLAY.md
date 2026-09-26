@@ -82,6 +82,7 @@ or discover nested conversations. This table identifies those boundaries.
 | OAuth | Resource-bound non-secret profile/decision and child outcome; header descriptor stays private |
 | Tend | Job definition/input, attempts, separate output artifacts, durable transitions, checks and unknown outcomes |
 | Weave | Exact task and observation inputs, projection result, caller's execution links |
+| Web | Offline HTML-to-Markdown and link reduction fixtures with exact stdout/stderr/status; browser lifecycle and approval behavior remain covered by the separate real-browser suite |
 | Trail | Selected immutable archive snapshot and read-only verification/projection result |
 | Record | Own process receipt semantics, full binary stream retention, explicit artifact/session snapshots, and offline extraction |
 

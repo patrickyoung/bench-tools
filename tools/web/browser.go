@@ -234,7 +234,9 @@ func (s *session) close(keep bool, stderr io.Writer) {
 			} else if keep {
 				fmt.Fprintf(stderr, "web: leaving tab open (--keep)\nweb: tab %s   <- pass this to --tab to come back to it\n", s.page.TargetID)
 			} else {
-				_, _ = (proto.TargetCloseTarget{TargetID: s.page.TargetID}).Call(s.browser.Context(cleanup))
+				if err := closeTarget(s.browser.Context(cleanup), s.page.TargetID); err != nil {
+					fmt.Fprintln(stderr, "web: closing owned tab:", err)
+				}
 			}
 		}
 	}
@@ -259,6 +261,30 @@ func (s *session) close(keep bool, stderr io.Writer) {
 		_ = os.RemoveAll(s.dir)
 	}
 }
+
+// Chrome acknowledges a close request before the target is necessarily gone.
+// Subscribe before sending it and retain the connection until destruction is
+// confirmed (or the bounded cleanup context ends). Never close another target.
+func closeTarget(browser *rod.Browser, id proto.TargetTargetID) error {
+	ctx, cancel := context.WithCancel(browser.GetContext())
+	defer cancel()
+	browser = browser.Context(ctx)
+	events := browser.Event()
+	if _, err := (proto.TargetCloseTarget{TargetID: id}).Call(browser); err != nil {
+		return err
+	}
+	for event := range events {
+		var destroyed proto.TargetTargetDestroyed
+		if event.Load(&destroyed) && destroyed.TargetID == id {
+			return nil
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return fmt.Errorf("browser disconnected before owned tab closed")
+}
+
 func navigate(p *rod.Page, address, wait string) error {
 	name := proto.PageLifecycleEventNameDOMContentLoaded
 	if wait == "load" {
