@@ -548,8 +548,15 @@ func (a *app) importTaskTeam(j Job, rec taskRecord, ref taskTeamReference, resul
 	}
 	result.Artifacts = artifacts
 	if rec.Config.Plonk != "" && a.deliveryState(rec.Thread).TaskID != j.ID {
-		result.GoalStatus = "delivery_pending"
-		result.Update.Blocked = "Files are finished and checked; private delivery is pending."
+		if a.taskTeamSuperseded(j, rec.Thread) {
+			// Historical accepted files remain downloadable. Only the latest
+			// conversation result is eligible to replace its private Plonk view.
+			result.GoalStatus = "complete"
+			result.Update.Blocked = ""
+		} else {
+			result.GoalStatus = "delivery_pending"
+			result.Update.Blocked = "Files are finished and checked; private delivery is pending."
+		}
 	}
 	return saveTaskJSON(filepath.Join(root, "result.json"), result)
 }
@@ -679,6 +686,19 @@ func (a *app) observeTaskTeams(ctx context.Context) {
 	}
 }
 
+// A conversation advances by task identity, independently of delivery jobs.
+func (a *app) taskTeamSuperseded(j Job, thread string) bool {
+	for _, other := range a.jobs.List() {
+		if other.Kind == "task" && other.Started.After(j.Started) {
+			rec, err := a.taskRecord(other)
+			if err == nil && rec.Thread == thread {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (a *app) queueTeamDelivery(j Job, rec taskRecord, result taskResult) (bool, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -692,17 +712,11 @@ func (a *app) queueTeamDelivery(j Job, rec taskRecord, result taskResult) (bool,
 	}
 	// Supersession is independent of delivery history: a newer delivery record
 	// must not hide the newer task and let an older receipt replace its result.
-	jobs := a.jobs.List()
-	for _, other := range jobs {
-		if other.Kind == "task" && other.Started.After(j.Started) {
-			r, e := a.taskRecord(other)
-			if e == nil && r.Thread == rec.Thread {
-				return true, nil
-			}
-		}
+	if a.taskTeamSuperseded(j, rec.Thread) {
+		return true, nil
 	}
 	// Only the newest delivery decision for this conversation controls a retry.
-	for _, other := range jobs {
+	for _, other := range a.jobs.List() {
 		if other.Kind == "delivery" {
 			var r deliveryRecord
 			b, e := os.ReadFile(filepath.Join(filepath.Dir(other.Dir), "delivery-request.json"))

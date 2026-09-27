@@ -790,6 +790,18 @@ print(json.dumps(dict(slug='private-result',versionId=sys.argv[sys.argv.index('-
 	if a.deliveryState(first.Record.Thread).TaskID != second.Job.ID {
 		t.Fatal("fixture lacks newer delivery")
 	}
+	turns := a.taskTurns(first.Record.Thread)
+	if len(turns) != 2 || turns[0].Result.GoalStatus != "complete" || turns[0].Result.Update.Blocked != "" || len(turns[0].Result.Artifacts) == 0 {
+		t.Fatal("historical accepted result incorrectly needs delivery help", turns)
+	}
+	page := serveTest(a, "GET", "/work/"+first.Record.Thread, nil).Body.String()
+	if strings.Contains(page, "private delivery is pending") || strings.Contains(page, "Needs attention") {
+		t.Fatal("completed history rendered as unfinished delivery")
+	}
+	if response := serveTest(a, "GET", "/work/jobs/"+first.Job.ID+"/files/0", nil); response.Code != 200 {
+		t.Fatal("historical accepted file unavailable", response.Code)
+	}
+
 	before := len(a.jobs.List())
 	handled, err := a.queueTeamDelivery(first.Job, first.Record, firstResult)
 	if err != nil || !handled || len(a.jobs.List()) != before {
