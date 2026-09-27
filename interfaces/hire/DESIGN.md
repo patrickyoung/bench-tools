@@ -342,6 +342,18 @@ not trigger another model retry, disable either boundary, or claim specialist
 execution. Such hosts require separately reviewed external orchestration before
 the team can run with each member's default action confinement.
 
+Alternatively, the operator can select `-team-runner`, an external isolated
+execution environment accepting the same literal `-net -w ROOT -- COMMAND`
+arguments. It owns the outer boundary and supplies public Cage/Agent binaries
+native to that environment. The preflight runs its member Cage there, and every
+team entry, including continuations and fingerprinted definitions, uses the
+same selected runner. This is not an automatic fallback or a host-execution
+grant. The runner must preserve absolute input/output paths, streams, signals
+and exact results; failure stops before authoring. Individual workers and Hire
+retain their existing commands. The UI adds no container manager, provider
+client or scheduler. Authoring explicitly requires portable commands because
+its host may differ from the selected team environment.
+
 An operator may explicitly select reviewed host coordinators with
 `-reviewed-team-controllers` and full definition fingerprints. This is an
 execution-authority decision, separate from structural verification. The digest

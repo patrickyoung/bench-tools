@@ -1,6 +1,20 @@
 # Hire UI
 
-For macOS teams, Seatbelt cannot nest the team's outer Cage with its members'
+For macOS teams, configure `-team-runner /absolute/path/to/isolated-runner`
+to execute every team in a selected environment that supports member Cage.
+The runner accepts `-net -w WORK -- COMMAND ARGS...`, preserves the caller's
+working directory, absolute selected paths, model/input environment, streams,
+signals and exit status, and must enforce the outer write boundary while
+providing native public Agent/Cage tools. A Linux container with a read-only
+root and source mounts, only the selected work directory writable, and working
+unprivileged Bubblewrap for member Cage is one option. Never mount a Docker
+socket or grant privileged mode to generated work. Verify allowed/denied writes,
+member network denial, process cancellation and real team execution before use.
+The UI probes the selected environment before authoring and uses it for new,
+adapted, reused and continued teams; unavailable environments fail closed.
+The executable is selected by the operator, never by a model or request.
+
+Without that option, Seatbelt cannot nest the team's outer Cage with its members'
 own action Cages. The UI detects that failure before team authoring/execution.
 After inspecting and explicitly approving a local coordinator and all its member
 checks, an operator can print its full definition fingerprint with
@@ -61,6 +75,7 @@ addresses only. Stop it with Ctrl-C.
 | `-record PATH` | `record` | Record selected analysis evidence and model session |
 | `-web-attach ENDPOINT` | Unset | Offer an explicitly selected connected browser |
 | `-agent PATH` | `agent` | Select Agent for worker and conversation runs |
+| `-team-runner PATH` | Native Cage | Select an isolated environment for all team entries and preflights |
 | `-assistant PATH` | Source’s `workers/bench-hire/expert` | Select the advisory worker definition |
 | `-allow-run` | Off | Enable individual worker execution |
 | `-allow-build` | Off | Enable conversation, analysis and model-backed authoring |

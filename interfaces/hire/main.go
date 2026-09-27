@@ -20,6 +20,7 @@ import (
 var version = "0.1.0-dev"
 
 type config struct {
+	TeamRunner                                     string
 	ReviewedTeamControllers                        string
 	Moniker                                        string
 	TailscaleOrigin, TailscaleUser                 string
@@ -71,6 +72,7 @@ func main() {
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
 	flag.BoolVar(&cfg.GoalMode, "goal-mode", true, "finish work goals through checked continuations and private delivery within the task deadline")
 	flag.StringVar(&cfg.ReviewedTeamControllers, "reviewed-team-controllers", "", "comma-separated fingerprints of explicitly reviewed host coordinators; member Agent confinement stays enabled")
+	flag.StringVar(&cfg.TeamRunner, "team-runner", "", "operator-selected isolated team environment, accepting Cage argv (default native Cage)")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")
 	flag.BoolVar(&cfg.AllowBuild, "allow-build", false, "enable conversation, analysis and model-backed authoring")
@@ -91,6 +93,16 @@ func main() {
 }
 
 func prepare(cfg config) (config, error) {
+	if cfg.TeamRunner != "" {
+		p, err := exec.LookPath(cfg.TeamRunner)
+		if err != nil {
+			return cfg, fmt.Errorf("team runner: %w", err)
+		}
+		cfg.TeamRunner, err = filepath.Abs(p)
+		if err != nil {
+			return cfg, err
+		}
+	}
 	if err := validateReviewedTeams(cfg.ReviewedTeamControllers); err != nil {
 		return cfg, err
 	}
