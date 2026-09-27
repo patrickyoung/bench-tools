@@ -549,6 +549,25 @@ func TestCoordinatorPreflightRepairsKnownFailureBeforeAdmission(t *testing.T) {
 	if !strings.Contains(string(correction), "assignment.step is an object") {
 		t.Fatal("repair missed real diagnostic")
 	}
+	// Re-entry semantics must reach both the initial public Hire goal and its
+	// bounded correction. This guards prompt propagation, not model compliance.
+	initial, err := os.ReadFile(filepath.Join(root, "build.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, goal := range map[string][]byte{"initial": initial, "repair": correction} {
+		for _, instruction := range []string{
+			"same retained member work directory",
+			"Existing valid native inputs are not an error",
+			"Text-only feedback is valid when amendments is empty",
+			"stale output fails its native check",
+			"files.name is the destination path",
+		} {
+			if !strings.Contains(string(goal), instruction) {
+				t.Fatalf("%s Hire goal lost continuation contract: %s", name, instruction)
+			}
+		}
+	}
 	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "calls"))
 	if strings.Count(string(calls), "preflight\n") != 2 || strings.Count(string(calls), "admit\n") != 1 || strings.Index(string(calls), "admit\n") < strings.LastIndex(string(calls), "preflight\n") {
 		t.Fatal("admitted before successful preflight", string(calls))
