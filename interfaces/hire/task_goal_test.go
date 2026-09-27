@@ -190,6 +190,7 @@ func TestGoalTeamContinuationRequiresDeclaredContract(t *testing.T) {
 			marker := ""
 			if supported {
 				marker = "printf '%s\\n' '{\"version\":1,\"resume\":true,\"local_only\":true}' > expert/task-runtime.json\n"
+				selectTeamEnvironmentFixture(t, a)
 			}
 			script := string(raw) + "\n" + marker + `cat > expert/bin/task <<'GOALTEAM'
 #!/usr/bin/python3
@@ -212,7 +213,8 @@ chmod 700 expert/bin/task
 			writeFixture(t, a.cfg.Hire, script, 0700)
 			turn := taskSubmit(t, a, "", "Finish the team document")
 			if supported {
-				if turn.Result.Code != 0 || goalRounds(t, turn) != 2 {
+				log := a.jobs.Log(turn.Job.ID, "stderr")
+				if turn.Result.Code != 0 || goalRounds(t, turn) != 2 || strings.Count(log, "selected environment team entry") != 2 {
 					t.Fatalf("team continuation failed: %+v\n%s", turn.Result, a.jobs.Log(turn.Job.ID, "stderr"))
 				}
 			} else if turn.Result.Code != 2 || goalRounds(t, turn) != 1 || turn.Result.GoalStatus != "blocked" {
