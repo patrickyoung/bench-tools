@@ -1,5 +1,15 @@
 # Hire UI
 
+For macOS teams, Seatbelt cannot nest the team's outer Cage with its members'
+own action Cages. The UI detects that failure before team authoring/execution.
+After inspecting and explicitly approving a local coordinator and all its member
+checks, an operator can print its full definition fingerprint with
+`hire-ui fingerprint-team DATA EXPERT` and select that fingerprint at startup
+using `-reviewed-team-controllers SHA256`. This runs only that exact reviewed
+coordinator on the host; member Agent confinement stays enabled. Content or
+executable-mode changes require a new review. Never approve a generated team
+merely because its structural check passed.
+
 A conversation-led workbench for creating, teaching and improving Bench workers.
 Talk to the reusable `bench-hire` worker while the UI keeps selected context,
 evidence and concrete controls visible. Catalogs and direct forms remain

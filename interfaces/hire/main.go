@@ -20,6 +20,7 @@ import (
 var version = "0.1.0-dev"
 
 type config struct {
+	ReviewedTeamControllers                        string
 	Moniker                                        string
 	TailscaleOrigin, TailscaleUser                 string
 	Source, Data, Addr, Hire, Agent, Python, Model string
@@ -32,6 +33,15 @@ type config struct {
 }
 
 func main() {
+	if len(os.Args) == 4 && os.Args[1] == "fingerprint-team" {
+		_, digest, err := definitionSnapshot(os.Args[2], os.Args[3])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Println(digest)
+		return
+	}
 	if len(os.Args) == 3 && os.Args[1] == "delivery" {
 		os.Exit(deliveryProcess(os.Args[2]))
 	}
@@ -58,6 +68,7 @@ func main() {
 	flag.StringVar(&cfg.Agent, "agent", "agent", "installed Agent executable for workers and conversation")
 	flag.StringVar(&cfg.WebAttach, "web-attach", "", "explicit loopback browser endpoint offered to worker runs (browser must already be running)")
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
+	flag.StringVar(&cfg.ReviewedTeamControllers, "reviewed-team-controllers", "", "comma-separated fingerprints of explicitly reviewed host coordinators; member Agent confinement stays enabled")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")
 	flag.BoolVar(&cfg.AllowBuild, "allow-build", false, "enable conversation, analysis and model-backed authoring")
@@ -78,6 +89,9 @@ func main() {
 }
 
 func prepare(cfg config) (config, error) {
+	if err := validateReviewedTeams(cfg.ReviewedTeamControllers); err != nil {
+		return cfg, err
+	}
 	if _, err := tailscaleHost(cfg); err != nil {
 		return cfg, err
 	}

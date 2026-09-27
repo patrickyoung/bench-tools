@@ -305,6 +305,16 @@ not trigger another model retry, disable either boundary, or claim specialist
 execution. Such hosts require separately reviewed external orchestration before
 the team can run with each member's default action confinement.
 
+An operator may explicitly select reviewed host coordinators with
+`-reviewed-team-controllers` and full definition fingerprints. This is an
+execution-authority decision, separate from structural verification. The digest
+covers all definition files and executable modes, including member checks. An
+exact unchanged selection runs its reviewed entry on the host, with ordinary
+Agent member confinement intact, and skips redundant reauthoring. The controller
+checks the fingerprint again at execution. Any source change loses that grant;
+model responses and execution files cannot approve it. No grant is enabled by
+default, and this adds no scheduler, provider client or automatic retry.
+
 Each conversation turn uses a fresh workspace and private frozen companion copy.
 Refinement copies earlier bounded deliverables into a new workspace, keeps all
 old versions and supplies recent conversation plus the previously prepared expert.
