@@ -20,6 +20,7 @@ import (
 var version = "0.1.0-dev"
 
 type config struct {
+	TeamCoordinator, TeamQueue                     string
 	TeamRunner                                     string
 	ReviewedTeamControllers                        string
 	Moniker                                        string
@@ -72,6 +73,8 @@ func main() {
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
 	flag.BoolVar(&cfg.GoalMode, "goal-mode", true, "finish work goals through checked continuations and private delivery within the task deadline")
 	flag.StringVar(&cfg.ReviewedTeamControllers, "reviewed-team-controllers", "", "comma-separated fingerprints of explicitly reviewed host coordinators; member Agent confinement stays enabled")
+	flag.StringVar(&cfg.TeamCoordinator, "team-coordinator", "", "selected public Manage command for new team applications")
+	flag.StringVar(&cfg.TeamQueue, "team-queue", "", "private team run queue under data/workspaces, serviced independently of this interface")
 	flag.StringVar(&cfg.TeamRunner, "team-runner", "", "operator-selected isolated team environment, accepting Cage argv (default native Cage)")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")
@@ -191,6 +194,9 @@ func prepare(cfg config) (config, error) {
 			return cfg, err
 		}
 	}
+	if err := prepareTeamCoordinator(&cfg); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
 }
 
@@ -263,6 +269,9 @@ func run(cfg config) error {
 	server := &http.Server{Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if cfg.TeamCoordinator != "" {
+		go a.observeTaskTeams(ctx)
+	}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	slog.Info("Hire interface ready", "url", "http://"+listener.Addr().String(), "source", cfg.Source, "data", cfg.Data, "model_builds", cfg.AllowBuild)

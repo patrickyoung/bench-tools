@@ -32,3 +32,11 @@ before changing its behavior. It must build from this directory alone with
   credentials or paid model calls. Never load personal configuration in tests.
 - Run `make check`; verify the standalone binary and responsive browser flows
   when changing the public interface. Document the scope of evidence.
+
+New artifact-team tasks may opt into the selected public Manage coordinator.
+The UI is an admission/status/message/cancel client; never call its `work` or
+`resume` commands here, or wrap it in the legacy UI goal loop. The independently
+supervised host worker owns execution. Preserve saved backend/tool identities
+for old runs, exact selected rosters, sealed packet bindings and typed message
+receipts. UI delivery reconciliation may invoke only the existing idempotent
+private-delivery operation, never restart team work.

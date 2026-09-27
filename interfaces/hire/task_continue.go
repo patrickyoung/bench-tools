@@ -31,6 +31,9 @@ func finishTask(root string, result taskResult, code int, message string) int {
 }
 
 func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
+	if _, e := readTaskTeamReference(j, rec); e == nil {
+		return nil, fmt.Errorf("the headless coordinator owns this team; use its supported status actions")
+	}
 	if j.Kind != "task" || j.Active() || j.ExitCode == nil || !((*j.ExitCode == 2 && j.State == "unfinished") || (*j.ExitCode == 130 && (j.State == "cancelled" || j.State == "failed"))) {
 		return nil, fmt.Errorf("this attempt does not have a confirmed resumable outcome")
 	}
@@ -252,6 +255,9 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 		result.Prepared = true
 	} else if saved.Stage != "execute" {
 		return finishTask(snapshot, result, 1, "The saved continuation is unavailable.")
+	}
+	if result.Kind == "team" && rec.TeamBackend == taskTeamBackend {
+		return admitTaskTeam(ctx, saved.Root, snapshot, rec, saved.Plan, result, filepath.Join(saved.Root, "work", "execution"))
 	}
 	return executeTask(ctx, saved.Root, snapshot, rec, saved.Plan, result, saved.Stage == "execute")
 }

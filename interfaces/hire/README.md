@@ -629,3 +629,57 @@ checkpoint and checked again before specialists start. After three rejected
 checks the exact remaining issue is shown. A saved preparation with a confirmed
 build outcome and no execution attempt can continue without selecting a new
 team; failed or unknown execution is never replayed by that recovery path.
+
+### Headless team applications
+
+Select `-team-coordinator /absolute/path/to/bench-manage` and
+`-team-queue /absolute/data/workspaces/team-runs` together to use the artifact
+team protocol for newly submitted team work. The command can be an
+operator-selected runtime wrapper, but must preserve literal arguments,
+selected paths, streams and exit status. It must support `bench-manage team`
+`validate`, `admit`, `status`, `result`, `send` and `cancel`. The queue is a
+private, dedicated directory under the selected data root's `workspaces`.
+The operator separately supervises `bench-manage team work QUEUE`; the UI
+never starts this worker or calls `resume`.
+
+Hire prepares the selected member definitions and a `bench.team/v1` recipe
+with small native input/output adapters. Every selected role is retained and
+unchanged members remain pinned. The UI independently verifies the roster and
+uses public structural validation before admission. A compatible previously
+prepared recipe is reused without rebuilding its orchestration. Manage owns
+member execution, checkpoints, packet freezing, source-bound review,
+correction allowances and final acceptance. Closing the browser or restarting
+Hire UI does not cancel an admitted team; an explicit Stop sends Manage's
+cancellation request. Host worker failure retains Manage/Tend's observed or
+unknown outcome and never authorizes UI replay.
+
+Conversation updates carry an idempotency key and the displayed goal revision;
+answers also bind the outstanding question. Attachments retain the existing
+bounded upload store and are supplied to Manage for sealing at enqueue.
+The UI distinguishes queued updates from those included in an assignment.
+A stale reply or conflicting reuse of a message ID is rejected. A running
+step may finish before an accepted update is included. These receipts do not
+claim model comprehension.
+
+The UI imports only the coordinator's complete, verified delivery, checks
+its paths, hashes and size bounds again, and presents the existing typed
+artifacts. It does not run another completion model or goal loop. Private
+Plonk delivery remains a separate idempotent operation under the UI's selected
+connection; while the UI is offline, checked files remain complete locally.
+On startup and observation, delivery-only reconciliation imports those files
+and queues private delivery. Failed or canceled delivery never reruns team
+members; the existing delivery controls expose recovery.
+
+Each new task records its backend, selected coordinator executable and stable
+run reference. Old tasks without that backend retain their original contracts.
+Keep versioned coordinator wrappers and their dependencies available for old
+runs; changing today's startup selection does not replace a saved run's
+coordinator. The activity record is the UI's preparation/admission receipt;
+the conversation projects the independent team's current state.
+
+`TestCoordinator*` exercises public executable fixtures for admission,
+UI restart, pinned coordinator selection, roster preservation and recipe reuse,
+message/reply/attachment identity, cancellation, unknown outcomes and verified
+artifact import. These fixtures establish UI wiring, not kernel confinement,
+real worker quality or host service deployment. Run the separately selected
+real Manage/Tend/Agent/Cage integration before deployment.

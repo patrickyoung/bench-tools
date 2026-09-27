@@ -619,3 +619,51 @@ does not implement filesystem policy, wrap model actions or inspect worker prose
 to authorize repair. The team coordinator remains responsible for staging. This
 change prevents specialist/check mutation, not arbitrary coordinator mutation,
 and it does not infer review validity or authorize replay from a restored file.
+
+## Headless artifact-team backend
+
+New task records created with both `-team-coordinator` and `-team-queue` select
+`manage-team/v1` for team execution. Absence of this recorded backend means
+legacy behavior; a startup upgrade cannot reinterpret an old team run.
+Individual-worker tasks keep their existing Agent path. The UI's public
+process ends after preparation and `team admit`, with a controller-owned run
+reference written before submission. That exit acknowledges admission only.
+Manage status supplies the conversation's state, exact observed process
+outcome, revision, question identity and message receipts. An unavailable
+observation is not completion, cancellation or permission to start again.
+
+A short cross-process lock publishes the coordinator reference together with
+the preparation input boundary. Updates acknowledged during preparation are
+captured with their current attachments; a stale preparation composer cannot
+silently append an unconsumed note after admission. This lock never spans a
+coordinator command or a worker invocation.
+
+A team definition is an ordered 2–16-role `bench.team/v1` recipe. Public
+`team validate` checks its structure without executing its adapters. The UI
+also compares each recipe step to the selected roster and the frozen member
+snapshots. Hire may author a selected new/adapted member and narrow adapters;
+it may not author a scheduler, goal loop, member receipts or replay logic.
+The headless backend bypasses `executeTaskGoal`, the generated `bin/task`
+contract and the UI completion model. Existing compatible recipes are reused.
+
+The independent host service owns `team work` and the lifetime of Tend's
+foreground controller. The UI invokes only bounded client operations. Its
+job-manager shutdown affects its own preparation/delivery commands, never an
+admitted team. UI cancel uses the coordinator's durable request and observes
+status afterward. The ordinary UI continuation route cannot drive a managed
+run. An input reply or amendment binds the saved run, revision and optional
+question, and files become separate sealed amendment packets. Messages are
+included at the coordinator's documented boundary, not at arbitrary model
+turn or token boundaries.
+
+Only a complete `team result` may populate UI deliverables. Returned file
+paths must be inside that exact run's sealed delivery directory; hashes,
+regular-file paths, supported types and the 32-file/25-MiB/100-MiB limits are
+checked before an atomic local snapshot is exposed. Existing snapshots cannot
+be silently replaced. A separate UI observer imports accepted results and
+queues only the existing private-delivery command. Its package and idempotency
+key are retained before publication; restart can reconcile that same delivery
+without member execution. Public sharing still requires its explicit action.
+The observer starts with the server, so no browser request is required for
+private delivery while the server is available. It is not a second scheduler
+for team work.

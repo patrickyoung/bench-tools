@@ -360,48 +360,15 @@ func replaceTaskEnv(env []string, name, value string) []string {
 // a public share. The exact request is saved before contacting Plonk, so an
 // explicit delivery recovery uses the same idempotency key and base version.
 func prepareGoalDelivery(ctx context.Context, root string, rec taskRecord, result taskResult) error {
+	return prepareGoalDeliveryForID(ctx, root, rec, result, os.Getenv("HIRE_UI_JOB_ID"))
+}
+
+func prepareGoalDeliveryForID(ctx context.Context, root string, rec taskRecord, result taskResult, id string) error {
 	if len(result.Artifacts) == 0 || rec.Config.Plonk == "" || rec.Config.PlonkURL == "" || rec.Config.PlonkTokenFile == "" {
 		return nil
 	}
-	id := os.Getenv("HIRE_UI_JOB_ID")
-	if !hexID.MatchString(id) {
-		return fmt.Errorf("missing controller job identity")
-	}
-	parent := filepath.Join(root, "goal-delivery")
-	packageRoot := filepath.Join(parent, "package")
-	if err := os.MkdirAll(packageRoot, 0700); err != nil {
-		return err
-	}
-	spec, err := makeDeliverySpec(filepath.Join(root, "deliverables"), result)
+	delivery, err := prepareGoalDeliveryRecord(root, rec, result, id)
 	if err != nil {
-		return err
-	}
-	for _, name := range spec.Files {
-		b, e := taskFile(filepath.Join(root, "deliverables"), name)
-		if e != nil {
-			return e
-		}
-		if e = os.WriteFile(filepath.Join(packageRoot, name), b, 0600); e != nil {
-			return e
-		}
-	}
-	if err = saveTaskJSON(filepath.Join(packageRoot, "delivery.json"), spec); err != nil {
-		return err
-	}
-	if err = os.MkdirAll(filepath.Join(rec.Config.Data, "deliveries"), 0700); err != nil {
-		return err
-	}
-	stateFile := filepath.Join(rec.Config.Data, "deliveries", rec.Thread+".json")
-	var before deliveryState
-	if b, e := os.ReadFile(stateFile); e == nil {
-		if e = json.Unmarshal(b, &before); e != nil {
-			return e
-		}
-	} else if !os.IsNotExist(e) {
-		return e
-	}
-	delivery := deliveryRecord{Thread: rec.Thread, TaskID: id, Action: "prepare", Root: packageRoot, StateFile: stateFile, Manifest: "delivery.json", RequestID: "hire-" + id, Plonk: rec.Config.Plonk, URL: rec.Config.PlonkURL, TokenFile: rec.Config.PlonkTokenFile, Before: before}
-	if err = saveTaskJSON(filepath.Join(parent, "delivery-request.json"), delivery); err != nil {
 		return err
 	}
 	taskPhase(root, "Putting the finished work in Plonk…")
@@ -409,6 +376,59 @@ func prepareGoalDelivery(ctx context.Context, root string, rec taskRecord, resul
 		return fmt.Errorf("private delivery stopped (%d)", code)
 	}
 	return nil
+}
+
+func prepareGoalDeliveryRecord(root string, rec taskRecord, result taskResult, id string) (deliveryRecord, error) {
+	if !hexID.MatchString(id) {
+		return deliveryRecord{}, fmt.Errorf("missing controller job identity")
+	}
+	parent := filepath.Join(root, "goal-delivery")
+	if raw, e := readText(parent, "delivery-request.json", 64<<10); e == nil {
+		var prior deliveryRecord
+		if json.Unmarshal([]byte(raw), &prior) != nil || prior.Thread != rec.Thread || prior.TaskID != id || prior.Action != "prepare" || prior.Root != filepath.Join(parent, "package") || prior.RequestID != "hire-"+id || prior.Plonk != rec.Config.Plonk || prior.URL != rec.Config.PlonkURL || prior.TokenFile != rec.Config.PlonkTokenFile {
+			return deliveryRecord{}, fmt.Errorf("saved delivery request needs inspection")
+		}
+		return prior, nil
+	} else if !os.IsNotExist(e) {
+		return deliveryRecord{}, e
+	}
+	packageRoot := filepath.Join(parent, "package")
+	if err := os.MkdirAll(packageRoot, 0700); err != nil {
+		return deliveryRecord{}, err
+	}
+	spec, err := makeDeliverySpec(filepath.Join(root, "deliverables"), result)
+	if err != nil {
+		return deliveryRecord{}, err
+	}
+	for _, name := range spec.Files {
+		b, e := taskFile(filepath.Join(root, "deliverables"), name)
+		if e != nil {
+			return deliveryRecord{}, e
+		}
+		if e = os.WriteFile(filepath.Join(packageRoot, name), b, 0600); e != nil {
+			return deliveryRecord{}, e
+		}
+	}
+	if err = saveTaskJSON(filepath.Join(packageRoot, "delivery.json"), spec); err != nil {
+		return deliveryRecord{}, err
+	}
+	if err = os.MkdirAll(filepath.Join(rec.Config.Data, "deliveries"), 0700); err != nil {
+		return deliveryRecord{}, err
+	}
+	stateFile := filepath.Join(rec.Config.Data, "deliveries", rec.Thread+".json")
+	var before deliveryState
+	if b, e := os.ReadFile(stateFile); e == nil {
+		if e = json.Unmarshal(b, &before); e != nil {
+			return deliveryRecord{}, e
+		}
+	} else if !os.IsNotExist(e) {
+		return deliveryRecord{}, e
+	}
+	delivery := deliveryRecord{Thread: rec.Thread, TaskID: id, Action: "prepare", Root: packageRoot, StateFile: stateFile, Manifest: "delivery.json", RequestID: "hire-" + id, Plonk: rec.Config.Plonk, URL: rec.Config.PlonkURL, TokenFile: rec.Config.PlonkTokenFile, Before: before}
+	if err = saveTaskJSON(filepath.Join(parent, "delivery-request.json"), delivery); err != nil {
+		return deliveryRecord{}, err
+	}
+	return delivery, nil
 }
 
 // A secondary collection failure must not disguise an observed unsafe outcome.

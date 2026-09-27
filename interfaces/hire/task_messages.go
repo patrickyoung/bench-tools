@@ -14,6 +14,7 @@ import (
 // Ply reads it through its public -steer seam. Saving a note is not a receipt
 // proving the model read it, and never starts or retries a command.
 type taskMessage struct {
+	Receipt     string `json:"receipt,omitempty"`
 	Attachments string `json:"attachments,omitempty"`
 	ID          string `json:"id"`
 	Message     string `json:"message"`
@@ -65,6 +66,9 @@ func appendTaskMessage(root string, item taskMessage) error {
 	}
 	for _, note := range notes {
 		if note.ID == item.ID {
+			if note.Message != item.Message || note.Attachments != item.Attachments {
+				return fmt.Errorf("this update ID already names different content")
+			}
 			return nil
 		}
 	}
@@ -113,6 +117,9 @@ func (a *app) taskMessage(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, 409, "That conversation is unavailable.")
 		return
 	}
+	if a.messageTaskTeam(w, r, j, rec) {
+		return
+	}
 	r.SetPathValue("thread", rec.Thread)
 	message := strings.TrimSpace(r.PostForm.Get("message"))
 	if message == "" && hasTaskUploads(r) {
@@ -136,6 +143,18 @@ func (a *app) taskMessage(w http.ResponseWriter, r *http.Request) {
 		root := filepath.Dir(j.Dir)
 		if !rec.Steering {
 			return fmt.Errorf("this older attempt cannot receive live updates; your message is kept below for when it stops")
+		}
+		if rec.TeamBackend == taskTeamBackend {
+			unlock, e := lockTaskTeamAdmission(root)
+			if e != nil {
+				return e
+			}
+			defer unlock()
+			if _, e = os.Lstat(filepath.Join(root, "team-run.json")); e == nil {
+				return fmt.Errorf("the team has just been admitted; refresh before sending this update")
+			} else if !os.IsNotExist(e) {
+				return e
+			}
 		}
 		_, manifest, err := a.acceptTaskUploads(rec.Thread, r)
 		if err != nil {
