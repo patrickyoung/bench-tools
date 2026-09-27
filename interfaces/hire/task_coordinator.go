@@ -690,14 +690,19 @@ func (a *app) queueTeamDelivery(j Job, rec taskRecord, result taskResult) (bool,
 	if a.deliveryState(rec.Thread).TaskID == j.ID {
 		return true, nil
 	}
-	// A newer conversation result or an explicit delivery cancellation wins.
-	for _, other := range a.jobs.List() {
+	// Supersession is independent of delivery history: a newer delivery record
+	// must not hide the newer task and let an older receipt replace its result.
+	jobs := a.jobs.List()
+	for _, other := range jobs {
 		if other.Kind == "task" && other.Started.After(j.Started) {
 			r, e := a.taskRecord(other)
 			if e == nil && r.Thread == rec.Thread {
 				return true, nil
 			}
 		}
+	}
+	// Only the newest delivery decision for this conversation controls a retry.
+	for _, other := range jobs {
 		if other.Kind == "delivery" {
 			var r deliveryRecord
 			b, e := os.ReadFile(filepath.Join(filepath.Dir(other.Dir), "delivery-request.json"))

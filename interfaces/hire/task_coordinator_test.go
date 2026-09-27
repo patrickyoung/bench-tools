@@ -740,3 +740,65 @@ func TestCoordinatorInterleavedDeliveryDoesNotHideExplicitCancellation(t *testin
 		t.Fatal("unrelated newer delivery hid explicit cancellation", handled, err, a.jobs.List())
 	}
 }
+
+func TestCoordinatorOlderCompletionCannotRollBackNewerDelivery(t *testing.T) {
+	a := coordinatorFixture(t)
+	a.cfg.Plonk = filepath.Join(t.TempDir(), "plonk")
+	a.cfg.PlonkURL = "http://127.0.0.1:1"
+	a.cfg.PlonkTokenFile = filepath.Join(t.TempDir(), "connection")
+	writeFixture(t, a.cfg.PlonkTokenFile, "fixture", 0600)
+	writeFixture(t, a.cfg.Plonk, `#!/usr/bin/python3
+import json,sys
+from pathlib import Path
+assert sys.argv[1]=='publish'
+Path(__file__).with_name('calls').open('a').write(json.dumps(sys.argv)+'\n')
+print(json.dumps(dict(slug='private-result',versionId=sys.argv[sys.argv.index('-request-id')+1])))
+`, 0700)
+	deliver := func(turn taskTurn) taskResult {
+		t.Helper()
+		ref, err := readTaskTeamReference(turn.Job, turn.Record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		completeCoordinator(t, ref)
+		turns := a.taskTurns(turn.Record.Thread)
+		current := turns[len(turns)-1]
+		started, err := a.queueTeamDelivery(turn.Job, turn.Record, current.Result)
+		if err != nil || !started {
+			t.Fatal(started, err)
+		}
+		var delivery Job
+		for _, job := range a.jobs.List() {
+			if job.Kind == "delivery" {
+				delivery = job
+				break
+			}
+		}
+		if got := awaitJob(t, a.jobs, delivery.ID); got.State != "completed" {
+			t.Fatal(got, a.jobs.Log(got.ID, "stderr"))
+		}
+		return current.Result
+	}
+	first, _ := coordinatorRun(t, a)
+	firstResult := deliver(first)
+	second := taskSubmit(t, a, first.Record.Thread, "Use this team for the revised document")
+	if second.Job.State != "completed" {
+		t.Fatal(second.Job, a.jobs.Log(second.Job.ID, "stderr"))
+	}
+	deliver(second)
+	if a.deliveryState(first.Record.Thread).TaskID != second.Job.ID {
+		t.Fatal("fixture lacks newer delivery")
+	}
+	before := len(a.jobs.List())
+	handled, err := a.queueTeamDelivery(first.Job, first.Record, firstResult)
+	if err != nil || !handled || len(a.jobs.List()) != before {
+		t.Fatal("historical completion queued an old publication", handled, err)
+	}
+	if a.deliveryState(first.Record.Thread).TaskID != second.Job.ID {
+		t.Fatal("newer delivery receipt rolled back")
+	}
+	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.Plonk), "calls"))
+	if strings.Count(string(calls), "\n") != 2 {
+		t.Fatal("publication was replayed", string(calls))
+	}
+}
