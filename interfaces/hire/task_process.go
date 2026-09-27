@@ -220,6 +220,16 @@ func taskProcess(path string) int {
 		if message != "" {
 			result.Message = message
 		}
+		// Preparation can stop before executeTaskGoal owns completion state.
+		// Retain its concrete blocker instead of displaying a generic invitation
+		// to repeat the same failed setup as if it were unfinished model work.
+		if rec.Config.GoalMode && code != 0 && result.GoalStatus == "" {
+			result.GoalStatus = "blocked"
+			if ctx.Err() != nil {
+				result.GoalStatus = "interrupted"
+			}
+			result.Update.Blocked = truncateMessage(result.Message, 240)
+		}
 		if e := saveTaskJSON(filepath.Join(root, "result.json"), result); e != nil {
 			fmt.Fprintln(os.Stderr, e)
 			return 1

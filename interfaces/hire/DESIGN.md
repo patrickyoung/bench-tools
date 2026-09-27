@@ -287,6 +287,11 @@ are never replayed automatically. Signals, exact outcomes, argv and per-attempt
 receipts are retained. Restart does not resume a job. `-goal-mode=false` retains
 the earlier manual work-conversation behavior; direct tool pages are unchanged.
 
+Preparation failures also retain a concrete goal blocker, including a failed
+team confinement preflight before authoring. They must not fall back to a generic
+unfinished-work instruction or invite repetition of the same failed setup.
+Cancellation during preparation retains the interrupted state instead.
+
 A team must explicitly support `task-runtime.json` version 1 with `resume:true`
 and `local_only:true` before a continuation. The controller supplies
 `BENCH_TASK_RESUME=1` with the same workspace and corrected prose task. The team

@@ -252,6 +252,7 @@ func TestTaskPlanValidationAndArtifactBoundary(t *testing.T) {
 
 func TestTeamBoundaryFailureStopsBeforeAuthoringOrMembers(t *testing.T) {
 	a := taskFixture(t)
+	a.cfg.GoalMode = true
 	cage := filepath.Join(filepath.Dir(a.cfg.Agent), "cage")
 	writeFixture(t, cage, "#!/bin/sh\necho 'fixture: nested boundary unavailable' >&2\nexit 125\n", 0700)
 	turn := taskSubmit(t, a, "", "Create a team document")
@@ -261,6 +262,13 @@ func TestTeamBoundaryFailureStopsBeforeAuthoringOrMembers(t *testing.T) {
 	}
 	if strings.Contains(log, "Starting hire") || !strings.Contains(log, "nested boundary unavailable") || !strings.Contains(turn.Result.Message, "execution setup needs repair") {
 		t.Fatalf("team dispatched or failure hidden: %s\n%s", log, turn.Result.Message)
+	}
+	if turn.Result.GoalStatus != "blocked" || turn.Result.Update.Blocked == "" || turn.Update.Next != "" {
+		t.Fatalf("lost concrete preparation blocker: %+v / %+v", turn.Result, turn.Update)
+	}
+	page := serveTest(a, "GET", "/work/"+turn.Record.Thread, nil).Body.String()
+	if strings.Contains(page, "Finish the remaining work and check the result.") || strings.Contains(page, "Try again with saved work") {
+		t.Fatal("blocked preparation presented as generic unfinished work")
 	}
 }
 func TestTaskProfileContract(t *testing.T) {
