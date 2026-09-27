@@ -352,7 +352,11 @@ func taskProcess(path string) int {
 		// A caged coordinator invokes independently caged Agent actions. Probe
 		// that composition before paid authoring or member execution: macOS
 		// Seatbelt refuses nesting even though either boundary works alone.
-		code, _, _ := taskCommand(ctx, author, nil, runner, "-net", "-w", author, "--", "cage", "-w", author, "--", "/bin/sh", "-c", "exit 0")
+		memberCage := runner
+		if rec.Config.TeamRunner != "" {
+			memberCage = "cage" // Resolve native tools inside the selected environment.
+		}
+		code, _, _ := taskCommand(ctx, author, nil, runner, "-net", "-w", author, "--", memberCage, "-w", author, "--", "/bin/sh", "-c", "exit 0")
 		if code != 0 {
 			result.Expert, result.Kind = expert, kind
 			return finish(code, "This computer blocks the way this team launches its specialists. I’ve kept the team and inputs, but the execution setup needs repair before retrying. No specialist work started in this attempt.")
