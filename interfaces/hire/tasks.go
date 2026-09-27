@@ -178,6 +178,11 @@ func (a *app) taskTurns(thread string) []taskTurn {
 					last.Recovery = "resume"
 				}
 			}
+			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus == "blocked" && last.Result.Kind == "team" && !last.Result.Prepared {
+				if saved, err := a.taskResumeInfo(last.Job, last.Record); err == nil && saved.Stage == "build" {
+					last.Recovery = "repair"
+				}
+			}
 		}
 	}
 	return out

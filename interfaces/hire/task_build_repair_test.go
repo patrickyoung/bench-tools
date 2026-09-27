@@ -123,6 +123,10 @@ func TestSavedTeamBuildRecoveryKeepsRosterAndSkipsPlanning(t *testing.T) {
 	if first.Result.Code != 2 || first.Result.Prepared {
 		t.Fatal(first.Result)
 	}
+	page := serveTest(a, "GET", "/work/"+first.Record.Thread, nil).Body.String()
+	if !strings.Contains(page, "Repair saved team →") {
+		t.Fatal("missing precise team preparation recovery")
+	}
 	writeFixture(t, a.cfg.Hire, string(raw), 0700)
 	next := continueFixtureTask(t, a, first)
 	if next.Result.Code != 0 || next.Result.Kind != "team" || !next.Result.Prepared || next.Result.Expert != first.Result.Expert || next.Result.Flash.ID != first.Result.Flash.ID {
