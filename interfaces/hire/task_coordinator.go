@@ -38,6 +38,7 @@ type taskTeamStatus struct {
 	Phase         string            `json:"phase"`
 	Worker        *string           `json:"worker"`
 	Message       string            `json:"message"`
+	Diagnostic    string            `json:"diagnostic"`
 	Revision      int               `json:"revision"`
 	Question      string            `json:"question"`
 	QuestionID    *string           `json:"question_id"`
@@ -122,7 +123,11 @@ func taskTeamCommand(ctx context.Context, cfg config, input []byte, args ...stri
 	if cfg.TeamCoordinator == "" {
 		return nil, 125, fmt.Errorf("team coordinator is not selected")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	limit := 20 * time.Second
+	if len(args) > 0 && args[0] == "preflight" {
+		limit = 150 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cfg.TeamCoordinator, append([]string{"team"}, args...)...)
 	cmd.Stdin = bytes.NewReader(input)
@@ -131,7 +136,7 @@ func taskTeamCommand(ctx context.Context, cfg config, input []byte, args ...stri
 	cmd.Stdout = out
 	cmd.Stderr = diag
 	err := cmd.Run()
-	if len(args) > 0 && (args[0] == "admit" || args[0] == "validate") {
+	if len(args) > 0 && (args[0] == "admit" || args[0] == "validate" || args[0] == "preflight") {
 		_, _ = os.Stdout.Write(out.buffer.Bytes())
 		_, _ = os.Stderr.Write(diag.buffer.Bytes())
 	}
@@ -145,6 +150,9 @@ func taskTeamCommand(ctx context.Context, cfg config, input []byte, args ...stri
 			}
 		}
 	}
+	if ctx.Err() != nil {
+		return nil, 125, fmt.Errorf("coordinator transport interrupted: %w", ctx.Err())
+	}
 	if out.full || diag.full {
 		return nil, 125, fmt.Errorf("coordinator response exceeds bounds")
 	}
@@ -153,13 +161,13 @@ func taskTeamCommand(ctx context.Context, cfg config, input []byte, args ...stri
 		if detail == "" {
 			detail = err.Error()
 		}
-		return nil, code, fmt.Errorf("coordinator %s stopped (%d): %s", args[0], code, truncateMessage(detail, 1000))
+		return out.buffer.Bytes(), code, fmt.Errorf("coordinator %s stopped (%d): %s", args[0], code, truncateMessage(detail, 1000))
 	}
 	return out.buffer.Bytes(), code, nil
 }
 func decodeTaskTeam(raw []byte, ref taskTeamReference, schema string) (taskTeamStatus, error) {
 	var s taskTeamStatus
-	if json.Unmarshal(raw, &s) != nil || s.Schema != schema || s.Run != ref.Run || s.RequestID != ref.ID || s.Revision < 0 || s.Revision > 1024 || !boundedText(s.Message, 6000, true) || !boundedText(s.Question, 2000, false) {
+	if json.Unmarshal(raw, &s) != nil || s.Schema != schema || s.Run != ref.Run || s.RequestID != ref.ID || s.Revision < 0 || s.Revision > 1024 || !boundedText(s.Message, 6000, true) || !boundedText(s.Question, 2000, false) || len(s.Diagnostic) > 16000 {
 		return s, fmt.Errorf("coordinator returned an unbound status")
 	}
 	switch s.Status {
@@ -226,55 +234,39 @@ func validateTaskTeam(ctx context.Context, root string, rec taskRecord) error {
 	}
 	return nil
 }
-func admitTaskTeam(ctx context.Context, root, snapshot string, rec taskRecord, plan taskPlan, result taskResult, work string) int {
-	fail := func(code int, err error) int {
-		result.GoalStatus = "blocked"
-		return finishTask(snapshot, result, code, "The team could not be admitted: "+err.Error()+". Its prepared workers and inputs are saved.")
-	}
-	if err := validateTaskTeam(ctx, root, rec); err != nil {
-		return fail(2, err)
-	}
-	_, hash, err := definitionSnapshot(rec.Config.Data, result.Expert)
-	if err != nil {
-		return fail(125, err)
-	}
-	id := filepath.Base(root)
-	if !hexID.MatchString(id) {
-		return fail(125, fmt.Errorf("invalid saved task identity"))
-	}
-	ref := taskTeamReference{Version: taskTeamBackend, Run: filepath.Join(rec.Config.TeamQueue, id), ID: id, DefinitionSHA256: hash}
-	unlock, err := lockTaskTeamAdmission(snapshot)
-	if err != nil {
-		return fail(125, err)
-	}
-	defer unlock()
-	// The composer uses the same short lock before saving preparation notes.
-	// Capture current attachments and publish the run reference as one boundary.
+func stageTaskTeamInputs(root, snapshot, stage, work string, rec taskRecord, plan taskPlan) (string, string, taskRecord, error) {
+	var err error
 	rec.Attachments, err = taskAttachments(rec.Config.Data, rec.Thread)
 	if err != nil {
-		return fail(125, err)
+		return "", "", rec, err
 	}
-	inputs := filepath.Join(root, "team-originals")
+	inputs := filepath.Join(stage, "team-originals")
 	if err = os.MkdirAll(inputs, 0700); err != nil {
-		return fail(125, err)
+		return "", "", rec, err
 	}
 	if err = copyTaskArtifacts(work, inputs); err != nil {
-		return fail(125, err)
+		return "", "", rec, err
 	}
 	attachments := []map[string]any{}
 	for i, f := range rec.Attachments {
 		b, e := taskFile(filepath.Dir(f.Path), filepath.Base(f.Path))
 		if e != nil || int64(len(b)) != f.Size || digestText(b) != f.SHA256 {
-			return fail(125, fmt.Errorf("selected attachment changed"))
+			return "", "", rec, fmt.Errorf("selected attachment changed")
 		}
 		name := fmt.Sprintf("attachment-%02d%s", i+1, strings.ToLower(filepath.Ext(f.Name)))
 		if _, e = os.Lstat(filepath.Join(inputs, name)); !os.IsNotExist(e) {
-			return fail(125, fmt.Errorf("attachment input name conflicts"))
+			return "", "", rec, fmt.Errorf("attachment input name conflicts")
 		}
 		if e = os.WriteFile(filepath.Join(inputs, name), b, 0600); e != nil {
-			return fail(125, e)
+			return "", "", rec, e
 		}
 		attachments = append(attachments, map[string]any{"file": name, "name": f.Name, "sha256": f.SHA256})
+	}
+	if _, e := os.Lstat(filepath.Join(inputs, "team-attachments.json")); !os.IsNotExist(e) {
+		return "", "", rec, fmt.Errorf("team-attachments.json is reserved for the controller attachment map")
+	}
+	if err = saveTaskJSON(filepath.Join(inputs, "team-attachments.json"), map[string]any{"schema": "hire.team.attachments/v1", "files": attachments}); err != nil {
+		return "", "", rec, err
 	}
 	attachmentJSON, _ := json.Marshal(attachments)
 	goal := plan.Brief + "\n\nPreserve the supplied editable originals and unaffected design when editing. Complete the selected goal and its checks. Do not send messages, publish, purchase, install dependencies or change settings. Deliver only requested outputs; source references are not deliverables. Final deliverable names must be flat, unique, supported by the interface, at most 32 files / 25 MiB each / 100 MiB total.\nSupplied attachments in originals packet: " + string(attachmentJSON)
@@ -294,25 +286,90 @@ func admitTaskTeam(ctx context.Context, root, snapshot string, rec taskRecord, p
 				}
 			}
 		} else {
-			return fail(125, e)
+			return "", "", rec, e
 		}
 	}
-	goalPath := filepath.Join(root, "team-goal.txt")
+	goalPath := filepath.Join(stage, "team-goal.txt")
 	if err = os.WriteFile(goalPath, []byte(goal), 0600); err != nil {
-		return fail(125, err)
+		return "", "", rec, err
 	}
-	if err = saveTaskJSON(filepath.Join(snapshot, "team-run.json"), ref); err != nil {
-		return fail(125, err)
+	return inputs, goalPath, rec, nil
+}
+
+func admitTaskTeam(ctx context.Context, root, snapshot string, rec taskRecord, plan taskPlan, result taskResult, work string) int {
+	fail := func(code int, err error) int {
+		result.GoalStatus = "blocked"
+		return finishTask(snapshot, result, code, "Team admission was not confirmed: "+err.Error()+". Its prepared workers and inputs are saved.")
 	}
-	if err = saveTaskJSON(filepath.Join(snapshot, "task.json"), rec); err != nil {
-		return fail(125, err)
+	if err := validateTaskTeam(ctx, root, rec); err != nil {
+		return fail(2, err)
 	}
-	result.GoalStatus = "admitting"
-	result.Message = "The selected team is prepared; confirming its admission."
-	if err = saveTaskJSON(filepath.Join(snapshot, "result.json"), result); err != nil {
-		return fail(125, err)
+	id := filepath.Base(root)
+	if !hexID.MatchString(id) {
+		return fail(125, fmt.Errorf("invalid saved task identity"))
 	}
-	unlock()
+	ref := taskTeamReference{Version: taskTeamBackend, Run: filepath.Join(rec.Config.TeamQueue, id), ID: id}
+	// No production admission occurs until the last checked bytes are captured
+	// under the same short lock used by the preparation composer.
+	capture := func() (string, string, error) {
+		unlock, err := lockTaskTeamAdmission(snapshot)
+		if err != nil {
+			return "", "", err
+		}
+		defer unlock()
+		if _, err = os.Lstat(filepath.Join(snapshot, "team-run.json")); !os.IsNotExist(err) {
+			return "", "", fmt.Errorf("an admission reference already exists; inspect its status before any further action")
+		}
+		stage, err := os.MkdirTemp(snapshot, "team-admission-")
+		if err != nil {
+			return "", "", err
+		}
+		inputs, goal, current, err := stageTaskTeamInputs(root, snapshot, stage, work, rec, plan)
+		if err != nil {
+			return "", "", err
+		}
+		_, hash, err := definitionSnapshot(rec.Config.Data, result.Expert)
+		if err != nil {
+			return "", "", err
+		}
+		if err = verifyTaskTeamPreflight(snapshot, hash, inputs, goal); err != nil {
+			return "", "", err
+		}
+		ref.DefinitionSHA256 = hash
+		if err = saveTaskJSON(filepath.Join(snapshot, "team-run.json"), ref); err != nil {
+			return "", "", err
+		}
+		rec = current
+		if err = saveTaskJSON(filepath.Join(snapshot, "task.json"), rec); err != nil {
+			return "", "", err
+		}
+		result.GoalStatus = "admitting"
+		result.Message = "The selected team is prepared; confirming its admission."
+		if err = saveTaskJSON(filepath.Join(snapshot, "result.json"), result); err != nil {
+			return "", "", err
+		}
+		return inputs, goal, nil
+	}
+	var inputs, goalPath string
+	var err error
+	for recheck := 0; ; recheck++ {
+		inputs, goalPath, err = capture()
+		if err == nil {
+			break
+		}
+		if _, changed := err.(taskTeamInputsChanged); !changed {
+			return fail(125, err)
+		}
+		if recheck >= 2 {
+			result.Prepared = false
+			return fail(2, fmt.Errorf("inputs kept changing across three checked captures; the latest update is saved, but preparation needs a stable input set"))
+		}
+		taskPhase(snapshot, "Including your latest update and rechecking the input handoff…")
+		if code, checkErr := repairPreparedTaskMembers(ctx, root, snapshot, rec, plan); checkErr != nil {
+			result.Prepared = false
+			return fail(code, checkErr)
+		}
+	}
 	args := []string{"admit", "-C", ref.Run, "-definition", result.Expert, "-inputs", inputs, "-goal-file", goalPath, "-id", ref.ID, "-m", rec.Model, "-attempts", "48", "-turns", "50", "-timeout", "600", "-deadline", "2700", "-corrections", "3"}
 	if rec.Research {
 		args = append(args, "-net")

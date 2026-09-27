@@ -667,3 +667,16 @@ without member execution. Public sharing still requires its explicit action.
 The observer starts with the server, so no browser request is required for
 private delivery while the server is available. It is not a second scheduler
 for team work.
+
+Before immutable team admission, a dedicated public preflight checks the actual
+first prepare and declared native inputs without running specialists. Its
+retained execution receipt must be coherent and explicitly repairable before the
+existing bounded Hire preparation repair can continue. A successful proof binds
+the definition, goal and staged input contents; the composer admission lock
+prevents changes during final capture. A late input change automatically repeats the first-prepare check before admission,
+at most twice; it never repeats an uncertain admission. Existing Hire correction
+budget remains shared across these checks. Continuous changes stop with the
+latest update retained and an explicit stable-input explanation.
+Each capture uses a fresh retained staging directory, so a rejected capture does
+not poison a later preparation. This is first-prepare coverage, not an alternate
+execution scheduler or a claim of downstream conformance.

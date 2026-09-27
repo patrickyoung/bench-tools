@@ -30,6 +30,13 @@ def arg(k):return args[args.index(k)+1]
 if op=='validate':
  d=Path(arg('-definition'));r=json.loads((d/'team.json').read_text());assert r['schema']=='bench.team/v1'
  print(json.dumps(dict(schema='bench.team.validation/v1',valid=True,steps=[dict(id=s['id'],worker=s['worker']) for s in r['steps']])));sys.exit(0)
+if op=='preflight':
+ root=Path(arg('-C'));root.mkdir(parents=True,exist_ok=True)
+ result=dict(schema='bench.team.preflight/v1',status='passed',coverage='first_prepare_only',run=str(root),request_id=arg('-id'),message='First preparation passed; no specialist ran.',repairable=False,execution=dict(state='done',exit=0,signal=0))
+ control=Path(__file__).with_name('preflight-control.json')
+ if control.exists():
+  values=json.loads(control.read_text());result.update(values.pop(0));control.write_text(json.dumps(values)) if values else control.unlink()
+ print(json.dumps(result));sys.exit(0 if result['status']=='passed' else 125 if result['status']=='unknown' else 2)
 if op=='admit':
  root=Path(arg('-C'));root.mkdir(parents=True,exist_ok=True)
  state=dict(schema='bench.team.status/v1',run=str(root),request_id=arg('-id'),status='ready',phase='prepare',worker='writer',revision=0,question='',question_id=None,resumable=True,message='Team admitted; waiting for the host worker.',attempts_used=0,attempts_limit=48,messages=[])
@@ -512,12 +519,166 @@ test -f release-preparation
 		t.Fatal(job, a.jobs.Log(job.ID, "stderr"))
 	}
 	root := filepath.Dir(job.Dir)
-	goal, _ := os.ReadFile(filepath.Join(root, "team-goal.txt"))
+	stages, _ := filepath.Glob(filepath.Join(root, "team-admission-*", "team-goal.txt"))
+	if len(stages) != 1 {
+		t.Fatal("missing admission stage", stages)
+	}
+	goal, _ := os.ReadFile(stages[0])
 	if !strings.Contains(string(goal), "Use the revised title") {
 		t.Fatal("preparation note lost", string(goal))
 	}
-	source, err := os.ReadFile(filepath.Join(root, "team-originals", "attachment-01.txt"))
+	source, err := os.ReadFile(filepath.Join(filepath.Dir(stages[0]), "team-originals", "attachment-01.txt"))
 	if err != nil || string(source) != "New title" {
 		t.Fatal("preparation attachment lost", string(source), err)
+	}
+}
+
+func TestCoordinatorPreflightRepairsKnownFailureBeforeAdmission(t *testing.T) {
+	a := coordinatorFixture(t)
+	control := []map[string]any{{"status": "failed", "repairable": true, "message": "wrong step", "diagnostic": "assignment.step is an object", "execution": map[string]any{"state": "failed", "exit": 1, "signal": 0}}}
+	if err := saveTaskJSON(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "preflight-control.json"), control); err != nil {
+		t.Fatal(err)
+	}
+	turn, _ := coordinatorRun(t, a)
+	root := filepath.Dir(turn.Job.Dir)
+	repairs, _ := filepath.Glob(filepath.Join(root, "team-build-repairs", "*.txt"))
+	if len(repairs) != 1 {
+		t.Fatal("expected one bounded Hire repair", repairs)
+	}
+	correction, _ := os.ReadFile(repairs[0])
+	if !strings.Contains(string(correction), "assignment.step is an object") {
+		t.Fatal("repair missed real diagnostic")
+	}
+	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "calls"))
+	if strings.Count(string(calls), "preflight\n") != 2 || strings.Count(string(calls), "admit\n") != 1 || strings.Index(string(calls), "admit\n") < strings.LastIndex(string(calls), "preflight\n") {
+		t.Fatal("admitted before successful preflight", string(calls))
+	}
+	receipts, _ := filepath.Glob(filepath.Join(root, "team-preflights", "*", "response.json"))
+	if len(receipts) != 2 {
+		t.Fatal("failed preflight evidence lost", receipts)
+	}
+}
+
+func TestCoordinatorPreflightNeverRepairsUnsafeOrUnboundOutcomes(t *testing.T) {
+	cases := []struct {
+		name  string
+		patch map[string]any
+		code  int
+	}{
+		{"unknown", map[string]any{"status": "unknown", "repairable": false}, 125},
+		{"interrupted", map[string]any{"status": "failed", "repairable": true, "execution": map[string]any{"state": "failed", "exit": 130, "signal": 0}}, 130},
+		{"signal", map[string]any{"status": "failed", "repairable": true, "execution": map[string]any{"state": "failed", "exit": 137, "signal": 9}}, 137},
+		{"missing-execution", map[string]any{"status": "failed", "repairable": true, "execution": nil}, 125},
+		{"no-authority", map[string]any{"status": "failed", "repairable": false, "execution": map[string]any{"state": "failed", "exit": 2, "signal": 0}}, 125},
+		{"unbound", map[string]any{"request_id": "other-request"}, 125},
+		{"coverage", map[string]any{"coverage": "invented"}, 125},
+		{"contradictory-success", map[string]any{"execution": map[string]any{"state": "failed", "exit": 130, "signal": 0}}, 125},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := coordinatorFixture(t)
+			if err := saveTaskJSON(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "preflight-control.json"), []map[string]any{c.patch}); err != nil {
+				t.Fatal(err)
+			}
+			turn := taskSubmit(t, a, "", "Build a team")
+			if turn.Job.ExitCode == nil || *turn.Job.ExitCode != c.code {
+				t.Fatalf("wrong stop: %+v %s", turn.Job, a.jobs.Log(turn.Job.ID, "stderr"))
+			}
+			calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "calls"))
+			if strings.Count(string(calls), "preflight\n") != 1 || strings.Contains(string(calls), "admit\n") {
+				t.Fatal("unsafe outcome replayed", string(calls))
+			}
+			repairs, _ := filepath.Glob(filepath.Join(filepath.Dir(turn.Job.Dir), "team-build-repairs", "*.txt"))
+			if len(repairs) != 0 {
+				t.Fatal("unsafe outcome sent to Hire repair", repairs)
+			}
+		})
+	}
+}
+
+func TestCoordinatorPreflightProofBindsAdmittedBytes(t *testing.T) {
+	a := coordinatorFixture(t)
+	turn, _ := coordinatorRun(t, a)
+	root := filepath.Dir(turn.Job.Dir)
+	stages, _ := filepath.Glob(filepath.Join(root, "team-admission-*", "team-goal.txt"))
+	if len(stages) != 1 {
+		t.Fatal("missing admission stage", stages)
+	}
+	inputs, goal := filepath.Join(filepath.Dir(stages[0]), "team-originals"), stages[0]
+	var proof taskTeamPreflightProof
+	b, _ := os.ReadFile(filepath.Join(root, "team-preflight.json"))
+	if err := json.Unmarshal(b, &proof); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyTaskTeamPreflight(root, proof.Definition, inputs, goal); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyTaskTeamPreflight(root, "changed", inputs, goal); err == nil {
+		t.Fatal("changed definition accepted")
+	}
+	original, _ := os.ReadFile(goal)
+	writeFixture(t, goal, string(original)+"changed", 0600)
+	if err := verifyTaskTeamPreflight(root, proof.Definition, inputs, goal); err == nil {
+		t.Fatal("changed goal accepted")
+	}
+	writeFixture(t, goal, string(original), 0600)
+	writeFixture(t, filepath.Join(inputs, "late.txt"), "late update", 0600)
+	if err := verifyTaskTeamPreflight(root, proof.Definition, inputs, goal); err == nil {
+		t.Fatal("late input accepted without preflight")
+	}
+}
+
+func TestCoordinatorShowsActualEscapedRuntimeDiagnostic(t *testing.T) {
+	a := coordinatorFixture(t)
+	turn, ref := coordinatorRun(t, a)
+	setCoordinatorState(t, ref, map[string]any{"status": "blocked", "message": "Prepare stopped with exact exit 1.", "diagnostic": "wrong step <script>alert(1)</script>", "resumable": false, "last_execution": map[string]any{"state": "failed", "exit": 1}})
+	page := serveTest(a, "GET", "/work/"+turn.Record.Thread, nil).Body.String()
+	if !strings.Contains(page, "wrong step &lt;script&gt;") || strings.Contains(page, "<script>alert(1)</script>") || strings.Contains(page, "See why this run stopped") {
+		t.Fatal("runtime failure absent, unsafe, or points to unrelated authoring log")
+	}
+}
+
+func TestCoordinatorLateInputCanBeRecheckedWithoutReusingFailedStage(t *testing.T) {
+	a := coordinatorFixture(t)
+	script, _ := os.ReadFile(a.cfg.TeamCoordinator)
+	marker := filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "change-input-once")
+	writeFixture(t, marker, "yes", 0600)
+	injected := ` marker=Path(__file__).with_name('change-input-once')
+ if marker.exists():
+  (Path(arg('-definition')).parent.parent/'work/execution/late.txt').write_text('Late supplied input')
+  marker.unlink()
+`
+	writeFixture(t, a.cfg.TeamCoordinator, strings.Replace(string(script), " print(json.dumps(result));sys.exit", injected+" print(json.dumps(result));sys.exit", 1), 0700)
+	turn, _ := coordinatorRun(t, a)
+	root := filepath.Dir(turn.Job.Dir)
+	stages, _ := filepath.Glob(filepath.Join(root, "team-admission-*", "team-goal.txt"))
+	if len(stages) != 2 {
+		t.Fatal("expected retained failed capture plus checked capture", stages)
+	}
+	if len(a.taskTurns(turn.Record.Thread)) != 1 {
+		t.Fatal("required user continuation for known local input change")
+	}
+	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "calls"))
+	if strings.Count(string(calls), "admit\n") != 1 || strings.Count(string(calls), "preflight\n") != 2 {
+		t.Fatal("wrong admission/preflight count", string(calls))
+	}
+}
+
+func TestCoordinatorChangingInputsStopAtRecheckBoundBeforeAdmission(t *testing.T) {
+	a := coordinatorFixture(t)
+	script, _ := os.ReadFile(a.cfg.TeamCoordinator)
+	injected := ` (Path(arg('-definition')).parent.parent/'work/execution/late.txt').write_text(log.read_text())
+`
+	writeFixture(t, a.cfg.TeamCoordinator, strings.Replace(string(script), " print(json.dumps(result));sys.exit", injected+" print(json.dumps(result));sys.exit", 1), 0700)
+	turn := taskSubmit(t, a, "", "Build a team")
+	if turn.Job.ExitCode == nil || *turn.Job.ExitCode != 2 || !strings.Contains(turn.Result.Message, "inputs kept changing") {
+		t.Fatalf("wrong bounded stop: %+v", turn.Result)
+	}
+	if _, err := readTaskTeamReference(turn.Job, turn.Record); !os.IsNotExist(err) {
+		t.Fatal("changing inputs admitted", err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.TeamCoordinator), "calls"))
+	if strings.Count(string(calls), "preflight\n") != 3 || strings.Contains(string(calls), "admit\n") {
+		t.Fatal("unbounded recheck or early admission", string(calls))
 	}
 }

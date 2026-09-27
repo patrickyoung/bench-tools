@@ -637,7 +637,7 @@ Select `-team-coordinator /absolute/path/to/bench-manage` and
 team protocol for newly submitted team work. The command can be an
 operator-selected runtime wrapper, but must preserve literal arguments,
 selected paths, streams and exit status. It must support `bench-manage team`
-`validate`, `admit`, `status`, `result`, `send` and `cancel`. The queue is a
+`validate`, `preflight`, `admit`, `status`, `result`, `send` and `cancel`. The queue is a
 private, dedicated directory under the selected data root's `workspaces`.
 The operator separately supervises `bench-manage team work QUEUE`; the UI
 never starts this worker or calls `resume`.
@@ -645,7 +645,18 @@ never starts this worker or calls `resume`.
 Hire prepares the selected member definitions and a `bench.team/v1` recipe
 with small native input/output adapters. Every selected role is retained and
 unchanged members remain pinned. The UI independently verifies the roster and
-uses public structural validation before admission. A compatible previously
+uses public structural validation before admission. Then public `team preflight`
+freezes the actual goal, inputs and recipe in a retained diagnostic run under
+`QUEUE/.preflights/`, runs only the real first prepare through Tend/Cage, and
+validates its native input declaration without launching Agent. At most two Hire
+repairs may follow signal-free, known preparation failures; uncertain, interrupted
+or contradictory receipts stop without replay. Admission requires the same
+checked definition, goal and input bytes. Preflight covers the first prepare only;
+downstream adapters and specialist quality still require execution evidence.
+The originals packet includes `team-attachments.json` mapping controller stored
+attachment filenames to display names and hashes. Task facts belong in native
+input data, not generated source constants. Runtime failures show retained
+coordinator diagnostics in the conversation, escaped and bounded. A compatible previously
 prepared recipe is reused without rebuilding its orchestration. Manage owns
 member execution, checkpoints, packet freezing, source-bound review,
 correction allowances and final acceptance. Closing the browser or restarting
