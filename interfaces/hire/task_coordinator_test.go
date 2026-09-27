@@ -781,6 +781,7 @@ print(json.dumps(dict(slug='private-result',versionId=sys.argv[sys.argv.index('-
 	}
 	first, _ := coordinatorRun(t, a)
 	firstResult := deliver(first)
+	oldReceipt := a.deliveryState(first.Record.Thread)
 	second := taskSubmit(t, a, first.Record.Thread, "Use this team for the revised document")
 	if second.Job.State != "completed" {
 		t.Fatal(second.Job, a.jobs.Log(second.Job.ID, "stderr"))
@@ -800,5 +801,44 @@ print(json.dumps(dict(slug='private-result',versionId=sys.argv[sys.argv.index('-
 	calls, _ := os.ReadFile(filepath.Join(filepath.Dir(a.cfg.Plonk), "calls"))
 	if strings.Count(string(calls), "\n") != 2 {
 		t.Fatal("publication was replayed", string(calls))
+	}
+	// Simulate a receipt left behind by the old observer bug, then restart only
+	// observation. Recovery must replay the retained idempotent delivery request,
+	// never a member job, and keep the later task current thereafter.
+	if err = saveTaskJSON(filepath.Join(a.cfg.Data, "deliveries", first.Record.Thread+".json"), oldReceipt); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() { defer close(done); a.observeTaskTeams(ctx) }()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) && a.deliveryState(first.Record.Thread).TaskID != second.Job.ID {
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	if a.deliveryState(first.Record.Thread).TaskID != second.Job.ID {
+		t.Fatal("observer did not recover latest accepted delivery")
+	}
+	var recovery Job
+	for _, job := range a.jobs.List() {
+		if job.Kind == "delivery" {
+			recovery = job
+			break
+		}
+	}
+	if got := awaitJob(t, a.jobs, recovery.ID); got.State != "completed" {
+		t.Fatal(got)
+	}
+	if len(a.jobs.List()) != before+1 {
+		t.Fatal("recovery launched work beyond one delivery")
+	}
+	calls, _ = os.ReadFile(filepath.Join(filepath.Dir(a.cfg.Plonk), "calls"))
+	lines := strings.Split(strings.TrimSpace(string(calls)), "\n")
+	if len(lines) != 3 || lines[1] != lines[2] {
+		t.Fatal("recovery changed its idempotent publication request", string(calls))
+	}
+	if handled, err = a.queueTeamDelivery(first.Job, first.Record, firstResult); err != nil || !handled || len(a.jobs.List()) != before+1 {
+		t.Fatal("recovered receipt remains vulnerable to rollback", handled, err)
 	}
 }
