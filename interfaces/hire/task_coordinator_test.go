@@ -682,3 +682,42 @@ func TestCoordinatorChangingInputsStopAtRecheckBoundBeforeAdmission(t *testing.T
 		t.Fatal("unbounded recheck or early admission", string(calls))
 	}
 }
+
+func TestCoordinatorInterleavedDeliveryDoesNotHideExplicitCancellation(t *testing.T) {
+	a := coordinatorFixture(t)
+	turn, ref := coordinatorRun(t, a)
+	completeCoordinator(t, ref)
+	result := a.taskTurns(turn.Record.Thread)[0].Result
+	start := func(thread string, args []string) Job {
+		t.Helper()
+		dir, err := a.workspace()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = saveTaskJSON(filepath.Join(filepath.Dir(dir), "delivery-request.json"), deliveryRecord{Thread: thread, TaskID: turn.Job.ID}); err != nil {
+			t.Fatal(err)
+		}
+		job, err := a.jobs.Start("delivery", "Delivery", dir, args, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return job
+	}
+	cancelled := start(turn.Record.Thread, helperArgs("interrupt"))
+	awaitReady(t, a.jobs, cancelled.ID)
+	if err := a.jobs.Cancel(cancelled.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := awaitJob(t, a.jobs, cancelled.ID); got.State != "cancelled" {
+		t.Fatal("cancellation not observed", got)
+	}
+	other := start("different-conversation", helperArgs("echo", "0"))
+	if got := awaitJob(t, a.jobs, other.ID); got.State != "completed" {
+		t.Fatal(got)
+	}
+	before := len(a.jobs.List())
+	handled, err := a.queueTeamDelivery(turn.Job, turn.Record, result)
+	if err != nil || !handled || len(a.jobs.List()) != before {
+		t.Fatal("unrelated newer delivery hid explicit cancellation", handled, err, a.jobs.List())
+	}
+}
