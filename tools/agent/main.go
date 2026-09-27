@@ -34,6 +34,8 @@ func command(args []string) int {
 			return specialist(args[1:])
 		case "-c":
 			return actionShell(args)
+		case "internal-check":
+			return protectedCheck(args[1:])
 		case "version", "-V", "--version":
 			fmt.Println("agent " + version)
 			return 0
@@ -99,6 +101,8 @@ type options struct {
 	work, state, control, goalFile, model, effort, checkpoint, steer string
 	noCage, network, quiet                                           bool
 	forward                                                          []string
+	readOnly                                                         []string
+	protectInputs                                                    bool
 }
 
 func parse(args []string) (options, []string, error) {
@@ -116,6 +120,18 @@ func parse(args []string) (options, []string, error) {
 	fs.BoolVar(&o.noCage, "no-cage", false, "ordinary host actions")
 	fs.BoolVar(&o.network, "net", false, "allow network inside Cage")
 	fs.BoolVar(&o.quiet, "q", false, "quiet progress")
+	operatorProtection := os.Getenv("AGENT_PROTECT_INPUTS")
+	if operatorProtection != "" && operatorProtection != "0" && operatorProtection != "1" {
+		return o, nil, errors.New("AGENT_PROTECT_INPUTS must be 0 or 1")
+	}
+	fs.BoolVar(&o.protectInputs, "protect-inputs", operatorProtection == "1", "protect existing work inputs/ and request.md")
+	fs.Func("read-only", "protect an existing file or directory (repeatable)", func(value string) error {
+		if strings.TrimSpace(value) == "" || len(o.readOnly) >= 128 {
+			return errors.New("-read-only requires a path; at most 128 selections")
+		}
+		o.readOnly = append(o.readOnly, value)
+		return nil
+	})
 	for _, name := range strings.Fields("turns cycles timeout cap verbosity compact-at compactions") {
 		fs.Func(name, "Ply option", func(value string) error {
 			o.forward = append(o.forward, "-"+name, value)
@@ -139,6 +155,12 @@ func parse(args []string) (options, []string, error) {
 	}
 	if o.noCage && o.network {
 		return o, nil, errors.New("-net has no meaning with -no-cage")
+	}
+	if operatorProtection == "1" && !o.protectInputs {
+		return o, nil, errors.New("-protect-inputs=false cannot override AGENT_PROTECT_INPUTS=1")
+	}
+	if o.noCage && (o.protectInputs || len(o.readOnly) > 0) {
+		return o, nil, errors.New("read-only input protection requires Cage; -no-cage is incompatible")
 	}
 	if o.checkpoint != "" && !portableName(o.checkpoint) {
 		return o, nil, errors.New("checkpoint needs a portable name")
@@ -253,6 +275,8 @@ Piped stdin is evidence; if a portable definition has no goal, stdin is it.
   -goal-file FILE  private goal file, instead of goal text arguments
   -net             allow network in Cage actions
   -no-cage         ordinary host action permissions
+  -read-only PATH  protect an existing input file/directory (repeatable)
+  -protect-inputs  protect existing WORK/inputs and WORK/request.md
   -record-input FILE  retain an input file before work (repeatable)
   -record-output FILE retain an output file after work (repeatable)
   -q               suppress progress
@@ -263,7 +287,8 @@ Piped stdin is evidence; if a portable definition has no goal, stdin is it.
 Definition: AGENTS.md and executable bin/check; optional SOUL.md, PLAN.md,
 MEMORY.md, GOAL.md, skills/, tools/ and agents/. A toolbox is not a sandbox.
 The default Cage boundary writes work, state and private action temp only;
-network is denied and host reads remain unrestricted. Checks stay outside.
+network is denied and host reads remain unrestricted. Checks stay outside
+unless input protection is selected; then checks and wakes use Cage too.
 An explicit host boundary is required for ordinary recursive model calls.
 
 stdin is input; stdout is the answer; stderr is progress. Exit is Ply's:
@@ -271,6 +296,9 @@ stdin is input; stdout is the answer; stderr is progress. Exit is Ply's:
 130 interrupted. Invocation/definition errors use 2/1 respectively.
 
 AGENT_ASK, AGENT_BRIEF, AGENT_PLY, AGENT_CAGE and AGENT_RECORD select companions.
+AGENT_PROTECT_INPUTS=1 requires -protect-inputs; false/no-cage cannot disable it.
+Protected paths must exist, contain no symlinks or multiply-linked files, and
+remain outside controller evidence. Missing conventional paths are skipped.
 Record is required for runs. Full action/check streams and selected files live
 under evidence/recordings; Ask owns their sealed history. Recording failures
 stop with 125. File selections are relative to the workspace.

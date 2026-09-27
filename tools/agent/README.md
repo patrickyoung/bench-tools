@@ -200,7 +200,23 @@ By default, Cage permits action writes to `work/`, `state/`, and a private
 per-action temporary directory, with network denied. **Host reads remain
 unrestricted.** `-net` deliberately enables action networking; `-no-cage`
 uses the ordinary host boundary. Markdown cannot choose either permission.
-The verifier remains outside the action boundary.
+The verifier remains outside the action boundary unless input protection is selected.
+
+Use `-protect-inputs` (or operator environment `AGENT_PROTECT_INPUTS=1`) to
+freeze existing `WORK/inputs` and `WORK/request.md` as read-only for the run.
+Add repeatable `-read-only PATH` for other existing files or directories.
+Relative explicit paths resolve from the caller's directory. Missing conventional
+paths are skipped; explicit paths must exist. The environment requirement cannot
+be disabled with `-protect-inputs=false` or `-no-cage`.
+
+Protection also confines the original `bin/check` and `bin/wake` to writes in
+work, state, and private temporary storage, with networking selected by `-net`.
+Checks needing broader write authority must be adapted before opting in. The
+original checker still decides completion through Ply; streams, receipts, `-B`,
+and checkpoint behavior are preserved. Workers should copy inputs into writable
+output files before editing. Agent validates the selected paths and establishes
+the Cage boundary before creating caller runtime state; boundary setup failure
+stops with 125. See [the security contract](SECURITY.md) for limits.
 
 ## Run again, or wake only when needed
 

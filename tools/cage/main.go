@@ -23,7 +23,7 @@ const (
 
 const usageText = `cage - confine one command with the host kernel
 
-  cage [-net] [-ro | -w dir ...] -- command [args...]
+  cage [-net] [-ro | -w dir ...] [-r path ...] -- command [args...]
   cage check
   cage status
   cage version
@@ -31,7 +31,8 @@ const usageText = `cage - confine one command with the host kernel
 The child may read the host filesystem. By default it may write only the
 current directory and the temporary directory, and cannot reach host networks.
 -ro removes the current-directory write. One or more -w flags replace it with
-the named writable directories. The temporary directory remains writable.
+the named writable directories. -r protects an existing file or directory,
+even inside a writable root. The temporary directory remains writable.
 
 stdin, stdout, stderr, and the child's status pass through. Status 125 means
 the confinement could not be established; Cage fails closed and does not run
@@ -53,12 +54,14 @@ type options struct {
 	network  bool
 	readOnly bool
 	writes   []string
+	reads    []string
 	command  []string
 }
 
 type policy struct {
 	network bool
 	writes  []string
+	reads   []string
 	temp    string
 	cwd     string
 }
@@ -119,7 +122,7 @@ func run(args []string, s streams) outcome {
 	opts, err := parseOptions(args)
 	if err != nil {
 		fmt.Fprintln(s.err, "cage:", err)
-		return usage(s, "cage [-net] [-ro | -w dir ...] -- command [args...]")
+		return usage(s, "cage [-net] [-ro | -w dir ...] [-r path ...] -- command [args...]")
 	}
 	p, err := makePolicy(opts)
 	if err != nil {
@@ -153,6 +156,12 @@ func parseOptions(args []string) (options, error) {
 		case "-ro":
 			o.readOnly = true
 			args = args[1:]
+		case "-r":
+			if len(args) < 2 {
+				return o, errors.New("-r needs a file or directory")
+			}
+			o.reads = append(o.reads, args[1])
+			args = args[2:]
 		case "-w":
 			if len(args) < 2 {
 				return o, errors.New("-w needs a directory")
@@ -198,6 +207,9 @@ func makePolicy(o options) (policy, error) {
 		p.writes = append(p.writes, real)
 	}
 	p.writes = minimalRoots(append(p.writes, temp))
+	if err := addProtectedRoots(&p, o.reads); err != nil {
+		return policy{}, err
+	}
 	return p, nil
 }
 

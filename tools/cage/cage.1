@@ -5,6 +5,7 @@ cage \- confine one command with the host kernel
 .B cage
 .RB [ \-net ]
 .RB [ \-ro | " \-w " dir ...]
+.RB [ "\-r " path ...]
 .B \--
 .I command
 .RI [ args ...]
@@ -43,6 +44,17 @@ Once present, the current directory is not implicitly writable.
 Cannot be combined with
 .BR \-ro .
 .TP
+.BI \-r " path"
+Protect an existing regular file or directory, even inside a writable root.
+May be repeated. Protected content and names cannot be changed or removed;
+writable ancestors cannot be renamed to move the protected path away.
+Sibling writes remain allowed. Selected trees reject symlinks, special files,
+and multiply linked regular files. At most 128 paths and 100000 entries per
+tree are admitted. A protected path cannot contain a writable root or the
+temporary directory. Invalid selections return 2 without starting the child.
+Caller-owned writable descriptors, concurrent external changes and writable
+ancestor permission changes remain outside this protection.
+.TP
 .B \--
 End Cage options.
 Recommended before every command and required when its name starts with a
@@ -51,7 +63,8 @@ hyphen.
 .TP
 .B check
 Attempt workspace writes, denied outside writes, read-only and explicit-write
-modes, default network denial, deliberate networking, standard-input
+modes, protected input writes/deletion/rename/hardlinks, default network denial,
+deliberate networking, standard-input
 preservation, exit and signal propagation, and fail-closed setup.
 .TP
 .B status

@@ -9,7 +9,7 @@ import (
 
 func TestHelpIsCompleteAndFitsATerminal(t *testing.T) {
 	for _, want := range []string{
-		"cage [-net] [-ro | -w dir ...] -- command [args...]",
+		"cage [-net] [-ro | -w dir ...] [-r path ...] -- command [args...]",
 		"cage check", "cage status", "Status 125", "child's status",
 	} {
 		if !strings.Contains(usageText, want) {
@@ -30,7 +30,7 @@ func TestDocumentationNamesTheContract(t *testing.T) {
 			t.Fatal(err)
 		}
 		text := string(body)
-		for _, want := range []string{"-net", "-ro", "-w", "125"} {
+		for _, want := range []string{"-net", "-ro", "-w", "-r", "125"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("%s does not mention %s", name, want)
 			}

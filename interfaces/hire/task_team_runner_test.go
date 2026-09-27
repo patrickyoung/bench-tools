@@ -22,6 +22,7 @@ if c[0]=='cage':
  print('selected environment member preflight',file=sys.stderr)
  sys.exit(0)
 assert c[0].endswith('/expert/bin/task')
+assert os.environ.get('AGENT_PROTECT_INPUTS')=='1', 'team members lack input protection'
 print('selected environment team entry',file=sys.stderr)
 os.execv(c[0],c)
 `, 0700)

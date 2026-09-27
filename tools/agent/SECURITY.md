@@ -65,7 +65,7 @@ secrets must be isolated.
 
 ## The verifier is controller-authority code
 
-`bin/check` runs outside the model-action Cage so the worker cannot rewrite
+Without input protection, `bin/check` runs outside the model-action Cage so the worker cannot rewrite
 its judge. If the check executes scripts, binaries, build hooks, or other code
 from `work/` or `state/`, that code executes with the controller's authority.
 Keep checks operator-owned, inspect their transitive execution, or run the
@@ -83,3 +83,38 @@ pointers before invoking Ply. Ply locks the checkpoint for the whole run and
 publishes pointer changes durably. A checkpoint preserves conversation
 context; it neither rolls back the work tree nor proves whether an external
 effect interrupted in flight happened.
+
+## Explicit input protection
+
+`-read-only PATH` selects an existing regular file or directory; repeat it for
+multiple paths (128 distinct selections maximum). `-protect-inputs` selects the
+existing `inputs` and `request.md` paths under the resolved workspace. An operator
+may require the same behavior with `AGENT_PROTECT_INPUTS=1`; flags cannot disable
+that requirement. Absent conventional paths are skipped, not created. Neither
+mode is compatible with `-no-cage`.
+
+Agent rejects symlinks within selected trees, mutable symlink ancestors, special
+files, multiply-linked regular files, and selections overlapping controller
+storage or containing runtime write directories. It freezes canonical paths,
+network selection, Cage, checker and writable roots in private controller-owned
+transport outside every writable grant. The transport is a recorded input, not
+a worker-editable policy. Each action and check validates it before executing
+Cage; no fallback to an unconfined process is permitted. Cage is preflighted
+before caller runtime directories are created. Protected heartbeat wake checks
+also run through Cage, including when they stop before any model call.
+
+This opt-in changes checker and wake authority: writes are limited to workspace,
+state (when present for wake), and private temporary storage, with protected paths
+excluded. Networking requires `-net`; host reads remain unrestricted. The original
+checker executable, stdin/stdout/stderr and status flow remain intact through
+Ply and Record. It cannot write controller evidence; Record still runs outside
+the checker boundary. Checkpoint ownership and action-before-check selection
+remain Ply's decisions.
+
+This protects paths during these child executions, not content against another
+host process, a mutable operator launcher, or inherited writable file descriptors.
+The controller must supply stable inputs and companions. It is not a snapshot,
+confidentiality boundary, or proof that a worker used the inputs correctly. Cage
+protects input names and bytes, including ancestor renames; metadata on writable
+ancestors is not a portable immutable guarantee. Read Cage's own security contract
+for platform restrictions.

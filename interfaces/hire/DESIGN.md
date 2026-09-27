@@ -607,3 +607,15 @@ execution attempt. It retains the original team, member selection and build
 checkpoint, independently checks any repaired result, and then launches through
 the configured team environment. It never resumes a team entry command through
 this preparation route or treats a missing/interrupted receipt as permission.
+
+## Member input protection
+
+Team execution selects the public Agent input-protection policy through
+`AGENT_PROTECT_INPUTS=1`. The selected environment must preserve it and provide
+compatible Agent/Cage executables. Existing member inputs/request are protected
+by Cage in both actions and checks; generated instructions explain where writable
+copies belong. Agent owns this opt-in boundary and exact check outcomes; the UI
+does not implement filesystem policy, wrap model actions or inspect worker prose
+to authorize repair. The team coordinator remains responsible for staging. This
+change prevents specialist/check mutation, not arbitrary coordinator mutation,
+and it does not infer review validity or authorize replay from a restored file.

@@ -1,0 +1,44 @@
+.TH AGENT 1
+.SH NAME
+agent \- run a reusable filesystem worker through public Bench tools
+.SH SYNOPSIS
+.B agent run
+[options] [DEFINITION] [--] [GOAL ...]
+.br
+.B agent tick
+[options] [DEFINITION]
+.br
+.B agent check
+[path options] DEFINITION
+.br
+.B agent show
+[path options] DEFINITION
+.SH DESCRIPTION
+Agent validates the definition, compiles private context, and invokes Ply.
+The original bin/check decides completion. Agent does not implement a model loop.
+Use agent help for the full option list.
+.SH INPUT PROTECTION
+.TP
+.BI \-read-only " PATH"
+Protect an existing file or directory through Cage. Repeat for up to 128 distinct
+paths. Relative paths resolve from the caller's directory.
+.TP
+.B \-protect-inputs
+Protect existing WORK/inputs and WORK/request.md. Missing conventional paths are
+skipped. Explicit paths must exist. Symlinks and multiply-linked files are refused.
+.PP
+Protection confines actions, checks and heartbeat wakes to workspace, state and
+private temporary writes. Protected paths are excluded. Networking requires
+-net; reads remain unrestricted. Checks needing other writable locations must be
+adapted. A private controller-owned invocation file freezes the selections and
+is recorded. A boundary setup failure stops with 125 before caller runtime writes.
+.PP
+AGENT_PROTECT_INPUTS=1 requires protection. It cannot be disabled by
+-protect-inputs=false or -no-cage. Protection is not a snapshot and cannot prevent
+another host process or inherited writable descriptor from changing input bytes.
+.SH OUTCOMES
+Ply's exit status is preserved: 0 checked, 1 broken, 2 unfinished, 3 declined,
+75 parked, 125 boundary or recording failure, 130 interrupted.
+Definition and invocation failures use 1 and 2 respectively.
+.SH SEE ALSO
+Agent README.md, RUNNER.md, SECURITY.md; ply(1), cage(1), record(1).

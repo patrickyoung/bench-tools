@@ -14,6 +14,13 @@ func actionShell(args []string) int {
 	if len(args) != 2 || args[0] != "-c" {
 		return fail(fmt.Errorf("action interpreter expects -c SCRIPT"))
 	}
+	if path := os.Getenv("AGENT_INPUT_PROTECTION"); path != "" {
+		p, err := readInputProtection(path)
+		if err != nil {
+			return fail(err)
+		}
+		return execProtected(p, []string{"/bin/sh", "-c", args[1]})
+	}
 	work, err := realDir(os.Getenv("AGENT_WORK"))
 	if err != nil {
 		return fail(err)

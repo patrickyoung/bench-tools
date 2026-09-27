@@ -145,7 +145,9 @@ through the public executable. The combined legacy behavioral suite lives at
   only its path through Ply's existing `-s` seam.
 - A toolbox aims a model but is not confinement. Cage supplies the default
   write and network boundary independently of `tools/`.
-- The check runs outside the action boundary. That keeps it operator-owned,
+- By default the check runs outside the action boundary. Explicit input
+  protection also confines checks and wakes with Cage. Without that opt-in,
+  the outside check remains operator-owned,
   but a check that executes worker-written code still executes that code with
   controller authority.
 - Sessions must remain outside `work/` and `state/`, or the worker can rewrite

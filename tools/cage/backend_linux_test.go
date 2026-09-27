@@ -46,3 +46,18 @@ func TestNetFlagOmitsOnlyTheNetworkNamespace(t *testing.T) {
 		t.Errorf("-net weakened the filesystem boundary: %v", cmd.Args)
 	}
 }
+
+func TestProtectedOverlaysFollowAllWritesAndAnchorAncestors(t *testing.T) {
+	b := bubblewrapBackend{path: "/usr/bin/bwrap"}
+	cmd, _, err := b.command(policy{cwd: "/work", writes: []string{"/work", "/scratch"}, reads: []string{"/work/nested/inputs"}}, []string{"/bin/true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"--bind", "/work", "/work", "--bind", "/scratch", "/scratch", "--bind", "/work", "/work", "--bind", "/work/nested", "/work/nested", "--ro-bind", "/work/nested/inputs", "/work/nested/inputs", "--chdir"}
+	for i := range cmd.Args {
+		if i+len(want) <= len(cmd.Args) && slices.Equal(cmd.Args[i:i+len(want)], want) {
+			return
+		}
+	}
+	t.Fatalf("missing ordered write/anchor/readonly mounts: %q", cmd.Args)
+}

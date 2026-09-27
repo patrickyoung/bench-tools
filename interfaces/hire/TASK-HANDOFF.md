@@ -102,6 +102,28 @@ review, pass those bytes and their supporting evidence to the reviewer. Do not
 require a producer to claim that the review already happened. Unavailable
 external checks remain explicit blockers; routing a review does not waive them.
 
+## Protected member inputs
+
+The UI enables `AGENT_PROTECT_INPUTS=1` for team execution. The selected runner
+must preserve this setting and supply Agent/Cage versions supporting protected
+inputs. Agent selects existing `inputs/` and `request.md` beneath each member's
+work directory before invocation. Both model actions and checks receive a kernel
+write boundary that denies changes to those selected inputs. Checks may write
+only to their selected work/state and private temporary directory; networking
+follows the member's explicit selection. This is an opt-in narrowing of the
+ordinary Agent check boundary.
+
+Stage inputs before launching the member. Workers copy or unpack into their own
+writable output/scratch paths; they do not reorganize authoritative staged inputs.
+Use explicit Agent `-read-only PATH` for other native input layouts. Preserve
+selected input bytes and contract bindings during corrections. Do not disable
+protection to make a worker or check pass.
+
+This protection covers Agent member actions and checks. The enclosing team
+coordinator still owns staging and must preserve its inputs; this does not claim
+an immutable store against the coordinator or validate review quality. Missing
+historical inputs do not gain valid provenance merely by being restored.
+
 ## Member continuity
 
 Before launching a member, persist a started receipt naming its assignment,

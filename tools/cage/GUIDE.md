@@ -70,6 +70,41 @@ mkdir -p .scratch
 TMPDIR="$PWD/.scratch" cage -ro -- compiler source
 ```
 
+## Protect inputs inside a workspace
+
+Use `-r PATH` repeatedly for input files or directories whose bytes and names
+must survive a child invocation:
+
+```sh
+cage -w work -r work/inputs -r work/request.json -- reviewer
+```
+
+Paths must exist and name regular files or directories. Cage canonicalizes
+stable parent aliases; a symlink inside a writable root cannot select an input
+through a replaceable name. The selected path itself and everything below it
+must be free of symlinks and special files. Multiply linked regular files are rejected because
+an existing writable alias would defeat pathname protection. Invalid selections
+return 2 without launching the child. At most 128 selections and 100,000 entries
+per selected tree are admitted. A protected path cannot contain any writable
+root, including the temporary directory; place scratch space separately.
+
+Read-only overlays take precedence over containing write grants. The kernel
+blocks overwriting, deleting or renaming selected files, directory descendants,
+and renaming writable ancestors to move the selection away. Other sibling files
+remain writable. New hard links from protected files are denied. This protects
+selected pathnames and bytes, not against outside processes changing the inputs
+or against a caller passing already-open writable descriptors. Do not modify
+selected paths concurrently while Cage establishes or uses the boundary.
+Writable ancestor metadata is not uniformly protected across platforms; use a
+separate input root when its directory permissions must also be immutable.
+
+On Linux, writable ancestors become mount points before the final read-only
+bind mounts. On macOS, Seatbelt denies protected writes and links and ancestor
+unlink operations. Backend failure retains the ordinary fail-closed 125 result.
+Run `cage check` on the selected host: its probes exercise actual kernel denial,
+not merely argument construction. A read-only input is still readable; Cage
+continues to provide no secrecy boundary.
+
 ## Grant the network deliberately
 
 The default is no access to the host or public network:

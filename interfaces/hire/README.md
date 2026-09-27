@@ -10,6 +10,13 @@ root and source mounts, only the selected work directory writable, and working
 unprivileged Bubblewrap for member Cage is one option. Never mount a Docker
 socket or grant privileged mode to generated work. Verify allowed/denied writes,
 member network denial, process cancellation and real team execution before use.
+The UI sets `AGENT_PROTECT_INPUTS=1` for teams. The runner must preserve it and
+supply Agent/Cage versions supporting protected member inputs. Existing member
+`inputs/` and `request.md` are then read-only during actions and checks. Checks
+receive the same selected work/state write grants and network policy; workers
+copy editable material into separate working/output paths. Generated coordinators
+still own staging; this does not protect inputs from the enclosing coordinator.
+
 The UI probes the selected environment before authoring and uses it for new,
 adapted, reused and continued teams; unavailable environments fail closed.
 The executable is selected by the operator, never by a model or request.

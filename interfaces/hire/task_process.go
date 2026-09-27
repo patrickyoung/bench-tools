@@ -478,7 +478,7 @@ func executeTask(ctx context.Context, root, snapshot string, rec taskRecord, pla
 		if st, err := os.Lstat(filepath.Join(expert, "bin", "task")); err != nil || !st.Mode().IsRegular() || st.Mode()&0111 == 0 {
 			return finish(2, "The team is prepared but its handoff needs repair before it can work.")
 		}
-		env = append(env, "BENCH_TASK_FILE="+goal, "BENCH_TASK_WORK="+work, "ASK_MODEL="+rec.Model)
+		env = append(env, "BENCH_TASK_FILE="+goal, "BENCH_TASK_WORK="+work, "ASK_MODEL="+rec.Model, "AGENT_PROTECT_INPUTS=1")
 		// Outer boundary keeps team controllers and generated check code from writing
 		// outside the selected task. Network is needed for member model connections;
 		// their Agent action sandboxes retain their independent network policy.

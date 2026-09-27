@@ -128,6 +128,8 @@ func runCheck(s streams) outcome {
 	report.record("explicit write replaces workspace", childRan(r) &&
 		r.outcome.code != 0 && errors.Is(replacedErr, os.ErrNotExist), externalDetail(r))
 
+	checkReadOnlyPaths(report, exe, work, env)
+
 	stdin := "stdin survives byte for byte\n\x00after nul\n"
 	r = runSelf(exe, work, env, stdin, "--", "/bin/cat")
 	report.record("stdin preservation", r.outcome.code == 0 && r.stdout == stdin,
