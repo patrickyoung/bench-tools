@@ -575,3 +575,21 @@ separate share action. Delivery completion stays in the chat. Private galleries
 are framed through the existing authenticated proxy, sandboxed without scripts;
 only their frame-ancestors directive changes to self. Upstream content policies,
 credential handling, generated-site isolation and artifact download rules remain.
+
+## Independent team preparation acceptance
+
+A successful Hire build still passes the controller's selected-member check.
+Goal mode feeds a rejected check back into the same public Hire build checkpoint
+with the original brief and exact diagnostic. The controller validates again
+before any member starts. Three rejected validations stop preparation with the
+specific error; nonzero unsafe build outcomes retain their exact status and are
+not replayed. The selected roster, unchanged-source hashes and executable modes
+remain mandatory throughout repair. Every new member needs a guide as well as
+instructions and an executable check.
+
+An explicit continuation may recover a saved team preparation only when its
+controller receipts show a known successful/unfinished build and no team
+execution attempt. It retains the original team, member selection and build
+checkpoint, independently checks any repaired result, and then launches through
+the configured team environment. It never resumes a team entry command through
+this preparation route or treats a missing/interrupted receipt as permission.

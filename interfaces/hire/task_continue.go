@@ -88,14 +88,20 @@ func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
 		if _, e = read("build.txt", 256<<10); e != nil {
 			return nil, e
 		}
-		// A team adapter has its own runtime entry contract; do not replay it here.
-		if result.Kind == "team" || plan.Target == "new:team" {
-			return nil, fmt.Errorf("team preparation needs a fresh attempt")
-		}
+		team := result.Kind == "team" || plan.Target == "new:team"
 		for _, c := range original.Catalog {
 			if c.Key == plan.Target && c.Kind == "team" {
-				return nil, fmt.Errorf("team preparation needs a fresh attempt")
+				team = true
 			}
+		}
+		if team {
+			if *j.ExitCode != 2 {
+				return nil, fmt.Errorf("interrupted team preparation needs inspection")
+			}
+			if _, e = savedTeamPreparationCode(root); e != nil {
+				return nil, e
+			}
+			resume.Result.Kind = "team"
 		}
 	}
 	for _, in := range plan.Inputs {
@@ -213,7 +219,17 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 	if saved.Stage == "build" {
 		taskPhase(snapshot, "Continuing preparation from where we left off…")
 		author := filepath.Join(saved.Root, "authoring")
-		code, _, _ := taskCheckpointCommand(ctx, snapshot, "prepare", author, rec, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
+		code := 2
+		if result.Kind == "team" {
+			var err error
+			code, err = savedTeamPreparationCode(saved.Root)
+			if err != nil {
+				return finishTask(snapshot, result, 125, err.Error())
+			}
+		}
+		if code != 0 {
+			code, _, _ = taskCheckpointCommand(ctx, snapshot, "prepare", author, rec, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
+		}
 		if code != 0 {
 			if rec.Config.GoalMode {
 				result.GoalStatus = "blocked"
@@ -221,7 +237,15 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 			}
 			return finishTask(snapshot, result, code, "The specialist needs more work. What’s saved is safe; you can continue again.")
 		}
-		result.Expert, result.Kind, result.Prepared = filepath.Join(author, "expert"), "worker", true
+		result.Expert = filepath.Join(author, "expert")
+		if code, err := repairPreparedTaskMembers(ctx, saved.Root, snapshot, rec, saved.Plan); err != nil {
+			result.GoalStatus = "blocked"
+			return finishTask(snapshot, result, code, "Team preparation could not resolve this check: "+truncateMessage(err.Error(), 600)+". No specialist work started.")
+		}
+		if result.Kind != "team" {
+			result.Kind = "worker"
+		}
+		result.Prepared = true
 	} else if saved.Stage != "execute" {
 		return finishTask(snapshot, result, 1, "The saved continuation is unavailable.")
 	}

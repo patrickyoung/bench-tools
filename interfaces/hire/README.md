@@ -598,3 +598,10 @@ from their messages. Goal mode prepares checked results automatically. For older
 results with Plonk connected, opening the panel prepares a private
 gallery using the existing delivery command. Sharing remains an explicit action
 inside the panel; simply viewing the site creates no public share link.
+
+Team preparation checks now return actionable findings to Hire in goal mode.
+A missing member guide or a changed reused worker is repaired in the saved build
+checkpoint and checked again before specialists start. After three rejected
+checks the exact remaining issue is shown. A saved preparation with a confirmed
+build outcome and no execution attempt can continue without selecting a new
+team; failed or unknown execution is never replayed by that recovery path.

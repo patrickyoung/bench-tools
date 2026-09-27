@@ -375,7 +375,7 @@ BENCH_TASK_WORK already exists and contains the prepared inputs and possibly pri
 For refinements, pass the existing editable originals and requested changes to the relevant members. Archiving prior results while asking members to create replacements is not editing. Preserve unaffected contributions byte-for-byte, record their reuse honestly, and invoke only the roles needed for the change and review. Bind new reviews to the edited files; never carry stale acceptance receipts forward as current checks. Test an edit fixture that rejects unrequested artwork or layout changes as well as a fresh-creation fixture.
 Before completing authoring, exercise this adapter boundary with offline executable fixtures: a prose BENCH_TASK_FILE outside a pre-populated BENCH_TASK_WORK, the planned named inputs inside it, and stubbed member commands. Verify input selection, separate member roots, flat final files, and propagation of member/check failures. These fixtures verify wiring only, never specialist quality; do not run live models while authoring or leave fixture outputs as real results.
 `
-			brief += "\nProvide executable bin/task, a narrow adapter to the team's documented existing entry command, reading the caller-selected BENCH_TASK_FILE. Execute members through public Agent/Tend/Weave, with separate contexts/workspaces. BENCH_TASK_WORK selects output workspace; keep all nested work/state/evidence there in separate roots. Inherit model/Ask connection; bound each member to 50 turns. Do not use -no-cage. Write final deliverables into BENCH_TASK_WORK. Do not run live jobs while authoring. Document all prerequisites. The controller has copied selected new-team members to expert/agents/ROLE. Use exactly the selection.roles roster, preserving reuse members byte-for-byte and executable modes. Only roles explicitly marked adapt: or new:worker may be authored. Never replace selected expertise with generic instructions or do their specialist work in the coordinator. Wire each selected member through public Agent with its own context, inputs, outputs and meaningful acceptance. Existing teams retain their own roster and command contracts. Record actual member invocation evidence in the work/evidence folder; a named roster is not proof of execution. If selected members cannot be connected, return unfinished and explain the missing handoff.\n"
+			brief += "\nProvide executable bin/task, a narrow adapter to the team's documented existing entry command, reading the caller-selected BENCH_TASK_FILE. Execute members through public Agent/Tend/Weave, with separate contexts/workspaces. BENCH_TASK_WORK selects output workspace; keep all nested work/state/evidence there in separate roots. Inherit model/Ask connection; bound each member to 50 turns. Do not use -no-cage. Write final deliverables into BENCH_TASK_WORK. Do not run live jobs while authoring. Document all prerequisites. The controller has copied selected new-team members to expert/agents/ROLE. Use exactly the selection.roles roster, preserving reuse members byte-for-byte and executable modes. Every member, including a newly created specialist, must have nonempty AGENTS.md and README.md plus executable bin/check. Only roles explicitly marked adapt: or new:worker may be authored. Never replace selected expertise with generic instructions or do their specialist work in the coordinator. Wire each selected member through public Agent with its own context, inputs, outputs and meaningful acceptance. Existing teams retain their own roster and command contracts. Record actual member invocation evidence in the work/evidence folder; a named roster is not proof of execution. If selected members cannot be connected, return unfinished and explain the missing handoff.\n"
 		}
 		if rec.Config.GoalMode && kind == "team" {
 			brief += `
@@ -403,10 +403,11 @@ Support confirmed continuation within the same local goal. Declare task-runtime.
 		}
 		expert = filepath.Join(author, "expert")
 	}
-	if e = validatePreparedTaskMembers(root, rec, plan); e != nil {
-		fmt.Fprintln(os.Stderr, e)
+	if code, err := repairPreparedTaskMembers(ctx, root, root, rec, plan); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		result.Expert, result.Kind = expert, kind
-		return finish(2, "The team build did not preserve the selected workers. I’ve kept it for repair and have not started the job.")
+		result.GoalStatus = "blocked"
+		return finish(code, "Team preparation could not resolve this check: "+truncateMessage(err.Error(), 600)+". The saved team is retained; no specialist work started.")
 	}
 	result.Expert, result.Kind, result.Prepared = expert, kind, true
 	return executeTask(ctx, root, root, rec, plan, result, false)
