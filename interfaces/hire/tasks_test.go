@@ -219,6 +219,20 @@ func TestTaskPlanValidationAndArtifactBoundary(t *testing.T) {
 		t.Fatal("artifact symlink followed")
 	}
 }
+
+func TestTeamBoundaryFailureStopsBeforeAuthoringOrMembers(t *testing.T) {
+	a := taskFixture(t)
+	cage := filepath.Join(filepath.Dir(a.cfg.Agent), "cage")
+	writeFixture(t, cage, "#!/bin/sh\necho 'fixture: nested boundary unavailable' >&2\nexit 125\n", 0700)
+	turn := taskSubmit(t, a, "", "Create a team document")
+	log := a.jobs.Log(turn.Job.ID, "stderr")
+	if turn.Result.Code != 125 || turn.Result.Prepared || len(turn.Result.Artifacts) != 0 {
+		t.Fatalf("boundary failure lost: %+v", turn.Result)
+	}
+	if strings.Contains(log, "Starting hire") || !strings.Contains(log, "nested boundary unavailable") || !strings.Contains(turn.Result.Message, "execution setup needs repair") {
+		t.Fatalf("team dispatched or failure hidden: %s\n%s", log, turn.Result.Message)
+	}
+}
 func TestTaskProfileContract(t *testing.T) {
 	check, e := filepath.Abs("../../workers/bench-hire/expert/task/bin/check")
 	if e != nil {

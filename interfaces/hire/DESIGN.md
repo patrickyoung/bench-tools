@@ -298,6 +298,13 @@ acceptance and copy finished regular files directly to `BENCH_TASK_WORK` for
 collection. Authoring guidance requires an offline executable fixture at this
 boundary; structural verification alone does not establish adapter compatibility.
 
+Before team authoring or member execution, the controller probes the nested Cage
+composition with an inert child. macOS Seatbelt refuses this nesting; a refusal
+stops the attempt with its exact status and a specific setup explanation. It does
+not trigger another model retry, disable either boundary, or claim specialist
+execution. Such hosts require separately reviewed external orchestration before
+the team can run with each member's default action confinement.
+
 Each conversation turn uses a fresh workspace and private frozen companion copy.
 Refinement copies earlier bounded deliverables into a new workspace, keeps all
 old versions and supplies recent conversation plus the previously prepared expert.
