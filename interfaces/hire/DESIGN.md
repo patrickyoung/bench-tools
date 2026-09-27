@@ -298,6 +298,16 @@ acceptance and copy finished regular files directly to `BENCH_TASK_WORK` for
 collection. Authoring guidance requires an offline executable fixture at this
 boundary; structural verification alone does not establish adapter compatibility.
 
+Follow-up facts and corrections default to editing the selected prior artifacts.
+Planning can inspect the previous immutable delivery directory, and execution
+receives copies with instructions to preserve unrelated content and design. Team
+authoring must wire originals into the affected members, retain unchanged
+contributions with honest reuse receipts, and replace stale reviews. Reusing a
+team that always creates new work does not establish edit capability. Presentation
+can inspect the current immutable delivery directory rather than infer its
+contents from earlier conversation summaries. These paths grant no execution or
+write authority, and prompt guidance alone is not proof of design preservation.
+
 Before team authoring or member execution, the controller probes the nested Cage
 composition with an inert child. macOS Seatbelt refuses this nesting; a refusal
 stops the attempt with its exact status and a specific setup explanation. It does

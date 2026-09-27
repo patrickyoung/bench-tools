@@ -127,6 +127,36 @@ func TestWorkConversationBuildExecuteRefine(t *testing.T) {
 	if string(old) != string(original) {
 		t.Fatal("old output overwritten")
 	}
+	// Both model stages can inspect the selected version rather than infer
+	// current artifact contents from older conversation summaries.
+	secondRoot := filepath.Dir(second.Job.Dir)
+	for stage, field := range map[string]string{"plan": "previous_artifacts", "present": "artifacts_dir"} {
+		b, err := os.ReadFile(filepath.Join(secondRoot, stage, "request.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var request map[string]json.RawMessage
+		if err := json.Unmarshal(b, &request); err != nil {
+			t.Fatal(err)
+		}
+		var dir string
+		if err := json.Unmarshal(request[field], &dir); err != nil {
+			t.Fatal(err)
+		}
+		wantRoot := secondRoot
+		wantText := "Finished: Make it warmer"
+		if stage == "plan" {
+			wantRoot = filepath.Dir(first.Job.Dir)
+			wantText = string(original)
+		}
+		if dir != filepath.Join(wantRoot, "deliverables") {
+			t.Fatalf("%s received the wrong artifact version: %q", stage, dir)
+		}
+		content, err := os.ReadFile(filepath.Join(dir, "result.md"))
+		if err != nil || string(content) != wantText {
+			t.Fatalf("%s cannot inspect its selected artifact: %q %v", stage, content, err)
+		}
+	}
 	page := serveTest(a, "GET", "/work/"+first.Record.Thread, nil).Body.String()
 	for _, text := range []string{"Write a welcome note", "Make it warmer", "Here is your work", "Download"} {
 		if !strings.Contains(page, text) {
