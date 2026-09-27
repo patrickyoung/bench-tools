@@ -29,6 +29,7 @@ type config struct {
 	Ask, Record                                    string
 	AllowBuild                                     bool
 	AllowRun                                       bool
+	GoalMode                                       bool
 	Plonk, PlonkURL, PlonkTokenFile                string
 }
 
@@ -68,6 +69,7 @@ func main() {
 	flag.StringVar(&cfg.Agent, "agent", "agent", "installed Agent executable for workers and conversation")
 	flag.StringVar(&cfg.WebAttach, "web-attach", "", "explicit loopback browser endpoint offered to worker runs (browser must already be running)")
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
+	flag.BoolVar(&cfg.GoalMode, "goal-mode", true, "finish work goals through checked continuations and private delivery within the task deadline")
 	flag.StringVar(&cfg.ReviewedTeamControllers, "reviewed-team-controllers", "", "comma-separated fingerprints of explicitly reviewed host coordinators; member Agent confinement stays enabled")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")

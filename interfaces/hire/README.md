@@ -349,8 +349,11 @@ both -allow-build and -allow-run enable this flow.
 The work companion is `workers/bench-hire/expert/task`; the original advisory
 profile and its learned tool knowledge remain available under **Manage your
 bench**. Work conversations retain earlier output versions. Each send is a
-bounded plan/prepare/execute/present composition, not an unlimited background
-agent. Missing facts are asked in conversation. Missing access or dependencies
+bounded goal: plan, prepare, execute, check the requested outcome, correct any
+fixable omissions and privately deliver the checked result. Confirmed unfinished
+work continues at its saved checkpoint without another click. All attempts share
+a 45-minute deadline; cancellation still stops the job. Missing essential facts
+are asked in conversation. Missing access or dependencies
 remain honest blockers; the local work flow does not silently deploy, publish,
 send messages, purchase, or install software. Technical activity records remain
 available under each reply's Details control.
@@ -378,7 +381,9 @@ a fixed output snapshot, exact command status, bounded time and cancellation.
 It shares the existing one-command admission gate. An interrupted step stays
 unfinished; a user-requested retry reuses the original idempotent request.
 
-Opening results prepares a private remote snapshot; it does not create a share.
+With default goal mode, a checked result automatically prepares its private Plonk
+snapshot before the job finishes. Opening results also supports older runs and
+explicit delivery recovery; neither action creates a share.
 The controller authenticates every private gallery, image, PDF and download
 request. Credentials never enter browser pages or the worker's execution goal.
 Shared links advance only on the explicit share-update action. Revoking a link
@@ -405,9 +410,28 @@ BENCH_UI_PLONK_BIN=/absolute/plonk GOWORK=off go test \
   -run TestDeliveryPublicExecutableIntegration -v .
 ```
 
-### Continuing stopped work
+### Completing a work goal
 
-The latest stopped turn offers a next step in the conversation. **Continue
+Work conversations default to `-goal-mode=true`. A job continues through confirmed
+unfinished preparation and worker checkpoints, then checks the current result
+against the original request. A fixable omission goes back to that worker with
+specific feedback, even if its structural check passed. Intermediate files and
+attempt evidence are retained. Supported teams reuse accepted contributions and
+resume only the relevant unfinished or corrected roles.
+
+The job stops on completion, an essential missing answer, cancellation, its
+45-minute deadline, a concrete technical blocker, or three identical unresolved
+corrections. Failed, declined, interrupted, parked and unknown operations are not
+automatically replayed. If private Plonk delivery fails, finished files remain
+available and delivery can be recovered without executing the worker again.
+External sharing still requires the existing explicit share action.
+
+`-goal-mode=false` keeps the earlier behavior described below. Direct build/run
+pages keep their explicit continuation controls.
+
+### Continuing older or explicitly stopped work
+
+A legacy or explicitly stopped turn offers a next step in the conversation. **Continue
 working** resumes confirmed unfinished individual-worker execution or authoring
 in the original workspace with the original goal, inputs and public Agent/Hire
 checkpoint. Each click admits another bounded 50-turn invocation and has its own
@@ -436,8 +460,8 @@ not a delivery acknowledgement. Existing team entry commands without steering
 keep notes for follow-up and say so explicitly.
 
 Live **Done / Now / Next** notes show the current plan and optional worker updates.
-A stopped result also shows remaining work and **Continue working** when its
-checkpoint is resumable. Each continuation gives another 50-turn invocation,
+A stopped legacy result also shows remaining work and **Continue working** when its
+checkpoint is resumable. Each explicit continuation gives another 50-turn invocation,
 keeps its own logs/results and retains the conversation. A normal follow-up
 message uses the saved files for a fresh refinement. Earlier versions remain
 available.
@@ -555,6 +579,7 @@ and library controls are under **Library & tools**.
 Use **Plonk** in the chat header to open that chat's site beside the conversation,
 and **Plonk back** to hide it. On a phone the site fills the content area. The
 latest returned files appear there, with earlier versions still downloadable
-from their messages. With Plonk connected, opening the panel prepares a private
+from their messages. Goal mode prepares checked results automatically. For older
+results with Plonk connected, opening the panel prepares a private
 gallery using the existing delivery command. Sharing remains an explicit action
 inside the panel; simply viewing the site creates no public share link.

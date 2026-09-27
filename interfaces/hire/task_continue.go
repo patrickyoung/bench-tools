@@ -69,6 +69,9 @@ func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
 		return nil, fmt.Errorf("saved plan is unavailable")
 	}
 	result := a.taskResult(j)
+	if result.GoalStatus == "delivery_pending" {
+		return nil, fmt.Errorf("work is finished; only private delivery remains")
+	}
 	resume := &taskResume{Root: root, Plan: plan, Result: result, Stage: "build"}
 	if result.Prepared {
 		if result.Kind != "worker" || result.Expert != filepath.Join(root, "authoring", "expert") {
@@ -210,8 +213,12 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 	if saved.Stage == "build" {
 		taskPhase(snapshot, "Continuing preparation from where we left off…")
 		author := filepath.Join(saved.Root, "authoring")
-		code, _, _ := taskCommand(ctx, author, nil, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
+		code, _, _ := taskCheckpointCommand(ctx, snapshot, "prepare", author, rec, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
 		if code != 0 {
+			if rec.Config.GoalMode {
+				result.GoalStatus = "blocked"
+				return finishTask(snapshot, result, code, "Preparation could not progress past a technical blocker. Your draft and the failed checks are saved.")
+			}
 			return finishTask(snapshot, result, code, "The specialist needs more work. What’s saved is safe; you can continue again.")
 		}
 		result.Expert, result.Kind, result.Prepared = filepath.Join(author, "expert"), "worker", true

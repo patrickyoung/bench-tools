@@ -58,7 +58,7 @@ func (a *app) taskUpdate(j Job, rec taskRecord, result taskResult) taskUpdate {
 		if update.Done == "" && len(result.Artifacts) > 0 {
 			update.Done = "Your available files are saved below."
 		}
-		if update.Next == "" && j.State != "completed" {
+		if update.Next == "" && j.State != "completed" && result.GoalStatus == "" {
 			update.Next = "Finish the remaining work and check the result."
 		}
 		return update
@@ -78,7 +78,7 @@ func (a *app) taskUpdate(j Job, rec taskRecord, result taskResult) taskUpdate {
 		if text, err := readText(planned, "plan-summary.txt", 2048); err == nil && strings.TrimSpace(text) != "" {
 			update.Next = text
 		}
-	} else if phase == "Working on your request…" {
+	} else if phase == "Working on your request…" || phase == "Working on your goal…" {
 		update.Done, update.Next = "Your specialist is ready.", "Finish the work, then check it."
 		runtime := root
 		if rec.Resume != nil {
@@ -91,6 +91,10 @@ func (a *app) taskUpdate(j Job, rec taskRecord, result taskResult) taskUpdate {
 				return reported
 			}
 		}
+	} else if phase == "Putting the finished work in Plonk…" {
+		update.Done, update.Next = "Your requested result is finished and checked.", "Finish its private delivery."
+	} else if phase == "Checking the result against your goal…" || phase == "Applying the review corrections…" {
+		update.Done, update.Next = "The latest work is saved.", "Resolve remaining corrections, then deliver the checked result."
 	} else if phase == "Checking and gathering your work…" {
 		update.Done, update.Next = "The worker has returned its work.", "Show what’s ready and anything still unfinished."
 	}

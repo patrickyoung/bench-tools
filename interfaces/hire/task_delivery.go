@@ -204,6 +204,19 @@ func (a *app) taskDeliver(w http.ResponseWriter, r *http.Request) {
 			return Job{}, err
 		}
 		record := deliveryRecord{Thread: rec.Thread, TaskID: j.ID, Action: action, Root: root, StateFile: filepath.Join(a.cfg.Data, "deliveries", rec.Thread+".json"), Manifest: "delivery.json", RequestID: "hire-" + j.ID, ShareRequestID: "share-" + randomID(), Plonk: a.cfg.Plonk, URL: a.cfg.PlonkURL, TokenFile: a.cfg.PlonkTokenFile, Before: state}
+		// A goal may have reached private publication before a connection failed.
+		// Recover that exact immutable package/base; never publish a changed body
+		// under its idempotency key or repeat the completed worker execution.
+		autoRoot := filepath.Join(filepath.Dir(j.Dir), "goal-delivery")
+		if action != "revoke" && state.TaskID != j.ID {
+			if raw, e := readText(autoRoot, "delivery-request.json", 64<<10); e == nil {
+				var prior deliveryRecord
+				if json.Unmarshal([]byte(raw), &prior) != nil || prior.Thread != rec.Thread || prior.TaskID != j.ID || prior.Action != "prepare" || prior.Root != filepath.Join(autoRoot, "package") || prior.RequestID != "hire-"+j.ID || prior.Plonk != a.cfg.Plonk || prior.URL != a.cfg.PlonkURL || prior.TokenFile != a.cfg.PlonkTokenFile {
+					return Job{}, fmt.Errorf("the retained private delivery needs inspection")
+				}
+				record.Root, record.Before, record.RequestID = prior.Root, prior.Before, prior.RequestID
+			}
+		}
 		// Reuse the exact interrupted request/base. Only the server receipt can tell
 		// whether the earlier attempt committed. Any intervening operation ends
 		// this replay chain, so old snapshots cannot undo later revocation.
@@ -263,6 +276,11 @@ func deliveryProcess(recordPath string) int {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
+	return runDelivery(ctx, rec)
+}
+
+func runDelivery(ctx context.Context, rec deliveryRecord) int {
+	var err error
 	state := rec.Before
 	run := func(action string, output any, args ...string) error {
 		argv := []string{action, "-url", rec.URL, "-token-file", rec.TokenFile}

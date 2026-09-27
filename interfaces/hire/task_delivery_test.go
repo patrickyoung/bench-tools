@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -183,6 +185,58 @@ func TestDeliveryPublicExecutableIntegration(t *testing.T) {
 	if st, _ := get(again.URL); st != 200 {
 		t.Fatal(fmt.Sprintf("new link status %d", st))
 	}
+
+	// One admitted goal includes private Plonk delivery without another click.
+	a = goalFixture(t)
+	a.cfg.Plonk = bin
+	a.cfg.PlonkURL = server
+	a.cfg.PlonkTokenFile = tokenFile
+	automatic := taskSubmit(t, a, "", "Finish and privately deliver this note")
+	state := a.deliveryState(automatic.Record.Thread)
+	if automatic.Result.Code != 0 || state.TaskID != automatic.Job.ID || state.VersionID == "" || state.ShareID != "" || len(a.jobs.List()) != 1 {
+		t.Fatalf("goal did not finish private delivery: %+v %+v", automatic.Result, state)
+	}
+	// Simulate a committed publish whose local receipt was lost. Recovery must use
+	// the exact request/base/package and must never rerun the completed worker.
+	wrapper := filepath.Join(t.TempDir(), "plonk")
+	writeFixture(t, wrapper, `#!/usr/bin/python3
+import subprocess,sys
+from pathlib import Path
+result=subprocess.run([`+strconv.Quote(bin)+`]+sys.argv[1:],capture_output=True)
+flag=Path(__file__).with_name('lost-once')
+if result.returncode==0 and sys.argv[1]=='publish' and not flag.exists():
+ flag.write_text('committed');sys.exit(1)
+sys.stdout.buffer.write(result.stdout);sys.stderr.buffer.write(result.stderr);sys.exit(result.returncode)
+`, 0700)
+	a.cfg.Plonk = wrapper
+	pending := taskSubmit(t, a, automatic.Record.Thread, "Finish the second note")
+	if pending.Result.GoalStatus != "delivery_pending" || pending.Result.Code != 2 || goalRounds(t, pending) != 1 {
+		t.Fatalf("delivery failure reran worker: %+v", pending.Result)
+	}
+	raw, err := os.ReadFile(filepath.Join(goalRoot(pending), "goal-delivery/delivery-request.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var retained deliveryRecord
+	if json.Unmarshal(raw, &retained) != nil {
+		t.Fatal("lost original delivery request")
+	}
+	recovered := deliver(pending, "prepare")
+	if recovered.TaskID != pending.Job.ID || recovered.VersionID == state.VersionID || recovered.ShareID != "" {
+		t.Fatal("private delivery recovery failed")
+	}
+	for _, j := range a.jobs.List() {
+		if j.Kind == "delivery" {
+			b, _ := os.ReadFile(filepath.Join(filepath.Dir(j.Dir), "delivery-request.json"))
+			var retry deliveryRecord
+			_ = json.Unmarshal(b, &retry)
+			if retry.Root != retained.Root || retry.Before != retained.Before || retry.RequestID != retained.RequestID {
+				t.Fatal("recovery changed idempotent package or base")
+			}
+			break
+		}
+	}
+
 }
 
 func TestDeliveryConnectionSurvivesWorkingDirectoryChange(t *testing.T) {

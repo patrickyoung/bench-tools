@@ -39,6 +39,7 @@ type taskArtifact struct {
 	Preview    string `json:"-"`
 }
 type taskResult struct {
+	GoalStatus                             string         `json:",omitempty"`
 	Flash                                  *taskFlashTeam `json:"flash,omitempty"`
 	Update                                 taskUpdate     `json:",omitempty"`
 	Message, Question, Title, Expert, Kind string
@@ -171,7 +172,7 @@ func (a *app) taskTurns(thread string) []taskTurn {
 		if len(out) > 0 {
 			last := &out[len(out)-1]
 			last.Stopped = !last.Job.Active() && last.Job.State != "completed"
-			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun {
+			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus != "blocked" && last.Result.GoalStatus != "needs_input" && last.Result.GoalStatus != "delivery_pending" {
 				last.Recovery = "retry"
 				if _, err := a.taskResumeInfo(last.Job, last.Record); err == nil {
 					last.Recovery = "resume"

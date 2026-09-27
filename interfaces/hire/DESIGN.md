@@ -275,9 +275,31 @@ bench-hire task companion through public Agent. The controller validates target
 IDs and bounded materialized inputs; it exports pinned source or copies selected
 local expertise, uses public Hire for missing expertise/team adapters, and runs
 public Agent or the team's documented entry through its narrow bin/task adapter.
-It implements no provider client, delegated action loop, scheduler or automatic
-retry. A single invocation is bounded to 45 minutes; authoring and execution are
-50-turn public tool calls. Signals, separate logs and exact status propagate.
+It implements no provider client, delegated action loop or scheduler. By default
+`-goal-mode` keeps this one foreground job active across confirmed unfinished
+checkpointed preparation and execution. Each public call retains its own turn
+bound; all calls share one 45-minute deadline. A versioned completion review
+compares the current immutable artifacts against the original goal. Exit 0 alone
+is insufficient: concrete local corrections go back to the same worker checkpoint.
+Only exits 0/2 allow execution correction; three identical unfinished observations
+stop a no-progress cycle. Failed, declined, parked, interrupted and unknown outcomes
+are never replayed automatically. Signals, exact outcomes, argv and per-attempt
+receipts are retained. Restart does not resume a job. `-goal-mode=false` retains
+the earlier manual work-conversation behavior; direct tool pages are unchanged.
+
+A team must explicitly support `task-runtime.json` version 1 with `resume:true`
+and `local_only:true` before a continuation. The controller supplies
+`BENCH_TASK_RESUME=1` with the same workspace and corrected prose task. The team
+retains its own checkpoint/receipt contract and reuses accepted unaffected work.
+This capability grants no permissions or host coordinator authority. A reviewer
+response is data, never executable argv. Unsupported team continuations stop
+with a concrete handoff blocker. Missing essential user facts have a distinct
+question state; technical failures and private delivery failures remain distinct.
+
+When Plonk is configured, checked goal outputs are privately delivered within the
+same admitted job. No share is created or advanced. The exact immutable package,
+idempotency key and base version are retained before publication; if its receipt
+is lost, delivery recovery uses that exact request without rerunning the worker.
 
 Input originals stay outside execution write roots; only worker-specific *_INPUT
 bindings to those files are admitted. Execution roots, generated definitions and

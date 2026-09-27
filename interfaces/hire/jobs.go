@@ -251,6 +251,7 @@ func (m *jobManager) Start(kind, title, dir string, argv []string, stdin string)
 	errout := &cappedJobLog{file: stderr, remaining: jobLogLimit}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir, cmd.Stdin, cmd.Stdout, cmd.Stderr = dir, strings.NewReader(stdin), out, errout
+	cmd.Env = append(os.Environ(), "HIRE_UI_JOB_ID="+job.ID)
 	// An independent process group permits bounded shutdown without touching
 	// the interface's own process group. First cancellation only signals Hire,
 	// allowing its existing public cancellation contract to reach Agent.

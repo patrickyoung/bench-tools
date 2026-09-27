@@ -8,7 +8,8 @@
         "workers/bench-hire"
       ],
       "tests": [
-        "workers/bench-hire/tests/test_check.py"
+        "workers/bench-hire/tests/test_check.py",
+        "workers/bench-hire/tests/test_completion.py"
       ],
       "commands": [
         [
@@ -21,9 +22,13 @@
           "-p",
           "test_check.py",
           "-v"
+        ],
+        [
+          "{python}",
+          "workers/bench-hire/tests/test_completion.py"
         ]
       ],
-      "proves": "Public checker accepts all five action types and rejects stale binding, missing/null/duplicate fields, unknown targets, invented members, reserved roles and oversized input. It does not execute proposals or establish diagnosis quality.",
+      "proves": "Public checker accepts all five action types and rejects stale binding, missing/null/duplicate fields, unknown targets, invented members, reserved roles and oversized input. It does not execute proposals or establish diagnosis quality. Task completion version 1 binds the exact request and rejects false completion, unsafe continuation outcomes, malformed statuses and inconsistent correction/question fields. These fixtures do not establish model judgment or output quality.",
       "requires": "Python 3.9+",
       "prerequisites": {}
     },

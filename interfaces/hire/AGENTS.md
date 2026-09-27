@@ -19,7 +19,9 @@ before changing its behavior. It must build from this directory alone with
   Keep job records and controller evidence separate from authoring workspaces.
 - Permit one active public command. Real model builds require `-allow-build`;
   retain default Cage behavior and bounded turns/time. Do not add a provider
-  client, execution scheduler or automatic retries. Explicit worker runs require
+  client or execution scheduler. Work conversations pursue one bounded goal through
+  confirmed checkpoint continuations and checked local corrections; never replay
+  failed, interrupted or unknown outcomes. Explicit worker runs require
   -allow-run and compose the public Agent command; Agent owns check execution.
   Structural verification must never execute generated checks.
 - Retain stdout, stderr and exact exit status. Explicit cancellation must
