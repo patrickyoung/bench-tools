@@ -108,7 +108,11 @@ Before launching a member, persist a started receipt naming its assignment,
 checkpoint and full definition/input bindings. After return, persist the exact
 observed exit and accepted output hashes. A missing or started-only receipt is
 unknown, even if an earlier invocation succeeded. Never overwrite the sole
-record of an uncertain attempt with an older accepted result.
+record of an uncertain attempt with an older accepted result. Before any reuse,
+correction or acceptance decision, validate contiguous attempt history and require
+the latest receipt to agree with its newest record. Missing pointers, gaps or
+contradictory history are uncertainty, not first use; they must not launch members
+or license downstream work. The same validation applies to retained reviews.
 
 Retain explicit checkpoints from the first invocation, the original edit
 baseline and current partial work. Resume only observed 0/2 outcomes with a
@@ -131,7 +135,8 @@ Offline executable fixtures must cover actual adapter behavior with stub public
 member commands: partial continuation, blocked-with-exit-0, correction after a
 passing precheck, changed producer/reviewer bindings, missing capabilities,
 unchanged content with changed prose, stale hashes, unknown/interrupted exits,
-and termination between started and observed receipts. Assert no unsafe replay,
+termination between started and observed receipts, and missing/stale latest
+receipts while numbered attempt history remains. Assert no unsafe replay,
 exact outcomes, current report bindings and preserved partial/editable inputs.
 
 Structural verification does not execute generated checks. Any executable
