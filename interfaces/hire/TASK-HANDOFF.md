@@ -106,7 +106,10 @@ external checks remain explicit blockers; routing a review does not waive them.
 
 Before launching a member, persist a started receipt naming its assignment,
 checkpoint and full definition/input bindings. After return, persist the exact
-observed exit and accepted output hashes. A missing or started-only receipt is
+observed exit and accepted output hashes. Record member and check outcomes
+separately. A normal rejection under the native check contract may permit a
+correction; a broken, interrupted or unknown check does not authorize replay,
+even when the member process itself succeeded. A missing or started-only receipt is
 unknown, even if an earlier invocation succeeded. Never overwrite the sole
 record of an uncertain attempt with an older accepted result. Before any reuse,
 correction or acceptance decision, validate contiguous attempt history and require
