@@ -1,6 +1,6 @@
 {
   "id": "experiment-researcher",
-  "description": "Research selected Bench event logs with Trail and produce one cited, bounded Improve experiment plan.",
+  "description": "Research selected Bench event logs with Trail and produce one cited, bounded Improve plan for a small tool, skill or workflow change.",
   "owner": "patrickyoung",
   "status": "experimental",
   "requires": {

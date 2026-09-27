@@ -58,6 +58,42 @@ independent trials do not create a qualifying Hone recovery by themselves.
 
 ## Establish what failed and what must stay true
 
+### Turn repeated work into a Go tool
+
+Use this improvement workflow, not a new hook in Agent or Hire, when selected
+run history suggests a repeatable operation should become a tool. Read
+`tools/improve/examples/tool-building/README.md` in the selected source. Its Go
+adapter prepares explicitly selected helper source slots in a fresh definition
+copy, invokes public Hire for one proposal, and composes compiled Go trials
+with frozen independent cases. New tools in this workflow are standalone Go
+programs with literal argv or stdin/stdout contracts; use existing commands or
+service connections before proposing another implementation.
+
+Give the experiment researcher selected archives and independent result
+evidence. Ask it to distinguish model work, actual command time, authoring,
+checks and delivery. A recorded failure or expensive repetition motivates a
+hypothesis; it does not authorize a new path or prove tool quality. Report v2
+may select several admitted files for one coherent tool, skill or workflow
+change. Preserve the caller's models, commands, cases, bounds and gate.
+
+Improve v0.1 still cannot add or delete files: prepare a small explicit Go
+module and its integration files before measuring the baseline. Do not insert
+source slots into an installed worker or claim the prepared baseline is an
+unchanged source export. If the hypothesis requires an unadmitted file,
+dependency or connection, prepare a new reviewed experiment instead of
+expanding the running one.
+
+Keep candidate tests separate from the independent quality oracle. Compile
+and execute the actual Go command in fresh trials; retain source and binary
+hashes, selected toolchain, exits and build/test/runtime timings. For claims
+about worker efficiency, also measure fresh complete worker jobs and verify
+the worker actually uses the tool. An executable fixture proves plumbing,
+not that a historical job became faster. Unknown provider costs remain unknown.
+Export supported source for the existing review/promotion path; do not install
+tools, change permissions or enable background improvement automatically.
+
+### Preserve the evaluation boundary
+
 Keep the original source pin, run, candidate, check outputs and independent
 final review. Follow [setup](setup.md) and [library](library.md) to select the
 actual definition. Create a separate authoring copy; keep cases, expected
