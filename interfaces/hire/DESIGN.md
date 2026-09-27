@@ -288,6 +288,16 @@ stays independent. Actions never gain authority from logs, artifacts or source.
 Dependencies, publication, purchases and messages require separately authorized
 work; this first work flow does local deliverables rather than deploying them.
 
+The team adapter receives `BENCH_TASK_FILE` as UTF-8 prose instructions, not
+native team JSON. Named planned inputs are already materialized in its working
+directory, `BENCH_TASK_WORK`; selected `*_INPUT` bindings name their originals.
+That directory is intentionally nonempty and may contain earlier deliverables.
+Adapters translate the named inputs to the team's existing contract and allocate
+fresh nested member work, state and evidence roots as needed. They own final team
+acceptance and copy finished regular files directly to `BENCH_TASK_WORK` for
+collection. Authoring guidance requires an offline executable fixture at this
+boundary; structural verification alone does not establish adapter compatibility.
+
 Each conversation turn uses a fresh workspace and private frozen companion copy.
 Refinement copies earlier bounded deliverables into a new workspace, keeps all
 old versions and supplies recent conversation plus the previously prepared expert.

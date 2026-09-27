@@ -45,6 +45,7 @@ if p.exists():
   question='What date should I use?' if r['message']=='need question' else ''
   target=('previous' if any(c['key']=='previous' for c in r['catalog']) else ('new:team' if 'team' in r['message'] else 'new:worker'))
   reply=dict(request_sha256=h,message='I can help.',question=question,title='A useful document',target='' if question else target,brief='Create the requested document.',inputs=[dict(name='facts.txt',text=r['message'],binding='DOCUMENT_INPUT')])
+  if target=='new:team' or any(c['key']==target and c['kind']=='team' for c in r['catalog']): reply['inputs']=[dict(name='facts.json',text=json.dumps(dict(message=r['message'])),binding='DOCUMENT_INPUT')]
   if r.get('selection_version')==1:
    reviewed=[dict(target=c['key'],fit=('adapt' if target=='adapt:'+c['key'] else 'reuse' if target==c['key'] else 'none'),reason='Fixture capability assessment.') for c in r['catalog'] if not c['key'].startswith('adapt:')]
    roles=[dict(role=k,target='new:worker',responsibility='Prepare '+k) for k in ['writer','reviewer']] if target=='new:team' else []
@@ -64,7 +65,22 @@ mkdir -p expert/bin
 printf 'Instructions\n' > expert/AGENTS.md
 printf '# Guide\nRead facts.txt and write result.md.\n' > expert/README.md
 printf '#!/bin/sh\ntest -s result.md\n' > expert/bin/check
-printf '#!/bin/sh\nprintf "Team result" > "$BENCH_TASK_WORK/result.md"\n' > expert/bin/task
+cat > expert/bin/task <<'ADAPTER'
+#!/usr/bin/python3
+import json,os
+from pathlib import Path
+work=Path(os.environ['BENCH_TASK_WORK']).resolve()
+goal=Path(os.environ['BENCH_TASK_FILE']).resolve()
+assert work==Path.cwd() and goal.parent!=work
+assert 'Create the requested document.' in goal.read_text()
+assert 'facts.json' in goal.read_text()
+data=json.loads((work/'facts.json').read_text())
+assert data==json.loads(Path(os.environ['DOCUMENT_INPUT']).read_text())
+# Real adapters need fresh nested roots, not an empty controller workspace.
+(work/'evidence').mkdir()
+(work/'evidence'/'private.txt').write_text('Runtime evidence is not a deliverable.')
+(work/'result.md').write_text('Team result: '+data['message'])
+ADAPTER
 chmod 700 expert/bin/check expert/bin/task
 if [ -d expert/agents ]; then
  for role in writer reviewer; do
@@ -165,6 +181,14 @@ func TestWorkQuestionTeamAndDuplicate(t *testing.T) {
 	result := a.taskResult(j)
 	if j.State != "completed" || result.Kind != "team" || len(result.Artifacts) != 1 {
 		t.Fatalf("team adapter failed: %+v %s", result, a.jobs.Log(j.ID, "stderr"))
+	}
+	root := filepath.Dir(j.Dir)
+	got, err := os.ReadFile(filepath.Join(root, "deliverables", "result.md"))
+	if err != nil || string(got) != "Team result: Build a team document" {
+		t.Fatalf("team input/output handoff failed: %q %v", got, err)
+	}
+	if result.Artifacts[0].Name != "result.md" {
+		t.Fatal("input or nested runtime evidence leaked into deliverables")
 	}
 }
 func TestTaskPlanValidationAndArtifactBoundary(t *testing.T) {
