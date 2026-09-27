@@ -25,8 +25,13 @@ func goalFixture(t *testing.T) *app {
 	}
 	replacement := ` else:
   code=r['execution']['exit_code']
-  content=(Path(r['artifacts_dir'])/'result.md').read_text()
-  status='complete' if code==0 and content.startswith('Finished:') else 'continue' if code in (0,2) else 'blocked'
+  result_file=Path(r['artifacts_dir'])/'result.md'
+  content=result_file.read_text() if result_file.exists() else ''
+  if 'team_handoff' in r:
+   evidence=Path(r['team_evidence_dir'])
+   for item in r['team_handoff']['files']:
+    assert hashlib.sha256((evidence/item['path']).read_bytes()).hexdigest()==item['sha256']
+  status='complete' if code==0 and (content.startswith('Finished:') or r.get('team_handoff',{}).get('status')=='complete') else 'continue' if code in (0,2) else 'blocked'
   if r['message']=='ask input': status='needs_input'
   reply=dict(request_sha256=h,message='Here is your checked work.' if status=='complete' else 'The result still needs correction.',status=status,next_goal='Finish the requested result; replace the draft with checked final work.' if status=='continue' else '',question='Which of the two supplied venues should I use?' if status=='needs_input' else '')
   Path('response.json').write_text(json.dumps(reply))
@@ -38,6 +43,11 @@ func goalFixture(t *testing.T) *app {
 		t.Fatal("fixture seam changed")
 	}
 	writeFixture(t, a.cfg.Agent, strings.Replace(string(raw), old, replacement, 1), 0700)
+	hire, err := os.ReadFile(a.cfg.Hire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, a.cfg.Hire, string(hire)+"\nprintf '%s\\n' '{\"version\":2,\"resume\":true,\"local_only\":true}' > expert/task-runtime.json\ncat >> expert/bin/task <<'HANDOFF'\n"+goalTeamReportPython+"\nwrite_report('complete', [('result.md','deliverable')])\nHANDOFF\n", 0700)
 	return a
 }
 func appendGoalWorker(t *testing.T, a *app, script string) {
@@ -176,7 +186,7 @@ func TestGoalTeamResumeCapabilityIsExact(t *testing.T) {
 	for _, raw := range []string{`{"version":1,"resume":true,"local_only":true}`, `{"version":1,"resume":true}`, `{"version":2,"resume":true,"local_only":true}`, `{"version":1,"resume":true,"local_only":true,"external":true}`} {
 		dir := t.TempDir()
 		writeFixture(t, filepath.Join(dir, "task-runtime.json"), raw, 0600)
-		if taskTeamResumable(dir) != (raw == `{"version":1,"resume":true,"local_only":true}`) {
+		if taskTeamResumable(dir) != (raw == `{"version":2,"resume":true,"local_only":true}`) {
 			t.Fatal(raw)
 		}
 	}
@@ -186,17 +196,8 @@ func TestGoalTeamContinuationRequiresDeclaredContract(t *testing.T) {
 	for _, supported := range []bool{false, true} {
 		t.Run(strconv.FormatBool(supported), func(t *testing.T) {
 			a := goalFixture(t)
-			raw, _ := os.ReadFile(a.cfg.Hire)
-			marker := ""
-			if supported {
-				marker = "printf '%s\\n' '{\"version\":1,\"resume\":true,\"local_only\":true}' > expert/task-runtime.json\n"
-				selectTeamEnvironmentFixture(t, a)
-			}
-			script := string(raw) + "\n" + marker + `cat > expert/bin/task <<'GOALTEAM'
-#!/usr/bin/python3
-import os
-from pathlib import Path
-state=Path('runtime');state.mkdir(exist_ok=True)
+			selectTeamEnvironmentFixture(t, a)
+			setGoalTeamAdapter(t, a, `state=Path('runtime');state.mkdir(exist_ok=True)
 count=state/'count';n=int(count.read_text())+1 if count.exists() else 1
 count.write_text(str(n))
 if n==1:
@@ -206,19 +207,30 @@ else:
  assert os.environ['BENCH_TASK_RESUME']=='1'
  assert 'Completion review of current work' in Path(os.environ['BENCH_TASK_FILE']).read_text()
  Path('result.md').write_text('Finished: team result')
+write_report('continue' if n==1 else 'complete', [('result.md','deliverable')], next='Finish the draft.' if n==1 else '')
 raise SystemExit(2 if n==1 else 0)
-GOALTEAM
-chmod 700 expert/bin/task
-`
-			writeFixture(t, a.cfg.Hire, script, 0700)
-			turn := taskSubmit(t, a, "", "Finish the team document")
-			if supported {
-				log := a.jobs.Log(turn.Job.ID, "stderr")
-				if turn.Result.Code != 0 || goalRounds(t, turn) != 2 || strings.Count(log, "selected environment team entry") != 2 {
-					t.Fatalf("team continuation failed: %+v\n%s", turn.Result, a.jobs.Log(turn.Job.ID, "stderr"))
+`)
+			if !supported {
+				raw, err := os.ReadFile(a.cfg.Hire)
+				if err != nil {
+					t.Fatal(err)
 				}
-			} else if turn.Result.Code != 2 || goalRounds(t, turn) != 1 || turn.Result.GoalStatus != "blocked" {
-				t.Fatalf("unsupported team replayed: %+v", turn.Result)
+				writeFixture(t, a.cfg.Hire, string(raw)+"\nprintf '%s\\n' '{\"version\":1,\"resume\":true,\"local_only\":true}' > expert/task-runtime.json\n", 0700)
+			}
+			turn := taskSubmit(t, a, "", "Finish the team document")
+			log := a.jobs.Log(turn.Job.ID, "stderr")
+			if supported {
+				if turn.Result.Code != 0 || goalRounds(t, turn) != 2 || strings.Count(log, "selected environment team entry") != 2 {
+					t.Fatalf("team continuation failed: %+v\n%s", turn.Result, log)
+				}
+			} else {
+				attempts, _ := os.ReadDir(filepath.Join(goalRoot(turn), "goal-attempts/prepare"))
+				if turn.Result.Code != 2 || turn.Result.GoalStatus != "blocked" || len(attempts) != 3 || strings.Contains(log, "selected environment team entry") {
+					t.Fatalf("unsupported team executed or preparation was unbounded: %+v\n%s", turn.Result, log)
+				}
+				if _, err := os.Stat(filepath.Join(goalRoot(turn), "goal-attempts/execute")); !os.IsNotExist(err) {
+					t.Fatal("legacy team was executed")
+				}
 			}
 		})
 	}

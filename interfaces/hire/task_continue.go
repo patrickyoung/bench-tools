@@ -34,6 +34,9 @@ func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
 	if j.Kind != "task" || j.Active() || j.ExitCode == nil || !((*j.ExitCode == 2 && j.State == "unfinished") || (*j.ExitCode == 130 && (j.State == "cancelled" || j.State == "failed"))) {
 		return nil, fmt.Errorf("this attempt does not have a confirmed resumable outcome")
 	}
+	if rec.Config.GoalMode && *j.ExitCode == 130 {
+		return nil, fmt.Errorf("interrupted execution requires inspection before fresh work")
+	}
 	root := filepath.Dir(j.Dir)
 	if rec.Resume != nil {
 		root = rec.Resume.Root
@@ -214,6 +217,7 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 	saved := rec.Resume
 	result := saved.Result
 	result.Message, result.Question = "", ""
+	result.GoalStatus, result.StopReason = "", ""
 	result.Artifacts = nil
 	result.Update = taskUpdate{}
 	if saved.Stage == "build" {

@@ -56,7 +56,7 @@ func collectTaskArtifacts(work, dest string, inputs map[string]bool) ([]taskArti
 	total := 0
 	for _, entry := range entries {
 		name := entry.Name()
-		if name == "delivery.json" || name == "hire-status.json" {
+		if name == "delivery.json" || name == "hire-status.json" || name == "task-result.json" {
 			continue
 		}
 		kind := taskTypes[strings.ToLower(filepath.Ext(name))]
@@ -149,4 +149,33 @@ func (a *app) taskDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": item.Name}))
 	w.Header().Set("Cache-Control", "private, no-store")
 	_, _ = w.Write(b)
+}
+
+// Only the current, byte-verified team manifest selects deliverables. Inherited
+// flat files and internal reports must never masquerade as this goal's output.
+func collectHandoffArtifacts(snapshot, dest string, handoff taskHandoff) ([]taskArtifact, error) {
+	out := []taskArtifact{}
+	seen := map[string]bool{}
+	for _, file := range handoff.Files {
+		if file.Kind != "deliverable" {
+			continue
+		}
+		name := filepath.Base(file.Path)
+		kind := taskTypes[strings.ToLower(filepath.Ext(name))]
+		if !validRunFile(name) || seen[name] || kind == "" || name == "task-result.json" || name == "hire-status.json" || (name != "delivery.json" && len(out) >= 32) {
+			return nil, fmt.Errorf("invalid or duplicate declared deliverable %s", name)
+		}
+		seen[name] = true
+		b, err := readText(snapshot, file.Path, taskFileLimit)
+		if err != nil || digestText([]byte(b)) != file.SHA256 {
+			return nil, fmt.Errorf("saved deliverable changed: %s", name)
+		}
+		if err = os.WriteFile(filepath.Join(dest, name), []byte(b), 0600); err != nil {
+			return nil, err
+		}
+		if name != "delivery.json" {
+			out = append(out, taskArtifact{Name: name, Type: kind, Size: int64(len(b))})
+		}
+	}
+	return out, nil
 }

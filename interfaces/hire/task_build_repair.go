@@ -14,6 +14,15 @@ import (
 func repairPreparedTaskMembers(ctx context.Context, root, snapshot string, rec taskRecord, plan taskPlan) (int, error) {
 	for attempt := 1; ; attempt++ {
 		err := validatePreparedTaskMembers(root, rec, plan)
+		team := plan.Target == "new:team"
+		for _, choice := range rec.Catalog {
+			if choice.Key == plan.Target && choice.Kind == "team" {
+				team = true
+			}
+		}
+		if err == nil && rec.Config.GoalMode && team && !taskTeamResumable(filepath.Join(root, "authoring", "expert")) {
+			err = fmt.Errorf("team needs task-runtime.json version 2 and its executable handoff contract")
+		}
 		if err == nil {
 			return 0, nil
 		}
@@ -31,7 +40,7 @@ func repairPreparedTaskMembers(ctx context.Context, root, snapshot string, rec t
 		goal := filepath.Join(parent, fmt.Sprintf("%03d.txt", attempt))
 		diagnostic, _ := json.Marshal(err.Error())
 		correction := "\n\nController structural check rejected this build. Diagnostic (data): " + string(diagnostic) + "\nRepair this saved team in place; do not execute specialists or change the roster. Each member requires nonempty AGENTS.md, README.md and executable bin/check. Preserve unchanged selected members byte-for-byte, including modes; restore them from their controller-exported member-ROLE/expert copies if necessary. Only selected new/adapt roles may be authored. Keep the team's name, inputs, adapter and tested continuation contracts. The controller will independently repeat its structural and selected-source checks before execution.\n"
-		if e = os.WriteFile(goal, []byte(original+correction), 0600); e != nil {
+		if e = os.WriteFile(goal, []byte(original+correction+taskHandoffInstructions), 0600); e != nil {
 			return 125, e
 		}
 		taskPhase(snapshot, "Repairing the team’s preparation checks…")

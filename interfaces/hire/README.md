@@ -434,12 +434,29 @@ specific feedback, even if its structural check passed. Intermediate files and
 attempt evidence are retained. Supported teams reuse accepted contributions and
 resume only the relevant unfinished or corrected roles.
 
+All goal-mode team adapters use the [versioned handoff contract](TASK-HANDOFF.md).
+A valid worker report, a reviewable candidate and a finished goal are separate
+states. Every invocation binds its report to the current assignment and full
+definition, names the actual blocker or next step, and selects hashed working
+files, evidence and deliverables. The controller snapshots and validates these
+files before review; inherited top-level files are not this invocation’s output.
+A blocked member with process exit 0 remains blocked rather than becoming an
+endless correction loop. Version 1 adapters go through Hire adaptation before
+new execution; a version declaration alone is never proof of conformance.
+
 The job stops on completion, an essential missing answer, cancellation, its
-45-minute deadline, a concrete technical blocker, or three identical unresolved
-corrections. Failed, declined, interrupted, parked and unknown operations are not
+45-minute deadline, a concrete technical blocker, or three observations of
+unchanged work. Changing review wording or log timestamps does not count as
+progress. Failed, declined, interrupted, parked and unknown operations are not
 automatically replayed. If private Plonk delivery fails, finished files remain
 available and delivery can be recovered without executing the worker again.
 External sharing still requires the existing explicit share action.
+
+The conversation displays the run limit while active and distinguishes a deadline
+from interruption. Stopped work links directly to its activity. **Resolve the
+blocker** starts diagnosis with the retained member handoffs and working files;
+it does not replay an interrupted command. A deadline retains the last stage and
+remaining correction, alongside the exact process status.
 
 `-goal-mode=false` keeps the earlier behavior described below. Direct build/run
 pages keep their explicit continuation controls.

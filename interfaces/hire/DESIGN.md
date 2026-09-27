@@ -281,7 +281,7 @@ checkpointed preparation and execution. Each public call retains its own turn
 bound; all calls share one 45-minute deadline. A versioned completion review
 compares the current immutable artifacts against the original goal. Exit 0 alone
 is insufficient: concrete local corrections go back to the same worker checkpoint.
-Only exits 0/2 allow execution correction; three identical unfinished observations
+Only exits 0/2 allow execution correction; three observations of unchanged working content
 stop a no-progress cycle. Failed, declined, parked, interrupted and unknown outcomes
 are never replayed automatically. Signals, exact outcomes, argv and per-attempt
 receipts are retained. Restart does not resume a job. `-goal-mode=false` retains
@@ -290,10 +290,24 @@ the earlier manual work-conversation behavior; direct tool pages are unchanged.
 Preparation failures also retain a concrete goal blocker, including a failed
 team confinement preflight before authoring. They must not fall back to a generic
 unfinished-work instruction or invite repetition of the same failed setup.
-Cancellation during preparation retains the interrupted state instead.
+Cancellation during preparation retains the interrupted state instead. The
+controller also retains timeout separately from interruption and the exact child
+exit. Stopped conversations expose the last phase, retained correction and
+activity link. Fresh blocker diagnosis receives a controller-selected read-only
+runtime root; it is not permission to replay interrupted or unknown outcomes.
 
-A team must explicitly support `task-runtime.json` version 1 with `resume:true`
-and `local_only:true` before a continuation. The controller supplies
+A team must explicitly support `task-runtime.json` version 2 with `resume:true`
+and `local_only:true` before goal execution. Legacy adapters are adapted through
+Hire while preserving selected members. Each invocation must satisfy the
+[task handoff contract](TASK-HANDOFF.md): exact caller identity/goal/definition
+bindings, a state distinct from process status, concrete next work or blocker,
+and bounded hashed manifests for working files, evidence and deliverables.
+The controller copies these into a new immutable snapshot before presentation;
+the companion never has to infer private member state from old flat outputs.
+Missing, stale or inconsistent reports stop with a protocol diagnostic and
+never authorize a retry. Only current declared deliverables enter delivery.
+Progress hashes working content rather than review prose or log churn.
+The controller rechecks the full definition before every continuation. The controller supplies
 `BENCH_TASK_RESUME=1` with the same workspace and corrected prose task. The team
 retains its own checkpoint/receipt contract and reuses accepted unaffected work.
 This capability grants no permissions or host coordinator authority. A reviewer

@@ -24,6 +24,7 @@ type taskChoice struct {
 	NeedsBuild  bool              `json:"needs_build"`
 }
 type taskRecord struct {
+	RecoveryRoot                                           string           `json:",omitempty"`
 	Research                                               bool             `json:",omitempty"`
 	Attachments                                            []taskAttachment `json:",omitempty"`
 	Steering                                               bool             `json:",omitempty"`
@@ -39,6 +40,7 @@ type taskArtifact struct {
 	Preview    string `json:"-"`
 }
 type taskResult struct {
+	StopReason                             string         `json:",omitempty"`
 	GoalStatus                             string         `json:",omitempty"`
 	Flash                                  *taskFlashTeam `json:"flash,omitempty"`
 	Update                                 taskUpdate     `json:",omitempty"`
@@ -139,6 +141,14 @@ func (a *app) taskTurns(thread string) []taskTurn {
 		turn.Messages, _ = readTaskMessages(filepath.Dir(j.Dir))
 		turn.Deferred = taskSteeringDeferred(j, rec)
 		turn.Update = a.taskUpdate(j, rec, turn.Result)
+		if !j.Active() {
+			if turn.Update.Blocked == turn.Result.Message {
+				turn.Update.Blocked = ""
+			}
+			if turn.Update.Done == turn.Result.Message {
+				turn.Update.Done = ""
+			}
+		}
 		if thread != "" {
 			turn.Specialist = a.taskSpecialist(j, rec, turn.Result)
 		}
@@ -171,12 +181,15 @@ func (a *app) taskTurns(thread string) []taskTurn {
 		}
 		if len(out) > 0 {
 			last := &out[len(out)-1]
-			last.Stopped = !last.Job.Active() && last.Job.State != "completed"
+			last.Stopped = !last.Job.Active() && (last.Job.State != "completed" || (last.Result.GoalStatus != "" && last.Result.GoalStatus != "complete"))
 			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus != "blocked" && last.Result.GoalStatus != "needs_input" && last.Result.GoalStatus != "delivery_pending" {
 				last.Recovery = "retry"
 				if _, err := a.taskResumeInfo(last.Job, last.Record); err == nil {
 					last.Recovery = "resume"
 				}
+			}
+			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus == "blocked" {
+				last.Recovery = "diagnose"
 			}
 			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus == "blocked" && last.Result.Kind == "team" && !last.Result.Prepared {
 				if saved, err := a.taskResumeInfo(last.Job, last.Record); err == nil && saved.Stage == "build" {
@@ -296,6 +309,13 @@ func (a *app) taskSend(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rec := taskRecord{Research: r.PostForm.Get("research") == "yes", Steering: true, Thread: thread, Message: message, Focus: r.PostForm.Get("focus"), Model: a.cfg.Model, Now: time.Now().Format(time.RFC3339), Revision: a.cat.Revision, Config: a.cfg, Catalog: a.taskChoices(), History: []assistantMessage{}}
+		if len(turns) > 0 && turns[len(turns)-1].Stopped {
+			last := turns[len(turns)-1]
+			rec.RecoveryRoot = filepath.Dir(last.Job.Dir)
+			if last.Record.Resume != nil {
+				rec.RecoveryRoot = last.Record.Resume.Root
+			}
+		}
 		for _, t := range turns {
 			if t.Job.Active() {
 				return Job{}, fmt.Errorf("this conversation is still working")
