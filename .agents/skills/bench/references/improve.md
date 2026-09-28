@@ -92,6 +92,17 @@ not that a historical job became faster. Unknown provider costs remain unknown.
 Export supported source for the existing review/promotion path; do not install
 tools, change permissions or enable background improvement automatically.
 
+When the requested outcome is a usable worker tool, finish its packaging and
+fresh worker evaluation through Hire's `shipping-tools` procedure. Keep the
+Go source/tests, matching Brief skill and build recipe with the worker source;
+put the compiled command in the installed definition's `tools/`. Agent/Ply
+advertise that directory and Brief supplies discovery/usage guidance. Predeclare
+the skill and its `AGENTS.md` routing before the experiment when those files
+must be tested; `-integration` can select an admitted existing `SKILL.md`.
+A successful direct CLI study is evidence for packaging, not completion of the
+requested integration. Do not claim adoption until a fresh Agent job actually
+uses the tool and its output passes an independent check.
+
 ### Preserve the evaluation boundary
 
 Keep the original source pin, run, candidate, check outputs and independent

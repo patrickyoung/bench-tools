@@ -93,6 +93,17 @@ a narrow capability demonstration. It does not prove that a worker adopted the
 integration instructions, that the tool saves money, or that an arbitrary
 deployment is safe. Callers may select a different frozen judge before starting.
 
+To finish a requested worker integration, follow
+[Hire's packaging contract](../../../hire/README.md#ship-tools-with-their-worker)
+after reviewing the supported source. Ship the Go module/tests, a matching
+Brief skill and build recipe with the definition; put the compiled command in
+the installed copy's `tools/NAME`. Predeclare the skill and its AGENTS routing
+before the baseline when testing that guidance; `-integration` can name the
+existing `skills/NAME/SKILL.md` instead of AGENTS.md. The proposer cannot invent
+unadmitted paths. Validate actual skill discovery, executable invocation and
+independent job output in a fresh Agent workspace. Keep that adoption evidence
+separate from this adapter's narrower direct-CLI verdict.
+
 Offline unit checks: `go test ./examples/tool-building`. The opt-in monorepo
 integration test also requires Python 3.9+, the experiment-researcher source,
 and independently built Improve, Record, Ask, Cage, Trail, Hire, Agent and Brief

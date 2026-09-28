@@ -32,6 +32,12 @@ explicit artifact handoffs, and independent acceptance checks. The team is the
 build artifact; Hire does not become its runtime manager. A single expert or
 ordinary program remains appropriate when delegation adds no useful capability.
 
+When a requested worker needs a new deterministic executable, use the
+`shipping-tools` skill to package an independently usable Go tool and
+teach that worker how to discover and invoke it. This is a build-time
+packaging procedure, not permission to run a worker task or install
+software during a worker run.
+
 For requests to improve a run, skill or checker, use `improving-checks`. It
 keeps focused changes in a separate authoring copy, tests them against unchanged
 independent criteria, and returns numbered exact proposals with evidence and
@@ -55,8 +61,14 @@ tradeoffs for the caller's requested acceptance workflow.
   `PLAN.md` is strategy, not authority. Do not invent learned facts.
 - Put useful procedures in `skills/NAME/SKILL.md` using Brief's existing skill
   format. Brief owns parsing and selection. Do not add a second skill loader.
-- Put only reviewed executable tools in `tools/`. Use admitted MCP programs
-  through the existing MCP edge when needed. Do not embed MCP clients here.
+- Put only reviewed admitted executable programs in `tools/`, including
+  existing scripts and MCP wrappers. Newly authored tools under the
+  `shipping-tools` procedure are compiled Go executables with independent
+  `src/NAME/` modules; do not require unrelated existing programs to be
+  recompiled in Go. Install new tools into a per-host runtime copy before
+  Agent runs, never lazily into a read-only definition. Use admitted MCP
+  programs through the existing MCP edge when needed. Do not embed MCP
+  clients here.
 - Optional `agents/NAME/` contains separate expert definitions. Children have
   their own context and sessions and receive only explicit task/input. Ordinary
   recursion uses Agent under an explicitly selected host boundary. Do not
