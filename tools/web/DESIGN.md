@@ -33,6 +33,12 @@ within the existing cleanup deadline. A close acknowledgement alone is not
 proof that the tab has disappeared. A timeout or disconnect is diagnosed on
 stderr without changing the command's original outcome.
 
+Tab creation retains its returned target ID before page initialization, even
+when cancellation arrives while the creation reply is in flight. That reply
+remains bounded by the setup deadline. Browser events stay connected through
+cleanup after page operations are canceled; a partially initialized owned tab
+is closed by its exact ID, never by inspecting or closing unrelated targets.
+
 Native mode uses Rod's NewUserMode argument preset with an explicit installed
 binary, user data directory and random loopback debugging port. Web owns the
 process it launches and closes it, but never deletes the selected profile.

@@ -421,18 +421,26 @@ func TestBrowser(t *testing.T) {
 			c.Wait()
 			t.Fatal("no plan tab", output.String())
 		}
-		c.Process.Signal(syscall.SIGTERM)
+		if err := c.Process.Signal(syscall.SIGTERM); err != nil {
+			c.Process.Kill()
+			c.Wait()
+			t.Fatal("signal failed", err)
+		}
 		done := make(chan error, 1)
 		go func() { done <- c.Wait() }()
 		select {
-		case <-done:
+		case err := <-done:
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+				t.Fatalf("signal outcome: %v; stderr: %s", err, output.String())
+			}
 		case <-time.After(5 * time.Second):
 			c.Process.Kill()
 			<-done
 			t.Fatal("signal cleanup hung")
 		}
 		if count() != baseline {
-			t.Fatal("signal leaked tab")
+			t.Fatal("signal leaked tab", output.String())
 		}
 	})
 	got, e := pageString(s.page, `() => document.querySelector('#result').innerText`)
