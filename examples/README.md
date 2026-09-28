@@ -12,6 +12,7 @@ through their public process interfaces.
 | [Evidence answer](evidence-answer/README.md) | Context + Ask + Cite | An answer checked against saved citation identities |
 | [Signup audit](signup-audit/README.md) | Tend | An offline report and a durable record of its execution |
 | [Page team](page-team/README.md) | Agent + existing Bench Manage + Tend + Weave; MCP/A2A edges | Experimental creative team, checked artifact handoffs and a single HTML result |
+| [Standing team processes](team-process/README.md) | Existing team commands + Tend | Versioned processes, concrete commitments, bounded calendars, milestones and separate acceptance/timeliness views |
 | [Event browser](event-browser/README.md) | Ask + Record | One-file live multi-agent timeline, stream inspector and offline HTML replay |
 | [Improve router](../tools/improve/examples/router/README.md) | Improve + Hire + Agent + Record | One bounded experiment, fresh paired evaluation and an exact supported proposal |
 | [Omnigent deployment](omnigent/README.md) | Omnigent + MCP + Docker + existing worker/team commands | Local or SSH-hosted deployment; optional authenticated clients, sessions and a Tend queue |

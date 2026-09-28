@@ -1,0 +1,138 @@
+{
+  "schema": "bench.team-process/v1",
+  "owner_role": "manager",
+  "verification": [
+    "bin/check-process",
+    "{run}"
+  ],
+  "escalation": "Report unmet milestones, overdue work, missing input, rejected review and unknown execution to the named commitment owner. Preserve evidence and the original promise. The owner selects continuation, revised scope or an explicitly superseding commitment; no automatic retry, waiver or external message.",
+  "agreements": [
+    {
+      "requirement": "Use the existing entry command and its checked handoffs; accepted work must satisfy its original completion gate.",
+      "enforcement": "entry"
+    },
+    {
+      "requirement": "Deliver the exact artifacts accepted by the team, with a successful final delivery check.",
+      "enforcement": "verification"
+    },
+    {
+      "requirement": "A named commitment owner reviews blockers and due dates each working day; dates do not weaken acceptance.",
+      "enforcement": "guidance"
+    },
+    {
+      "requirement": "Use fresh, explicitly selected inputs for each occurrence. Preserve prior commitments and unknown outcomes.",
+      "enforcement": "guidance"
+    }
+  ],
+  "id": "vendor-evaluation",
+  "team": "vendor-comparison-team",
+  "purpose": "Produce a checked technical comparison with business framing, statistical evidence and independent decision review.",
+  "inputs": [
+    "job"
+  ],
+  "entry": {
+    "argv": [
+      "bin/compare-team",
+      "{input.job}",
+      "{run}"
+    ],
+    "stdin": null,
+    "environment": {},
+    "continuation": "new-run"
+  },
+  "stages": [
+    {
+      "id": "frame",
+      "role": "manager",
+      "needs": [],
+      "outcome": "Frame the business decision and preserve supplied criteria and gates.",
+      "evidence": [
+        "result/intake.json"
+      ]
+    },
+    {
+      "id": "analyze",
+      "role": "analyst",
+      "needs": [
+        "frame"
+      ],
+      "outcome": "Check calculations and retain design limitations.",
+      "evidence": [
+        "result/statistics.json",
+        "result/statistical-plan.json"
+      ]
+    },
+    {
+      "id": "compare",
+      "role": "comparison",
+      "needs": [
+        "analyze"
+      ],
+      "outcome": "Apply anchored scoring to bound evidence.",
+      "evidence": [
+        "result/matrix.json",
+        "result/analysis.json"
+      ]
+    },
+    {
+      "id": "synthesize",
+      "role": "manager",
+      "needs": [
+        "compare"
+      ],
+      "outcome": "Explain the checked recommendation without changing scores or confidence.",
+      "evidence": [
+        "result/decision-brief.json"
+      ]
+    },
+    {
+      "id": "review",
+      "role": "reviewer",
+      "needs": [
+        "synthesize"
+      ],
+      "outcome": "Independent review explicitly says proceed; decision support grants no purchase authority.",
+      "evidence": [
+        "result/review.json",
+        "result/manifest.json"
+      ]
+    }
+  ],
+  "artifacts": [
+    "status.json",
+    "result/analysis.json",
+    "result/matrix.json",
+    "result/matrix.csv",
+    "result/evidence.md",
+    "result/intake.md",
+    "result/intake.json",
+    "result/review.md",
+    "result/review.json",
+    "result/statistics.json",
+    "result/statistical-plan.json",
+    "result/statistics.md",
+    "result/decision-brief.md",
+    "result/decision-brief.json",
+    "result/report.md",
+    "result/manifest.json"
+  ],
+  "configuration": {
+    "COMPARISON_AGENT": "program",
+    "POLARS_PYTHON": "program",
+    "AGENT_ASK": "program",
+    "ASK_MODEL": "text",
+    "COMPARISON_TURNS": "text",
+    "COMPARISON_EFFORT": "text",
+    "COMPARISON_TIMEOUT": "text",
+    "ASK": "program",
+    "PLY": "program",
+    "MAY": "program",
+    "CAGE": "program",
+    "BRIEF": "program",
+    "RECORD": "program"
+  },
+  "inspection": [
+    "bin/inspect-process",
+    "{run}"
+  ]
+}

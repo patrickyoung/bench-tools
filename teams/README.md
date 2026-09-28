@@ -8,6 +8,12 @@ A worker defines one role. A team selects workers and supplies their existing
 execution wiring. Both are versioned in this monorepo; a run supplies a new
 brief, workspace and selected inputs.
 
+For standing teams, the [team process application](../examples/team-process/README.md)
+adds explicit commitments, owners, business due dates, milestones and bounded
+daily/weekly calendars around existing entry commands. Page team and vendor
+comparison export reusable `process.json` and `PROCESS.md` contracts. Execution,
+acceptance and timeliness remain separate; no new workflow runtime is required.
+
 Use `make check-workers` for worker and team evaluation suites. The
 [evaluation runbook](../docs/WORKER-EVALUATIONS.md) maps coverage, explains
 prerequisites and provides focused and optional native/browser commands.

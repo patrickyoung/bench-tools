@@ -7,7 +7,7 @@ PREFIX ?= $(HOME)/.local
 EVAL_PYTHON ?= $(PYTHON)
 EVAL_ARGS ?=
 
-.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers build-interfaces check-interfaces install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers check-team-process build-interfaces check-interfaces install uninstall list
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -18,6 +18,7 @@ help:
 	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
 	@echo 'make check-worker-portability Verify worker skill exports and original checks'
 	@echo 'make check-workers         Run worker/team offline evaluations (see docs/WORKER-EVALUATIONS.md)'
+	@echo 'make check-team-process    Check standing-team commitments, calendars and real Tend boundaries'
 	@echo 'make build-interfaces      Build the independent Hire browser interface'
 	@echo 'make check-interfaces      Check Hire UI offline (tests, race, vet)'
 	@echo 'make install               Build and install under ~/.local'
@@ -35,7 +36,7 @@ build:
 test:
 	@$(PYTHON) scripts/check --quick $(TOOLS)
 
-check: check-docs check-worker-portability check-interfaces
+check: check-docs check-worker-portability check-interfaces check-team-process
 	@$(PYTHON) -m unittest discover -s scripts/tests -v
 	@$(PYTHON) scripts/check $(TOOLS)
 
@@ -56,6 +57,10 @@ check-worker-portability:
 
 check-workers:
 	@$(PYTHON) scripts/check-worker-evaluations.py --python "$(EVAL_PYTHON)" $(EVAL_ARGS)
+
+check-team-process:
+	@$(PYTHON) scripts/build tend
+	@$(MAKE) -C examples/team-process check PYTHON="$(PYTHON)" TEND="$(CURDIR)/.build/bin/tend"
 
 build-interfaces:
 	@$(MAKE) -C interfaces/hire build

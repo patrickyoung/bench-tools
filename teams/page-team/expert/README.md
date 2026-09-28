@@ -2,6 +2,10 @@
 
 Build a self-contained page from a new brief, using only the needed roles.
 
+For standing-team use, [PROCESS.md](PROCESS.md) and `process.json` describe this
+same workflow, its working agreement and delivery check. Concrete commitments
+and calendars stay outside the exported definition.
+
 Agent runs the manager and specialists in separate contexts. Existing Bench
 Manage, Tend, and Weave own planning admission, execution, dependencies, and
 retained outcomes. The adapters map packets and checked files; they are not a

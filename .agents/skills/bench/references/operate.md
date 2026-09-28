@@ -45,6 +45,30 @@ the same immutable assembly and admitted brief; the page team resumes with
 empty stdin. Inspect its documented status and retained evidence. A team roster
 alone supplies neither scheduling nor remote endpoint resolution.
 
+## Standing teams, processes and daily commitments
+
+When the job includes standard processes, owners, due dates, milestones or
+recurring work, read `examples/team-process/README.md` in the selected source.
+The experimental application composes the existing team entry command with
+Tend; it does not replace Manage, Weave, Agent or the team's checked handoffs.
+Page team and vendor comparison export their process and operating agreement.
+
+Keep reusable roles, stages, handoff expectations and completion gates in the
+team's approved `process.json` and `PROCESS.md`. Supply concrete commitments,
+calendars, current inputs and milestones externally. Put actual task expectations
+in the team's brief/job, with an additional reviewed check when needed.
+
+Use the finite calendar planner with an explicit evaluation time and missed-tick
+policy; inspect proposals and bind selected current inputs before admission.
+The host supplies recurring invocation. Stable occurrence IDs deduplicate
+admission within the selected standing-team root; a new root is a new authority.
+Never evade unknown execution with a new ID or namespace. Report execution,
+acceptance, timeliness and milestone attestations separately. Escalation output
+is an unsent proposal, not permission to contact anyone.
+
+Run `make check-team-process` for offline public-command verification. A green
+composition check does not establish model quality or successful business outcomes.
+
 ## Optionally expose the same command through A2A
 
 Read `tools/a2a/README.md` in the source checkout for exact serving/calling
