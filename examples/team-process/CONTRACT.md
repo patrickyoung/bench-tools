@@ -92,6 +92,79 @@ changing calendar bytes changes the binding, not the ID. Due equality is on time
 The planner's proposed process hash covers canonical process JSON; actual
 admission additionally verifies the complete exported team lock and source.
 
+## Registered calendars and explicit dispositions
+
+`register-calendar EXPORT REGISTRATION ROOT` accepts
+`bench.calendar-registration/v1`: required `schema`, `namespace`, `owner`,
+`calendar` (selected file), `effective_from` (ISO local date), `reason` and
+`check_every_seconds` (integer 30–604800). Optional `previous` selects the latest
+revision hash for updates. The export must pass its original team lock. The
+record retains parsed calendar/process snapshots and team/commit/lock identity.
+Identical last payloads are idempotent; conflicting concurrent changes fail.
+
+The initial effective date equals start_date. Later effective dates are within
+their revision's calendar, strictly after today in that timezone and strictly
+after the preceding revision's effective date. Timezone and team identity stay
+fixed. Every date before the next effective date belongs to its original
+revision. All expected occurrences are retained independently of `missed`.
+Registration is limited to 100 calendars per root and 100 revisions per history;
+the calendar view is bounded to 20,000 expected occurrences and 1,000 commitments.
+Views flag upcoming horizon expiry (14 days), expiry and uncovered renewal gaps.
+
+`record-disposition ROOT REQUEST` accepts `bench.calendar-disposition/v1`:
+required `schema`, `namespace`, `calendar_id`, occurrence `id`,
+`calendar_revision`, `kind` (`skipped`, `cancelled`, `reopened`), `by`, `reason`;
+optional `previous` selects the last disposition hash. The selected expected
+occurrence/revision must exist. Skipping admitted work is refused. Reopening
+requires a preceding non-reopened decision. Cancellation is a recorded business
+decision only: conflicting execution stays visible and Tend retains authority.
+Changed-calendar dispositions remain conflicts instead of becoming silent waivers.
+
+Records live under `ROOT/calendars/IDENTITY/NNNNNN.json` and
+`ROOT/dispositions/IDENTITY/NNNNNN.json`. Identity hashes namespace and calendar
+or occurrence ID. Each record has `schema` (`bench.calendar-revision/v1` or
+`bench.disposition-revision/v1`), `sequence`, `previous` (previous record SHA-256,
+or null), actual `recorded_at` and `payload`. The returned `revision` is the
+record hash, not another stored field. Gaps, malformed records and chain errors
+are visible failures. No history deletion, automatic retention or authority
+authentication is implied. Caller-owned permissions/backups protect these files.
+
+## Calendar views and monitoring
+
+`calendar ROOT --as-of TIME [--milestones FILE] [--format json|html|ics]` is
+read-only. `bench.team-calendar-view/v1` contains `as_of`, actual `observed_at`,
+`input_sha256`, `monitor`, `calendars`, `obligations`, `attention`, `errors`,
+and `notifications_sent` (false). It includes expected work, all admissions and
+retained decisions, including those outside the current registered schedule.
+Missing obligations never look complete. Source/date mismatches, failed/waiting
+execution, unknown effects, stale evidence and overdue milestones remain visible.
+Work carries separate `state`, `execution`, `acceptance` and `timeliness` fields.
+Milestone input follows the existing board mapping. As-of projects deadlines
+against currently observed facts, not historical execution reconstruction.
+
+HTML is standalone, escaped, searchable and grouped into calendar months in
+each event's local timezone. Its freshness banner expires client-side without
+network requests. ICS emits escaped/folded VEVENTs for obligations and milestones
+using distinct typed identities and UTC instants. Both outputs are snapshots;
+neither is a subscribed calendar, authenticated portal or live synchronization.
+
+`reconcile ROOT [--milestones FILE]` inspects actual current time and writes only
+`ROOT/last-reconciliation.json` (`bench.reconciliation/v1`): `completed_at`,
+`input_sha256`, obligation count and attention count, plus schema. Tracking
+digests must agree before/after inspection and under the root's writer lock
+before checkpoint replacement. Unverified records fail without refreshing the
+last successful check. Missing/late work remains actionable but does not mean
+the check itself failed. A current monitor does not mean all work is complete.
+
+Freshness uses actual observation time and the minimum check interval currently
+effective across calendars. Its state is `never-reconciled`, `current`, `stale`,
+`changed` or `unverified`; exact equality with next-check time is still current.
+Future revisions cannot relax today's cadence. Input digest covers registration
+and disposition histories and admitted commitment/binding bytes; public Tend
+and artifact observations are read on each invocation. The digest does not make
+execution static between checks. The host must invoke reconciliation and publish
+views periodically; a separate external observer must detect a stopped host.
+
 ## Authority and recorded evidence
 
 One standing-team root owns immutable admissions. Its `tend/` directory belongs

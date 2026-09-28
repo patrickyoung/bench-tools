@@ -12,6 +12,9 @@ tool or an interpreter for team stages. Read DESIGN.md before editing.
   Runtime data stays in explicitly selected directories outside source.
 - Calendar expansion and inspection are finite, read-only and use explicit
   evaluation time. Recurrence proposes occurrences; it never submits them.
+  Registered calendar history and explicit dispositions are separate writes.
+  Reconciliation records a successful actual-time observation only after a
+  consistent read. Missing work must remain visible regardless of catch-up policy.
 - Keep configuration values and credential names separate. Never retain secret
   environment values. A caller supplies execution authority and isolation.
 - Run unit tests and real Tend integration tests. Label deterministic team

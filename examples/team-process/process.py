@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Bind standing-team commitments to existing team commands and Tend."""
 import argparse
+import calendar as month_calendar
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta, timezone
 import fcntl
 import hashlib
+import html
 import json
 import os
 from pathlib import Path
@@ -16,7 +18,7 @@ import sys
 import tempfile
 from zoneinfo import ZoneInfo
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 MAX_JSON = 2 * 1024 * 1024
 MAX_FILE = 64 * 1024 * 1024
 UTC = timezone.utc
@@ -234,7 +236,7 @@ def local_instant(day, clock, zone):
     return next(iter(options))
 
 
-def plan(definition, calendar, as_of):
+def occurrences(definition, calendar):
     fields(calendar, ['schema', 'id', 'timezone', 'start_date', 'end_date', 'weekdays',
                       'excluded_dates', 'start_time', 'due_time', 'due_day_offset', 'missed'])
     require(calendar['schema'] == 'bench.team-calendar/v1', 'unsupported calendar schema')
@@ -250,7 +252,6 @@ def plan(definition, calendar, as_of):
     require(type(calendar['due_day_offset']) is int and 0 <= calendar['due_day_offset'] <= 30,
             'due_day_offset must be 0..30')
     require(calendar['missed'] in ('all', 'latest', 'skip'), 'invalid missed-occurrence policy')
-    evaluated = instant(as_of)
     result = []
     for offset in range((end - start).days + 1):
         day = start + timedelta(days=offset)
@@ -259,16 +260,20 @@ def plan(definition, calendar, as_of):
         begin = local_instant(day, calendar['start_time'], zone)
         due = local_instant(day + timedelta(days=calendar['due_day_offset']), calendar['due_time'], zone)
         require(begin <= due, 'due time precedes scheduled start')
-        if begin > evaluated:
-            continue
-        late = evaluated > due
-        if calendar['missed'] == 'skip' and late:
-            continue
         result.append({'id': calendar['id'] + '/' + day.isoformat(), 'not_before': stamp(begin),
-                       'due_at': stamp(due), 'timezone': calendar['timezone'], 'overdue': late,
+                       'due_at': stamp(due), 'timezone': calendar['timezone'],
                        'process_sha256': sha(encode(definition)),
                        'occurrence': {'schedule_id': calendar['id'], 'date': day.isoformat(),
                                       'calendar_sha256': sha(encode(calendar))}})
+    return result
+
+
+def plan(definition, calendar, as_of):
+    evaluated = instant(as_of)
+    result = [{**item, 'overdue': evaluated > instant(item['due_at'])}
+              for item in occurrences(definition, calendar) if instant(item['not_before']) <= evaluated]
+    if calendar['missed'] == 'skip':
+        result = [item for item in result if not item['overdue']]
     return result[-1:] if calendar['missed'] == 'latest' else result
 
 
@@ -367,10 +372,21 @@ def syncdir(path):
         os.close(fd)
 
 
+def durable_mkdir(path):
+    path = physical(path)
+    missing = []
+    parent = path
+    while not parent.exists():
+        missing.append(parent); parent = parent.parent
+    path.mkdir(parents=True, exist_ok=True)
+    for created in reversed(missing):
+        syncdir(created); syncdir(created.parent)
+
+
 @contextmanager
 def lock(root):
     root = physical(root)
-    root.mkdir(parents=True, exist_ok=True)
+    durable_mkdir(root)
     target = root / '.admission.lock'
     physical(target)
     with target.open('a+b') as stream:
@@ -722,6 +738,569 @@ def status(instance, as_of, milestones=None):
                 'escalation':{'owner':request.get('owner'), 'reasons':['evidence-invalid'], 'sent':False}}
 
 
+def tracking_key(namespace, identifier):
+    return sha(encode([ident(namespace), ident(identifier)]))[:48]
+
+
+def runtime_root(root, exported=None):
+    root = physical(root)
+    for source in [Path(__file__).resolve().parent] + ([physical(exported)] if exported else []):
+        require(root != source and source not in root.parents, 'tracking data must stay outside source')
+    return root
+
+
+def history(folder, schema):
+    folder = physical(folder)
+    if not folder.exists():
+        return []
+    paths = sorted(folder.glob('*.json'))
+    require(len(paths) <= 100, 'history exceeds 100 revisions')
+    result, previous = [], None
+    for sequence, path in enumerate(paths, 1):
+        require(path.name == '%06d.json' % sequence, 'history sequence is incomplete')
+        raw = read(path, MAX_JSON)
+        item = decode(raw)
+        fields(item, ['schema', 'sequence', 'previous', 'recorded_at', 'payload'])
+        require(item['schema'] == schema and item['sequence'] == sequence and item['previous'] == previous,
+                'history chain is invalid')
+        instant(item['recorded_at'])
+        previous = sha(raw)
+        result.append({**item, 'revision': previous})
+    return result
+
+
+def replace_record(path, value):
+    path = physical(path)
+    raw = encode(value)
+    require(len(raw) <= MAX_JSON, 'record exceeds 2 MiB')
+    fd, temporary = tempfile.mkstemp(prefix='.record-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+        os.replace(temporary, path); syncdir(path.parent)
+    finally:
+        if os.path.exists(temporary): os.unlink(temporary)
+
+
+def append_history(folder, schema, payload, previous):
+    old = history(folder, schema)
+    if old and old[-1]['payload'] == payload:
+        return old[-1]
+    require(previous == (old[-1]['revision'] if old else None), 'history changed; select its current revision')
+    require(len(old) < 100, 'history exceeds 100 revisions')
+    durable_mkdir(folder)
+    record = {'schema': schema, 'sequence': len(old) + 1, 'previous': previous,
+              'recorded_at': now(), 'payload': payload}
+    replace_record(folder / ('%06d.json' % record['sequence']), record)
+    syncdir(folder.parent)
+    return {**record, 'revision': sha(encode(record))}
+
+
+def registration_payload(value):
+    fields(value, ['namespace', 'owner', 'effective_from', 'reason', 'check_every_seconds',
+                   'calendar', 'process', 'source'])
+    ident(value['namespace']); text(value['owner'], 'calendar owner'); text(value['reason'], 'change reason')
+    date.fromisoformat(value['effective_from'])
+    require(type(value['check_every_seconds']) is int and 30 <= value['check_every_seconds'] <= 604800,
+            'check_every_seconds must be 30..604800')
+    process(value['process']); occurrences(value['process'], value['calendar'])
+    fields(value['source'], ['team', 'commit', 'lock_sha256'])
+    require(value['source']['team'] == value['process']['team'] and
+            re.fullmatch(r'[a-f0-9]{40}', value['source']['commit']) and
+            re.fullmatch(r'[a-f0-9]{64}', value['source']['lock_sha256']), 'invalid calendar source binding')
+    return value
+
+
+def register_calendar(exported, request, root):
+    fields(request, ['schema', 'namespace', 'owner', 'calendar', 'effective_from', 'reason',
+                     'check_every_seconds'], ['previous'])
+    require(request['schema'] == 'bench.calendar-registration/v1', 'unsupported registration schema')
+    root = runtime_root(root, exported)
+    definition, lock_hash = bundle(exported)
+    payload = registration_payload({k: request[k] for k in
+        ('namespace', 'owner', 'effective_from', 'reason', 'check_every_seconds')} | {
+        'calendar': load(request['calendar']), 'process': definition,
+        'source': {'team': definition['team'], 'commit': load(Path(exported)/'team.lock.json')['source']['commit'],
+                   'lock_sha256': lock_hash}})
+    cal = payload['calendar']
+    folder = root / 'calendars' / tracking_key(payload['namespace'], cal['id'])
+    with lock(root):
+        old = history(folder, 'bench.calendar-revision/v1')
+        if old and old[-1]['payload'] == payload:
+            return old[-1]
+        if old:
+            prior = old[-1]['payload']
+            require(prior['namespace'] == payload['namespace'] and prior['calendar']['id'] == cal['id'],
+                    'calendar identity changed')
+            require(prior['calendar']['timezone'] == cal['timezone'] and prior['process']['team'] == definition['team'],
+                    'timezone or team change requires a new calendar identity')
+            today = instant(now()).astimezone(ZoneInfo(cal['timezone'])).date().isoformat()
+            require(payload['effective_from'] > today and payload['effective_from'] > prior['effective_from'],
+                    'revision must take effect after today and after the preceding revision')
+            require(cal['start_date'] <= payload['effective_from'] <= cal['end_date'],
+                    'revision effective date must be within its calendar')
+        else:
+            require(payload['effective_from'] == cal['start_date'], 'first revision must start at calendar start_date')
+            require(len(list((root/'calendars').glob('*'))) < 100, 'registry exceeds 100 calendars')
+        return append_history(folder, 'bench.calendar-revision/v1', payload, request.get('previous'))
+
+
+def registered(root):
+    result, errors = [], []
+    folders = sorted((physical(root)/'calendars').glob('*'))
+    require(len(folders) <= 100, 'registry exceeds 100 calendars')
+    for folder in folders:
+        try:
+            revisions = history(folder, 'bench.calendar-revision/v1')
+            require(revisions, 'empty calendar history')
+            last = None
+            for revision in revisions:
+                value = registration_payload(revision['payload'])
+                require(folder.name == tracking_key(value['namespace'], value['calendar']['id']), 'calendar identity differs from directory')
+                if last:
+                    require(value['effective_from'] > last['effective_from'] and
+                            value['calendar']['timezone'] == last['calendar']['timezone'] and
+                            value['process']['team'] == last['process']['team'], 'invalid calendar revision boundary')
+                last = value
+            result.append(revisions)
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            errors.append({'id': folder.name, 'reason': 'calendar-unverified', 'detail': str(error)})
+    return result, errors
+
+
+def expected_work(registrations):
+    expected = {}
+    for revisions in registrations:
+        for index, revision in enumerate(revisions):
+            value = revision['payload']
+            end = revisions[index+1]['payload']['effective_from'] if index+1 < len(revisions) else '9999-12-31'
+            for item in occurrences(value['process'], value['calendar']):
+                if value['effective_from'] <= item['occurrence']['date'] < end:
+                    key = (value['namespace'], item['id'])
+                    require(key not in expected, 'duplicate expected obligation')
+                    expected[key] = {**item, 'namespace': value['namespace'], 'owner': value['owner'],
+                        'objective': value['process']['purpose'], 'calendar_id': value['calendar']['id'],
+                        'calendar_revision': revision['revision'], 'calendar_sequence': revision['sequence'],
+                        'lock_sha256': value['source']['lock_sha256']}
+    require(len(expected) <= 20000, 'calendar view exceeds 20000 obligations')
+    return expected
+
+
+def disposition_payload(value):
+    fields(value, ['schema', 'namespace', 'calendar_id', 'id', 'calendar_revision', 'kind', 'by', 'reason'])
+    require(value['schema'] == 'bench.calendar-disposition/v1', 'unsupported disposition schema')
+    for key in ('namespace', 'calendar_id', 'id'): ident(value[key])
+    require(value['kind'] in ('skipped', 'cancelled', 'reopened'), 'invalid disposition')
+    text(value['by'], 'attribution'); text(value['reason'], 'disposition reason')
+    require(re.fullmatch(r'[a-f0-9]{64}', value['calendar_revision']), 'invalid calendar revision')
+    return value
+
+
+def record_disposition(root, request):
+    request = dict(request)
+    previous = request.pop('previous', None)
+    value = disposition_payload(request)
+    root = runtime_root(root)
+    with lock(root):
+        registrations, errors = registered(root)
+        require(not errors, 'repair calendar history before recording a disposition')
+        expected = expected_work(registrations).get((value['namespace'], value['id']))
+        require(expected and expected['calendar_id'] == value['calendar_id'] and
+                expected['calendar_revision'] == value['calendar_revision'], 'select a current expected occurrence and revision')
+        folder = root / 'dispositions' / tracking_key(value['namespace'], value['id'])
+        old = history(folder, 'bench.disposition-revision/v1')
+        if old and old[-1]['payload'] == value:
+            return old[-1]
+        if value['kind'] == 'reopened':
+            require(old and old[-1]['payload']['kind'] != 'reopened', 'only a disposition can be reopened')
+        if value['kind'] == 'skipped':
+            require(not (root/('process-'+tracking_key(value['namespace'], value['id']))).exists(),
+                    'admitted work cannot be skipped; inspect it and record a cancellation if appropriate')
+        return append_history(folder, 'bench.disposition-revision/v1', value, previous)
+
+
+def tracking_digest(root):
+    root = physical(root)
+    paths = []
+    for part in ('calendars', 'dispositions'):
+        paths.extend((root/part).glob('*/*.json'))
+    paths.extend(root.glob('process-*/admission.json'))
+    paths.extend(root.glob('process-*/commitment.json'))
+    require(len(paths) <= 22000, 'tracking inventory exceeds bound')
+    total, items = 0, []
+    for path in sorted(paths):
+        raw = read(path, MAX_JSON); total += len(raw)
+        require(total <= MAX_FILE, 'tracking inventory exceeds 64 MiB')
+        items.append([path.relative_to(root).as_posix(), sha(raw)])
+    return sha(encode(items))
+
+
+def monitor_view(root, digest, interval, observed):
+    path = physical(root)/'last-reconciliation.json'
+    result = {'state': 'never-reconciled', 'last_success_at': None, 'next_check_due': None,
+              'check_every_seconds': interval}
+    if path.exists():
+        try:
+            value = load(path)
+            fields(value, ['schema', 'completed_at', 'input_sha256', 'obligations', 'attention'])
+            require(value['schema'] == 'bench.reconciliation/v1', 'invalid reconciliation record')
+            completed = instant(value['completed_at'])
+            require(completed <= instant(observed), 'reconciliation timestamp is in the future')
+            due = completed + timedelta(seconds=interval)
+            result.update(last_success_at=value['completed_at'], next_check_due=stamp(due),
+                          state='changed' if digest != value['input_sha256'] else
+                          'stale' if instant(observed) > due else 'current')
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            result.update(state='unverified', error=str(error))
+    return result
+
+
+def calendar_view(root, as_of, milestones=None):
+    root = physical(root)
+    require(root.is_dir(), 'commitment root does not exist')
+    evaluated, observed = instant(as_of), now()
+    try:
+        starting_digest = tracking_digest(root)
+    except (ValueError, OSError):
+        starting_digest = None
+    registrations, errors = registered(root)
+    expected = expected_work(registrations)
+    supplied = milestones or {}
+    require(isinstance(supplied, dict), 'milestone evidence must map instance directory names to observations')
+    instances = sorted(root.glob('process-*'))
+    require(len(instances) <= 1000, 'calendar view exceeds 1000 commitments')
+    require(set(supplied) <= {p.name for p in instances}, 'milestone evidence names an absent commitment')
+    admitted, broken = {}, {}
+    expected_instances = {'process-'+tracking_key(*key): key for key in expected}
+    for instance in instances:
+        key = expected_instances.get(instance.name)
+        try:
+            request = load(instance/'commitment.json')
+            key = (ident(request['namespace']), ident(request['id']))
+            require(instance.name == 'process-'+tracking_key(*key), 'commitment identity differs from directory')
+            binding = load(instance/'admission.json')
+            commitment(request, process(binding['process']))
+            require(key not in admitted, 'duplicate commitment identity')
+            admitted[key] = (request, binding, status(instance, as_of, supplied.get(instance.name)))
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            if key: broken[key] = str(error)
+            errors.append({'id': instance.name, 'reason': 'commitment-unverified', 'detail': str(error)})
+    dispositions = {}
+    folders = sorted((root/'dispositions').glob('*'))
+    require(len(folders) <= 20000, 'disposition count exceeds bound')
+    for folder in folders:
+        try:
+            revisions = history(folder, 'bench.disposition-revision/v1')
+            require(revisions, 'empty disposition history')
+            for revision in revisions:
+                value = disposition_payload(revision['payload'])
+                require(folder.name == tracking_key(value['namespace'], value['id']), 'disposition identity differs from directory')
+            dispositions[(value['namespace'], value['id'])] = revisions
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            errors.append({'id': folder.name, 'reason': 'disposition-unverified', 'detail': str(error)})
+    rows = []
+    for key in sorted(set(expected) | set(admitted) | set(dispositions)):
+        proposed, work = expected.get(key), admitted.get(key)
+        decisions = dispositions.get(key, [])
+        decision = decisions[-1] if decisions else None
+        reasons = []
+        if proposed:
+            row = dict(proposed)
+        elif work:
+            row = {k: work[0][k] for k in ('id', 'namespace', 'owner', 'objective', 'not_before', 'due_at', 'timezone')}
+            row.update(calendar_id=work[0].get('occurrence', {}).get('schedule_id'), calendar_revision=None)
+        else:
+            value = decision['payload']
+            row = {k: value[k] for k in ('id', 'namespace', 'calendar_id')}
+            row.update(owner=value['by'], objective='Recorded calendar disposition', not_before=None,
+                       due_at=None, timezone=None, calendar_revision=None)
+        row.update(disposition=decision, disposition_history=decisions, milestones=[])
+        if work:
+            request, binding, view = work
+            row.update(owner=request['owner'], objective=request['objective'], commitment=view,
+                       milestones=view.get('milestones', []), execution=view['execution'],
+                       acceptance=view['acceptance'], timeliness=view['timeliness'])
+            state = ('completed' if view['acceptance'] == 'accepted' else
+                     'unverified' if view['execution'] == 'unverified' else
+                     'unsubmitted' if view['execution'] == 'unsubmitted' else 'active')
+            reasons.extend(view['escalation']['reasons'])
+            if state == 'unsubmitted' and instant(request['not_before']) <= evaluated:
+                reasons.append('not-submitted')
+            if view['execution'] in ('failed', 'cancelled', 'waiting') and view['acceptance'] != 'accepted':
+                reasons.append('execution-'+view['execution'])
+            if proposed:
+                if (any(request[k] != proposed[k] for k in ('not_before','due_at','timezone')) or
+                        request.get('occurrence') != proposed['occurrence'] or
+                        sha(encode(binding['process'])) != proposed['process_sha256'] or
+                        binding['lock_sha256'] != proposed['lock_sha256']):
+                    reasons.append('calendar-conflict')
+                row['commitment_dates'] = {k: request[k] for k in ('not_before','due_at','timezone')}
+            elif row['calendar_id']:
+                reasons.append('outside-registered-calendar')
+        else:
+            state = 'upcoming' if row['not_before'] and evaluated < instant(row['not_before']) else 'missing'
+            row.update(execution='unsubmitted', acceptance='unconfirmed',
+                       timeliness='overdue' if row['due_at'] and evaluated > instant(row['due_at']) else 'pending')
+            if state == 'missing': reasons.append('missing-commitment')
+            if row['timeliness'] == 'overdue': reasons.append('overdue')
+        if key in broken:
+            state = 'unverified'
+            row.update(execution='unverified', acceptance='unverified', timeliness='unverified')
+            reasons = ['evidence-invalid']
+        if decision:
+            current = decision['payload']
+            if not proposed or current['calendar_revision'] != proposed['calendar_revision']:
+                reasons.append('disposition-calendar-conflict')
+            elif current['kind'] != 'reopened':
+                state = current['kind']
+                reasons = [r for r in reasons if r not in ('missing-commitment', 'overdue', 'not-submitted')]
+                if work and (row['execution'] not in ('cancelled','unsubmitted') or current['kind'] == 'skipped'):
+                    reasons.append('disposition-execution-conflict')
+                elif current['kind'] == 'cancelled':
+                    reasons = [r for r in reasons if r != 'execution-cancelled' and not r.startswith('milestone:')]
+        row.update(state=state, attention=sorted(set(reasons)))
+        rows.append(row)
+    calendars = []
+    intervals = []
+    for revisions in registrations:
+        zone = ZoneInfo(revisions[0]['payload']['calendar']['timezone'])
+        local_day = evaluated.astimezone(zone).date()
+        actual_day = instant(observed).astimezone(zone).date().isoformat()
+        active = next((r for r in reversed(revisions) if r['payload']['effective_from'] <= local_day.isoformat()), revisions[0])
+        monitored = next((r for r in reversed(revisions) if r['payload']['effective_from'] <= actual_day), revisions[0])
+        value, cal = active['payload'], active['payload']['calendar']
+        local_day = evaluated.astimezone(ZoneInfo(cal['timezone'])).date()
+        remaining = (date.fromisoformat(cal['end_date']) - local_day).days
+        gaps = []
+        for prior, following in zip(revisions, revisions[1:]):
+            begin = date.fromisoformat(prior['payload']['calendar']['end_date']) + timedelta(days=1)
+            end = date.fromisoformat(following['payload']['effective_from']) - timedelta(days=1)
+            if begin <= end:
+                gaps.append({'start_date': begin.isoformat(), 'end_date': end.isoformat(),
+                             'reason': following['payload']['reason']})
+        calendars.append({'namespace': value['namespace'], 'id': cal['id'], 'owner': value['owner'],
+            'timezone': cal['timezone'], 'end_date': cal['end_date'], 'revision': active['revision'],
+            'latest_revision': revisions[-1]['revision'], 'coverage_gaps': gaps,
+            'effective_from': value['effective_from'], 'check_every_seconds': value['check_every_seconds'],
+            'state': 'upcoming' if local_day.isoformat() < value['effective_from'] else
+                     'expired' if remaining < 0 else 'ending-soon' if remaining <= 14 else 'current',
+            'history': revisions})
+        intervals.append(monitored['payload']['check_every_seconds'])
+    try:
+        digest = tracking_digest(root)
+    except (ValueError, OSError) as error:
+        digest = None
+        errors.append({'id': 'tracking', 'reason': 'inventory-unverified', 'detail': str(error)})
+    if starting_digest != digest or starting_digest is None:
+        errors.append({'id': 'tracking', 'reason': 'snapshot-changed',
+                       'detail': 'Tracking changed during inspection or could not be read; generate a fresh view.'})
+    monitor = monitor_view(root, digest, min(intervals, default=3600), observed)
+    if errors or any(row['execution'] == 'unverified' for row in rows): monitor['state'] = 'unverified'
+    attention = [{'namespace': r['namespace'], 'id': r['id'], 'owner': r['owner'],
+                  'reasons': r['attention']} for r in rows if r['attention']]
+    attention.extend({'namespace': c['namespace'], 'id': c['id'], 'owner': c['owner'],
+                      'reasons': ['calendar-'+c['state']]} for c in calendars if c['state'] not in ('current','upcoming'))
+    attention.extend({'namespace': c['namespace'], 'id': c['id'], 'owner': c['owner'],
+                      'reasons': ['calendar-coverage-gap'], 'detail': c['coverage_gaps']}
+                     for c in calendars if c['coverage_gaps'])
+    attention.extend({'id': e['id'], 'owner': None, 'reasons': [e['reason']], 'detail': e['detail']} for e in errors)
+    if not calendars: attention.append({'id': 'registry', 'owner': None, 'reasons': ['no-registered-calendars']})
+    if monitor['state'] != 'current':
+        attention.append({'id': 'monitor', 'owner': None, 'reasons': ['reconciliation-'+monitor['state']]})
+    return {'schema': 'bench.team-calendar-view/v1', 'as_of': as_of, 'observed_at': observed,
+            'input_sha256': digest, 'monitor': monitor, 'calendars': calendars, 'obligations': rows,
+            'attention': attention, 'errors': errors, 'notifications_sent': False}
+
+
+def reconcile(root, milestones=None):
+    root = runtime_root(root)
+    report = calendar_view(root, now(), milestones)
+    require(report['calendars'] and not report['errors'] and
+            all(r['execution'] != 'unverified' for r in report['obligations']),
+            'reconciliation incomplete; inspect calendar view errors; previous success is unchanged')
+    with lock(root):
+        require(tracking_digest(root) == report['input_sha256'], 'tracking changed during reconciliation; run again')
+        checkpoint = {'schema': 'bench.reconciliation/v1', 'completed_at': now(),
+                      'input_sha256': report['input_sha256'], 'obligations': len(report['obligations']),
+                      'attention': sum(1 for item in report['attention'] if item['id'] != 'monitor')}
+        replace_record(root/'last-reconciliation.json', checkpoint)
+    report['monitor'] = monitor_view(root, report['input_sha256'], report['monitor']['check_every_seconds'], now())
+    report['attention'] = [a for a in report['attention'] if not (a['id'] == 'monitor' and 'namespace' not in a)]
+    return report
+
+
+def calendar_events(report):
+    events = []
+    for index, row in enumerate(report['obligations']):
+        if not row['due_at']:
+            continue
+        common = {'namespace': row['namespace'], 'owner': row['owner'], 'timezone': row['timezone'],
+                  'row': index, 'sequence': row.get('calendar_sequence', 0)}
+        events.append({**common, 'id': row['id'], 'start': row['not_before'], 'due': row['due_at'],
+                       'identity': ['work', row['namespace'], row['id']],
+                       'title': row['objective'], 'state': row['state'], 'attention': row['attention'],
+                       'timeliness': row['timeliness']})
+        for milestone in row['milestones']:
+            events.append({**common, 'id': row['id']+'/milestone/'+milestone['id'],
+                'identity': ['milestone', row['namespace'], row['id'], milestone['id']],
+                'owner': milestone['owner'], 'start': milestone['due_at'], 'due': milestone['due_at'],
+                'title': milestone['expectation'], 'state': milestone['state'],
+                'attention': ['milestone-overdue'] if milestone['timeliness'] == 'overdue' else [],
+                'timeliness': milestone['timeliness']})
+    return events
+
+
+def display_time(value, zone):
+    return instant(value).astimezone(ZoneInfo(zone)).strftime('%b %d, %Y %H:%M %Z')
+
+
+def attention_label(reason):
+    labels = {'missing-commitment': 'Scheduled work has no commitment', 'not-submitted': 'Work has not been submitted',
+        'calendar-conflict': 'Commitment differs from the registered calendar',
+        'outside-registered-calendar': 'Commitment is outside the registered calendar',
+        'disposition-calendar-conflict': 'Recorded decision differs from the current calendar',
+        'disposition-execution-conflict': 'Recorded decision conflicts with execution',
+        'calendar-coverage-gap': 'Dates are not covered by a registered calendar',
+        'evidence-invalid': 'Work evidence could not be verified',
+        'execution-outcome-unknown': 'Execution outcome is unknown', 'calendar-ending-soon': 'Calendar ends within 14 days',
+        'no-registered-calendars': 'No calendars are registered',
+        'reconciliation-never-reconciled': 'Calendar reconciliation has never run',
+        'reconciliation-changed': 'Tracking changed since the last reconciliation',
+        'reconciliation-stale': 'Calendar reconciliation is overdue',
+        'reconciliation-unverified': 'Calendar reconciliation could not be verified'}
+    if reason.startswith('milestone:'): return 'Overdue milestone: '+reason.split(':',1)[1]
+    return labels.get(reason, reason.replace('-', ' ').capitalize())
+
+
+def render_calendar(report):
+    escape = lambda value: html.escape(str(value), quote=True)
+    monitor = report['monitor']
+    events = calendar_events(report)
+    grouped = {}
+    for event in events:
+        day = instant(event['due']).astimezone(ZoneInfo(event['timezone'])).date()
+        grouped.setdefault(day, []).append(event)
+    months = sorted({(day.year, day.month) for day in grouped})
+    if not months:
+        today = instant(report['as_of']).date(); months = [(today.year, today.month)]
+    options, grids = [], []
+    for year, month in months:
+        name = '%04d-%02d' % (year, month)
+        label = '%s %s' % (month_calendar.month_name[month], year)
+        options.append('<option value="%s">%s</option>' % (name, label))
+        cells = ['<div class="weekday">%s</div>' % day for day in ('Mon','Tue','Wed','Thu','Fri','Sat','Sun')]
+        for week in month_calendar.Calendar().monthdatescalendar(year, month):
+            for day in week:
+                if day.month != month:
+                    cells.append('<div class="day outside"></div>'); continue
+                items = []
+                for event in grouped.get(day, []):
+                    label = event['title'] + ' · ' + event['owner']
+                    items.append('<a class="event %s" href="#work-%d"><strong>%s</strong><span>%s · %s</span></a>' % (
+                        'flag' if event['attention'] else '', event['row'], escape(label),
+                        escape(event['state']), escape(display_time(event['due'], event['timezone']))))
+                cells.append('<div class="day"><b>%d</b>%s</div>' % (day.day, ''.join(items)))
+        grids.append('<section class="month" data-month="%s"><h3>%s</h3><div class="grid">%s</div></section>' % (
+            name, label, ''.join(cells)))
+    attention_items = []
+    for item in report['attention']:
+        detail = item.get('detail', '')
+        if isinstance(detail, list):
+            detail = '; '.join(gap['start_date']+' through '+gap['end_date']+': '+gap['reason'] for gap in detail)
+        attention_items.append('<li><strong>%s</strong> — %s <span>%s</span>%s</li>' % (
+            escape(item['id']), escape('; '.join(attention_label(r) for r in item['reasons'])),
+            escape(item.get('owner') or 'Calendar operator'), '<p>'+escape(detail)+'</p>' if detail else ''))
+    attention = ''.join(attention_items) or '<li>No exceptions at the selected time.</li>'
+    rows = []
+    for index, row in enumerate(report['obligations']):
+        dates = ('Starts '+display_time(row['not_before'], row['timezone'])+'; due '+
+                 display_time(row['due_at'], row['timezone'])) if row['due_at'] else 'No current calendar dates'
+        detail = '<p>'+escape(dates)+'</p>'
+        if row.get('commitment_dates') and any(row['commitment_dates'][k] != row[k] for k in ('not_before','due_at','timezone')):
+            old = row['commitment_dates']
+            detail += '<p><strong>Existing commitment due:</strong> '+escape(display_time(old['due_at'], old['timezone']))+'</p>'
+        if row['disposition_history']:
+            detail += '<ul>'+''.join('<li>%s by %s: %s (%s)</li>' % (
+                escape(d['payload']['kind']), escape(d['payload']['by']), escape(d['payload']['reason']),
+                escape(d['recorded_at'])) for d in row['disposition_history'])+'</ul>'
+        if row['milestones']:
+            detail += '<ul>'+''.join('<li>%s — %s · %s · %s · %s</li>' % (
+                escape(m['expectation']), escape(m['owner']), escape(display_time(m['due_at'], row['timezone'])),
+                escape(m['state']), escape(m['timeliness'])) for m in row['milestones'])+'</ul>'
+        rows.append('<tr id="work-%d"><td><details><summary>%s</summary><p>%s / %s</p>%s</details></td>'
+                    '<td>%s</td><td>%s<br><small>%s / %s</small></td><td>%s</td><td>%s</td></tr>' % (
+            index, escape(row['objective']), escape(row['namespace']), escape(row['id']), detail,
+            escape(row['owner']), escape(row['state']), escape(row['execution']), escape(row['acceptance']),
+            escape(row['timeliness']), escape('; '.join(attention_label(r) for r in row['attention']) or '—')))
+    history_html = ''.join('<details><summary>%s · %s · %s · ends %s</summary><ul>%s</ul></details>' % (
+        escape(c['id']), escape(c['owner']), escape(c['state']), escape(c['end_date']), ''.join(
+        '<li>Version %s, effective %s: %s (owner: %s; recorded %s)</li>' % (
+            r['sequence'], escape(r['payload']['effective_from']), escape(r['payload']['reason']),
+            escape(r['payload']['owner']), escape(r['recorded_at'])) for r in c['history'])) for c in report['calendars'])
+    return '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team calendar and attention</title><style>
+:root{font:15px/1.5 system-ui,sans-serif;color:#172638;background:#f4f6fa}body{max-width:1440px;margin:auto;padding:28px}
+h1{font-size:32px;margin-bottom:8px}h2{margin-top:32px}small,span{color:#4d5e70}header p{margin:6px 0}
+.banner{padding:16px;border:1px solid #b26a00;border-radius:8px;background:#fff3db;margin:20px 0}.banner.current{background:#e5f3ef;border-color:#357763}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:#cbd4e0;border:1px solid #cbd4e0}
+.weekday{background:#e7ecf4;padding:8px}.day{min-height:110px;background:white;padding:8px}.outside{background:#edf0f5}
+.event{display:block;color:#193e69;text-decoration:none;background:#eaf1fa;border-left:3px solid #406fa6;border-radius:4px;margin-top:8px;padding:8px;overflow-wrap:anywhere;font-size:12px}
+.event span{display:block}.event.flag{background:#fff1dd;border-color:#b76b00}a:hover{text-decoration:underline}
+select,input{font:inherit;padding:8px;border:1px solid #8294a9;border-radius:5px;background:white}table{border-collapse:collapse;width:100%%;background:white}
+td,th{text-align:left;vertical-align:top;border-bottom:1px solid #dbe1e9;padding:12px}th{background:#e7ecf4}summary{cursor:pointer}li{margin:8px 0}
+.table-wrap,.calendar-wrap{overflow-x:auto}.month{min-width:770px}#attention{border-left:4px solid #b76b00;padding-left:20px}
+@media(max-width:650px){body{padding:14px}h1{font-size:26px}td,th{padding:8px}}@media print{input,select{display:none}.month{display:block!important}body{padding:0}.grid{break-inside:avoid}}
+</style><header><h1>Team calendar</h1><p>Obligations, milestones and work needing attention.</p>
+<p>Deadline view: %s · Observed: %s</p><p>This is a snapshot. Regenerate it to see new work. No reminders have been sent.</p></header>
+<div id="monitor" class="banner %s" data-due="%s"><strong>Reconciliation: <span id="monitor-state">%s</span></strong><br>
+Last successful check: %s · Next check due: %s<br>A current check can still find missing or overdue work. It does not mean everything is complete.</div>
+<section id="attention"><h2>Needs attention</h2><ul>%s</ul></section>
+<h2>Calendar</h2><p>Work and milestones appear on their due dates in each calendar’s timezone.</p><label>Month <select id="month">%s</select></label>
+<div class="calendar-wrap">%s</div><h2>All obligations</h2><label>Filter by owner, work or status <input id="filter" type="search"></label>
+<div class="table-wrap"><table><thead><tr><th>Work and dates</th><th>Owner</th><th>Status</th><th>Timeliness</th><th>Attention</th></tr></thead><tbody>%s</tbody></table></div>
+<h2>Calendar history</h2>%s
+<script>
+const month=document.getElementById('month');
+function choose(){document.querySelectorAll('.month').forEach(s=>s.hidden=s.dataset.month!==month.value)}
+const selected=%s;if([...month.options].some(o=>o.value===selected))month.value=selected;choose();month.addEventListener('change',choose);
+document.getElementById('filter').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q))});
+function freshness(){const b=document.getElementById('monitor');if(b.classList.contains('current')&&Date.now()>Date.parse(b.dataset.due)){b.classList.remove('current');document.getElementById('monitor-state').textContent='stale — generate a fresh view and check the monitor'}}
+freshness();setInterval(freshness,10000);
+</script></html>''' % (escape(report['as_of']), escape(report['observed_at']),
+        'current' if monitor['state']=='current' else '', escape(monitor['next_check_due'] or ''),
+        escape(monitor['state']), escape(monitor['last_success_at'] or 'Never'), escape(monitor['next_check_due'] or 'Not scheduled'),
+        attention, ''.join(options), ''.join(grids), ''.join(rows), history_html,
+        json.dumps(instant(report['as_of']).strftime('%Y-%m')))
+
+
+def calendar_ics(report):
+    def quote(value):
+        return str(value).replace('\\', '\\\\').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n').replace(';', '\\;').replace(',', '\\,')
+    def utc(value):
+        return instant(value).strftime('%Y%m%dT%H%M%SZ')
+    lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Bench//Team process 0.2//EN',
+             'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Team obligations (snapshot)']
+    for event in calendar_events(report):
+        description = ('Owner: '+event['owner']+'; state: '+event['state']+'; '+event['timeliness']+
+            '; attention: '+', '.join(event['attention'])+'; timezone: '+event['timezone']+
+            '; snapshot: '+report['observed_at']+'; reconciliation: '+report['monitor']['state'])
+        lines.extend(['BEGIN:VEVENT', 'UID:'+sha(encode(event['identity']))+'@bench-team-process',
+            'DTSTAMP:'+utc(report['observed_at']), 'DTSTART:'+utc(event['start']),
+            *(['DTEND:'+utc(event['due'])] if instant(event['due']) > instant(event['start']) else []),
+            'SUMMARY:'+quote(event['title']),
+            'DESCRIPTION:'+quote(description), 'CATEGORIES:'+quote(event['state']), 'TRANSP:TRANSPARENT', 'END:VEVENT'])
+    lines.append('END:VCALENDAR')
+    folded = []
+    for line in lines:
+        part = ''
+        for char in line:
+            if len((part+char).encode()) > 75:
+                folded.append(part); part = ' '
+            part += char
+        folded.append(part)
+    return '\r\n'.join(folded)+'\r\n'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version=VERSION)
@@ -733,6 +1312,11 @@ def main():
     p = commands.add_parser('status'); p.add_argument('instance'); p.add_argument('--as-of', required=True); p.add_argument('--milestones')
     p = commands.add_parser('board'); p.add_argument('root'); p.add_argument('--as-of', required=True); p.add_argument('--milestones')
     p = commands.add_parser('_execute'); p.add_argument('instance'); p.add_argument('digest')
+    p = commands.add_parser('register-calendar'); p.add_argument('export'); p.add_argument('registration'); p.add_argument('root')
+    p = commands.add_parser('record-disposition'); p.add_argument('root'); p.add_argument('request')
+    p = commands.add_parser('reconcile'); p.add_argument('root'); p.add_argument('--milestones')
+    p = commands.add_parser('calendar'); p.add_argument('root'); p.add_argument('--as-of', required=True)
+    p.add_argument('--milestones'); p.add_argument('--format', choices=('json','html','ics'), default='json')
     args = parser.parse_args()
     if args.command == 'validate':
         definition = process(load(args.process))
@@ -746,6 +1330,17 @@ def main():
         result = {'instance': str(instance), 'job_id': instance.name}
     elif args.command == 'submit':
         result = submit(args.instance)
+    elif args.command == 'register-calendar':
+        result = register_calendar(args.export, load(args.registration), args.root)
+    elif args.command == 'record-disposition':
+        result = record_disposition(args.root, load(args.request))
+    elif args.command == 'reconcile':
+        result = reconcile(args.root, load(args.milestones) if args.milestones else None)
+    elif args.command == 'calendar':
+        result = calendar_view(args.root, args.as_of, load(args.milestones) if args.milestones else None)
+        if args.format != 'json':
+            sys.stdout.buffer.write((render_calendar(result) if args.format == 'html' else calendar_ics(result)).encode())
+            return 0
     elif args.command == 'status':
         result = status(args.instance, args.as_of, load(args.milestones) if args.milestones else None)
     elif args.command == 'board':

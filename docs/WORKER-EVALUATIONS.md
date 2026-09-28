@@ -7,7 +7,8 @@ The runner uses **current working-tree bytes**, including uncommitted edits.
 It makes no paid model calls and installs no dependencies.
 
 `make check-team-process` separately builds Tend and checks the standing-team
-application: calendars, commitments, exact admission, unknown fencing, and
+application: registered calendar history, missing obligations, monitor freshness,
+HTML/ICS views, commitments, exact admission, unknown fencing, and
 page/comparison delivery adapters. It uses real Tend with explicitly labeled
 deterministic team collaborators. The existing catalog suites still establish
 the teams' underlying handoff contracts. See the

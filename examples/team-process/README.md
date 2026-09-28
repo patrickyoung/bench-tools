@@ -208,6 +208,133 @@ path, and supply current inputs and owner. Admission verifies the proposal
 against those calendar bytes. Repeated ticks can plan and submit the same
 occurrence safely. Planning never submits or invents current case inputs.
 
+## Register calendars so missing work stays visible
+
+The planning command proposes executions according to the missed-run policy.
+The accountability view independently enumerates **every** expected occurrence,
+including future work and missed occurrences omitted by `latest` or `skip`.
+Register the calendar in the same root used for the standing team's commitments.
+Write a registration file outside source:
+
+```json
+{
+  "schema":"bench.calendar-registration/v1",
+  "namespace":"web-team",
+  "owner":"Delivery owner",
+  "calendar":"/absolute/current/calendar.json",
+  "effective_from":"2026-09-28",
+  "reason":"Initial daily site review agreement",
+  "check_every_seconds":3600
+}
+```
+
+```sh
+python3 /absolute/team-process/process.py register-calendar \
+  /absolute/new/page-team /absolute/current/registration.json \
+  /absolute/standing-team/commitments
+```
+
+The first effective date must equal the calendar's start date; past dates expose
+the backlog. Registration snapshots the calendar, process, owner and pinned team
+identity. Source files can then be moved without losing the registered schedule.
+The result includes a `revision` hash. Repeating identical registration is safe.
+
+To revise a calendar, retain its ID and namespace, supply the latest hash as
+`previous`, give a reason, and select an effective date **after today** in that
+calendar's timezone and after the preceding revision's effective date. Older
+dates retain their original obligations. Revision does not modify existing
+commitments: differing dates or source bindings become visible calendar
+conflicts. Removed future dates with already-admitted work also stay visible.
+Timezone/team changes require a separate calendar identity. Keep original
+registrations; there is no history deletion command.
+
+Each revision has a finite horizon. The view flags calendars ending within 14
+days or already expired, and explicitly reports gaps between an old horizon
+and a later renewal. A future revision does not hide current expiry or relax
+the currently effective monitoring interval. A gap is a coverage warning;
+the application does not invent obligations for dates nobody scheduled.
+
+## Reconcile and show users the calendar
+
+```sh
+python3 /absolute/team-process/process.py reconcile /absolute/standing-team/commitments
+python3 /absolute/team-process/process.py calendar /absolute/standing-team/commitments \
+  --as-of 2026-09-29T17:30:00-04:00
+python3 /absolute/team-process/process.py calendar /absolute/standing-team/commitments \
+  --as-of 2026-09-29T17:30:00-04:00 --format html > /absolute/current/team-calendar.html
+python3 /absolute/team-process/process.py calendar /absolute/standing-team/commitments \
+  --as-of 2026-09-29T17:30:00-04:00 --format ics > /absolute/current/team-calendar.ics
+```
+
+The JSON view contains registered calendar histories, obligations, milestone
+states, an owner-attributed attention list and monitoring freshness. Work is
+upcoming, missing, unsubmitted, active, completed, explicitly skipped/cancelled,
+or unverified. Execution, acceptance and timeliness remain separate. Independent
+admitted work also appears; the view does not silently discard cases outside
+the registered calendar. Supply `--milestones FILE` using the same mapping as
+`board` to include selected milestone evidence.
+
+The self-contained HTML view has a month selector, a searchable obligation
+table, milestone due dates, change history and an attention list. No server or
+external assets are needed. Dates use each calendar's timezone. The HTML is a
+snapshot, not a live connection; its freshness banner turns stale when the
+recorded next-check time passes. Regenerate it to see updates. The ICS export
+contains work and milestone events with stable, distinct identities for calendar
+clients. It is an importable snapshot, not a hosted subscription or two-way sync.
+Regenerate/reimport as supported by the client; this application does not write
+to Google Calendar or Outlook.
+
+`reconcile` reads actual current work and records the last successful check with
+the actual wall clock. It never creates commitments, executes teams, sends
+reminders or cancels work. The checkpoint is written only if tracking inputs
+remain unchanged throughout inspection and all records can be verified.
+Missing/overdue obligations are a successful check with actionable findings;
+unverifiable records fail the check and leave its prior successful timestamp
+unchanged. A current check does **not** mean all obligations are complete.
+
+Have the existing host scheduler run `reconcile` at least as often as the
+smallest currently effective `check_every_seconds` across registered calendars,
+and regenerate the user-facing view. For an hourly agreement, checking every
+15 minutes leaves room for delays. The view reports never-checked, stale,
+changed-input or unverified monitoring. Its freshness uses actual observation
+time even when `--as-of` selects another deadline projection. This repository
+does not install a scheduler or choose a user's real calendars. A stopped host
+needs an external observer to alert anyone; an unread stale banner sends no
+notification. Integrations can consume the attention list for explicitly
+configured reminders without treating delivery/acknowledgement as completion.
+
+## Explicitly skip, cancel or reopen an obligation
+
+Select an occurrence and its `calendar_revision` from the calendar view. Record
+the decision in a separate JSON file:
+
+```json
+{
+  "schema":"bench.calendar-disposition/v1",
+  "namespace":"web-team",
+  "calendar_id":"daily-site-review",
+  "id":"daily-site-review/2026-09-29",
+  "calendar_revision":"FULL_REVISION_HASH_FROM_VIEW",
+  "kind":"skipped",
+  "by":"Delivery owner",
+  "reason":"Review was explicitly waived for the planned maintenance day"
+}
+```
+
+```sh
+python3 /absolute/team-process/process.py record-disposition \
+  /absolute/standing-team/commitments /absolute/current/disposition.json
+```
+
+`skipped` is allowed only before admission. `cancelled` records a business
+decision; it does not cancel a Tend job, stop an attempt or release an unknown
+fence. Contradictory live execution remains in the attention list. `reopened`
+restores the obligation to ordinary tracking. Further decisions require
+`previous` with the last disposition revision hash. Reasons, attribution and
+recording times remain in the history, including after reopening. Attribution
+does not authenticate a person's identity. A later calendar revision cannot
+silently reuse an old waiver: mismatched decisions become conflicts.
+
 ## Continue or change work deliberately
 
 The application does not retry, signal, cancel, waive, reschedule or resolve

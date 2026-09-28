@@ -41,6 +41,18 @@ library. The original team lock remains authoritative for exported source.
 - `status`: use public Tend observations and sealed output identities to show
   execution, team acceptance, deadline/milestone lateness, and escalation
   candidates. Inspection never invokes models, team checks or execution.
+- `register-calendar`: retain an owner-attributed calendar/process snapshot in
+  an immutable revision chain. Future effective dates preserve prior obligations;
+  changed source or dates never rewrite admitted commitments.
+- `record-disposition`: retain an explicit skipped/cancelled/reopened business
+  decision with a reason. This grants no execution cancellation or recovery.
+- `calendar`: reconcile all expected occurrences with admitted work and decisions,
+  independently of catch-up policy. Render JSON, self-contained HTML or an ICS
+  snapshot. Include missing work, milestones, source conflicts and monitor age.
+- `reconcile`: perform the same current-time observation, verify stable tracking
+  inputs before/after inspection and under the admission lock, then atomically
+  checkpoint the last successful check. Exceptions are findings; unverifiable
+  records prevent a successful checkpoint. The host supplies periodic invocation.
 - `_execute`: the private submitted wrapper verifies frozen bindings, invokes
   the original team command, and only after exit zero runs the declared final
   verification. It seals accepted artifact identities and the completion time.
@@ -67,6 +79,24 @@ Ambiguous or nonexistent local start/due instants fail rather than silently
 choosing a DST interpretation. Identity is schedule ID plus local date, stable
 across ticks and schedule edits; changed bytes conflict at admission. Each
 occurrence binds the calendar bytes. There is no infinite task graph.
+
+Registered schedules enumerate all occurrences, including upcoming and skipped
+catch-up proposals. First registration can expose a past backlog. Revisions
+take effect after today; every earlier date retains its prior definition.
+Existing future commitments and waivers that disagree with a new revision stay
+visible as conflicts. Expiry, approaching horizon and uncovered renewal gaps are
+reported. Active business horizon follows as-of; monitoring cadence follows the
+revision effective at actual observation time, never a future relaxed interval.
+
+Calendar and disposition records are immutable, hash-chained revisions with
+optimistic previous-revision checks and serialized writes. Newly created parent
+links and complete records are synced before success. The replaceable monitoring
+checkpoint is derived observation data, not task authority or completion proof.
+Views are read-only, report stale or absent checks and never manufacture success.
+Static HTML and ICS are timestamped snapshots; the HTML freshness banner expires
+without fetching anything. An external observer is necessary to notify users
+when the host itself stops. There is no installed scheduler, calendar account
+connection or implicit notification channel.
 
 The operating agreement declares owner roles, review independence, required
 deliverables and escalation expectations. Enforced checks are distinguished

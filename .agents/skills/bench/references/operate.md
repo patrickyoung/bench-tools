@@ -66,6 +66,17 @@ Never evade unknown execution with a new ID or namespace. Report execution,
 acceptance, timeliness and milestone attestations separately. Escalation output
 is an unsent proposal, not permission to contact anyone.
 
+For calendar accountability, register the selected pinned team's calendar in
+the same commitment root, with a named owner and a check interval. Use
+`reconcile` from the existing host scheduler and expose `calendar` as JSON,
+self-contained HTML or an ICS snapshot. Inspect missing obligations independently
+of the planner's catch-up policy, expired horizons, coverage gaps and the last
+successful check. A stale or never-checked monitor is itself an exception.
+Record skip/cancel/reopen reasons explicitly; cancellation records do not stop
+Tend or release unknown work. Calendar updates retain history and cannot rewrite
+past obligations. A published snapshot must be regenerated; no notification or
+Google/Outlook connection is implied by producing it.
+
 Run `make check-team-process` for offline public-command verification. A green
 composition check does not establish model quality or successful business outcomes.
 
