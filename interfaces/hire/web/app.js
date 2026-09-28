@@ -61,7 +61,9 @@ if(workMessage){
  try{if(!workMessage.value)workMessage.value=sessionStorage.getItem(key)||'';workMessage.addEventListener('input',()=>{try{sessionStorage.setItem(key,workMessage.value)}catch{}});workMessage.form.addEventListener('submit',()=>{try{sessionStorage.removeItem(key)}catch{}})}catch{}
 }
 const workProgress=document.querySelector('[data-work-job]');
-if(workProgress){const pollWork=async()=>{try{const response=await fetch(`/work/jobs/${workProgress.dataset.workJob}/status`,{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error();const status=await response.json();if(!status.active){const files=document.getElementById('work-attachments');if(files?.files.length){workProgress.textContent='This attempt has stopped. Your selected files are ready to send.';workMessage.form.action='/work';workMessage.form.querySelector('button[type=submit]').textContent='Send ↑';return}if(status.destination){location.assign(status.destination)}else{location.reload()}return}if(status.message)workProgress.textContent=status.message;
+if(workProgress){const pollWork=async()=>{try{const response=await fetch(`/work/jobs/${workProgress.dataset.workJob}/status`,{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error();const status=await response.json();if(!status.active){const files=document.getElementById('work-attachments');if(files?.files.length){workProgress.textContent='This attempt has stopped. Your selected files are ready to send.';workMessage.form.action='/work';workMessage.form.querySelector('button[type=submit]').textContent='Send ↑';return}location.reload();return}if(status.message)workProgress.textContent=status.message;
+// Never silently retarget an already drafted reply to another question/revision.
+if(status.team){const revision=workMessage?.form.querySelector('[name="team-revision"]');if(revision&&Number(revision.value)!==status.team.revision){workProgress.textContent+=' The team revision changed; refresh before sending your update.'}}
 const specialist=document.querySelector(`[data-specialist="${workProgress.dataset.workJob}"]`);
 if(specialist&&status.specialist){const data=status.specialist;specialist.hidden=!data.name;for(const key of ['name','kind','about','reason','source','access','references']){const field=specialist.querySelector(`[data-specialist-field="${key}"]`);if(field.textContent!==(data[key]||''))field.textContent=data[key]||''}const members=data.members||[];const list=specialist.querySelector('[data-specialist-members]');if(JSON.stringify(members)!==list.dataset.members){list.replaceChildren(...members.map(text=>{const item=document.createElement('li');item.textContent=text;return item}));list.dataset.members=JSON.stringify(members)}specialist.querySelector('[data-specialist-roster]').hidden=!members.length}
 const expertise=document.querySelector(`[data-expertise="${workProgress.dataset.workJob}"]`);
@@ -69,10 +71,6 @@ if(expertise&&status.specialist){const note=status.specialist.expertise||{};expe
 const guidance=document.querySelector('[data-steering-help]');if(guidance){guidance.textContent=status.deferred?'Notes are saved for the follow-up while this team works.':'Updates are picked up between steps.'}
 const update=document.querySelector(`[data-task-update="${workProgress.dataset.workJob}"]`);
 if(update&&status.update){for(const key of ['done','now','next','blocked']){const row=update.querySelector(`[data-update-row="${key}"]`);const value=update.querySelector(`[data-update-value="${key}"]`);const text=status.update[key]||'';if(value.textContent!==text)value.textContent=text;row.hidden=!text}}}catch{workProgress.textContent='I may still be working. Refresh this conversation to check.'}setTimeout(pollWork,2000)};setTimeout(pollWork,1500)}
-
-// Follow the latest exchange while leaving every earlier version accessible.
-const workTurns=document.querySelectorAll('.work-turn');
-if(workTurns.length>1 && !location.hash){workTurns[workTurns.length-1].scrollIntoView({block:'start'});}
 
 // Copy is a convenience; the visible, selectable link works without scripting.
 document.querySelectorAll('[data-copy-share]').forEach(button=>button.addEventListener('click',async()=>{
@@ -82,3 +80,62 @@ document.querySelectorAll('[data-copy-share]').forEach(button=>button.addEventLi
 
 const workAttachments=document.getElementById('work-attachments');
 if(workAttachments){workAttachments.addEventListener('change',()=>{const files=[...workAttachments.files];const status=document.querySelector('[data-attachment-status]');let problem='';if(files.length>5)problem='Choose up to 5 files.';else if(files.some(f=>f.size>25*1024*1024))problem='Each file must be 25 MB or smaller.';else if(files.reduce((sum,f)=>sum+f.size,0)>50*1024*1024)problem='Keep these files under 50 MB in total.';workAttachments.setCustomValidity(problem);status.textContent=problem||files.map(f=>f.name).join(' · ');});}
+
+// Per-chat view state is local to this tab; native links and forms are the fallback.
+const transcript = document.querySelector('.chat-transcript');
+if (transcript && workMessage) {
+ const form = workMessage.form;
+ const key = `hire-chat-view:${location.pathname}`;
+ const panel = document.getElementById('plonk-panel');
+ const workspace = document.querySelector('.chat-workspace');
+ const jump = document.querySelector('.jump-latest');
+ let saved = {};
+ try { saved = JSON.parse(sessionStorage.getItem(key) || '{}'); } catch {}
+ let following = saved.following !== false;
+ const bottom = () => { transcript.scrollTop = transcript.scrollHeight; following = true; jump.hidden = true; };
+ const persist = () => { try { sessionStorage.setItem(key, JSON.stringify({top:transcript.scrollTop, following, site:!panel.hidden})); } catch {} };
+ const setSite = (open) => {
+  panel.hidden = !open;
+  workspace.classList.toggle('site-open', open);
+  document.querySelectorAll('[data-toggle-plonk]').forEach(link => {
+   link.href = `?site=${open ? '0' : '1'}`;
+   link.setAttribute('aria-expanded', String(open));
+   if (link.classList.contains('plonk-toggle')) link.textContent = open ? 'Plonk back' : 'Plonk';
+  });
+  persist();
+ };
+ const query = new URLSearchParams(location.search);
+ setSite(query.has('site') ? query.get('site') === '1' : Boolean(saved.site));
+ document.querySelectorAll('[data-toggle-plonk]').forEach(link => link.addEventListener('click', event => {
+  event.preventDefault(); setSite(panel.hidden);
+  const url = new URL(location.href); url.searchParams.set('site', panel.hidden ? '0' : '1'); history.replaceState(null, '', url);
+  if (panel.hidden) workMessage.focus();
+  else { const prepare = panel.querySelector('[data-prepare-site]'); if (prepare && !prepare.querySelector('button').disabled) prepare.requestSubmit(); }
+ }));
+ requestAnimationFrame(() => { if (following) bottom(); else transcript.scrollTop = saved.top || 0; jump.hidden = following; });
+ transcript.addEventListener('scroll', () => {
+  following = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 90;
+  jump.hidden = following; persist();
+ }, {passive:true});
+ jump.addEventListener('click', bottom);
+ new ResizeObserver(() => { if (following) bottom(); }).observe(transcript);
+ new MutationObserver(() => { if (following) bottom(); }).observe(transcript, {childList:true, subtree:true, characterData:true});
+ transcript.addEventListener('load', () => { if (following) bottom(); }, true);
+ const resize = () => { workMessage.style.height = 'auto'; workMessage.style.height = `${Math.min(workMessage.scrollHeight,180)}px`; };
+ resize(); workMessage.addEventListener('input', resize);
+ workMessage.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+   event.preventDefault();
+   const send = form.querySelector('button[type="submit"]');
+   if (!send.disabled && (workMessage.value.trim() || workAttachments?.files.length)) form.requestSubmit(send);
+  }
+ });
+ form.addEventListener('submit', () => { following = true; persist(); });
+ addEventListener('pagehide', persist);
+ document.querySelector('[data-toggle-chats]')?.addEventListener('click', event => {
+  event.preventDefault(); const open = document.body.classList.toggle('chats-open'); event.currentTarget.setAttribute('aria-expanded', String(open));
+ });
+ document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') { document.body.classList.remove('chats-open'); document.querySelector('[data-toggle-chats]')?.setAttribute('aria-expanded','false'); }
+ });
+}

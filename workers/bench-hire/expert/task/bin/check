@@ -133,6 +133,9 @@ def main():
     if "selection_version" in request:
         require(type(request["selection_version"]) is int and
                 request["selection_version"] == 1, "unsupported selection version")
+    if "completion_version" in request:
+        require(stage == "present" and type(request["completion_version"]) is int and
+                request["completion_version"] == 1, "unsupported completion version")
     for key in ("message", "source", "now"):
         string(request.get(key), 1000000, "request " + key)
     require(type(request.get("history")) is list, "history")
@@ -166,11 +169,31 @@ def main():
             keys += ("selection",)
         exact(reply, keys, "plan response")
     else:
-        exact(reply, ("request_sha256", "message"), "present response")
+        if "completion_version" in request:
+            exact(reply, ("request_sha256", "message", "status", "next_goal", "question"),
+                  "completion response")
+        else:
+            exact(reply, ("request_sha256", "message"), "present response")
     require(type(reply["request_sha256"]) is str and
             reply["request_sha256"] == hashlib.sha256(raw).hexdigest(),
             "request binding")
     string(reply["message"], 6000, "message", nonempty=True)
+    if stage == "present" and "completion_version" in request:
+        status = reply["status"]
+        require(type(status) is str and status in
+                ("complete", "continue", "needs_input", "blocked"), "completion status")
+        string(reply["next_goal"], 16000, "next_goal")
+        string(reply["question"], 1000, "question")
+        require((bool(reply["next_goal"].strip()) if status == "continue" else reply["next_goal"] == ""),
+                "next_goal/status")
+        require((bool(reply["question"].strip()) if status == "needs_input" else reply["question"] == ""),
+                "question/status")
+        code = request["execution"]["exit_code"]
+        if status == "complete":
+            require(type(code) is int and code == 0, "complete requires exit 0")
+        if status == "continue":
+            require(type(code) is int and code in (0, 2),
+                    "continue requires confirmed safe exit 0 or 2")
     if stage == "plan":
         string(reply["question"], 1000, "question")
         string(reply["title"], 120, "title")

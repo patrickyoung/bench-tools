@@ -12,6 +12,44 @@ needs a policy and a writing method; a report expert may need a renderer and
 a check. Both can use the same runner. Keep their specialist knowledge in
 files and their deterministic work in ordinary programs.
 
+## Ship tools with their worker
+
+A new local tool is a worker capability only when the worker can discover and
+use the installed command. Hire's `shipping-tools` procedure uses this layout:
+
+```text
+expert/
+  AGENTS.md                    routes relevant tasks to the skill
+  src/record-summary/          independent Go module, source and tests
+  tools/record-summary         compiled executable for the target host
+  skills/record-summary/SKILL.md
+  bin/check                    checks the completed worker job
+  README.md                    build, install and validation recipe
+```
+
+`tools/` is the worker's executable directory; do not duplicate its programs in
+`bin/`, which holds lifecycle commands such as `check` and `wake`. Build into a
+separate deployment copy before running Agent. Keep source, tests, skills and
+the build recipe in the reusable source export; host-specific binaries belong
+in the installed worker package, with source and binary hashes in external
+build evidence. Agent treats the installed definition as read-only.
+
+Discovery already has two layers. Agent passes `tools/` to Ply, which lists
+the command names for the model and places the directory first on PATH. Agent
+also exposes its skill catalogue through Brief. The matching skill supplies
+the tool's purpose, selection conditions, literal invocation, stdin/stdout,
+exit statuses, examples and documented read-only help. New Go tools should
+implement a side-effect-free `--help`; discovery does not execute it. Compiled
+binaries have no script-comment synopsis, so an unexplained executable name is
+not sufficient teaching.
+
+Use the existing MCP edge when consuming an external service or exposing a
+command to an MCP host. Local Go tools need no MCP server or additional loader.
+A tool-containing build is not fully evaluated until a fresh Agent job loads
+the relevant guidance, actually invokes the installed tool, and produces a
+result checked against an independent expectation. Keep that evidence alongside
+the build. `hire verify`, compilation and unit tests establish narrower facts.
+
 ## Install
 
 From the [Bench tools monorepo](https://github.com/patrickyoung/bench-tools)

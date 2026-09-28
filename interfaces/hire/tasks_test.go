@@ -45,6 +45,7 @@ if p.exists():
   question='What date should I use?' if r['message']=='need question' else ''
   target=('previous' if any(c['key']=='previous' for c in r['catalog']) else ('new:team' if 'team' in r['message'] else 'new:worker'))
   reply=dict(request_sha256=h,message='I can help.',question=question,title='A useful document',target='' if question else target,brief='Create the requested document.',inputs=[dict(name='facts.txt',text=r['message'],binding='DOCUMENT_INPUT')])
+  if target=='new:team' or any(c['key']==target and c['kind']=='team' for c in r['catalog']): reply['inputs']=[dict(name='facts.json',text=json.dumps(dict(message=r['message'])),binding='DOCUMENT_INPUT')]
   if r.get('selection_version')==1:
    reviewed=[dict(target=c['key'],fit=('adapt' if target=='adapt:'+c['key'] else 'reuse' if target==c['key'] else 'none'),reason='Fixture capability assessment.') for c in r['catalog'] if not c['key'].startswith('adapt:')]
    roles=[dict(role=k,target='new:worker',responsibility='Prepare '+k) for k in ['writer','reviewer']] if target=='new:team' else []
@@ -64,7 +65,22 @@ mkdir -p expert/bin
 printf 'Instructions\n' > expert/AGENTS.md
 printf '# Guide\nRead facts.txt and write result.md.\n' > expert/README.md
 printf '#!/bin/sh\ntest -s result.md\n' > expert/bin/check
-printf '#!/bin/sh\nprintf "Team result" > "$BENCH_TASK_WORK/result.md"\n' > expert/bin/task
+cat > expert/bin/task <<'ADAPTER'
+#!/usr/bin/python3
+import json,os
+from pathlib import Path
+work=Path(os.environ['BENCH_TASK_WORK']).resolve()
+goal=Path(os.environ['BENCH_TASK_FILE']).resolve()
+assert work==Path.cwd() and goal.parent!=work
+assert 'Create the requested document.' in goal.read_text()
+assert 'facts.json' in goal.read_text()
+data=json.loads((work/'facts.json').read_text())
+assert data==json.loads(Path(os.environ['DOCUMENT_INPUT']).read_text())
+# Real adapters need fresh nested roots, not an empty controller workspace.
+(work/'evidence').mkdir()
+(work/'evidence'/'private.txt').write_text('Runtime evidence is not a deliverable.')
+(work/'result.md').write_text('Team result: '+data['message'])
+ADAPTER
 chmod 700 expert/bin/check expert/bin/task
 if [ -d expert/agents ]; then
  for role in writer reviewer; do
@@ -110,6 +126,36 @@ func TestWorkConversationBuildExecuteRefine(t *testing.T) {
 	old, _ := os.ReadFile(filepath.Join(filepath.Dir(first.Job.Dir), "deliverables", "result.md"))
 	if string(old) != string(original) {
 		t.Fatal("old output overwritten")
+	}
+	// Both model stages can inspect the selected version rather than infer
+	// current artifact contents from older conversation summaries.
+	secondRoot := filepath.Dir(second.Job.Dir)
+	for stage, field := range map[string]string{"plan": "previous_artifacts", "present": "artifacts_dir"} {
+		b, err := os.ReadFile(filepath.Join(secondRoot, stage, "request.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var request map[string]json.RawMessage
+		if err := json.Unmarshal(b, &request); err != nil {
+			t.Fatal(err)
+		}
+		var dir string
+		if err := json.Unmarshal(request[field], &dir); err != nil {
+			t.Fatal(err)
+		}
+		wantRoot := secondRoot
+		wantText := "Finished: Make it warmer"
+		if stage == "plan" {
+			wantRoot = filepath.Dir(first.Job.Dir)
+			wantText = string(original)
+		}
+		if dir != filepath.Join(wantRoot, "deliverables") {
+			t.Fatalf("%s received the wrong artifact version: %q", stage, dir)
+		}
+		content, err := os.ReadFile(filepath.Join(dir, "result.md"))
+		if err != nil || string(content) != wantText {
+			t.Fatalf("%s cannot inspect its selected artifact: %q %v", stage, content, err)
+		}
 	}
 	page := serveTest(a, "GET", "/work/"+first.Record.Thread, nil).Body.String()
 	for _, text := range []string{"Write a welcome note", "Make it warmer", "Here is your work", "Download"} {
@@ -166,6 +212,14 @@ func TestWorkQuestionTeamAndDuplicate(t *testing.T) {
 	if j.State != "completed" || result.Kind != "team" || len(result.Artifacts) != 1 {
 		t.Fatalf("team adapter failed: %+v %s", result, a.jobs.Log(j.ID, "stderr"))
 	}
+	root := filepath.Dir(j.Dir)
+	got, err := os.ReadFile(filepath.Join(root, "deliverables", "result.md"))
+	if err != nil || string(got) != "Team result: Build a team document" {
+		t.Fatalf("team input/output handoff failed: %q %v", got, err)
+	}
+	if result.Artifacts[0].Name != "result.md" {
+		t.Fatal("input or nested runtime evidence leaked into deliverables")
+	}
 }
 func TestTaskPlanValidationAndArtifactBoundary(t *testing.T) {
 	req := []byte(`{}`)
@@ -193,6 +247,28 @@ func TestTaskPlanValidationAndArtifactBoundary(t *testing.T) {
 	_ = os.Symlink(private, filepath.Join(work, "result.txt"))
 	if _, e := collectTaskArtifacts(work, dest, nil); e == nil {
 		t.Fatal("artifact symlink followed")
+	}
+}
+
+func TestTeamBoundaryFailureStopsBeforeAuthoringOrMembers(t *testing.T) {
+	a := taskFixture(t)
+	a.cfg.GoalMode = true
+	cage := filepath.Join(filepath.Dir(a.cfg.Agent), "cage")
+	writeFixture(t, cage, "#!/bin/sh\necho 'fixture: nested boundary unavailable' >&2\nexit 125\n", 0700)
+	turn := taskSubmit(t, a, "", "Create a team document")
+	log := a.jobs.Log(turn.Job.ID, "stderr")
+	if turn.Result.Code != 125 || turn.Result.Prepared || len(turn.Result.Artifacts) != 0 {
+		t.Fatalf("boundary failure lost: %+v", turn.Result)
+	}
+	if strings.Contains(log, "Starting hire") || !strings.Contains(log, "nested boundary unavailable") || !strings.Contains(turn.Result.Message, "execution setup needs repair") {
+		t.Fatalf("team dispatched or failure hidden: %s\n%s", log, turn.Result.Message)
+	}
+	if turn.Result.GoalStatus != "blocked" || turn.Result.Update.Blocked == "" || turn.Update.Next != "" {
+		t.Fatalf("lost concrete preparation blocker: %+v / %+v", turn.Result, turn.Update)
+	}
+	page := serveTest(a, "GET", "/work/"+turn.Record.Thread, nil).Body.String()
+	if strings.Contains(page, "Finish the remaining work and check the result.") || strings.Contains(page, "Try again with saved work") {
+		t.Fatal("blocked preparation presented as generic unfinished work")
 	}
 }
 func TestTaskProfileContract(t *testing.T) {

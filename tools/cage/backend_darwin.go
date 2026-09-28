@@ -49,6 +49,12 @@ func (seatbeltBackend) command(p policy, child []string) (*exec.Cmd, func(), err
 	text.WriteString("(allow file-write* (literal \"/dev/null\") (literal \"/dev/zero\")\n")
 	text.WriteString("  (literal \"/dev/dtracehelper\") (regex #\"^/dev/tty\"))\n")
 	text.WriteString("(allow file-write-data (regex #\"^/dev/(stdout|stderr|fd/)\"))\n")
+	for _, path := range p.reads {
+		fmt.Fprintf(&text, "(deny file-write* file-link (subpath \"%s\"))\n", seatbeltQuote(path))
+	}
+	for _, path := range protectedAncestors(p) {
+		fmt.Fprintf(&text, "(deny file-write-unlink file-write-mode file-write-owner file-write-xattr (literal \"%s\"))\n", seatbeltQuote(path))
+	}
 	if !p.network {
 		text.WriteString("(deny network*)\n")
 	}

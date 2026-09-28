@@ -31,8 +31,14 @@ func finishTask(root string, result taskResult, code int, message string) int {
 }
 
 func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
+	if _, e := readTaskTeamReference(j, rec); e == nil {
+		return nil, fmt.Errorf("the headless coordinator owns this team; use its supported status actions")
+	}
 	if j.Kind != "task" || j.Active() || j.ExitCode == nil || !((*j.ExitCode == 2 && j.State == "unfinished") || (*j.ExitCode == 130 && (j.State == "cancelled" || j.State == "failed"))) {
 		return nil, fmt.Errorf("this attempt does not have a confirmed resumable outcome")
+	}
+	if rec.Config.GoalMode && *j.ExitCode == 130 {
+		return nil, fmt.Errorf("interrupted execution requires inspection before fresh work")
 	}
 	root := filepath.Dir(j.Dir)
 	if rec.Resume != nil {
@@ -69,6 +75,9 @@ func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
 		return nil, fmt.Errorf("saved plan is unavailable")
 	}
 	result := a.taskResult(j)
+	if result.GoalStatus == "delivery_pending" {
+		return nil, fmt.Errorf("work is finished; only private delivery remains")
+	}
 	resume := &taskResume{Root: root, Plan: plan, Result: result, Stage: "build"}
 	if result.Prepared {
 		if result.Kind != "worker" || result.Expert != filepath.Join(root, "authoring", "expert") {
@@ -85,14 +94,20 @@ func (a *app) taskResumeInfo(j Job, rec taskRecord) (*taskResume, error) {
 		if _, e = read("build.txt", 256<<10); e != nil {
 			return nil, e
 		}
-		// A team adapter has its own runtime entry contract; do not replay it here.
-		if result.Kind == "team" || plan.Target == "new:team" {
-			return nil, fmt.Errorf("team preparation needs a fresh attempt")
-		}
+		team := result.Kind == "team" || plan.Target == "new:team"
 		for _, c := range original.Catalog {
 			if c.Key == plan.Target && c.Kind == "team" {
-				return nil, fmt.Errorf("team preparation needs a fresh attempt")
+				team = true
 			}
+		}
+		if team {
+			if *j.ExitCode != 2 {
+				return nil, fmt.Errorf("interrupted team preparation needs inspection")
+			}
+			if _, e = savedTeamPreparationCode(root); e != nil {
+				return nil, e
+			}
+			resume.Result.Kind = "team"
 		}
 	}
 	for _, in := range plan.Inputs {
@@ -205,18 +220,44 @@ func resumeTaskProcess(ctx context.Context, snapshot string, rec taskRecord) int
 	saved := rec.Resume
 	result := saved.Result
 	result.Message, result.Question = "", ""
+	result.GoalStatus, result.StopReason = "", ""
 	result.Artifacts = nil
 	result.Update = taskUpdate{}
 	if saved.Stage == "build" {
 		taskPhase(snapshot, "Continuing preparation from where we left off…")
 		author := filepath.Join(saved.Root, "authoring")
-		code, _, _ := taskCommand(ctx, author, nil, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
+		code := 2
+		if result.Kind == "team" {
+			var err error
+			code, err = savedTeamPreparationCode(saved.Root)
+			if err != nil {
+				return finishTask(snapshot, result, 125, err.Error())
+			}
+		}
 		if code != 0 {
+			code, _, _ = taskCheckpointCommand(ctx, snapshot, "prepare", author, rec, taskBuildArgs(rec, snapshot, author, filepath.Join(saved.Root, "build.txt"))...)
+		}
+		if code != 0 {
+			if rec.Config.GoalMode {
+				result.GoalStatus = "blocked"
+				return finishTask(snapshot, result, code, "Preparation could not progress past a technical blocker. Your draft and the failed checks are saved.")
+			}
 			return finishTask(snapshot, result, code, "The specialist needs more work. What’s saved is safe; you can continue again.")
 		}
-		result.Expert, result.Kind, result.Prepared = filepath.Join(author, "expert"), "worker", true
+		result.Expert = filepath.Join(author, "expert")
+		if code, err := repairPreparedTaskMembers(ctx, saved.Root, snapshot, rec, saved.Plan); err != nil {
+			result.GoalStatus = "blocked"
+			return finishTask(snapshot, result, code, "Team preparation could not resolve this check: "+truncateMessage(err.Error(), 600)+". No specialist work started.")
+		}
+		if result.Kind != "team" {
+			result.Kind = "worker"
+		}
+		result.Prepared = true
 	} else if saved.Stage != "execute" {
 		return finishTask(snapshot, result, 1, "The saved continuation is unavailable.")
+	}
+	if result.Kind == "team" && rec.TeamBackend == taskTeamBackend {
+		return admitTaskTeam(ctx, saved.Root, snapshot, rec, saved.Plan, result, filepath.Join(saved.Root, "work", "execution"))
 	}
 	return executeTask(ctx, saved.Root, snapshot, rec, saved.Plan, result, saved.Stage == "execute")
 }

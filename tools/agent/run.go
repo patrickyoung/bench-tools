@@ -38,6 +38,10 @@ func run(kind string, args []string) int {
 	if err != nil {
 		return problem(err, 1)
 	}
+	selected, err := selectedReadOnly(o, d)
+	if err != nil {
+		return problem(err, 2)
+	}
 	if err := d.validateProcedures(); err != nil {
 		return problem(err, 1)
 	}
@@ -71,8 +75,15 @@ func run(kind string, args []string) int {
 			return 0
 		}
 		var status int
-		wake, status, err = boundedOutput(filepath.Join(d.Home, "bin/wake"), nil, os.Environ(), d.Work, fileLimit)
+		if protectionEnabled(o) {
+			wake, status, err = protectedWake(o, d, selected)
+		} else {
+			wake, status, err = boundedOutput(filepath.Join(d.Home, "bin/wake"), nil, os.Environ(), d.Work, fileLimit)
+		}
 		if err != nil {
+			if protectionEnabled(o) && status == 125 {
+				return problem(err, 125)
+			}
 			return problem(fmt.Errorf("bin/wake emitted too much output; the limit is %d bytes: %w", fileLimit, err), 2)
 		}
 		switch status {
@@ -109,6 +120,13 @@ func run(kind string, args []string) int {
 		return problem(fmt.Errorf("no goal: supply goal text, -goal-file, GOAL.md or stdin"), 2)
 	}
 	body := d.context()
+	if protectionEnabled(o) {
+		body += "\n# Protected handoff inputs\n\nActions, checks and wake checks cannot modify these caller-selected paths. Copy inputs into writable work/output files to edit them; do not move or remove originals.\n"
+		for _, path := range selected {
+			body += "\n- " + path
+		}
+		body += "\n"
+	}
 	if len(body) > contextLimit {
 		return problem(fmt.Errorf("compiled definition exceeds %d bytes", contextLimit), 2)
 	}
@@ -159,6 +177,11 @@ func run(kind string, args []string) int {
 	if inside(d.Home, tmpParent) || inside(d.Work, tmpParent) || inside(d.State, tmpParent) {
 		return problem(fmt.Errorf("temporary directory must be outside agent home, work and state"), 2)
 	}
+	for _, path := range selected {
+		if inside(path, tmpParent) {
+			return problem(fmt.Errorf("protected input contains temporary directory: %s", path), 2)
+		}
+	}
 	checkpoint := ""
 	if o.checkpoint != "" {
 		checkpoint = filepath.Join(d.Control, "checkpoints", o.checkpoint+".current")
@@ -174,6 +197,23 @@ func run(kind string, args []string) int {
 	actionTmp := filepath.Join(tmp, "action-tmp")
 	if err := os.Mkdir(actionTmp, 0700); err != nil {
 		return problem(err, 2)
+	}
+	protectionFile := ""
+	checkCommand := shellQuote(filepath.Join(d.Home, "bin/check"))
+	if protectionEnabled(o) {
+		p := inputProtection{Version: 1, Work: d.Work, State: d.State, Temp: actionTmp, Cage: cage, Check: filepath.Join(d.Home, "bin/check"), Network: o.network, ReadOnly: selected}
+		if err := preflightProtection(p); err != nil {
+			return problem(err, 125)
+		}
+		protectionFile = filepath.Join(tmp, "input-protection.json")
+		b, err := json.Marshal(p)
+		if err != nil {
+			return problem(err, 2)
+		}
+		if err := os.WriteFile(protectionFile, b, 0400); err != nil {
+			return problem(err, 2)
+		}
+		checkCommand = shellQuote(self) + " internal-check " + shellQuote(protectionFile)
 	}
 	skill := filepath.Join(tmp, "agent-context")
 	if err := os.Mkdir(skill, 0700); err != nil {
@@ -221,6 +261,7 @@ func run(kind string, args []string) int {
 		"PLY_DIR": filepath.Join(d.Control, "runs"), "BRIEF_DIR": filepath.Join(d.Control, "selections"),
 		"BRIEF_MODEL": model, "BRIEF_EFFORT": o.effort,
 	}
+	set["AGENT_INPUT_PROTECTION"] = protectionFile
 	if cage != "" {
 		set["AGENT_CAGE"] = cage
 		set["AGENT_NET"] = "0"
@@ -234,10 +275,13 @@ func run(kind string, args []string) int {
 	env := withEnv(os.Environ(), set, "RUN_KIND", "RUN_WAKE_OUTPUT", "RUN_INPUT", "RUN_STDIN_FILE", "AGENT_RUNTIME",
 		"AGENT_MAY", "BENCH_MAY", "AGENT_ACTION", "AGENT_ACTION_PATH", "AGENT_ACTION_POLICY", "ACTION_PATH", "ACTION_POLICY", "ACTION_MAY", "ACTION_ASK",
 		"PLY_TOOLS", "ASK_MODEL", "ASK_SYSTEM", "ASK_DIR")
-	argv := []string{"-sh", "-shell", "/bin/sh", "-no-delegate", "-C", d.Work, "-check", shellQuote(filepath.Join(d.Home, "bin/check")), "-goal-file", goal}
+	argv := []string{"-sh", "-shell", "/bin/sh", "-no-delegate", "-C", d.Work, "-check", checkCommand, "-goal-file", goal}
 	argv = append(argv, "-record", record, "-record-dir", filepath.Join(d.Control, "recordings"),
 		"-record-input", goal, "-record-input", filepath.Join(skill, "SKILL.md"),
 		"-record-input", filepath.Join(d.Home, "bin/check"))
+	if protectionFile != "" {
+		argv = append(argv, "-record-input", protectionFile)
+	}
 	if d.Tools != "" {
 		argv = append(argv, "-t", d.Tools)
 	}

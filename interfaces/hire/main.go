@@ -20,6 +20,9 @@ import (
 var version = "0.1.0-dev"
 
 type config struct {
+	TeamCoordinator, TeamQueue                     string
+	TeamRunner                                     string
+	ReviewedTeamControllers                        string
 	Moniker                                        string
 	TailscaleOrigin, TailscaleUser                 string
 	Source, Data, Addr, Hire, Agent, Python, Model string
@@ -28,10 +31,20 @@ type config struct {
 	Ask, Record                                    string
 	AllowBuild                                     bool
 	AllowRun                                       bool
+	GoalMode                                       bool
 	Plonk, PlonkURL, PlonkTokenFile                string
 }
 
 func main() {
+	if len(os.Args) == 4 && os.Args[1] == "fingerprint-team" {
+		_, digest, err := definitionSnapshot(os.Args[2], os.Args[3])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		fmt.Println(digest)
+		return
+	}
 	if len(os.Args) == 3 && os.Args[1] == "delivery" {
 		os.Exit(deliveryProcess(os.Args[2]))
 	}
@@ -58,6 +71,11 @@ func main() {
 	flag.StringVar(&cfg.Agent, "agent", "agent", "installed Agent executable for workers and conversation")
 	flag.StringVar(&cfg.WebAttach, "web-attach", "", "explicit loopback browser endpoint offered to worker runs (browser must already be running)")
 	flag.BoolVar(&cfg.AllowRun, "allow-run", false, "enable explicit worker runs through Agent")
+	flag.BoolVar(&cfg.GoalMode, "goal-mode", true, "finish work goals through checked continuations and private delivery within the task deadline")
+	flag.StringVar(&cfg.ReviewedTeamControllers, "reviewed-team-controllers", "", "comma-separated fingerprints of explicitly reviewed host coordinators; member Agent confinement stays enabled")
+	flag.StringVar(&cfg.TeamCoordinator, "team-coordinator", "", "selected public Manage command for new team applications")
+	flag.StringVar(&cfg.TeamQueue, "team-queue", "", "private team run queue under data/workspaces, serviced independently of this interface")
+	flag.StringVar(&cfg.TeamRunner, "team-runner", "", "operator-selected isolated team environment, accepting Cage argv (default native Cage)")
 	flag.StringVar(&cfg.Python, "python", "python3", "Python executable for the selected catalog command")
 	flag.StringVar(&cfg.Model, "model", os.Getenv("ASK_MODEL"), "default provider/model for authoring (defaults to ASK_MODEL)")
 	flag.BoolVar(&cfg.AllowBuild, "allow-build", false, "enable conversation, analysis and model-backed authoring")
@@ -78,6 +96,19 @@ func main() {
 }
 
 func prepare(cfg config) (config, error) {
+	if cfg.TeamRunner != "" {
+		p, err := exec.LookPath(cfg.TeamRunner)
+		if err != nil {
+			return cfg, fmt.Errorf("team runner: %w", err)
+		}
+		cfg.TeamRunner, err = filepath.Abs(p)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	if err := validateReviewedTeams(cfg.ReviewedTeamControllers); err != nil {
+		return cfg, err
+	}
 	if _, err := tailscaleHost(cfg); err != nil {
 		return cfg, err
 	}
@@ -163,6 +194,9 @@ func prepare(cfg config) (config, error) {
 			return cfg, err
 		}
 	}
+	if err := prepareTeamCoordinator(&cfg); err != nil {
+		return cfg, err
+	}
 	return cfg, nil
 }
 
@@ -235,6 +269,9 @@ func run(cfg config) error {
 	server := &http.Server{Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if cfg.TeamCoordinator != "" {
+		go a.observeTaskTeams(ctx)
+	}
 	done := make(chan error, 1)
 	go func() { done <- server.Serve(listener) }()
 	slog.Info("Hire interface ready", "url", "http://"+listener.Addr().String(), "source", cfg.Source, "data", cfg.Data, "model_builds", cfg.AllowBuild)

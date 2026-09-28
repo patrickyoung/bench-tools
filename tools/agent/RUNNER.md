@@ -122,3 +122,19 @@ through Agent and teach explicit Record wrappers for direct Unix commands.
 Compaction summaries are snapshotted through Ask's public JSON handoff.
 Keep linked child evidence roots with the parent run.
 Quiet heartbeat wakes still stop before Ply without creating a recording.
+
+## Protected handoff inputs
+
+`-protect-inputs` or `AGENT_PROTECT_INPUTS=1` binds existing workspace `inputs`
+and `request.md` read-only through public Cage `-r PATH`. Repeated `-read-only`
+selects other existing paths. The frozen invocation binding is controller-owned
+and recorded. Protection covers actions, the original checker, and heartbeat
+wake checks; writes are restricted to workspace/state/private temp and networking
+follows `-net`. Explicit paths are validated before runtime mutation; unavailable
+confinement stops with 125. Missing conventional paths are skipped. The environment
+requirement cannot be disabled by flags. See [SECURITY.md](SECURITY.md).
+
+`python3 eval/protected-inputs.py AGENT CAGE PLY BRIEF ASK RECORD [OUTPUT_DIR]`
+is a model-free executable boundary proof. It uses real Ply/Record for a passing
+precheck, and a controlled Ply driver for action denial and exact checker status
+1/130. The driver verifies composition, not model quality or the Ply loop.

@@ -1,5 +1,36 @@
 # Hire UI
 
+For macOS teams, configure `-team-runner /absolute/path/to/isolated-runner`
+to execute every team in a selected environment that supports member Cage.
+The runner accepts `-net -w WORK -- COMMAND ARGS...`, preserves the caller's
+working directory, absolute selected paths, model/input environment, streams,
+signals and exit status, and must enforce the outer write boundary while
+providing native public Agent/Cage tools. A Linux container with a read-only
+root and source mounts, only the selected work directory writable, and working
+unprivileged Bubblewrap for member Cage is one option. Never mount a Docker
+socket or grant privileged mode to generated work. Verify allowed/denied writes,
+member network denial, process cancellation and real team execution before use.
+The UI sets `AGENT_PROTECT_INPUTS=1` for teams. The runner must preserve it and
+supply Agent/Cage versions supporting protected member inputs. Existing member
+`inputs/` and `request.md` are then read-only during actions and checks. Checks
+receive the same selected work/state write grants and network policy; workers
+copy editable material into separate working/output paths. Generated coordinators
+still own staging; this does not protect inputs from the enclosing coordinator.
+
+The UI probes the selected environment before authoring and uses it for new,
+adapted, reused and continued teams; unavailable environments fail closed.
+The executable is selected by the operator, never by a model or request.
+
+Without that option, Seatbelt cannot nest the team's outer Cage with its members'
+own action Cages. The UI detects that failure before team authoring/execution.
+After inspecting and explicitly approving a local coordinator and all its member
+checks, an operator can print its full definition fingerprint with
+`hire-ui fingerprint-team DATA EXPERT` and select that fingerprint at startup
+using `-reviewed-team-controllers SHA256`. This runs only that exact reviewed
+coordinator on the host; member Agent confinement stays enabled. Content or
+executable-mode changes require a new review. Never approve a generated team
+merely because its structural check passed.
+
 A conversation-led workbench for creating, teaching and improving Bench workers.
 Talk to the reusable `bench-hire` worker while the UI keeps selected context,
 evidence and concrete controls visible. Catalogs and direct forms remain
@@ -51,6 +82,7 @@ addresses only. Stop it with Ctrl-C.
 | `-record PATH` | `record` | Record selected analysis evidence and model session |
 | `-web-attach ENDPOINT` | Unset | Offer an explicitly selected connected browser |
 | `-agent PATH` | `agent` | Select Agent for worker and conversation runs |
+| `-team-runner PATH` | Native Cage | Select an isolated environment for all team entries and preflights |
 | `-assistant PATH` | Source’s `workers/bench-hire/expert` | Select the advisory worker definition |
 | `-allow-run` | Off | Enable individual worker execution |
 | `-allow-build` | Off | Enable conversation, analysis and model-backed authoring |
@@ -339,8 +371,11 @@ both -allow-build and -allow-run enable this flow.
 The work companion is `workers/bench-hire/expert/task`; the original advisory
 profile and its learned tool knowledge remain available under **Manage your
 bench**. Work conversations retain earlier output versions. Each send is a
-bounded plan/prepare/execute/present composition, not an unlimited background
-agent. Missing facts are asked in conversation. Missing access or dependencies
+bounded goal: plan, prepare, execute, check the requested outcome, correct any
+fixable omissions and privately deliver the checked result. Confirmed unfinished
+work continues at its saved checkpoint without another click. All attempts share
+a 45-minute deadline; cancellation still stops the job. Missing essential facts
+are asked in conversation. Missing access or dependencies
 remain honest blockers; the local work flow does not silently deploy, publish,
 send messages, purchase, or install software. Technical activity records remain
 available under each reply's Details control.
@@ -368,7 +403,9 @@ a fixed output snapshot, exact command status, bounded time and cancellation.
 It shares the existing one-command admission gate. An interrupted step stays
 unfinished; a user-requested retry reuses the original idempotent request.
 
-Opening results prepares a private remote snapshot; it does not create a share.
+With default goal mode, a checked result automatically prepares its private Plonk
+snapshot before the job finishes. Opening results also supports older runs and
+explicit delivery recovery; neither action creates a share.
 The controller authenticates every private gallery, image, PDF and download
 request. Credentials never enter browser pages or the worker's execution goal.
 Shared links advance only on the explicit share-update action. Revoking a link
@@ -395,9 +432,45 @@ BENCH_UI_PLONK_BIN=/absolute/plonk GOWORK=off go test \
   -run TestDeliveryPublicExecutableIntegration -v .
 ```
 
-### Continuing stopped work
+### Completing a work goal
 
-The latest stopped turn offers a next step in the conversation. **Continue
+Work conversations default to `-goal-mode=true`. A job continues through confirmed
+unfinished preparation and worker checkpoints, then checks the current result
+against the original request. A fixable omission goes back to that worker with
+specific feedback, even if its structural check passed. Intermediate files and
+attempt evidence are retained. Supported teams reuse accepted contributions and
+resume only the relevant unfinished or corrected roles.
+
+All goal-mode team adapters use the [versioned handoff contract](TASK-HANDOFF.md).
+A valid worker report, a reviewable candidate and a finished goal are separate
+states. Every invocation binds its report to the current assignment and full
+definition, names the actual blocker or next step, and selects hashed working
+files, evidence and deliverables. The controller snapshots and validates these
+files before review; inherited top-level files are not this invocation’s output.
+A blocked member with process exit 0 remains blocked rather than becoming an
+endless correction loop. Version 1 adapters go through Hire adaptation before
+new execution; a version declaration alone is never proof of conformance.
+
+The job stops on completion, an essential missing answer, cancellation, its
+45-minute deadline, a concrete technical blocker, or three observations of
+unchanged work. Changing review wording or log timestamps does not count as
+progress. Failed, declined, interrupted, parked and unknown operations are not
+automatically replayed. If private Plonk delivery fails, finished files remain
+available and delivery can be recovered without executing the worker again.
+External sharing still requires the existing explicit share action.
+
+The conversation displays the run limit while active and distinguishes a deadline
+from interruption. Stopped work links directly to its activity. **Resolve the
+blocker** starts diagnosis with the retained member handoffs and working files;
+it does not replay an interrupted command. A deadline retains the last stage and
+remaining correction, alongside the exact process status.
+
+`-goal-mode=false` keeps the earlier behavior described below. Direct build/run
+pages keep their explicit continuation controls.
+
+### Continuing older or explicitly stopped work
+
+A legacy or explicitly stopped turn offers a next step in the conversation. **Continue
 working** resumes confirmed unfinished individual-worker execution or authoring
 in the original workspace with the original goal, inputs and public Agent/Hire
 checkpoint. Each click admits another bounded 50-turn invocation and has its own
@@ -426,8 +499,8 @@ not a delivery acknowledgement. Existing team entry commands without steering
 keep notes for follow-up and say so explicitly.
 
 Live **Done / Now / Next** notes show the current plan and optional worker updates.
-A stopped result also shows remaining work and **Continue working** when its
-checkpoint is resumable. Each continuation gives another 50-turn invocation,
+A stopped legacy result also shows remaining work and **Continue working** when its
+checkpoint is resumable. Each explicit continuation gives another 50-turn invocation,
 keeps its own logs/results and retains the conversation. A normal follow-up
 message uses the saved files for a fresh refinement. Earlier versions remain
 available.
@@ -533,3 +606,91 @@ name. A successful saved reservation is not rerolled. Moniker owns atomic name
 uniqueness within this explicitly selected private directory. It uses no model,
 network, shared runtime, or hidden state. The same tool can be exposed by the
 existing public `mcpserve` executable using its supplied MCP manifest/dispatcher.
+
+## Chat workspace and Plonk
+
+The main workspace is a chat list with **New chat**, a scrolling conversation,
+and a message box fixed at the bottom. **Enter** sends and **Shift+Enter** adds a
+line. Drafts and reading position are retained per chat in the current tab.
+Attachments and web research are under **Attach files & options**. Command records
+and library controls are under **Library & tools**.
+
+Use **Plonk** in the chat header to open that chat's site beside the conversation,
+and **Plonk back** to hide it. On a phone the site fills the content area. The
+latest returned files appear there, with earlier versions still downloadable
+from their messages. Goal mode prepares checked results automatically. For older
+results with Plonk connected, opening the panel prepares a private
+gallery using the existing delivery command. Sharing remains an explicit action
+inside the panel; simply viewing the site creates no public share link.
+
+Team preparation checks now return actionable findings to Hire in goal mode.
+A missing member guide or a changed reused worker is repaired in the saved build
+checkpoint and checked again before specialists start. After three rejected
+checks the exact remaining issue is shown. A saved preparation with a confirmed
+build outcome and no execution attempt can continue without selecting a new
+team; failed or unknown execution is never replayed by that recovery path.
+
+### Headless team applications
+
+Select `-team-coordinator /absolute/path/to/bench-manage` and
+`-team-queue /absolute/data/workspaces/team-runs` together to use the artifact
+team protocol for newly submitted team work. The command can be an
+operator-selected runtime wrapper, but must preserve literal arguments,
+selected paths, streams and exit status. It must support `bench-manage team`
+`validate`, `preflight`, `admit`, `status`, `result`, `send` and `cancel`. The queue is a
+private, dedicated directory under the selected data root's `workspaces`.
+The operator separately supervises `bench-manage team work QUEUE`; the UI
+never starts this worker or calls `resume`.
+
+Hire prepares the selected member definitions and a `bench.team/v1` recipe
+with small native input/output adapters. Every selected role is retained and
+unchanged members remain pinned. The UI independently verifies the roster and
+uses public structural validation before admission. Then public `team preflight`
+freezes the actual goal, inputs and recipe in a retained diagnostic run under
+`QUEUE/.preflights/`, runs only the real first prepare through Tend/Cage, and
+validates its native input declaration without launching Agent. At most two Hire
+repairs may follow signal-free, known preparation failures; uncertain, interrupted
+or contradictory receipts stop without replay. Admission requires the same
+checked definition, goal and input bytes. Preflight covers the first prepare only;
+downstream adapters and specialist quality still require execution evidence.
+The originals packet includes `team-attachments.json` mapping controller stored
+attachment filenames to display names and hashes. Task facts belong in native
+input data, not generated source constants. Runtime failures show retained
+coordinator diagnostics in the conversation, escaped and bounded. A compatible previously
+prepared recipe is reused without rebuilding its orchestration. Manage owns
+member execution, checkpoints, packet freezing, source-bound review,
+correction allowances and final acceptance. Closing the browser or restarting
+Hire UI does not cancel an admitted team; an explicit Stop sends Manage's
+cancellation request. Host worker failure retains Manage/Tend's observed or
+unknown outcome and never authorizes UI replay.
+
+Conversation updates carry an idempotency key and the displayed goal revision;
+answers also bind the outstanding question. Attachments retain the existing
+bounded upload store and are supplied to Manage for sealing at enqueue.
+The UI distinguishes queued updates from those included in an assignment.
+A stale reply or conflicting reuse of a message ID is rejected. A running
+step may finish before an accepted update is included. These receipts do not
+claim model comprehension.
+
+The UI imports only the coordinator's complete, verified delivery, checks
+its paths, hashes and size bounds again, and presents the existing typed
+artifacts. It does not run another completion model or goal loop. Private
+Plonk delivery remains a separate idempotent operation under the UI's selected
+connection; while the UI is offline, checked files remain complete locally.
+On startup and observation, delivery-only reconciliation imports those files
+and queues private delivery. Failed or canceled delivery never reruns team
+members; the existing delivery controls expose recovery.
+
+Each new task records its backend, selected coordinator executable and stable
+run reference. Old tasks without that backend retain their original contracts.
+Keep versioned coordinator wrappers and their dependencies available for old
+runs; changing today's startup selection does not replace a saved run's
+coordinator. The activity record is the UI's preparation/admission receipt;
+the conversation projects the independent team's current state.
+
+`TestCoordinator*` exercises public executable fixtures for admission,
+UI restart, pinned coordinator selection, roster preservation and recipe reuse,
+message/reply/attachment identity, cancellation, unknown outcomes and verified
+artifact import. These fixtures establish UI wiring, not kernel confinement,
+real worker quality or host service deployment. Run the separately selected
+real Manage/Tend/Agent/Cage integration before deployment.

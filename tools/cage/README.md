@@ -81,6 +81,19 @@ cat output/result.txt
 An explicit `-w` replaces the default workspace grant; repeat it for multiple
 existing directories. Writable roots are resolved to canonical paths.
 
+Protect selected inputs inside an otherwise writable workspace:
+
+```sh
+cage -w work -r work/inputs -- reviewer work/inputs/source.zip
+```
+
+Repeat `-r` for existing regular files or directories. Protected bytes and names
+cannot be changed, deleted or renamed by the child, including by renaming an
+ancestor. Other children of writable directories remain writable. Input trees
+must contain no symlinks, special files or multiply linked regular files. The
+protected tree cannot contain a writable root or the temporary directory.
+See [the guide](GUIDE.md#protect-inputs-inside-a-workspace) for the full limits.
+
 ## Choose a boundary for the task
 
 | Invocation | Workspace writes | Temporary writes | Network |
@@ -141,7 +154,7 @@ Wrappers may conservatively reserve this status for an uncertain boundary
 outcome. Check their contract before retrying.
 
 ```text
-cage [-net] [-ro | -w DIR ...] -- command [args...]
+cage [-net] [-ro | -w DIR ...] [-r PATH ...] -- command [args...]
 cage status
 cage check
 cage help

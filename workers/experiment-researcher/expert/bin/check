@@ -117,7 +117,7 @@ def main():
 
     report = strict(read(WORK / 'research.json'))
     fields(report, 'version request_sha256 status summary hypothesis change citations limitations next_inputs', 'research')
-    require(type(report['version']) is int and report['version'] == 1, 'unsupported report version')
+    require(type(report['version']) is int and report['version'] in (1, 2), 'unsupported report version')
     require(report['request_sha256'] == digest(raw), 'stale request binding')
     require(report['status'] in ('ready', 'needs_input', 'no_experiment'), 'invalid status')
     require(string(report['summary']) and text_list(report['limitations'], True), 'summary/limitations required')
@@ -168,18 +168,34 @@ def main():
     else:
         require(template is not None and request['fresh_holdout'], 'ready requires a template and fresh reserved cases')
         require(archive_citations > 0 and string(report['hypothesis']), 'ready requires archive evidence and hypothesis')
-        fields(report['change'], 'path instruction', 'change')
-        require(string(report['change']['instruction']) and isinstance(report['change']['path'], str), 'invalid change')
-        require(isinstance(template.get('mutable'), list) and report['change']['path'] in template['mutable'], 'unadmitted mutable path')
+        change = report['change']
+        fields(change, 'path instruction' if report['version'] == 1 else 'kind paths instruction', 'change')
+        require(string(change['instruction']), 'invalid change instruction')
+        if report['version'] == 1:
+            require(isinstance(change['path'], str), 'invalid change')
+            paths = [change['path']]
+        else:
+            # Classification is research context, never a source of execution
+            # authority or a switch that chooses a less demanding gate.
+            require(change['kind'] in ('tool', 'skill', 'workflow'), 'invalid change kind')
+            paths = change['paths']
+            require(isinstance(paths, list) and 1 <= len(paths) <= 8, 'change requires 1..8 paths')
+            require(all(isinstance(p, str) and p and not p.startswith('/') and '\\' not in p
+                        and all(part not in ('', '.', '..') for part in p.split('/')) for p in paths), 'invalid mutable path')
+            require(len(set(paths)) == len(paths), 'duplicate mutable path')
+        require(isinstance(template.get('mutable'), list) and all(p in template['mutable'] for p in paths), 'unadmitted mutable path')
         # Paths must not acquire a new meaning when Improve runs in another cwd.
-        external(template['source'], directory=True)
+        source_root = external(template['source'], directory=True)
+        if report['version'] == 2:
+            for selected in paths:
+                read(source_root / selected).decode('utf-8')
         for split in ('development', 'holdout'):
             for case in template[split]:
                 external(case['file'])
         for dependency in template.get('dependencies', []):
             external(dependency)
         expected = copy.deepcopy(template)
-        expected['mutable'] = [report['change']['path']]
+        expected['mutable'] = paths
         expected['settings']['research'] = {k: report[k] for k in ('hypothesis', 'change', 'summary', 'citations')}
         experiment_raw = (json.dumps(expected, indent=2, ensure_ascii=False) + '\n').encode('utf-8')
         create = assemble and not os.path.lexists(experiment_path)

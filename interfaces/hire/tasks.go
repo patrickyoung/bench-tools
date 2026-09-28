@@ -24,6 +24,8 @@ type taskChoice struct {
 	NeedsBuild  bool              `json:"needs_build"`
 }
 type taskRecord struct {
+	TeamBackend                                            string           `json:",omitempty"`
+	RecoveryRoot                                           string           `json:",omitempty"`
 	Research                                               bool             `json:",omitempty"`
 	Attachments                                            []taskAttachment `json:",omitempty"`
 	Steering                                               bool             `json:",omitempty"`
@@ -39,6 +41,8 @@ type taskArtifact struct {
 	Preview    string `json:"-"`
 }
 type taskResult struct {
+	StopReason                             string         `json:",omitempty"`
+	GoalStatus                             string         `json:",omitempty"`
 	Flash                                  *taskFlashTeam `json:"flash,omitempty"`
 	Update                                 taskUpdate     `json:",omitempty"`
 	Message, Question, Title, Expert, Kind string
@@ -47,20 +51,27 @@ type taskResult struct {
 	Artifacts                              []taskArtifact
 }
 type taskTurn struct {
-	Specialist taskSpecialist
-	Deferred   bool
-	Messages   []taskMessage
-	Update     taskUpdate
-	Recovery   string
-	Stopped    bool
-	Job        Job
-	Record     taskRecord
-	Result     taskResult
-	Progress   string
-	Delivery   deliveryView
-	Outputs    []taskOutput
+	Coordinator      *taskTeamStatus
+	CoordinatorError string
+	Specialist       taskSpecialist
+	Deferred         bool
+	Messages         []taskMessage
+	Update           taskUpdate
+	Recovery         string
+	Stopped          bool
+	Job              Job
+	Record           taskRecord
+	Result           taskResult
+	Progress         string
+	Delivery         deliveryView
+	Outputs          []taskOutput
 }
 type taskView struct {
+	TeamJob, TeamQuestion       string
+	TeamRevision                int
+	Title                       string
+	Site                        *taskTurn
+	SiteOpen                    bool
 	Research                    bool
 	Attachments                 []taskAttachment
 	Deferred                    bool
@@ -116,6 +127,8 @@ func (a *app) taskTurns(thread string) []taskTurn {
 			continue
 		}
 		turn := taskTurn{Job: j, Record: rec, Result: a.taskResult(j)}
+		a.projectTaskTeam(&turn)
+		j = turn.Job
 		if !j.Active() && thread != "" {
 			for i, f := range turn.Result.Artifacts {
 				if f.Type == "text/plain" && f.Size <= 24000 {
@@ -125,7 +138,7 @@ func (a *app) taskTurns(thread string) []taskTurn {
 				}
 			}
 		}
-		if j.Active() {
+		if j.Active() && turn.Coordinator == nil && turn.CoordinatorError == "" {
 			rel, _ := filepath.Rel(a.cfg.Data, filepath.Join(filepath.Dir(j.Dir), "progress.txt"))
 			turn.Progress, _ = readText(a.cfg.Data, rel, 2048)
 			if turn.Progress == "" {
@@ -135,6 +148,27 @@ func (a *app) taskTurns(thread string) []taskTurn {
 		turn.Messages, _ = readTaskMessages(filepath.Dir(j.Dir))
 		turn.Deferred = taskSteeringDeferred(j, rec)
 		turn.Update = a.taskUpdate(j, rec, turn.Result)
+		if turn.Coordinator != nil || turn.CoordinatorError != "" {
+			turn.Update = turn.Result.Update
+			turn.Deferred = false
+		}
+		if turn.Coordinator != nil {
+			for i := range turn.Messages {
+				for _, receipt := range turn.Coordinator.Messages {
+					if receipt.ID == turn.Messages[i].ID {
+						turn.Messages[i].Receipt = receipt.Status
+					}
+				}
+			}
+		}
+		if !j.Active() {
+			if turn.Update.Blocked == turn.Result.Message {
+				turn.Update.Blocked = ""
+			}
+			if turn.Update.Done == turn.Result.Message {
+				turn.Update.Done = ""
+			}
+		}
 		if thread != "" {
 			turn.Specialist = a.taskSpecialist(j, rec, turn.Result)
 		}
@@ -167,11 +201,19 @@ func (a *app) taskTurns(thread string) []taskTurn {
 		}
 		if len(out) > 0 {
 			last := &out[len(out)-1]
-			last.Stopped = !last.Job.Active() && last.Job.State != "completed"
-			if last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun {
+			last.Stopped = !last.Job.Active() && (last.Job.State != "completed" || (last.Result.GoalStatus != "" && last.Result.GoalStatus != "complete"))
+			if last.Coordinator == nil && last.CoordinatorError == "" && last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus != "blocked" && last.Result.GoalStatus != "needs_input" && last.Result.GoalStatus != "delivery_pending" {
 				last.Recovery = "retry"
 				if _, err := a.taskResumeInfo(last.Job, last.Record); err == nil {
 					last.Recovery = "resume"
+				}
+			}
+			if last.Coordinator == nil && last.CoordinatorError == "" && last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus == "blocked" {
+				last.Recovery = "diagnose"
+			}
+			if last.Coordinator == nil && last.CoordinatorError == "" && last.Stopped && a.cfg.AllowBuild && a.cfg.AllowRun && last.Result.GoalStatus == "blocked" && last.Result.Kind == "team" && !last.Result.Prepared {
+				if saved, err := a.taskResumeInfo(last.Job, last.Record); err == nil && saved.Stage == "build" {
+					last.Recovery = "repair"
 				}
 			}
 		}
@@ -185,7 +227,7 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 		a.fail(w, 404, "That conversation was not found.")
 		return
 	}
-	v := taskView{Thread: thread, Focus: r.URL.Query().Get("focus"), Draft: draft, Error: problem}
+	v := taskView{Title: "New chat", SiteOpen: r.URL.Query().Get("site") == "1", Thread: thread, Focus: r.URL.Query().Get("focus"), Draft: draft, Error: problem}
 	if thread != "" {
 		v.Attachments, _ = taskAttachments(a.cfg.Data, thread)
 		v.Turns = a.taskTurns(thread)
@@ -197,17 +239,34 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 			return
 		}
 	}
-	for _, turn := range v.Turns {
+	for i := range v.Turns {
+		turn := v.Turns[i]
+		v.Title = truncateMessage(turn.Record.Message, 70)
+		if turn.Result.Title != "" {
+			v.Title = turn.Result.Title
+		}
+		if len(turn.Result.Artifacts) > 0 {
+			v.Site = &v.Turns[i]
+		}
+		if turn.Coordinator != nil && turn.Coordinator.CanSend() {
+			v.TeamJob, v.TeamRevision = turn.Job.ID, turn.Coordinator.Revision
+			if turn.Coordinator.QuestionID != nil {
+				v.TeamQuestion = *turn.Coordinator.QuestionID
+			}
+		}
 		if turn.Job.Active() {
 			v.ActiveJob = turn.Job.ID
 			v.Deferred = turn.Deferred
 		}
 	}
+	if v.TeamJob != "" {
+		v.ActiveJob = v.TeamJob
+	}
 	seen := map[string]bool{}
 	all := a.taskTurns("")
 	for i := len(all) - 1; i >= 0; i-- {
 		t := all[i]
-		if !seen[t.Record.Thread] && len(v.Recent) < 12 {
+		if !seen[t.Record.Thread] {
 			v.Recent = append(v.Recent, t)
 			seen[t.Record.Thread] = true
 		}
@@ -218,7 +277,7 @@ func (a *app) renderTask(w http.ResponseWriter, r *http.Request, code int, probl
 			break
 		}
 	}
-	a.render(w, code, page{Title: "Your work", View: "tasks", Nav: "work", Work: v})
+	a.render(w, code, page{Title: v.Title, View: "tasks", Nav: "work", Work: v})
 }
 func (a *app) taskChoices() []taskChoice {
 	c := a.catalog()
@@ -279,6 +338,22 @@ func (a *app) taskSend(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rec := taskRecord{Research: r.PostForm.Get("research") == "yes", Steering: true, Thread: thread, Message: message, Focus: r.PostForm.Get("focus"), Model: a.cfg.Model, Now: time.Now().Format(time.RFC3339), Revision: a.cat.Revision, Config: a.cfg, Catalog: a.taskChoices(), History: []assistantMessage{}}
+		if a.cfg.TeamCoordinator != "" {
+			rec.TeamBackend = taskTeamBackend
+		}
+		if len(turns) > 0 && turns[len(turns)-1].Coordinator != nil && turns[len(turns)-1].Coordinator.CanSend() {
+			return Job{}, fmt.Errorf("send an update to the existing team before starting another attempt")
+		}
+		if len(turns) > 0 && turns[len(turns)-1].CoordinatorError != "" {
+			return Job{}, fmt.Errorf("the team status is unavailable; inspect its coordinator before starting new work")
+		}
+		if len(turns) > 0 && turns[len(turns)-1].Stopped {
+			last := turns[len(turns)-1]
+			rec.RecoveryRoot = filepath.Dir(last.Job.Dir)
+			if last.Record.Resume != nil {
+				rec.RecoveryRoot = last.Record.Resume.Root
+			}
+		}
 		for _, t := range turns {
 			if t.Job.Active() {
 				return Job{}, fmt.Errorf("this conversation is still working")
@@ -385,15 +460,21 @@ func (a *app) taskStatus(w http.ResponseWriter, r *http.Request) {
 	response := map[string]any{"active": j.Active(), "message": progress}
 	if j.Kind == "task" {
 		if rec, err := a.taskRecord(j); err == nil {
-			response["update"] = a.taskUpdate(j, rec, a.taskResult(j))
-			response["specialist"] = a.taskSpecialist(j, rec, a.taskResult(j))
+			turn := taskTurn{Job: j, Record: rec, Result: a.taskResult(j)}
+			a.projectTaskTeam(&turn)
+			response["update"] = a.taskUpdate(j, rec, turn.Result)
+			response["specialist"] = a.taskSpecialist(j, rec, turn.Result)
 			response["deferred"] = taskSteeringDeferred(j, rec)
+			if turn.Coordinator != nil || turn.CoordinatorError != "" {
+				response["active"], response["message"], response["update"], response["deferred"] = turn.Job.Active(), turn.Progress, turn.Result.Update, false
+				response["team"] = turn.Coordinator
+			}
 		}
 	}
 	if j.Kind == "delivery" && !j.Active() && j.ExitCode != nil && *j.ExitCode == 0 {
 		var rec deliveryRecord
 		if b, e := os.ReadFile(filepath.Join(filepath.Dir(j.Dir), "delivery-request.json")); e == nil && json.Unmarshal(b, &rec) == nil && rec.Action == "prepare" {
-			response["destination"] = "/work/jobs/" + rec.TaskID + "/delivery/"
+			response["destination"] = "/work/" + rec.Thread + "?site=1"
 		}
 	}
 	_ = json.NewEncoder(w).Encode(response)
@@ -416,6 +497,9 @@ func (a *app) taskStop(w http.ResponseWriter, r *http.Request) {
 	rec, err := a.taskRecord(j)
 	if err != nil {
 		a.fail(w, 409, "That conversation could not be found.")
+		return
+	}
+	if handled := a.stopTaskTeam(w, r, j, rec); handled {
 		return
 	}
 	if err = a.jobs.Cancel(j.ID); err != nil {

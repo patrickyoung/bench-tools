@@ -44,6 +44,14 @@ func (b bubblewrapBackend) command(p policy, child []string) (*exec.Cmd, func(),
 	for _, path := range p.writes {
 		args = append(args, "--bind", path, path)
 	}
+	// Mount writable ancestors onto themselves so their rename/unlink cannot
+	// move a protected descendant away from its admitted pathname.
+	for _, path := range protectedAncestors(p) {
+		args = append(args, "--bind", path, path)
+	}
+	for _, path := range p.reads {
+		args = append(args, "--ro-bind", path, path)
+	}
 	args = append(args, "--chdir", p.cwd)
 	args = append(args, child...)
 	return exec.Command(b.path, args...), func() {}, nil

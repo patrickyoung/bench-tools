@@ -1,0 +1,6 @@
+/* The surrounding chat supplies navigation and title for this private gallery. */
+body>header,body>footer,main>.hero,main>.note{display:none}
+body{background:#fafafa}
+main{max-width:none;margin:0;padding:20px}
+main>.toolbar{margin:0 0 20px;padding:0;border:0;gap:12px;flex-wrap:wrap}
+main>.grid{gap:16px}

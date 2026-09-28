@@ -275,9 +275,50 @@ bench-hire task companion through public Agent. The controller validates target
 IDs and bounded materialized inputs; it exports pinned source or copies selected
 local expertise, uses public Hire for missing expertise/team adapters, and runs
 public Agent or the team's documented entry through its narrow bin/task adapter.
-It implements no provider client, delegated action loop, scheduler or automatic
-retry. A single invocation is bounded to 45 minutes; authoring and execution are
-50-turn public tool calls. Signals, separate logs and exact status propagate.
+It implements no provider client, delegated action loop or scheduler. By default
+`-goal-mode` keeps this one foreground job active across confirmed unfinished
+checkpointed preparation and execution. Each public call retains its own turn
+bound; all calls share one 45-minute deadline. A versioned completion review
+compares the current immutable artifacts against the original goal. Exit 0 alone
+is insufficient: concrete local corrections go back to the same worker checkpoint.
+Only exits 0/2 allow execution correction; three observations of unchanged working content
+stop a no-progress cycle. Failed, declined, parked, interrupted and unknown outcomes
+are never replayed automatically. Signals, exact outcomes, argv and per-attempt
+receipts are retained. Restart does not resume a job. `-goal-mode=false` retains
+the earlier manual work-conversation behavior; direct tool pages are unchanged.
+
+Preparation failures also retain a concrete goal blocker, including a failed
+team confinement preflight before authoring. They must not fall back to a generic
+unfinished-work instruction or invite repetition of the same failed setup.
+Cancellation during preparation retains the interrupted state instead. The
+controller also retains timeout separately from interruption and the exact child
+exit. Stopped conversations expose the last phase, retained correction and
+activity link. Fresh blocker diagnosis receives a controller-selected read-only
+runtime root; it is not permission to replay interrupted or unknown outcomes.
+
+A team must explicitly support `task-runtime.json` version 2 with `resume:true`
+and `local_only:true` before goal execution. Legacy adapters are adapted through
+Hire while preserving selected members. Each invocation must satisfy the
+[task handoff contract](TASK-HANDOFF.md): exact caller identity/goal/definition
+bindings, a state distinct from process status, concrete next work or blocker,
+and bounded hashed manifests for working files, evidence and deliverables.
+The controller copies these into a new immutable snapshot before presentation;
+the companion never has to infer private member state from old flat outputs.
+Missing, stale or inconsistent reports stop with a protocol diagnostic and
+never authorize a retry. Only current declared deliverables enter delivery.
+Progress hashes working content rather than review prose or log churn.
+The controller rechecks the full definition before every continuation. The controller supplies
+`BENCH_TASK_RESUME=1` with the same workspace and corrected prose task. The team
+retains its own checkpoint/receipt contract and reuses accepted unaffected work.
+This capability grants no permissions or host coordinator authority. A reviewer
+response is data, never executable argv. Unsupported team continuations stop
+with a concrete handoff blocker. Missing essential user facts have a distinct
+question state; technical failures and private delivery failures remain distinct.
+
+When Plonk is configured, checked goal outputs are privately delivered within the
+same admitted job. No share is created or advanced. The exact immutable package,
+idempotency key and base version are retained before publication; if its receipt
+is lost, delivery recovery uses that exact request without rerunning the worker.
 
 Input originals stay outside execution write roots; only worker-specific *_INPUT
 bindings to those files are admitted. Execution roots, generated definitions and
@@ -287,6 +328,55 @@ network there supports member model connections while member Agent action policy
 stays independent. Actions never gain authority from logs, artifacts or source.
 Dependencies, publication, purchases and messages require separately authorized
 work; this first work flow does local deliverables rather than deploying them.
+
+The team adapter receives `BENCH_TASK_FILE` as UTF-8 prose instructions, not
+native team JSON. Named planned inputs are already materialized in its working
+directory, `BENCH_TASK_WORK`; selected `*_INPUT` bindings name their originals.
+That directory is intentionally nonempty and may contain earlier deliverables.
+Adapters translate the named inputs to the team's existing contract and allocate
+fresh nested member work, state and evidence roots as needed. They own final team
+acceptance and copy finished regular files directly to `BENCH_TASK_WORK` for
+collection. Authoring guidance requires an offline executable fixture at this
+boundary; structural verification alone does not establish adapter compatibility.
+
+Follow-up facts and corrections default to editing the selected prior artifacts.
+Planning can inspect the previous immutable delivery directory, and execution
+receives copies with instructions to preserve unrelated content and design. Team
+authoring must wire originals into the affected members, retain unchanged
+contributions with honest reuse receipts, and replace stale reviews. Reusing a
+team that always creates new work does not establish edit capability. Presentation
+can inspect the current immutable delivery directory rather than infer its
+contents from earlier conversation summaries. These paths grant no execution or
+write authority, and prompt guidance alone is not proof of design preservation.
+
+Before team authoring or member execution, the controller probes the nested Cage
+composition with an inert child. macOS Seatbelt refuses this nesting; a refusal
+stops the attempt with its exact status and a specific setup explanation. It does
+not trigger another model retry, disable either boundary, or claim specialist
+execution. Such hosts require separately reviewed external orchestration before
+the team can run with each member's default action confinement.
+
+Alternatively, the operator can select `-team-runner`, an external isolated
+execution environment accepting the same literal `-net -w ROOT -- COMMAND`
+arguments. It owns the outer boundary and supplies public Cage/Agent binaries
+native to that environment. The preflight runs its member Cage there, and every
+team entry, including continuations and fingerprinted definitions, uses the
+same selected runner. This is not an automatic fallback or a host-execution
+grant. The runner must preserve absolute input/output paths, streams, signals
+and exact results; failure stops before authoring. Individual workers and Hire
+retain their existing commands. The UI adds no container manager, provider
+client or scheduler. Authoring explicitly requires portable commands because
+its host may differ from the selected team environment.
+
+An operator may explicitly select reviewed host coordinators with
+`-reviewed-team-controllers` and full definition fingerprints. This is an
+execution-authority decision, separate from structural verification. The digest
+covers all definition files and executable modes, including member checks. An
+exact unchanged selection runs its reviewed entry on the host, with ordinary
+Agent member confinement intact, and skips redundant reauthoring. The controller
+checks the fingerprint again at execution. Any source change loses that grant;
+model responses and execution files cannot approve it. No grant is enabled by
+default, and this adds no scheduler, provider client or automatic retry.
 
 Each conversation turn uses a fresh workspace and private frozen companion copy.
 Refinement copies earlier bounded deliverables into a new workspace, keeps all
@@ -479,3 +569,114 @@ name. A successful saved reservation is not rerolled. Moniker owns atomic name
 uniqueness within this explicitly selected private directory. It uses no model,
 network, shared runtime, or hidden state. The same tool can be exposed by the
 existing public `mcpserve` executable using its supplied MCP manifest/dispatcher.
+
+## Chat workspace
+
+Work conversations use a persistent, scrollable chat list and a viewport-height
+transcript above the bottom composer. Library and command records are secondary
+controls. New chats have no hero, starter cards or explanatory rail. Enter sends;
+Shift+Enter inserts a newline, and IME composition does not submit. Drafts, scroll
+position and the site-panel preference stay per chat in this browser tab. Status
+polls retain a reader's position; readers following the end see new updates.
+Native navigation and multipart forms remain available without scripting.
+
+Every chat owns a Plonk panel, available from its header even before it has files.
+The panel selects that chat's latest artifact-bearing turn; refinements and other
+chats cannot mix their outputs. Plonk opens/closes inside the workspace, taking
+the full content area on phones. Opening it can prepare the private Plonk gallery
+through the existing explicit delivery POST. Public sharing still requires its
+separate share action. Delivery completion stays in the chat. Private galleries
+are framed through the existing authenticated proxy, sandboxed without scripts;
+only their frame-ancestors directive changes to self. Upstream content policies,
+credential handling, generated-site isolation and artifact download rules remain.
+
+## Independent team preparation acceptance
+
+A successful Hire build still passes the controller's selected-member check.
+Goal mode feeds a rejected check back into the same public Hire build checkpoint
+with the original brief and exact diagnostic. The controller validates again
+before any member starts. Three rejected validations stop preparation with the
+specific error; nonzero unsafe build outcomes retain their exact status and are
+not replayed. The selected roster, unchanged-source hashes and executable modes
+remain mandatory throughout repair. Every new member needs a guide as well as
+instructions and an executable check.
+
+An explicit continuation may recover a saved team preparation only when its
+controller receipts show a known successful/unfinished build and no team
+execution attempt. It retains the original team, member selection and build
+checkpoint, independently checks any repaired result, and then launches through
+the configured team environment. It never resumes a team entry command through
+this preparation route or treats a missing/interrupted receipt as permission.
+
+## Member input protection
+
+Team execution selects the public Agent input-protection policy through
+`AGENT_PROTECT_INPUTS=1`. The selected environment must preserve it and provide
+compatible Agent/Cage executables. Existing member inputs/request are protected
+by Cage in both actions and checks; generated instructions explain where writable
+copies belong. Agent owns this opt-in boundary and exact check outcomes; the UI
+does not implement filesystem policy, wrap model actions or inspect worker prose
+to authorize repair. The team coordinator remains responsible for staging. This
+change prevents specialist/check mutation, not arbitrary coordinator mutation,
+and it does not infer review validity or authorize replay from a restored file.
+
+## Headless artifact-team backend
+
+New task records created with both `-team-coordinator` and `-team-queue` select
+`manage-team/v1` for team execution. Absence of this recorded backend means
+legacy behavior; a startup upgrade cannot reinterpret an old team run.
+Individual-worker tasks keep their existing Agent path. The UI's public
+process ends after preparation and `team admit`, with a controller-owned run
+reference written before submission. That exit acknowledges admission only.
+Manage status supplies the conversation's state, exact observed process
+outcome, revision, question identity and message receipts. An unavailable
+observation is not completion, cancellation or permission to start again.
+
+A short cross-process lock publishes the coordinator reference together with
+the preparation input boundary. Updates acknowledged during preparation are
+captured with their current attachments; a stale preparation composer cannot
+silently append an unconsumed note after admission. This lock never spans a
+coordinator command or a worker invocation.
+
+A team definition is an ordered 2–16-role `bench.team/v1` recipe. Public
+`team validate` checks its structure without executing its adapters. The UI
+also compares each recipe step to the selected roster and the frozen member
+snapshots. Hire may author a selected new/adapted member and narrow adapters;
+it may not author a scheduler, goal loop, member receipts or replay logic.
+The headless backend bypasses `executeTaskGoal`, the generated `bin/task`
+contract and the UI completion model. Existing compatible recipes are reused.
+
+The independent host service owns `team work` and the lifetime of Tend's
+foreground controller. The UI invokes only bounded client operations. Its
+job-manager shutdown affects its own preparation/delivery commands, never an
+admitted team. UI cancel uses the coordinator's durable request and observes
+status afterward. The ordinary UI continuation route cannot drive a managed
+run. An input reply or amendment binds the saved run, revision and optional
+question, and files become separate sealed amendment packets. Messages are
+included at the coordinator's documented boundary, not at arbitrary model
+turn or token boundaries.
+
+Only a complete `team result` may populate UI deliverables. Returned file
+paths must be inside that exact run's sealed delivery directory; hashes,
+regular-file paths, supported types and the 32-file/25-MiB/100-MiB limits are
+checked before an atomic local snapshot is exposed. Existing snapshots cannot
+be silently replaced. A separate UI observer imports accepted results and
+queues only the existing private-delivery command. Its package and idempotency
+key are retained before publication; restart can reconcile that same delivery
+without member execution. Public sharing still requires its explicit action.
+The observer starts with the server, so no browser request is required for
+private delivery while the server is available. It is not a second scheduler
+for team work.
+
+Before immutable team admission, a dedicated public preflight checks the actual
+first prepare and declared native inputs without running specialists. Its
+retained execution receipt must be coherent and explicitly repairable before the
+existing bounded Hire preparation repair can continue. A successful proof binds
+the definition, goal and staged input contents; the composer admission lock
+prevents changes during final capture. A late input change automatically repeats the first-prepare check before admission,
+at most twice; it never repeats an uncertain admission. Existing Hire correction
+budget remains shared across these checks. Continuous changes stop with the
+latest update retained and an explicit stable-input explanation.
+Each capture uses a fresh retained staging directory, so a rejected capture does
+not poison a later preparation. This is first-prepare coverage, not an alternate
+execution scheduler or a claim of downstream conformance.

@@ -7,7 +7,7 @@ explicit directory. Hire authors, Agent runs, Record records, and the selected
 judge decides whether the change helped.
 
 Version **0.1.0** supports existing text files: system prompts, skills, subagent
-definitions, checks, and check responses. Select the exact mutable files. The
+definitions, checks, check responses, and Go tool source/tests. Select the exact mutable files. The
 independent evaluator remains frozen even when a worker's own check changes.
 
 ```sh
@@ -20,6 +20,28 @@ go build -o improve .
 The output's parent must already exist. An execution invocation explicitly
 admits its selected commands, including any configured paid model calls.
 Planning requires those executables to be locatable but runs none of them.
+
+## Turn run history into a small Go tool
+
+The [tool-building workflow](examples/tool-building/README.md) belongs to Improve,
+not to Agent's execution loop or Hire's interface. Use the existing experiment
+researcher to examine selected, replay-verified history and propose a bounded
+change. Hire authors the candidate; Improve compares it on fresh cases and
+exports supported source. A separate standing team is not required.
+
+The workflow prepares explicit Go source slots in a new copy of a selected
+definition, before either arm is measured. It builds independently usable,
+standard-library Go commands and records compilation and executable outcomes.
+The original source is unchanged. This does not expand v0.1's file authority:
+the proposer still replaces only admitted existing text files and cannot add
+dependencies, files, or executable permissions. The resulting source proposal
+is reviewed and promoted through the caller's existing process.
+
+History motivates a hypothesis; it is not the quality oracle. Keep independent
+cases, checks and acceptance policy frozen. Measure complete task quality and
+latency when claiming a faster workflow, including authoring, build, review and
+delivery. A direct command trial proves that command's behavior, not that a
+worker will choose it or that an entire historical workflow became faster.
 
 ## Run an offline example
 

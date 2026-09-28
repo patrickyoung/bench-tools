@@ -43,7 +43,8 @@ machine when reads must be isolated.
 
 ## Writable roots
 
-Every `-w` directory is a complete write grant beneath that canonical path.
+Every `-w` directory is a write grant beneath that canonical path, except
+for explicit `-r` protected paths.
 Cage resolves symlinks before constructing its policy, but it cannot make
 unsafe contents inside a granted tree safe. Unix sockets, device nodes,
 compiler hooks, package-manager configuration, and executable search paths
@@ -56,6 +57,23 @@ Reject writable roots containing regular files whose link count exceeds the
 number of names contained in the admitted roots, or use a fresh copied
 workspace. The `ply -cage` integration performs this scan before starting
 model actions; raw `cage` callers own the same check.
+
+`-r PATH` protects an existing regular file or directory even under a write
+root. The child cannot overwrite, unlink, rename, or create descendants of the
+selection, nor rename a writable ancestor to move it away. Linux anchors those
+ancestors with bind mounts and then mounts protected selections read-only;
+macOS uses explicit Seatbelt write/link and ancestor-unlink denials. Writable
+ancestor permissions are not uniformly immutable; put inputs in a separate
+root if that metadata needs protection too.
+
+Protected trees reject symlinks, special files and multiply linked regular files.
+Selections through mutable parent symlinks are rejected, including through a
+stable outer pathname alias.
+They cannot contain a writable root or the temporary directory. Existing open
+writable descriptors and concurrent changes by processes outside this boundary
+remain caller responsibilities. Paths are validated before backend startup;
+invalid `-r` selections never start the child. This is a pathname write boundary,
+not a content-addressed snapshot or an authenticity guarantee.
 
 `-ro` removes the default workspace grant; it does not make the temporary
 directory read-only. `-net` removes the network boundary completely for the

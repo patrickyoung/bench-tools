@@ -111,6 +111,23 @@ and returns Ply's outcome unchanged: 0 accepted, 1 broken, 2 unfinished,
 pre-check needs no model call. An empty answer on that re-entry is expected;
 the deliverable is already in the workspace.
 
+### Discover a worker's tools
+
+Install reviewed local executables directly in the definition's `tools/`.
+Agent passes this directory to Ply with `-t`; Ply includes its command names in
+the model's tool catalogue and puts it first on PATH. Agent also supplies
+`skills/` through Brief's existing catalogue. A corresponding skill explains
+when to choose a new command and its input/output contract; `AGENTS.md` routes
+relevant tasks to that skill. This combines executable discovery with usage
+knowledge without another tool registry.
+
+Keep Go modules under `src/NAME`, then build the host binary into the installed
+copy's `tools/NAME` before execution. `bin/check` still judges the completed
+job. The running worker does not compile into its read-only definition.
+See [Hire's packaging contract](../hire/README.md#ship-tools-with-their-worker)
+for source exports, build evidence and fresh-run validation. MCP remains an
+optional connection through the existing public edge.
+
 That pre-check only knows the condition you wrote. Use a fresh workspace for
 a new case, or make the check bind its result to the current input. An old
 nonempty report must not stand in for work on a different question.
@@ -200,7 +217,23 @@ By default, Cage permits action writes to `work/`, `state/`, and a private
 per-action temporary directory, with network denied. **Host reads remain
 unrestricted.** `-net` deliberately enables action networking; `-no-cage`
 uses the ordinary host boundary. Markdown cannot choose either permission.
-The verifier remains outside the action boundary.
+The verifier remains outside the action boundary unless input protection is selected.
+
+Use `-protect-inputs` (or operator environment `AGENT_PROTECT_INPUTS=1`) to
+freeze existing `WORK/inputs` and `WORK/request.md` as read-only for the run.
+Add repeatable `-read-only PATH` for other existing files or directories.
+Relative explicit paths resolve from the caller's directory. Missing conventional
+paths are skipped; explicit paths must exist. The environment requirement cannot
+be disabled with `-protect-inputs=false` or `-no-cage`.
+
+Protection also confines the original `bin/check` and `bin/wake` to writes in
+work, state, and private temporary storage, with networking selected by `-net`.
+Checks needing broader write authority must be adapted before opting in. The
+original checker still decides completion through Ply; streams, receipts, `-B`,
+and checkpoint behavior are preserved. Workers should copy inputs into writable
+output files before editing. Agent validates the selected paths and establishes
+the Cage boundary before creating caller runtime state; boundary setup failure
+stops with 125. See [the security contract](SECURITY.md) for limits.
 
 ## Run again, or wake only when needed
 

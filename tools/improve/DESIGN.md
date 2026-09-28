@@ -40,6 +40,16 @@ This supports prompts, skills, subagent definitions and checks, while the
 independent scoring/judging commands remain frozen. Adding/deleting files is
 outside this first version.
 
+The tool-building example applies this existing boundary to standalone Go
+helpers. A caller prepares dormant source slots and integration text in a new
+source copy before baseline measurement. The research worker may select a
+bounded subset of those admitted files, including several files for one
+coherent change; it cannot select new commands, paths, gates or dependencies.
+The example composes public Hire and Go commands, while Improve retains its
+generic source/command/score protocol. No history reader, provider client or
+tool-building action loop is added to the controller. The independent oracle
+stays outside the mutable helper and its own tests.
+
 Every proposer/trial/judge invocation gets a separate cwd, work and evidence
 directory. The trial receives a fresh source copy. Record wraps the selected
 command and preserves stdin, stdout, stderr and outcome. Improve verifies Record

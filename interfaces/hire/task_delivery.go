@@ -204,6 +204,19 @@ func (a *app) taskDeliver(w http.ResponseWriter, r *http.Request) {
 			return Job{}, err
 		}
 		record := deliveryRecord{Thread: rec.Thread, TaskID: j.ID, Action: action, Root: root, StateFile: filepath.Join(a.cfg.Data, "deliveries", rec.Thread+".json"), Manifest: "delivery.json", RequestID: "hire-" + j.ID, ShareRequestID: "share-" + randomID(), Plonk: a.cfg.Plonk, URL: a.cfg.PlonkURL, TokenFile: a.cfg.PlonkTokenFile, Before: state}
+		// A goal may have reached private publication before a connection failed.
+		// Recover that exact immutable package/base; never publish a changed body
+		// under its idempotency key or repeat the completed worker execution.
+		autoRoot := filepath.Join(filepath.Dir(j.Dir), "goal-delivery")
+		if action != "revoke" && state.TaskID != j.ID {
+			if raw, e := readText(autoRoot, "delivery-request.json", 64<<10); e == nil {
+				var prior deliveryRecord
+				if json.Unmarshal([]byte(raw), &prior) != nil || prior.Thread != rec.Thread || prior.TaskID != j.ID || prior.Action != "prepare" || prior.Root != filepath.Join(autoRoot, "package") || prior.RequestID != "hire-"+j.ID || prior.Plonk != a.cfg.Plonk || prior.URL != a.cfg.PlonkURL || prior.TokenFile != a.cfg.PlonkTokenFile {
+					return Job{}, fmt.Errorf("the retained private delivery needs inspection")
+				}
+				record.Root, record.Before, record.RequestID = prior.Root, prior.Before, prior.RequestID
+			}
+		}
 		// Reuse the exact interrupted request/base. Only the server receipt can tell
 		// whether the earlier attempt committed. Any intervening operation ends
 		// this replay chain, so old snapshots cannot undo later revocation.
@@ -246,7 +259,11 @@ func (a *app) taskDeliver(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, out.status, "I couldn’t start that sharing step yet. Your work is safe; return to the conversation and try again.")
 		return
 	}
-	http.Redirect(w, r, "/work/"+rec.Thread, 303)
+	destination := "/work/" + rec.Thread
+	if r.PostForm.Get("site") == "1" {
+		destination += "?site=1"
+	}
+	http.Redirect(w, r, destination, 303)
 }
 func deliveryProcess(recordPath string) int {
 	var rec deliveryRecord
@@ -259,6 +276,11 @@ func deliveryProcess(recordPath string) int {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
+	return runDelivery(ctx, rec)
+}
+
+func runDelivery(ctx context.Context, rec deliveryRecord) int {
+	var err error
 	state := rec.Before
 	run := func(action string, output any, args ...string) error {
 		argv := []string{action, "-url", rec.URL, "-token-file", rec.TokenFile}
@@ -408,6 +430,18 @@ func (a *app) taskDeliveryPreview(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(key, value)
 		}
 	}
+	// Only the authenticated controller gallery can be embedded by Hire.
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") && (rest == "" || strings.HasPrefix(rest, "a/")) {
+		policy := w.Header().Get("Content-Security-Policy")
+		directives := []string{}
+		for _, directive := range strings.Split(policy, ";") {
+			if d := strings.TrimSpace(directive); d != "" && !strings.HasPrefix(d, "frame-ancestors ") {
+				directives = append(directives, d)
+			}
+		}
+		directives = append(directives, "frame-ancestors 'self'")
+		w.Header().Set("Content-Security-Policy", strings.Join(directives, "; "))
+	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") && resp.Header.Get("Content-Disposition") == "" {
 		b, e := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
@@ -416,6 +450,15 @@ func (a *app) taskDeliveryPreview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		b = []byte(strings.ReplaceAll(string(b), remoteBase, localBase))
+		if r.URL.Query().Get("embed") == "1" || r.Header.Get("Sec-Fetch-Dest") == "iframe" {
+			// Presentation only: the authenticated Plonk gallery keeps its content
+			// policy and origin. Generated artifact bytes are never restyled.
+			if rest == "" || strings.HasPrefix(rest, "a/") {
+				css, _ := web.ReadFile("web/plonk-embed.css")
+				b = []byte(strings.Replace(string(b), "</head>", "<style data-plonk-embed>"+string(css)+"</style></head>", 1))
+			}
+		}
+
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(b)
 		return

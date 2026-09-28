@@ -22,3 +22,5 @@ func outcomeFromWait(err error) outcome {
 }
 
 func reraise(os.Signal) {}
+
+func singleLink(os.FileInfo) bool { return false }

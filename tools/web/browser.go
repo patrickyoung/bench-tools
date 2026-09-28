@@ -23,6 +23,7 @@ import (
 type session struct {
 	browser         *rod.Browser
 	page            *rod.Page
+	ownedTarget     proto.TargetTargetID
 	socket          *cdp.WebSocket
 	proc            *exec.Cmd
 	done            chan error
@@ -92,7 +93,14 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 		return nil, e
 	}
 	life, cancel := context.WithCancel(ctx)
-	s = &session{attached: o.attach != "", named: o.tab != "", cancel: cancel}
+	// Keep browser events alive through signal cleanup. Page operations still
+	// use the caller's cancellable lifetime, but target destruction must remain
+	// observable after that lifetime ends.
+	events, stopEvents := context.WithCancel(context.WithoutCancel(ctx))
+	s = &session{attached: o.attach != "", named: o.tab != "", cancel: func() {
+		cancel()
+		stopEvents()
+	}}
 	defer func() {
 		if err != nil {
 			s.close(false, stderr)
@@ -168,10 +176,13 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 	s.socket = ws
 	// Own the socket explicitly: disconnecting must never send Browser.close to
 	// an attached browser or close a caller-named/kept target.
-	s.browser = rod.New().Context(life).Client(cdp.New().Start(ws)).NoDefaultDevice()
+	s.browser = rod.New().Context(events).Client(cdp.New().Start(ws)).NoDefaultDevice()
 	stopSetup := context.AfterFunc(connect, cancel)
 	defer stopSetup()
-	if err = s.browser.Connect(); err != nil {
+	stopConnect := context.AfterFunc(connect, stopEvents)
+	err = s.browser.Connect()
+	stopConnect()
+	if err != nil {
 		return s, err
 	}
 	s.browser = s.browser.Context(life)
@@ -198,7 +209,7 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 		}
 		s.page, err = b.PageFromTarget(proto.TargetTargetID(o.tab))
 	} else {
-		s.page, err = b.Page(proto.TargetCreateTarget{})
+		err = s.createPage(connect)
 	}
 	if err != nil {
 		return s, err
@@ -222,19 +233,42 @@ func startSession(ctx context.Context, o options, headed bool, stderr io.Writer)
 	}
 	return s, nil
 }
+
+func (s *session) createPage(setup context.Context) error {
+	if err := setup.Err(); err != nil {
+		return err
+	}
+	// Creating a target is an effect. Once sent, collect its ID even if the
+	// caller cancels, so cleanup can close it before PageFromTarget succeeds.
+	// Preserve the setup deadline; never retry or infer ownership from a list.
+	deadline, ok := setup.Deadline()
+	if !ok {
+		return fmt.Errorf("tab creation requires a setup deadline")
+	}
+	creation, cancel := context.WithDeadline(context.WithoutCancel(setup), deadline)
+	defer cancel()
+	target, err := (proto.TargetCreateTarget{URL: "about:blank"}).Call(s.browser.Context(creation))
+	if err != nil {
+		return err
+	}
+	s.ownedTarget = target.TargetID
+	s.page, err = s.browser.PageFromTarget(target.TargetID)
+	return err
+}
+
 func (s *session) close(keep bool, stderr io.Writer) {
 	cleanup, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if s.browser != nil {
 		if !s.attached {
 			_ = s.browser.Context(cleanup).Close()
-		} else if s.page != nil {
-			if s.named {
-				fmt.Fprintf(stderr, "web: left named tab %s open\n", s.page.TargetID)
-			} else if keep {
-				fmt.Fprintf(stderr, "web: leaving tab open (--keep)\nweb: tab %s   <- pass this to --tab to come back to it\n", s.page.TargetID)
+		} else if s.named && s.page != nil {
+			fmt.Fprintf(stderr, "web: left named tab %s open\n", s.page.TargetID)
+		} else if s.ownedTarget != "" {
+			if keep {
+				fmt.Fprintf(stderr, "web: leaving tab open (--keep)\nweb: tab %s   <- pass this to --tab to come back to it\n", s.ownedTarget)
 			} else {
-				if err := closeTarget(s.browser.Context(cleanup), s.page.TargetID); err != nil {
+				if err := closeTarget(s.browser.Context(cleanup), s.ownedTarget); err != nil {
 					fmt.Fprintln(stderr, "web: closing owned tab:", err)
 				}
 			}

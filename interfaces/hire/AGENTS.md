@@ -19,7 +19,9 @@ before changing its behavior. It must build from this directory alone with
   Keep job records and controller evidence separate from authoring workspaces.
 - Permit one active public command. Real model builds require `-allow-build`;
   retain default Cage behavior and bounded turns/time. Do not add a provider
-  client, execution scheduler or automatic retries. Explicit worker runs require
+  client or execution scheduler. Work conversations pursue one bounded goal through
+  confirmed checkpoint continuations and checked local corrections; never replay
+  failed, interrupted or unknown outcomes. Explicit worker runs require
   -allow-run and compose the public Agent command; Agent owns check execution.
   Structural verification must never execute generated checks.
 - Retain stdout, stderr and exact exit status. Explicit cancellation must
@@ -30,3 +32,11 @@ before changing its behavior. It must build from this directory alone with
   credentials or paid model calls. Never load personal configuration in tests.
 - Run `make check`; verify the standalone binary and responsive browser flows
   when changing the public interface. Document the scope of evidence.
+
+New artifact-team tasks may opt into the selected public Manage coordinator.
+The UI is an admission/status/message/cancel client; never call its `work` or
+`resume` commands here, or wrap it in the legacy UI goal loop. The independently
+supervised host worker owns execution. Preserve saved backend/tool identities
+for old runs, exact selected rosters, sealed packet bindings and typed message
+receipts. UI delivery reconciliation may invoke only the existing idempotent
+private-delivery operation, never restart team work.

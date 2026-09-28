@@ -38,3 +38,15 @@ This is an integration corpus, not a benchmark score. It measures deterministic
 boundaries: offline validation, exact compiled bytes, zero-model gates, recursive
 homes, and Ask-owned replay. Model quality and false-success experiments require
 separate frozen tasks and an external oracle.
+
+## Read-only handoff input proof
+
+Run `python3 eval/protected-inputs.py AGENT CAGE PLY BRIEF ASK RECORD [OUTPUT_DIR]`
+with physical public executable paths and a fresh output directory. This never
+calls a model. Real Agent/Ply/Cage/Record verify a passing precheck; a controlled
+Ply process driver exercises the real Agent action interpreter and checker
+wrapper, including unchanged checker rejection 1 and interruption 130. Both
+boundaries attempt overwrites, unlinking, input-directory renames, and rewriting
+the frozen policy, then write legitimate output. Results, streams, argv and
+policy are retained. This proves executable composition and OS enforcement,
+not real-model quality or full Ply loop behavior.

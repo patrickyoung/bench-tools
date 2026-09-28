@@ -94,7 +94,8 @@ else: sys.exit(99)
         (self.work / 'research.json').write_text(json.dumps(self.research))
         if self.research['status'] == 'ready':
             spec = copy.deepcopy(self.request['template'])
-            spec['mutable'] = [self.research['change']['path']]
+            spec['mutable'] = ([self.research['change']['path']] if self.research['version'] == 1
+                               else self.research['change']['paths'])
             spec['settings']['research'] = {k: self.research[k] for k in ('hypothesis', 'change', 'summary', 'citations')}
             (self.work / 'experiment.json').write_text(json.dumps(spec))
 
@@ -108,6 +109,104 @@ else: sys.exit(99)
         if reason:
             self.assertIn(reason, result['reason'])
         return result
+
+    def multipath(self):
+        source = Path(self.request['template']['source'])
+        for name, content in {'go.mod': 'module example.com/history-tool\n\ngo 1.26\n',
+                              'main.go': 'package main\nfunc main() {}\n',
+                              'main_test.go': 'package main\n'}.items():
+            (source / name).write_text(content)
+        self.request['template']['mutable'] += ['go.mod', 'main.go', 'main_test.go']
+        self.request['template']['settings']['candidate_contract'] = {'kind': 'tool', 'language': 'go'}
+        self.bind_request()
+        self.research.update(version=2, request_sha256=sha(self.request_path),
+                             change={'kind': 'tool', 'paths': ['main.go', 'main_test.go'],
+                                     'instruction': 'Extract the repeated normalization into a standalone Go command and test its input boundary.'})
+        self.write_outputs()
+
+    def test_v2_assembly_selects_multiple_paths_without_changing_template(self):
+        self.multipath()
+        target = self.work / 'experiment.json'
+        expected = json.loads(target.read_text())
+        target.unlink()
+        self.check(True, assemble=True)
+        self.assertEqual(json.loads(target.read_text()), expected)
+        self.assertEqual(expected['mutable'], ['main.go', 'main_test.go'])
+        actual = copy.deepcopy(expected)
+        actual['mutable'] = self.request['template']['mutable']
+        del actual['settings']['research']
+        self.assertEqual(actual, self.request['template'])
+        self.check(True)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertTrue(all(row[0] in ('ask', 'trail', 'improve') for row in calls))
+        self.assertTrue(all(row[1:] == ['-n'] for row in calls if row[0] == 'improve'))
+
+    def test_v2_rejects_scope_escape_duplicate_and_missing_paths(self):
+        self.multipath()
+        for paths, reason in [(['main.go', 'main.go'], 'duplicate'), ([], '1..8'),
+                              (['main.go'] * 9, '1..8'), (['../outside.go'], 'invalid mutable'),
+                              (['/absolute.go'], 'invalid mutable'), (['./main.go'], 'invalid mutable'),
+                              (['main.go', 'unselected.go'], 'unadmitted'), ([True], 'invalid mutable')]:
+            with self.subTest(paths=paths):
+                self.research['change']['paths'] = paths
+                self.write_outputs()
+                self.check(False, reason)
+        self.research['change']['paths'] = ['main.go']
+        (Path(self.request['template']['source']) / 'main.go').unlink()
+        self.write_outputs()
+        self.check(False)
+
+    def test_v2_rejects_symlinked_and_nontext_selected_files(self):
+        self.multipath()
+        source = Path(self.request['template']['source'])
+        selected = source / 'main.go'
+        selected.unlink()
+        selected.symlink_to(source / 'main_test.go')
+        self.check(False, 'symlink')
+        selected.unlink()
+        selected.write_bytes(b'\xff')
+        self.check(False)
+
+    def test_v2_kind_does_not_change_caller_owned_gate_or_go_contract(self):
+        self.multipath()
+        for kind in ('tool', 'skill', 'workflow'):
+            with self.subTest(kind=kind):
+                self.research['change']['kind'] = kind
+                self.write_outputs()
+                self.check(True)
+                path = self.work / 'experiment.json'
+                spec = json.loads(path.read_text())
+                self.assertEqual(spec['settings']['candidate_contract'], {'kind': 'tool', 'language': 'go'})
+                spec['settings']['candidate_contract']['language'] = 'python'
+                path.write_text(json.dumps(spec))
+                self.check(False, 'frozen template')
+        self.research['change']['kind'] = 'script'
+        self.write_outputs()
+        self.check(False, 'invalid change kind')
+
+    def test_v2_preserves_frozen_commands_cases_limits_and_gate(self):
+        self.multipath()
+        path = self.work / 'experiment.json'
+        base = json.loads(path.read_text())
+        for mutate in [lambda s: s['commands']['trial'].update(argv=['/bin/true']),
+                       lambda s: s['settings'].update(gate='always-pass'),
+                       lambda s: s['settings'].update(runner_model='replacement/model'),
+                       lambda s: s.update(max_seconds=1000),
+                       lambda s: s['holdout'][0].update(file=self.request['template']['development'][0]['file'])]:
+            with self.subTest(change=mutate):
+                spec = copy.deepcopy(base)
+                mutate(spec)
+                path.write_text(json.dumps(spec))
+                self.check(False, 'frozen template')
+
+    def test_v2_nonready_remains_completed_research_without_execution(self):
+        self.multipath()
+        self.research.update(status='needs_input', hypothesis=None, change=None,
+                             next_inputs=['Supply independently labeled fresh cases for the proposed Go command.'])
+        (self.work / 'experiment.json').unlink()
+        self.write_outputs()
+        self.check(True, assemble=True)
+        self.assertFalse((self.work / 'experiment.json').exists())
 
     def test_ready_uses_only_public_readers_and_plan(self):
         self.check(True)

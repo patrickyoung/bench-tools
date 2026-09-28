@@ -1,6 +1,7 @@
 # Experiment researcher
 
-Turn selected Bench event logs into one cited hypothesis and an Improve plan.
+Turn selected Bench event logs into one cited hypothesis and an Improve plan,
+including small standalone Go tools suggested by repeated work in that history.
 Agent runs the researcher; Trail searches and reads the logs; Ask verifies
 replay; Improve validates the assembled experiment. A separate Improve invocation
 can then use Hire to author a candidate, Agent to test it and a frozen judge to
@@ -96,7 +97,35 @@ is a nonempty string, `change` is `{ "path": "one template mutable path",
 "instruction": "one proposed reusable change" }`, and at least one archive
 citation is required. For other statuses hypothesis/change are null; retain
 any promising idea in summary. Only needs_input has nonempty next_inputs.
-Every result has at least one candid limitation. At most 12 citations:
+Every result has at least one candid limitation.
+
+Report version 1 remains unchanged. For one coherent change spanning several
+files, set report `version:2` with the same outer fields and this exact ready
+change shape:
+
+```json
+{"kind":"tool","paths":["main.go","main_test.go"],"instruction":"Extract the repeated normalization into a standalone Go command and test its input boundary."}
+```
+
+`kind` is `tool`, `skill` or `workflow`; it describes the hypothesis and grants
+no authority. `paths` contains 1–8 unique existing UTF-8 files, each explicitly
+admitted by the template's mutable list. Relative paths must be clean, without
+symlinks or traversal. A v2 non-ready report still has `change:null`. The trusted
+request remains version 1; it accepts either report version. Both report versions
+retain the same archive citation, request binding and fresh-holdout requirements.
+Classifying a proposal as a skill cannot replace the caller's Go-tool contract,
+commands, case selections or independent gate. The assembler never chooses
+commands based on the classification.
+
+For a new tool study, the caller supplies a predeclared independent Go module
+and integration files in the reviewed source scaffold. Improve changes existing
+files only; research does not authorize adding files, modes or dependencies.
+The frozen trial adapter must compile and exercise the standalone Go program
+with the selected toolchain and `GOWORK=off`. Candidate-authored tests supplement
+the independent task oracle, not replace it. Existing research/checker plumbing
+is not the proposed tool and does not change implementation language.
+
+At most 12 citations:
 
 - Archive: `{"source":"runs","file":"session.jsonl","sha256":"file digest","seq":5,"quote":"answer was cut off at the output limit"}`.
 - Text: `{"source":"scores","sha256":"file digest","quote":"candidate rejected"}`.
@@ -122,7 +151,8 @@ Non-ready reports need no plan; assembly validates them without writing one.
 
 The assembled `experiment.json` equals the entire template except:
 
-1. `mutable` becomes `[research.change.path]`.
+1. `mutable` becomes `[research.change.path]` for v1, or the exact
+   `research.change.paths` list for v2.
 2. `settings.research` is inserted as `{hypothesis, change, summary, citations}`
    copied from research.json.
 

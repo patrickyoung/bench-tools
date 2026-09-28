@@ -100,7 +100,17 @@ reuse is a requirement.
 ## Add capabilities, not parallel infrastructure
 
 Private procedures go under `expert/skills/`; deterministic helpers under its
-reviewed tools namespace. Agent loads memory and procedures and gives child
+reviewed tools namespace. For a new Go helper, retain an independent module and
+tests in `src/NAME`, build `tools/NAME` in the installed worker copy, and include
+a matching Brief skill with selection conditions, literal invocation, inputs,
+outputs, exits and examples. Route relevant tasks to it from `AGENTS.md`.
+Agent/Ply already advertise `tools/` command names and place them first on PATH;
+Brief supplies the usage knowledge. Reserve `bin/` for worker lifecycle commands.
+Build before running; keep host binaries out of clean source-library exports.
+Require a fresh Agent job that discovers and actually invokes the tool and
+passes independent output checks before declaring it integrated. Compilation
+alone is incomplete delivery. See Hire's `shipping-tools` procedure.
+Agent loads memory and procedures and gives child
 experts their own task/session context. Source data remains input evidence.
 Do not describe a directory as confidential merely because it is outside the
 workspace: Cage restricts writes/network, not host reads.

@@ -25,6 +25,7 @@ import (
 var web embed.FS
 
 type app struct {
+	teamMu    sync.Mutex // Serializes verified packet imports only.
 	actionMu  sync.Mutex
 	cfg       config
 	cat       catalog
@@ -37,6 +38,7 @@ type app struct {
 }
 
 type page struct {
+	TeamState, TeamEvents                                                    string
 	Work                                                                     taskView
 	ContinueRunModel, RunRecoveryError                                       string
 	RunRecoveryReview                                                        bool
@@ -148,7 +150,7 @@ func (a *app) handler() http.Handler {
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServerFS(assets)))
 	crossOrigin := http.NewCrossOriginProtection()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		// Safari applies no-referrer to native form POST origins too. Keep the
 		// origin on internal forms while withholding referrers from other sites.
@@ -459,6 +461,20 @@ func (a *app) job(w http.ResponseWriter, r *http.Request) {
 	if j.Kind == "task" {
 		if rec, err := a.taskRecord(j); err == nil {
 			p.WorkerURL = "/work/" + rec.Thread
+			if ref, e := readTaskTeamReference(j, rec); e == nil {
+				raw, _, statusErr := taskTeamCommand(r.Context(), rec.Config, nil, "status", ref.Run)
+				if statusErr != nil {
+					p.TeamState = "Status unavailable: " + statusErr.Error()
+				} else if state, e := decodeTaskTeam(raw, ref, "bench.team.status/v1"); e == nil {
+					b, _ := json.MarshalIndent(state, "", "  ")
+					p.TeamState = string(b)
+				} else {
+					p.TeamState = e.Error()
+				}
+				if events, _, e := taskTeamCommand(r.Context(), rec.Config, nil, "events", ref.Run); e == nil {
+					p.TeamEvents = string(events)
+				}
+			}
 		}
 	}
 	if args, checkpoint, err := a.continuation(j); err == nil {
