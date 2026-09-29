@@ -67,6 +67,25 @@ library. The original team lock remains authoritative for exported source.
   it every few seconds. No write endpoints, scheduler, required daemon or remote
   hosting authority is introduced. Connection freshness and periodic
   reconciliation freshness remain distinct.
+- `link-human`: bind an existing activity to one current Tend signal wait and,
+  for approval, the exact pending May request. Retain job/wait identity and
+  selected executable pins. The operator explicitly selects the controller;
+  linking does not change team wiring or install a new gate.
+- `respond-human`: retain an attributed response, invoke May's own terminal
+  decision or publish selected input to a write-once mailbox, then send a
+  stable, deduplicated Tend signal. Never consume a grant, run a worker, retry
+  a job or resolve an unknown outcome. The resumed controller validates input
+  or asks May for the identical action and consumes its one-use grant.
+
+Human links are operator-owned adapters. They use public Tend list/events/signal
+and May pending/decide, with no database or approval-state writes. May selects
+the OS account independently of HOME; approval links pin that operator UID.
+Each interaction requires a unique signal name and immutable link. Tend has
+no expected-wait compare-and-set; rechecking before wakeup narrows races but
+does not replace controller validation. Signal receipt and actual wakeup are
+reported separately. An absent May pending record never establishes approval.
+The board observes linked work but cannot approve through a status change.
+Generic human completion remains a report, separate from linked job completion.
 
 Tend's stdout/stderr capture remains intact. The original team exit is retained
 in the receipt. Ordinary exits propagate; interruptions and nested unknown

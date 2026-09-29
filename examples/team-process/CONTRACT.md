@@ -236,6 +236,71 @@ daemon installation or authorization system is implicit. Viewing freshness
 does not replace the separately recorded reconciliation heartbeat. Public status
 runtime may delay refresh; this is polling, not an event-stream guarantee.
 
+## Human wait links and responses
+
+`link-human ROOT REQUEST` accepts `bench.human-link/v1`: required `schema`,
+`namespace`, activity `id`, current `activity_revision`, `kind` (`approval` or
+`input`), selected `tend`, absolute `queue`, existing Tend `job`, `signal`, `by`
+and `reason`. Approval additionally requires selected standalone `may`, exact
+`may_job` and selected `action` file. Input instead requires an absolute
+`response_path` inside the job's working directory, absent at initial linkage.
+Signal names follow Tend's lowercase `[a-z0-9._-]`, maximum 64 characters.
+The job must currently wait for this signal, with exactly one prior wait event
+for that name. One activity owns the link to that job/wait; no relinking command
+exists. Another interaction requires another activity and a unique signal.
+
+`ROOT/human-links/IDENTITY/binding.json` (`bench.human-binding/v1`) retains the
+original request, actual recording time, pinned executable bindings, Tend
+queue/job identity and exact public wait event. Approval retains exact UTF-8
+action bytes and May digest, and pins the OS operator UID. May's existing
+16 KiB action / 1 KiB job bounds apply. The exact request must be pending when
+linked. Link creation is idempotent only for identical requests. Association
+between May request and controller is an explicit trusted operator selection,
+not a claim that the adapter inspected the controller's implementation.
+
+`respond-human ROOT REQUEST` accepts `bench.human-response/v1`: required
+`schema`, `namespace`, activity `id`, `by`, `reason`; input links require an
+additional absolute selected `input` file, bounded to 2 MiB. Approval links
+reject an input field. Approval invokes `may decide DIGEST` with no supplied
+answer; `/dev/tty` belongs to May. Both approval and refusal can wake the job.
+An unavailable terminal leaves the request pending and sends no signal. A
+decision made separately through May can be followed by this response command.
+The adapter never calls consuming `may request` or treats absence as approval.
+
+An immutable `response.json` retains attribution, actual preparation time,
+binding hash and optional input source/hash. Selected input bytes are retained
+as `input`. Complete bytes are atomically published to the selected mailbox
+without overwriting a concurrent answer. The controller must retain that
+mailbox unchanged and validate its input before continuation. Repeats require
+the same response bytes and attribution; a missing original input can be
+recovered from the retained copy. File paths reject symlinks at each operation;
+operator-owned directories and controllers remain the trust boundary.
+
+The response calls public `tend signal -id ID JOB NAME` with canonical response
+metadata on stdin. ID is `human-` plus the first 58 hexadecimal characters of
+the canonical binding hash (64 total, within Tend's public limit). Public
+`signal.received` evidence binds the response bytes, records whether that signal
+actually woke the job, and makes recovery after lost replies idempotent.
+Preparation may remain without a signal after a failure; repeat the same request.
+Source input and signals are not approval credentials. A resumed controller
+must recheck/spend the exact May grant or validate supplied input.
+
+Before preparation and immediately before signaling, the bound job must still
+be waiting on the same event/name. Changed, cancelled or unknown work is never
+retried/resolved. Tend has no atomic expected-wait signal operation: a concurrent
+controller may advance between inspection and signal. Unique per-interaction
+signal names and controller-side validation are required. A previously recorded
+identical signal returns its current observation without signaling again.
+
+Activity rows expose `coordination`: kind, observed job/state, May pending
+digest, retained response attribution, signal receipt/wakeup booleans and
+observation time. Input contents stay out of rendered views. Pending requests,
+new waits, failed/cancelled/unknown jobs and invalid bindings remain attention
+items even when an activity was reported done. Invalid links prevent a fresh
+reconciliation; public tool observations refresh on each view. Link/response
+records participate in the tracking digest. Neither response nor linked job
+completion changes activity history, parent acceptance or a team's own checks.
+
 ## Authority and recorded evidence
 
 One standing-team root owns immutable admissions. Its `tend/` directory belongs

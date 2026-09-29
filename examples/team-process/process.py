@@ -21,7 +21,7 @@ import threading
 import time as wall_time
 from zoneinfo import ZoneInfo
 
-VERSION = '0.3.0'
+VERSION = '0.4.0'
 MAX_JSON = 2 * 1024 * 1024
 MAX_FILE = 64 * 1024 * 1024
 UTC = timezone.utc
@@ -998,6 +998,189 @@ def activity_evidence(folder, revisions):
     return valid
 
 
+def human_job(binding):
+    verify_program(binding['tend'])
+    require((physical(binding['queue'])/'state/tend.db').is_file(), 'linked Tend queue is missing')
+    jobs = [decode(line) for line in tend_call(binding, ['list']).splitlines()]
+    matches = [j for j in jobs if j['id'] == binding['job_id']]
+    require(len(matches) == 1, 'linked Tend job is missing')
+    job = matches[0]
+    identity = {k:job.get(k) for k in ('id','argv','cwd','serial_key','created_us','check_argv')}
+    require('job_identity' not in binding or binding['job_identity'] == identity, 'linked Tend job identity changed')
+    events = [decode(line) for line in tend_call(binding, ['events', binding['job_id']]).splitlines()]
+    if 'wait' in binding:
+        require(binding['wait'] in events, 'linked Tend wait evidence changed')
+    return job, identity, events
+
+
+def human_pending(binding):
+    verify_program(binding['may'])
+    require(os.getuid() == binding['operator_uid'], 'May link belongs to a different OS operator')
+    result = capture([binding['may']['path'], 'pending'], input=b'',
+                     timeout=30)
+    require(result.returncode == 0, 'May pending inspection failed')
+    pending = [decode(line) for line in result.stdout.splitlines()]
+    matches = [r for r in pending if r.get('digest') == binding['digest']]
+    require(len(matches) <= 1, 'duplicate May request')
+    for record in matches:
+        require(record.get('version') == 1 and record.get('job') == binding['request']['may_job'] and
+                record.get('action') == binding['action'], 'May request differs from linked action')
+    return bool(matches)
+
+
+def link_human(root, request):
+    fields(request, ['schema','namespace','id','activity_revision','kind','tend','queue','job','signal','by','reason'],
+           ['may','may_job','action','response_path'])
+    require(request['schema'] == 'bench.human-link/v1' and request['kind'] in ('approval','input'), 'invalid human link')
+    for key in ('namespace','id','job'): ident(request[key])
+    for key in ('by','reason'): text(request[key],key)
+    require(isinstance(request['signal'], str) and re.fullmatch(r'[a-z0-9._-]{1,64}',request['signal']), 'invalid wait signal')
+    options = {'may','may_job','action'} if request['kind'] == 'approval' else {'response_path'}
+    require(set(request) & {'may','may_job','action','response_path'} == options, 'select only the fields for this link kind')
+    root = runtime_root(root)
+    key = tracking_key(request['namespace'],request['id'])
+    folder = root/'human-links'/key
+    with lock(root):
+        if (folder/'binding.json').exists():
+            binding = load(folder/'binding.json')
+            require(binding['request'] == request, 'human link is immutable; create a new activity for another request')
+            return binding
+        revisions = history(root/'activities'/key, 'bench.activity-revision/v1')
+        require(revisions and revisions[-1]['revision'] == request['activity_revision'], 'select the current activity revision')
+        require(revisions[-1]['payload']['state'] not in ('done','cancelled'), 'select an open human activity')
+        require(Path(request['queue']).is_absolute(), 'queue must be absolute')
+        binding = {'schema':'bench.human-binding/v1','request':request,'recorded_at':now(),
+                   'queue':str(physical(request['queue'])), 'job_id':request['job'], 'tend':program(request['tend'])}
+        job, identity, events = human_job(binding)
+        waits = [e for e in events if e['kind'] == 'attempt.finished' and
+                 e['payload'].get('status') == 'waiting' and e['payload'].get('wait_key') == request['signal']]
+        require(job['status'] == 'waiting' and job.get('wait_kind') == 'signal' and
+                job.get('wait_key') == request['signal'] and len(waits) == 1,
+                'select a current signal wait with a name unique to this human request')
+        binding.update(job_identity=identity, wait=waits[0])
+        for other in (root/'human-links').glob('*/binding.json'):
+            old = load(other)
+            require((old['queue'],old['job_id'],old['wait']['seq']) !=
+                    (binding['queue'],binding['job_id'],binding['wait']['seq']), 'wait already linked to another activity')
+        if request['kind'] == 'approval':
+            action = read(request['action'], 16384).decode('utf-8')
+            text(request['may_job'], 'May job')
+            require(action and '\0' not in action and '\0' not in request['may_job'] and
+                    len(request['may_job'].encode()) <= 1024, 'invalid May action or job')
+            binding.update(may=program(request['may']), operator_uid=os.getuid(), action=action,
+                           digest=sha(b'may-v1\0'+request['may_job'].encode()+b'\0'+action.encode()))
+            require(human_pending(binding), 'exact May request is not pending')
+        else:
+            destination = physical(request['response_path'])
+            require(Path(request['response_path']).is_absolute() and physical(job['cwd']) in destination.parents,
+                    'response path must be absolute and inside the linked job working directory')
+            require(not destination.exists(), 'response path already exists; select a new mailbox for this request')
+        durable_mkdir(folder)
+        replace_record(folder/'binding.json',binding)
+        return binding
+
+
+def human_link_view(root, namespace, identifier):
+    folder = physical(root)/'human-links'/tracking_key(namespace,identifier)
+    if not folder.exists(): return None
+    binding = load(folder/'binding.json')
+    require(binding['schema'] == 'bench.human-binding/v1' and
+            (binding['request']['namespace'],binding['request']['id']) == (namespace,identifier), 'human link identity changed')
+    job, _, events = human_job(binding)
+    signal_id = 'human-'+sha(encode(binding))[:58]
+    responses = [e for e in events if e['kind'] == 'signal.received' and e['payload'].get('id') == signal_id]
+    response = load(folder/'response.json') if (folder/'response.json').exists() else None
+    if response:
+        fields(response, ['schema','kind','by','reason','binding_sha256','input_sha256','input_source','recorded_at'])
+        require(response['schema'] == 'bench.human-response-record/v1' and
+                response['binding_sha256'] == sha(encode(binding)) and response['kind'] == binding['request']['kind'],
+                'human response binding changed')
+        instant(response['recorded_at'])
+    if response and response['kind'] == 'input':
+        require(sha(read(folder/'input',MAX_JSON)) == response['input_sha256'], 'retained human input changed')
+    if responses:
+        require(response is not None and responses[0]['payload']['payload_digest'] == sha(encode(response)),
+                'human response differs from Tend signal evidence')
+    pending = human_pending(binding) if binding['request']['kind'] == 'approval' else None
+    finished = [e for e in events if e['kind'] == 'attempt.finished']
+    same_wait = job['status'] == 'waiting' and finished and finished[-1] == binding['wait']
+    state = 'awaiting-approval' if pending else 'awaiting-input' if binding['request']['kind'] == 'input' else 'decision-not-pending'
+    woke = responses[0]['payload'].get('woke',False) if responses else False
+    if responses: state = ('wake-recorded' if woke else 'signal-recorded') if job['status'] == 'ready' else 'resumed'
+    if job['status'] in ('unknown','failed','cancelled','done'): state = 'job-'+job['status']
+    elif job['status'] == 'waiting' and not same_wait: state = 'waiting-again'
+    return {'kind':binding['request']['kind'],'state':state,'job_id':binding['job_id'],
+            'job_status':job['status'],'signal':binding['request']['signal'],
+            'digest':binding.get('digest'),'pending':pending,'response':response,
+            'signal_recorded':bool(responses),'signal_woke':woke,'observed_at':now(),
+            'notice':'Wakeup is not approval. The resumed controller must recheck May or validate supplied input.'}
+
+
+def respond_human(root, request):
+    fields(request, ['schema','namespace','id','by','reason'], ['input'])
+    require(request['schema'] == 'bench.human-response/v1', 'invalid human response')
+    for key in ('namespace','id'): ident(request[key])
+    for key in ('by','reason'): text(request[key],key)
+    root = runtime_root(root)
+    folder = root/'human-links'/tracking_key(request['namespace'],request['id'])
+    require((folder/'binding.json').is_file(), 'human activity has no linked wait')
+    with lock(folder):
+        binding = load(folder/'binding.json')
+        kind = binding['request']['kind']
+        require(('input' in request) == (kind == 'input'), 'input responses require a selected file; approval responses use May')
+        prepared = load(folder/'response.json') if (folder/'response.json').exists() else None
+        raw = None
+        if kind == 'input':
+            require(Path(request['input']).is_absolute(), 'input file must be absolute')
+            selected = physical(request['input'])
+            if not selected.exists() and prepared and prepared.get('input_source') == str(selected):
+                raw = read(folder/'input',MAX_JSON)
+            else: raw = read(selected,MAX_JSON)
+        response = {'schema':'bench.human-response-record/v1','kind':kind,'by':request['by'],'reason':request['reason'],
+                    'binding_sha256':sha(encode(binding)), 'input_sha256':sha(raw) if raw is not None else None,
+                    'input_source':str(selected) if raw is not None else None,
+                    'recorded_at':prepared['recorded_at'] if prepared else now()}
+        if prepared:
+            require(prepared == response, 'response already prepared with different bytes or attribution')
+        view = human_link_view(root,request['namespace'],request['id'])
+        if view['signal_recorded']: return view
+        job, _, events = human_job(binding)
+        finished = [e for e in events if e['kind'] == 'attempt.finished']
+        require(job['status'] == 'waiting' and job.get('wait_kind') == 'signal' and job.get('wait_key') == binding['request']['signal'] and
+                finished and finished[-1] == binding['wait'], 'linked wait changed; inspect the job before responding')
+        if raw is not None:
+            if (folder/'input').exists(): require(read(folder/'input',MAX_JSON) == raw, 'retained input changed')
+            else: replace_bytes(folder/'input',raw)
+        if not (folder/'response.json').exists(): replace_record(folder/'response.json',response)
+        if kind == 'approval':
+            if human_pending(binding):
+                # May reads /dev/tty. No answer, grant, or consuming request is supplied here.
+                decided = subprocess.run([binding['may']['path'],'decide',binding['digest']],
+                                         stdin=subprocess.DEVNULL, stdout=sys.stderr)
+                require(decided.returncode in (0,3), 'May decision failed; inspect May before repeating')
+            require(not human_pending(binding), 'May request remains pending; a human terminal decision is required')
+        else:
+            destination = physical(binding['request']['response_path'])
+            durable_mkdir(destination.parent)
+            if destination.exists(): require(read(destination,MAX_JSON) == raw, 'human input mailbox has conflicting bytes')
+            else:
+                # Publish complete bytes without overwriting a concurrent response.
+                with tempfile.NamedTemporaryFile(dir=destination.parent,delete=False) as output:
+                    temporary = Path(output.name)
+                    output.write(raw); output.flush(); os.fsync(output.fileno())
+                try: os.link(temporary,destination); syncdir(destination.parent)
+                finally: temporary.unlink()
+        # Never retry/resolve/work here. Tend's stable signal ID makes recovery
+        # after a lost response idempotent; the controller owns validation.
+        job, _, events = human_job(binding)
+        finished = [e for e in events if e['kind'] == 'attempt.finished']
+        require(job['status'] == 'waiting' and job.get('wait_kind') == 'signal' and job.get('wait_key') == binding['request']['signal'] and
+                finished and finished[-1] == binding['wait'], 'linked wait changed before wakeup; inspect the job')
+        tend_call(binding, ['signal','-id','human-'+sha(encode(binding))[:58],binding['job_id'],binding['request']['signal']],
+                  stdin=encode(response))
+        return human_link_view(root,request['namespace'],request['id'])
+
+
 def activity_rows(root, parents, as_of):
     parent_map = {(r['namespace'],r['id']):r for r in parents}
     rows, errors = [], []
@@ -1036,15 +1219,23 @@ def activity_rows(root, parents, as_of):
                 reasons.append('activity-completion-after-as-of')
             if value['state'] != 'cancelled' and timeliness in ('overdue','late'): reasons.append(timeliness)
             if value['state'] == 'needs-attention': reasons.append('human-needs-attention')
+            try:
+                coordination = human_link_view(root,value['namespace'],value['id'])
+                if coordination and coordination['state'] in ('awaiting-approval','awaiting-input','decision-not-pending',
+                                                               'waiting-again','job-unknown','job-failed','job-cancelled'):
+                    reasons.append('human-'+coordination['state'])
+            except (ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError) as error:
+                coordination = {'state':'unverified','error':str(error)}
+                reasons.append('human-link-unverified')
             rows.append({'kind':'human-activity','namespace':value['namespace'],'id':value['id'],
                 'parent':value['parent'],'owner':value['assignee'],'objective':value['title'],
                 'description':value['description'],'not_before':revisions[0]['recorded_at'],
                 'due_at':value['due_at'],'timezone':value['timezone'], 'state':value['state'],
-                'execution':'human-reported' if evidence_valid else 'unverified',
+                'execution':'unverified' if not evidence_valid or coordination and coordination['state'] == 'unverified' else 'human-reported',
                 'acceptance':'reported-done' if done else 'unconfirmed','timeliness':timeliness,
                 'completed_at':completed_at,'milestones':[], 'attention':sorted(set(reasons)),
                 'disposition':None,'disposition_history':[], 'revision':latest['revision'],
-                'activity_history':revisions, 'evidence':value['evidence'], 'calendar_id':None,
+                'activity_history':revisions, 'evidence':value['evidence'], 'coordination':coordination, 'calendar_id':None,
                 'calendar_revision':None})
         except (ValueError,OSError,KeyError,TypeError) as error:
             errors.append({'id':folder.name,'reason':'activity-unverified','detail':str(error)})
@@ -1054,7 +1245,7 @@ def activity_rows(root, parents, as_of):
 def tracking_digest(root):
     root = physical(root)
     paths = []
-    for part in ('calendars', 'dispositions', 'activities'):
+    for part in ('calendars', 'dispositions', 'activities', 'human-links'):
         paths.extend((root/part).glob('*/*.json'))
     paths.extend(root.glob('process-*/admission.json'))
     paths.extend(root.glob('process-*/commitment.json'))
@@ -1571,6 +1762,16 @@ def render_kanban(report):
                 esc(r['payload']['reason']),esc(r['payload']['assignee']),esc(r['payload']['due_at']))
                 for r in item['activity_history'])+'</ul>'
             details += '<p>Completion evidence: '+esc(', '.join(Path(e['path']).name for e in item['evidence']) or 'None selected')+'</p>'
+            if item.get('coordination'):
+                linked = item['coordination']
+                details += '<p><strong>Human handoff: '+esc(linked['state'])+'</strong></p>'
+                if linked.get('error'): details += '<p>'+esc(linked['error'])+'</p>'
+                else:
+                    details += '<p>Waiting job: '+esc(linked['job_id'])+' · '+esc(linked['job_status'])+'</p>'
+                    if linked.get('digest'): details += '<p>May request: <code>'+esc(linked['digest'])+'</code></p>'
+                    if linked.get('response'):
+                        details += '<p>Response by '+esc(linked['response']['by'])+': '+esc(linked['response']['reason'])+'</p>'
+                    details += '<p>'+esc(linked['notice'])+'</p>'
         else:
             details += '<p>Execution: '+esc(item['execution'])+' · Acceptance: '+esc(item['acceptance'])+'</p>'
             details += '<p>Assignments: '+esc(item['assignments']['coverage'])+'</p>'
@@ -1703,6 +1904,8 @@ def main():
     p = commands.add_parser('calendar'); p.add_argument('root'); p.add_argument('--as-of', required=True)
     p.add_argument('--milestones'); p.add_argument('--format', choices=('json','html','ics'), default='json')
     p = commands.add_parser('record-activity'); p.add_argument('root'); p.add_argument('request')
+    p = commands.add_parser('link-human'); p.add_argument('root'); p.add_argument('request')
+    p = commands.add_parser('respond-human'); p.add_argument('root'); p.add_argument('request')
     p = commands.add_parser('kanban'); p.add_argument('root'); p.add_argument('--as-of', required=True)
     p.add_argument('--milestones'); p.add_argument('--assignments'); p.add_argument('--format', choices=('json','html'), default='json')
     p.add_argument('--live-assignments',action='store_true')
@@ -1727,6 +1930,10 @@ def main():
         result = record_disposition(args.root, load(args.request))
     elif args.command == 'record-activity':
         result = record_activity(args.root, load(args.request))
+    elif args.command == 'link-human':
+        result = link_human(args.root, load(args.request))
+    elif args.command == 'respond-human':
+        result = respond_human(args.root, load(args.request))
     elif args.command == 'kanban':
         result = kanban_view(args.root, args.as_of, load(args.milestones) if args.milestones else None,
                              load(args.assignments) if args.assignments else None,args.live_assignments)

@@ -5,7 +5,9 @@ tool or an interpreter for team stages. Read DESIGN.md before editing.
 
 - Invoke existing team entry commands and Tend using literal argv.
 - Tend owns attempts, waits, serialization and uncertain effects. Never open
-  its database, retry jobs, signal waits, or resolve unknown outcomes here.
+  its database, retry jobs, or resolve unknown outcomes here. Explicit human
+  responses may signal a bound wait through Tend's public command; inspection
+  never signals. May alone records and consumes approval.
 - Team entry commands own their internal workflow and acceptance. A roster,
   milestone report, model claim or passing structural check is not acceptance.
 - Kanban projects existing records. Human activity completion is an attributed

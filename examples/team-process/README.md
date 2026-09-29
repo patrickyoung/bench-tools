@@ -15,7 +15,8 @@ pinned team exports. Teams without a process retain their existing behavior.
 ## Install and select source
 
 Requires Python 3.9+ with the IANA timezone database, Unix file locking, and an
-installed Tend executable. The selected team's own tools and model access are
+installed Tend executable. Approval links additionally select standalone May.
+The selected team's own tools and model access are
 separate prerequisites. This directory can be copied independently; it imports
 no other source package and needs no Python dependencies or daemon.
 
@@ -431,6 +432,104 @@ the parent, waive a team check, cancel a Tend attempt or unblock dependencies.
 Activities and their due dates appear in both calendar views and ICS exports.
 The parent may finish while an outstanding human follow-up remains visible.
 
+## Connect human activities to May and Tend
+
+An activity can track an existing **human approval or input wait**. The
+controller first parks through Tend's public `defer signal NAME` contract and,
+for approvals, creates an exact pending May request. See Tend's
+[approval composition](../../tools/tend/examples/may-approval/README.md) and
+[input composition](../../tools/tend/examples/wait-for-input/README.md).
+The activity supplies the assignee, due date, parent commitment and follow-up
+history. The link supplies the actual waiting job. Linking neither submits a
+job nor inserts new gates into an existing team's implementation.
+
+Run these commands as the trusted operator, outside model toolboxes and
+worker-writable state. For an approval, write a link request outside source:
+
+```json
+{
+  "schema":"bench.human-link/v1",
+  "namespace":"web-team",
+  "id":"stakeholder-approval",
+  "activity_revision":"LATEST_ACTIVITY_REVISION",
+  "kind":"approval",
+  "tend":"/absolute/bin/tend",
+  "queue":"/absolute/controller/queue",
+  "job":"EXISTING_TEND_JOB",
+  "signal":"stakeholder-review-1",
+  "may":"/absolute/bin/may",
+  "may_job":"EXACT_JOB_NAME_USED_BY_MAY",
+  "action":"/absolute/controller/exact-action.txt",
+  "by":"Delivery owner",
+  "reason":"Connect this activity to the controller's pending approval"
+}
+```
+
+```sh
+python3 /absolute/team-process/process.py link-human \
+  /absolute/standing-team/commitments /absolute/current/human-link.json
+```
+
+The selected signal must be the job's current signal wait. Use a distinct
+signal name for each human interaction in that job. The link freezes the job
+identity, wait event, selected executable hashes, May job/action digest and OS
+operator identity. May always uses the operating-system account's approval
+state; changing `HOME` cannot select another approver. Links are immutable;
+another interaction needs another activity and signal name. The operator is
+responsible for selecting the controller that actually checks that May request.
+
+To respond, save an attributed response request:
+
+```json
+{
+  "schema":"bench.human-response/v1",
+  "namespace":"web-team",
+  "id":"stakeholder-approval",
+  "by":"Delivery lead",
+  "reason":"Review the pending stakeholder decision"
+}
+```
+
+```sh
+python3 /absolute/team-process/process.py respond-human \
+  /absolute/standing-team/commitments /absolute/current/human-response.json
+```
+
+For an approval, this opens **May's own terminal prompt**. May records approval
+or refusal. The adapter then sends the bound Tend signal. A missing terminal
+leaves the request pending and sends no signal. If the decision was already
+made directly through May, repeating the response can deliver the wakeup.
+Absence from `may pending` is never interpreted as approval: when the host next
+runs `tend work`, the controller must ask May for the identical job/action and
+proceed only after May atomically spends the matching grant. A refusal follows
+the controller's existing failure path. The board never consumes a grant.
+
+For ordinary input, use `"kind":"input"` in the link and replace `may`,
+`may_job`, and `action` with `"response_path":"/absolute/job/work/input-1"`.
+This is an explicit, previously absent mailbox inside that job's working
+directory. Add `"input":"/absolute/current/answer.txt"` to the response.
+The adapter retains those selected bytes, publishes them atomically without
+overwriting another answer, then signals Tend. Adapt the controller to read
+and validate this exact mailbox; retain it unchanged for this interaction
+instead of deleting, moving or reusing it. Input contents are not exposed on
+the board. Use a new mailbox and activity for a later question.
+
+Both response kinds retain attribution and use a stable signal ID. An identical
+repeat recovers from a lost reply; changed response bytes or attribution fail.
+Once retained, input recovery works even if the original selected file moves.
+Changed waits, cancelled jobs and unknown outcomes require inspection and are
+never retried or resolved here. Tend has no conditional signal operation, so
+controllers must use unique signal names and validate responses themselves;
+the adapter rechecks the bound wait immediately before signaling.
+
+The live board and calendar JSON show pending approval/input, signal receipt,
+resumed work, another wait, failure, uncertainty and completion of the linked
+job. Errors and outstanding requests remain in Needs attention even if somebody
+marks the activity Done. Completion of a linked job remains separate from the
+activity's attributed completion report and the parent team's acceptance.
+Responses use these operator commands; the browser remains read-only. No
+notification channel, automatic worker loop or new approval service is added.
+
 ## Observe existing team assignments
 
 The live viewer automatically inspects admitted Page Team runs through their
@@ -460,8 +559,9 @@ inspection may still open their normal database and lock files.
 
 ## Continue or change work deliberately
 
-The application does not retry, signal, cancel, waive, reschedule or resolve
-unknown jobs. Use Tend's documented operator commands and the selected team's
+The application does not retry, cancel, waive, reschedule or resolve unknown
+jobs. Only an explicit `respond-human` sends a bound human-response signal;
+inspection never signals. Use Tend's documented operator commands and the selected team's
 continuation contract. The comparison entry cannot resume a used run directory;
 the wrapper refuses an attempted second invocation. The page team can resume
 unchanged work through its existing Manage entry, preserving original limits.
@@ -486,7 +586,14 @@ duplicate admission, unknown fencing, business holds, source/input drift,
 acceptance versus timeliness, and rejected/stale completion. Existing team
 suites cover their underlying handoffs. These checks establish composition;
 they do not establish model quality, business truth or an improved deadline
-success rate. Live jobs use the caller's separately configured model account.
+success rate. Human-wait tests compile May's unchanged implementation with a
+test-only main using its existing injectable state seam, alongside real Tend.
+Synthetic terminal decisions stay in temporary test state; production May's
+OS-account selection is unchanged. The Make target also runs production May's
+offline `check`. For a standalone copy, select the May source with
+`PROCESS_TEST_MAY_SOURCE=/absolute/may-source` and install Go to include those
+composition tests; otherwise they are explicitly skipped. Live jobs use the
+caller's separately configured model account.
 
 The public commands return 0 for valid results, including empty planning output
 or a status showing unfinished/unverified work; 2 for invalid input/operating failure.

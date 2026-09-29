@@ -59,8 +59,8 @@ check-workers:
 	@$(PYTHON) scripts/check-worker-evaluations.py --python "$(EVAL_PYTHON)" $(EVAL_ARGS)
 
 check-team-process:
-	@$(PYTHON) scripts/build tend
-	@$(MAKE) -C examples/team-process check PYTHON="$(PYTHON)" TEND="$(CURDIR)/.build/bin/tend"
+	@$(PYTHON) scripts/build tend may
+	@$(MAKE) -C examples/team-process check PYTHON="$(PYTHON)" TEND="$(CURDIR)/.build/bin/tend" MAY="$(CURDIR)/.build/bin/may"
 
 build-interfaces:
 	@$(MAKE) -C interfaces/hire build
