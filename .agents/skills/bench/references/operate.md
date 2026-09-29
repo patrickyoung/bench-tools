@@ -77,6 +77,14 @@ Tend or release unknown work. Calendar updates retain history and cannot rewrite
 past obligations. A published snapshot must be regenerated; no notification or
 Google/Outlook connection is implied by producing it.
 
+Use `kanban` for the same commitments and `record-activity` for attributed human
+follow-ups with assignees, dates, reasons and retained completion evidence.
+Human Done never accepts the parent team result. Optional `serve` provides a
+loopback live board, refreshing recorded work and supported Page Team public
+assignment status every few seconds. Saved status exports remain labeled
+snapshots. Team cards are read-only, uncertain execution stays visible, and
+remote publishing requires separate authenticated hosting configuration.
+
 Run `make check-team-process` for offline public-command verification. A green
 composition check does not establish model quality or successful business outcomes.
 

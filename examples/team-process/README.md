@@ -335,6 +335,129 @@ recording times remain in the history, including after reopening. Attribution
 does not authenticate a person's identity. A later calendar revision cannot
 silently reuse an old waiver: mismatched decisions become conflicts.
 
+## Watch work on a Kanban board
+
+```sh
+python3 /absolute/team-process/process.py kanban /absolute/standing-team/commitments \
+  --as-of 2026-09-29T17:30:00-04:00 --format html > /absolute/current/team-board.html
+python3 /absolute/team-process/process.py serve /absolute/standing-team/commitments \
+  --port 8765 --poll-seconds 5
+```
+
+The first command exports a snapshot; omit `--format html` for JSON. The second
+starts an optional **live read-only board** at `http://127.0.0.1:8765/`. It polls
+recorded work every five seconds by default, automatically updates cards and
+assignment observations, and preserves the viewer's filter and expanded details.
+Refresh failures retain the last received view with a visible warning and the
+last successful refresh time. This is near-real-time observation after the
+underlying tools record state, not token streaming or an execution scheduler.
+Refresh latency includes the public inspection commands' runtime.
+
+| Column | Meaning |
+| --- | --- |
+| Planned | Future expected work or an admitted commitment awaiting submission |
+| Ready | Submitted work ready to begin, or a human activity marked ready |
+| In progress | Running execution, or a human activity reported in progress |
+| Needs attention | Missing commitments, blockers, uncertain execution, rejected/stale evidence or inconsistent records |
+| Done | Verified team delivery, or a separately labeled human completion report with retained evidence |
+
+Overdue and late indicators remain on cards in their actual column. Running
+overdue work remains In progress; an accepted late result remains Done. Skipped
+and cancelled cards remain in history, unless contradictory execution or evidence
+requires attention. The board and calendar share commitment and activity records;
+there is no second task graph or independent drag-to-done state.
+
+Team cards are read-only. Human activities are updated through the recorded
+command below; their changes appear at the next refresh. Static HTML is also
+read-only and must be regenerated. `--milestones FILE` works as on the calendar.
+The original `board` JSON command remains an admitted-commitment status list.
+
+The live viewer binds only to loopback, sends no notifications and has no write
+endpoints. Stop it with Ctrl-C; no service or daemon is installed. It shares a
+short-lived view cache across viewers. A malformed record stays visible as an
+exception; a failed refresh never replaces the last view with apparent success.
+Host reconciliation remains separate: a working live connection does not certify
+that the standing team's periodic checks are running. Publishing to other users
+requires separately selected authenticated hosting/proxy configuration. Do not
+expose this local viewer directly to an untrusted network.
+
+## Assign and update human activities
+
+Create a JSON request outside source. Its `parent` must identify an existing
+commitment or registered calendar occurrence in the same namespace:
+
+```json
+{
+  "schema":"bench.human-activity/v1",
+  "namespace":"web-team",
+  "id":"stakeholder-approval",
+  "parent":"daily-site-review/2026-09-29",
+  "title":"Obtain stakeholder approval",
+  "description":"Retain the named stakeholder's decision on the proposed page.",
+  "assignee":"Delivery lead",
+  "due_at":"2026-09-29T16:00:00-04:00",
+  "timezone":"America/New_York",
+  "state":"ready",
+  "by":"Delivery owner",
+  "reason":"Assign approval follow-up",
+  "evidence":[]
+}
+```
+
+```sh
+python3 /absolute/team-process/process.py record-activity \
+  /absolute/standing-team/commitments /absolute/current/activity.json
+```
+
+The returned `revision` is required as `previous` on a changed request. Send
+the complete new record with a reason and attribution when changing assignee,
+deadline, description or state. Allowed states are `planned`, `ready`,
+`in-progress`, `needs-attention`, `done` and `cancelled`. Reopen by recording a
+nonterminal state; cancellation and previous completion reports remain in
+history. Concurrent conflicting edits are refused. An activity cannot change
+parent after creation.
+
+To report `done`, supply at least one evidence object:
+`{"path":"/absolute/approval.txt","sha256":"FULL_SHA256"}`. Selected evidence
+bytes are copied into the activity's retained history. Editing the original
+file later does not alter that report. Corrupt or missing retained evidence,
+including evidence from earlier revisions, becomes an exception and prevents
+a successful reconciliation. Title/assignee corrections on continuously done
+work preserve its completion time; reopening starts a new completion interval.
+
+Human Done means **reported completion with retained evidence**, not authenticated
+identity, verified business truth or accepted agent delivery. It cannot complete
+the parent, waive a team check, cancel a Tend attempt or unblock dependencies.
+Activities and their due dates appear in both calendar views and ICS exports.
+The parent may finish while an outstanding human follow-up remains visible.
+
+## Observe existing team assignments
+
+The live viewer automatically inspects admitted Page Team runs through their
+explicitly pinned `BENCH_MANAGE status -json RUN` executable. The adapter checks
+`bench.manage.snapshot/v1`, binds `run_sha256` to exact `RUN/manifest.json`
+bytes and checks the admitted brief and roster. It reports task IDs, assignees,
+goals, dependencies and controller-reported states inside the parent card.
+Assignments never independently establish parent completion. Unsupported teams
+retain commitment visibility; descriptive process stages are not invented tasks.
+
+For a one-time JSON/HTML board with current assignments, add `--live-assignments`.
+Alternatively, pass `--assignments FILE`, mapping admitted instance directory
+names to either `"manage-status"` or an absolute saved public status export:
+
+```sh
+/absolute/bin/bench-manage status -json /absolute/standing-team/commitments/INSTANCE/run \
+  > /absolute/current/manage-status.json
+```
+
+Saved exports retain their original observation timestamp and are labeled as
+retained snapshots. Reading them again does not make them live. Planning packets
+under manager job work directories are a different envelope and are not accepted
+as public status exports. Another run's snapshot is rejected even with the same
+brief. Polling uses no worker/model execution, rejects an uninitialized existing
+inner queue and disables Python bytecode writing. Existing controller/Tend
+inspection may still open their normal database and lock files.
+
 ## Continue or change work deliberately
 
 The application does not retry, signal, cancel, waive, reschedule or resolve

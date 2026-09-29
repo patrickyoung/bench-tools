@@ -57,6 +57,16 @@ library. The original team lock remains authoritative for exported source.
   the original team command, and only after exit zero runs the declared final
   verification. It seals accepted artifact identities and the completion time.
   Normal completion checks run here, not in Tend's unknown-resolution `-check`.
+- `record-activity`: append an attributed human activity revision linked to an
+  existing commitment/occurrence, with explicit assignee, date, reason and selected
+  completion evidence. History is retained separately from agent execution.
+- `kanban`: project the same calendar/commitment/activity records into five work
+  columns, retaining exceptions and cancelled/skipped history. Read existing
+  Page Team assignments through explicitly selected public status observations.
+- `serve`: optionally publish this read-only projection on loopback and refresh
+  it every few seconds. No write endpoints, scheduler, required daemon or remote
+  hosting authority is introduced. Connection freshness and periodic
+  reconciliation freshness remain distinct.
 
 Tend's stdout/stderr capture remains intact. The original team exit is retained
 in the receipt. Ordinary exits propagate; interruptions and nested unknown

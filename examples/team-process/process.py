@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta, timezone
 import fcntl
 import hashlib
 import html
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
@@ -16,9 +17,11 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
+import time as wall_time
 from zoneinfo import ZoneInfo
 
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 MAX_JSON = 2 * 1024 * 1024
 MAX_FILE = 64 * 1024 * 1024
 UTC = timezone.utc
@@ -769,10 +772,8 @@ def history(folder, schema):
     return result
 
 
-def replace_record(path, value):
+def replace_bytes(path, raw):
     path = physical(path)
-    raw = encode(value)
-    require(len(raw) <= MAX_JSON, 'record exceeds 2 MiB')
     fd, temporary = tempfile.mkstemp(prefix='.record-', dir=path.parent)
     try:
         with os.fdopen(fd, 'wb') as stream:
@@ -780,6 +781,12 @@ def replace_record(path, value):
         os.replace(temporary, path); syncdir(path.parent)
     finally:
         if os.path.exists(temporary): os.unlink(temporary)
+
+
+def replace_record(path, value):
+    raw = encode(value)
+    require(len(raw) <= MAX_JSON, 'record exceeds 2 MiB')
+    replace_bytes(path, raw)
 
 
 def append_history(folder, schema, payload, previous):
@@ -919,10 +926,135 @@ def record_disposition(root, request):
         return append_history(folder, 'bench.disposition-revision/v1', value, previous)
 
 
+def activity_payload(value):
+    fields(value, ['schema', 'namespace', 'id', 'parent', 'title', 'description', 'assignee',
+                   'due_at', 'timezone', 'state', 'by', 'reason', 'evidence'])
+    require(value['schema'] == 'bench.human-activity/v1', 'unsupported human activity schema')
+    for key in ('namespace','id','parent'): ident(value[key])
+    for key in ('title','description','assignee','by','reason'): text(value[key], key)
+    instant(value['due_at']); ZoneInfo(value['timezone'])
+    require(value['state'] in ('planned','ready','in-progress','needs-attention','done','cancelled'),
+            'invalid human activity state')
+    require(isinstance(value['evidence'], list) and len(value['evidence']) <= 16, 'invalid activity evidence')
+    names = set()
+    for item in value['evidence']:
+        fields(item, ['path','sha256'])
+        text(item['path'], 'evidence path')
+        require(Path(item['path']).is_absolute() and item['path'] not in names and
+                re.fullmatch(r'[a-f0-9]{64}', item['sha256']), 'invalid or repeated activity evidence')
+        names.add(item['path'])
+    require(value['state'] != 'done' or value['evidence'], 'human completion requires selected evidence')
+    return value
+
+
+def record_activity(root, request):
+    request = dict(request)
+    previous = request.pop('previous', None)
+    value = activity_payload(request)
+    root = runtime_root(root)
+    folder = root/'activities'/tracking_key(value['namespace'], value['id'])
+    with lock(root):
+        report = calendar_view(root, now())
+        parents = [row for row in report['obligations'] if row.get('kind') == 'commitment' and
+                   (row['namespace'],row['id']) == (value['namespace'],value['parent'])]
+        require(len(parents) == 1 and parents[0]['execution'] != 'unverified', 'select a verified existing parent commitment or occurrence')
+        old = history(folder, 'bench.activity-revision/v1')
+        if old:
+            require(activity_evidence(folder, old), 'retained activity history evidence changed')
+            require(old[-1]['payload']['parent'] == value['parent'], 'activity parent cannot change')
+            if old[-1]['payload'] == value:
+                for item in value['evidence']:
+                    require(sha(read(folder/'evidence'/item['sha256'])) == item['sha256'], 'retained activity evidence changed')
+                return old[-1]
+            require(previous == old[-1]['revision'], 'history changed; select its current revision')
+        else:
+            require(previous is None, 'new activity cannot select a previous revision')
+            require(len(list((root/'activities').glob('*'))) < 1000, 'activity count exceeds 1000')
+        # Read selected evidence before creating any record. A partial write may
+        # leave unreferenced blobs, but cannot assert completion without a revision.
+        selected, total = {}, 0
+        for item in value['evidence']:
+            raw = read(item['path']); total += len(raw)
+            require(total <= MAX_FILE and sha(raw) == item['sha256'], 'activity evidence changed or exceeds 64 MiB')
+            selected[item['sha256']] = raw
+        durable_mkdir(folder/'evidence')
+        for digest, raw in selected.items():
+            target = folder/'evidence'/digest
+            if target.exists():
+                require(sha(read(target)) == digest, 'retained activity evidence changed')
+            else:
+                replace_bytes(target, raw)
+        syncdir(folder/'evidence')
+        return append_history(folder, 'bench.activity-revision/v1', value, previous)
+
+
+def activity_evidence(folder, revisions):
+    digests = {item['sha256'] for r in revisions for item in activity_payload(r['payload'])['evidence']}
+    valid = True
+    for digest in digests:
+        try:
+            require(sha(read(folder/'evidence'/digest)) == digest, 'activity evidence changed')
+        except (ValueError,OSError): valid = False
+    return valid
+
+
+def activity_rows(root, parents, as_of):
+    parent_map = {(r['namespace'],r['id']):r for r in parents}
+    rows, errors = [], []
+    folders = sorted((physical(root)/'activities').glob('*'))
+    require(len(folders) <= 1000, 'activity count exceeds 1000')
+    for folder in folders:
+        try:
+            revisions = history(folder, 'bench.activity-revision/v1')
+            # A write interrupted before its first revision has not created work.
+            if not revisions:
+                errors.append({'id':folder.name,'reason':'activity-unverified','detail':'Activity write has no committed revision.'})
+                continue
+            parent_id, prior_state, completed_at = None, None, None
+            for revision in revisions:
+                value = activity_payload(revision['payload'])
+                require(folder.name == tracking_key(value['namespace'],value['id']), 'activity identity differs from directory')
+                require(parent_id is None or parent_id == value['parent'], 'activity parent changed')
+                parent_id = value['parent']
+                if value['state'] == 'done' and prior_state != 'done': completed_at = revision['recorded_at']
+                if value['state'] != 'done': completed_at = None
+                prior_state = value['state']
+            latest = revisions[-1]; value = latest['payload']
+            reasons = []
+            evidence_valid = activity_evidence(folder, revisions)
+            if not evidence_valid: reasons.append('activity-evidence-invalid')
+            parent = parent_map.get((value['namespace'],value['parent']))
+            if not parent: reasons.append('activity-parent-missing')
+            elif parent['execution'] == 'unverified': reasons.append('activity-parent-unverified')
+            elif parent['state'] in ('skipped','cancelled') and value['state'] not in ('done','cancelled'):
+                reasons.append('activity-parent-closed')
+            done = value['state'] == 'done' and evidence_valid
+            completed_at = completed_at if done else None
+            timing = instant(completed_at) if done else instant(as_of)
+            timeliness = ('late' if done else 'overdue') if timing > instant(value['due_at']) else 'on-time' if done else 'pending'
+            if done and instant(completed_at) > instant(as_of):
+                reasons.append('activity-completion-after-as-of')
+            if value['state'] != 'cancelled' and timeliness in ('overdue','late'): reasons.append(timeliness)
+            if value['state'] == 'needs-attention': reasons.append('human-needs-attention')
+            rows.append({'kind':'human-activity','namespace':value['namespace'],'id':value['id'],
+                'parent':value['parent'],'owner':value['assignee'],'objective':value['title'],
+                'description':value['description'],'not_before':revisions[0]['recorded_at'],
+                'due_at':value['due_at'],'timezone':value['timezone'], 'state':value['state'],
+                'execution':'human-reported' if evidence_valid else 'unverified',
+                'acceptance':'reported-done' if done else 'unconfirmed','timeliness':timeliness,
+                'completed_at':completed_at,'milestones':[], 'attention':sorted(set(reasons)),
+                'disposition':None,'disposition_history':[], 'revision':latest['revision'],
+                'activity_history':revisions, 'evidence':value['evidence'], 'calendar_id':None,
+                'calendar_revision':None})
+        except (ValueError,OSError,KeyError,TypeError) as error:
+            errors.append({'id':folder.name,'reason':'activity-unverified','detail':str(error)})
+    return rows, errors
+
+
 def tracking_digest(root):
     root = physical(root)
     paths = []
-    for part in ('calendars', 'dispositions'):
+    for part in ('calendars', 'dispositions', 'activities'):
         paths.extend((root/part).glob('*/*.json'))
     paths.extend(root.glob('process-*/admission.json'))
     paths.extend(root.glob('process-*/commitment.json'))
@@ -1059,7 +1191,10 @@ def calendar_view(root, as_of, milestones=None):
                 elif current['kind'] == 'cancelled':
                     reasons = [r for r in reasons if r != 'execution-cancelled' and not r.startswith('milestone:')]
         row.update(state=state, attention=sorted(set(reasons)))
+        row['kind'] = 'commitment'
         rows.append(row)
+    activities, activity_errors = activity_rows(root, rows, as_of)
+    rows.extend(activities); errors.extend(activity_errors)
     calendars = []
     intervals = []
     for revisions in registrations:
@@ -1136,8 +1271,9 @@ def calendar_events(report):
             continue
         common = {'namespace': row['namespace'], 'owner': row['owner'], 'timezone': row['timezone'],
                   'row': index, 'sequence': row.get('calendar_sequence', 0)}
-        events.append({**common, 'id': row['id'], 'start': row['not_before'], 'due': row['due_at'],
-                       'identity': ['work', row['namespace'], row['id']],
+        events.append({**common, 'id': row['id'],
+                       'start': row['due_at'] if row.get('kind') == 'human-activity' else row['not_before'], 'due': row['due_at'],
+                       'identity': ['human-activity' if row.get('kind') == 'human-activity' else 'work', row['namespace'], row['id']],
                        'title': row['objective'], 'state': row['state'], 'attention': row['attention'],
                        'timeliness': row['timeliness']})
         for milestone in row['milestones']:
@@ -1278,7 +1414,7 @@ def calendar_ics(report):
         return str(value).replace('\\', '\\\\').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\\n').replace(';', '\\;').replace(',', '\\,')
     def utc(value):
         return instant(value).strftime('%Y%m%dT%H%M%SZ')
-    lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Bench//Team process 0.2//EN',
+    lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Bench//Team process 0.3//EN',
              'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Team obligations (snapshot)']
     for event in calendar_events(report):
         description = ('Owner: '+event['owner']+'; state: '+event['state']+'; '+event['timeliness']+
@@ -1301,6 +1437,255 @@ def calendar_ics(report):
     return '\r\n'.join(folded)+'\r\n'
 
 
+KANBAN_COLUMNS = ('Planned', 'Ready', 'In progress', 'Needs attention', 'Done')
+
+
+def kanban_column(row):
+    # Date warnings stay on cards in their real stage; they never un-complete
+    # an accepted delivery or move running work out of execution.
+    blockers = [r for r in row['attention'] if r not in ('overdue','late','not-submitted') and not r.startswith('milestone:')]
+    if row['execution'] == 'unverified' or blockers: return 'Needs attention'
+    if row['state'] in ('skipped','cancelled'): return 'History'
+    if row.get('kind') == 'human-activity':
+        return {'planned':'Planned','ready':'Ready','in-progress':'In progress',
+                'needs-attention':'Needs attention','done':'Done'}[row['state']]
+    if row['acceptance'] == 'accepted': return 'Done'
+    if row['execution'] == 'running': return 'In progress'
+    if row['execution'] == 'ready': return 'Ready'
+    if row['execution'] == 'unsubmitted': return 'Planned'
+    return 'Needs attention'
+
+
+def assignment_snapshot(instance, selected):
+    instance = physical(instance)
+    binding = verify(instance)
+    require(binding['process']['team'] == 'page-team', 'assignment snapshot adapter supports page-team only')
+    manifest_raw = read(instance/'run/manifest.json', MAX_JSON)
+    manifest = decode(manifest_raw)
+    require(isinstance(manifest,dict) and manifest.get('schema') == 'bench.manage.run/v1', 'invalid admitted Manage manifest')
+    live = selected == 'manage-status'
+    if live:
+        program_binding = binding['programs'].get('BENCH_MANAGE')
+        require(program_binding is not None, 'live assignments require an explicitly pinned BENCH_MANAGE program')
+        queue = physical(instance/'run/tend')
+        require(not queue.exists() or (queue/'state/tend.db').is_file(), 'Manage queue has not been initialized; cannot poll it')
+        env = {**binding['base_environment'], **binding['request']['environment'], 'PYTHONDONTWRITEBYTECODE':'1'}
+        result = capture([program_binding['path'],'status','-json',str(instance/'run')],
+                         input=b'',env=env,timeout=10)
+        require(result.returncode == 0, 'Manage assignment inspection failed')
+        raw, source = result.stdout, 'BENCH_MANAGE status -json'
+    else:
+        require(Path(selected).is_absolute(), 'select an absolute public Manage status export path')
+        raw, source = read(selected, MAX_JSON), str(physical(selected))
+    snapshot = decode(raw)
+    require(read(instance/'run/manifest.json', MAX_JSON) == manifest_raw, 'Manage manifest changed during inspection')
+    require(isinstance(snapshot,dict) and isinstance(snapshot.get('tasks'),list) and len(snapshot['tasks']) <= 1000,
+            'invalid Page Team assignment snapshot')
+    require(snapshot.get('schema') == 'bench.manage.snapshot/v1' and
+            snapshot.get('run_sha256') == 'sha256:'+sha(manifest_raw), 'assignment snapshot differs from admitted Manage run')
+    observed = now()
+    timestamp = snapshot.get('as_of')
+    require(type(timestamp) in (int,float) and 0 <= timestamp <= instant(observed).timestamp(), 'invalid assignment observation timestamp')
+    age = instant(observed).timestamp()-timestamp
+    brief = read(instance/'inputs/brief').decode('utf-8').rstrip('\n')
+    require(snapshot.get('goal') == brief, 'assignment snapshot differs from admitted brief')
+    roster = load(Path(binding['export'])/'team.lock.json')['members']
+    assignments, seen = [], set()
+    for task in snapshot['tasks']:
+        require(isinstance(task,dict), 'invalid assignment')
+        task_id = text(task['id'],'assignment id')
+        require(task_id not in seen, 'duplicate assignment id'); seen.add(task_id)
+        inputs = task['input']
+        require(isinstance(inputs,dict) and inputs.get('worker') in roster, 'assignment names an absent team role')
+        title = text(inputs['goal'],'assignment goal')
+        state = text(task['state'],'assignment state')
+        strings(task['needs'], 'assignment dependencies')
+        receipt = task.get('receipt')
+        assignments.append({'id':task_id,'assignee':inputs['worker'],'title':title,
+            'reported_state':state,'needs':task['needs'], 'job':task.get('job'),
+            'check_exit':receipt.get('check_exit') if isinstance(receipt,dict) else None,
+            'editable':False})
+    require(all(set(t['needs']) <= seen for t in assignments), 'assignment dependency is absent from snapshot')
+    return {'coverage':'public-status' if live else 'retained-snapshot',
+            'freshness':('current' if age <= 30 else 'stale') if live else 'retained',
+            'age_seconds':age,'source_as_of':stamp(datetime.fromtimestamp(timestamp,UTC)),
+            'sha256':sha(raw),'source':source,'observed_at':observed,'assignments':assignments,
+            'notice':'Controller-reported assignments; parent completion still requires its delivery checks.' if live else
+                     'Assignments from a retained public status export; not live state or parent completion evidence.'}
+
+
+def kanban_view(root, as_of, milestones=None, assignments=None, live_assignments=False):
+    report = calendar_view(root, as_of, milestones)
+    selected = dict(assignments) if isinstance(assignments,dict) else {} if assignments is None else assignments
+    require(isinstance(selected,dict) and len(selected) <= 1000, 'assignments must map instance directory names to snapshots')
+    instances = {Path(row['commitment']['instance']).name: row for row in report['obligations'] if row.get('commitment')}
+    require(set(selected) <= set(instances), 'assignments name an absent or unverified commitment')
+    if live_assignments:
+        for name, row in instances.items():
+            if name not in selected and row['execution'] != 'unverified' and (Path(root)/name/'run/manifest.json').is_file():
+                binding = load(Path(root)/name/'admission.json')
+                if binding['process']['team'] == 'page-team': selected[name] = 'manage-status'
+    snapshots = {}
+    for name, path in selected.items():
+        try:
+            snapshots[name] = assignment_snapshot(Path(root)/name, path)
+        except (ValueError,OSError,KeyError,TypeError,UnicodeError,subprocess.SubprocessError) as error:
+            snapshots[name] = {'coverage':'unverified','assignments':[],'error':str(error)}
+            report['attention'].append({'id':name,'owner':instances[name]['owner'],
+                'reasons':['assignments-unverified'],'detail':str(error)})
+    cards, archived = [], []
+    for row in report['obligations']:
+        kind = row.get('kind','commitment')
+        name = Path(row['commitment']['instance']).name if row.get('commitment') else None
+        snapshot = snapshots.get(name, {'coverage':'not-selected','assignments':[]})
+        column = kanban_column(row)
+        if snapshot['coverage'] == 'unverified' or snapshot.get('freshness') == 'stale': column = 'Needs attention'
+        card = {**row, 'card_id':sha(encode([kind,row['namespace'],row['id']])), 'column':column,
+                'editable':kind == 'human-activity', 'assignments':snapshot,
+                'completion_basis':'human report with retained evidence' if kind == 'human-activity' else 'team delivery acceptance'}
+        (archived if column == 'History' else cards).append(card)
+    # Assignment inspection never seals a checkpoint. Detect intervening tracking
+    # changes so this read cannot look like a coherent current view after an edit.
+    try:
+        stable = tracking_digest(root) == report['input_sha256']
+    except (ValueError,OSError): stable = False
+    if not stable:
+        report['monitor']['state'] = 'unverified'
+        report['attention'].append({'id':'monitor','owner':None,'reasons':['snapshot-changed']})
+    return {'schema':'bench.kanban/v1','as_of':as_of,'observed_at':report['observed_at'],
+        'columns':list(KANBAN_COLUMNS),'cards':cards,'history':archived,'monitor':report['monitor'],
+        'attention':report['attention'],'errors':report['errors'],'notifications_sent':False}
+
+
+def render_kanban(report):
+    esc = lambda x: html.escape(str(x),quote=True)
+    def card(item):
+        human = item.get('kind') == 'human-activity'
+        due = display_time(item['due_at'],item['timezone']) if item['due_at'] else 'No current deadline'
+        warning = '; '.join(attention_label(r) for r in item['attention'])
+        details = '<p>'+esc(item.get('description',''))+'</p>'
+        if human:
+            details += '<p>Parent: '+esc(item['parent'])+'</p><p>Revision: <code>'+esc(item['revision'])+'</code></p>'
+            details += '<ul>'+''.join('<li>%s — %s · %s: %s (assignee: %s; due: %s)</li>' % (
+                esc(r['recorded_at']),esc(r['payload']['state']),esc(r['payload']['by']),
+                esc(r['payload']['reason']),esc(r['payload']['assignee']),esc(r['payload']['due_at']))
+                for r in item['activity_history'])+'</ul>'
+            details += '<p>Completion evidence: '+esc(', '.join(Path(e['path']).name for e in item['evidence']) or 'None selected')+'</p>'
+        else:
+            details += '<p>Execution: '+esc(item['execution'])+' · Acceptance: '+esc(item['acceptance'])+'</p>'
+            details += '<p>Assignments: '+esc(item['assignments']['coverage'])+'</p>'
+            if item['assignments']['coverage'] in ('retained-snapshot','public-status'):
+                details += '<p>'+esc(item['assignments']['notice'])+'</p><ul>'
+                details += ''.join('<li><strong>%s</strong> · %s · reported %s<br>%s</li>' % (
+                    esc(a['id']),esc(a['assignee']),esc(a['reported_state']),esc(a['title']))
+                    for a in item['assignments']['assignments'])+'</ul><p>Assignment observation: '+esc(item['assignments']['source_as_of'])+' · '+esc(item['assignments']['freshness'])+'</p>'
+            if item['assignments'].get('error'): details += '<p>'+esc(item['assignments']['error'])+'</p>'
+        for milestone in item['milestones']:
+            details += '<p>Milestone: '+esc(milestone['expectation'])+' · '+esc(milestone['owner'])+' · '+esc(milestone['timeliness'])+'</p>'
+        if item.get('disposition_history'):
+            details += '<ul>'+''.join('<li>%s by %s: %s</li>' % (
+                esc(d['payload']['kind']),esc(d['payload']['by']),esc(d['payload']['reason']))
+                for d in item['disposition_history'])+'</ul>'
+        return '<article class="card" data-column="%s"><div class="type">%s</div><h3>%s</h3><p class="owner">%s</p><p>%s</p><p class="%s">%s</p>%s<details id="detail-%s"><summary>Details and history</summary><p>%s / %s</p>%s</details></article>' % (
+            esc(item['column']),
+            'Human activity · reported status' if human else 'Team commitment · read-only',esc(item['objective']),
+            esc(item['owner']),esc(due),'late' if item['timeliness'] in ('overdue','late') else '',
+            esc(item['timeliness']),'<p class="warning">'+esc(warning)+'</p>' if warning else '',
+            esc(item['card_id']),esc(item['namespace']),esc(item['id']),details)
+    lanes = ''.join('<section class="lane"><h2>%s <span>%d</span></h2>%s</section>' % (
+        esc(column),sum(c['column']==column for c in report['cards']),
+        ''.join(card(c) for c in report['cards'] if c['column']==column)) for column in KANBAN_COLUMNS)
+    attention = ''.join('<li>%s — %s · %s</li>' % (esc(a['id']),
+        esc('; '.join(attention_label(r) for r in a['reasons'])),esc(a.get('owner') or 'Calendar operator'))
+        for a in report['attention']) or '<li>No exceptions at the selected time.</li>'
+    monitor = report['monitor']
+    return '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team work board</title><style>
+:root{font:15px/1.5 system-ui,sans-serif;color:#172638;background:#f3f5fa}body{margin:0;padding:28px}h1{margin:0;font-size:32px}h2{font-size:17px}h2 span{color:#5a6c81;font-weight:400}h3{font-size:16px;margin:8px 0}.intro{max-width:1000px}p{margin:7px 0}
+.board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:16px;margin:22px 0}.scroll{overflow-x:auto}.lane{background:#e5ebf3;border-radius:10px;padding:12px;min-height:250px}.card{background:white;border:1px solid #cfd9e6;border-radius:8px;padding:14px;margin:12px 0;overflow-wrap:anywhere}.type{font-size:12px;color:#56687d}.owner{font-weight:600}.late,.warning{color:#923a07;font-weight:600}.banner{border-left:4px solid #b76b00;background:#fff1da;padding:14px;margin:20px 0}.banner.current{border-color:#357763;background:#e3f1ec}input{font:inherit;padding:9px;border:1px solid #7890aa;border-radius:5px}summary{cursor:pointer}code{font-size:11px}li{margin:8px 0}.history{max-width:1100px}.history .card{display:inline-block;width:280px;vertical-align:top;margin-right:12px}
+@media(max-width:600px){body{padding:14px}.board{gap:10px}}@media print{.board{display:block}.lane{break-inside:avoid}input{display:none}}
+</style><header class="intro"><h1>Team work board</h1><p>Assignments, activities and delivery commitments share the same owners and deadlines as the calendar.</p>
+<p id="observation">Deadline view: %s · Observed: %s</p><p id="view-mode">This is a read-only snapshot. Team status comes from execution and acceptance checks. Human updates are recorded with attribution and evidence; refresh this view after recording a change.</p></header>
+<div id="monitor" class="banner %s" data-due="%s"><strong>Reconciliation: <span id="freshness">%s</span></strong><p>Last successful check: %s · Next check due: %s</p><p>A current check can still find missing or overdue work.</p></div>
+<label>Filter by owner, activity or status <input id="filter" type="search"></label><div id="kanban-content"><div class="scroll"><div class="board">%s</div></div>
+<details id="attention-detail"><summary>Attention list (%d)</summary><ul>%s</ul></details><details class="history" id="history-detail"><summary>Skipped and cancelled history (%d)</summary>%s</details></div>
+<script>function filterCards(){const q=document.getElementById('filter').value.toLowerCase();document.querySelectorAll('.card').forEach(c=>c.hidden=!(c.textContent+' '+c.dataset.column).toLowerCase().includes(q))}document.getElementById('filter').addEventListener('input',filterCards);
+function freshness(){const b=document.getElementById('monitor');if(b.classList.contains('current')&&Date.now()>Date.parse(b.dataset.due)){b.classList.remove('current');document.getElementById('freshness').textContent='stale — generate a fresh view and check the monitor'}}freshness();setInterval(freshness,10000);</script></html>''' % (
+        esc(report['as_of']),esc(report['observed_at']),'current' if monitor['state']=='current' else '',
+        esc(monitor['next_check_due'] or ''),esc(monitor['state']),esc(monitor['last_success_at'] or 'Never'),
+        esc(monitor['next_check_due'] or 'Not scheduled'),lanes,len(report['attention']),attention,
+        len(report['history']),''.join(card(c) for c in report['history']))
+
+
+def live_kanban_page(page, interval):
+    script = '''<script>
+document.getElementById('view-mode').textContent='Live read-only view. Changes to recorded work refresh automatically; team completion still requires acceptance checks.';
+const live=document.createElement('p');live.id='live-status';live.setAttribute('role','status');live.setAttribute('aria-live','polite');live.textContent='Connecting to live updates…';document.querySelector('header').appendChild(live);
+let lastLive='none yet';
+async function refresh(){const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15000);
+try{const response=await fetch('/view',{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('Update unavailable');
+const parsed=new DOMParser().parseFromString(await response.text(),'text/html');
+for(const id of ['kanban-content','monitor','observation'])if(!parsed.getElementById(id))throw Error('Incomplete update');
+const opened=[...document.querySelectorAll('details[open][id]')].map(d=>d.id);
+for(const id of ['kanban-content','monitor','observation'])document.getElementById(id).replaceWith(parsed.getElementById(id));
+for(const id of opened){const d=document.getElementById(id);if(d)d.open=true}filterCards();freshness();
+lastLive=new Date().toLocaleTimeString();live.textContent='Live · last successful refresh '+lastLive;live.className='';}
+catch(error){live.textContent='Live update unavailable — last successful refresh: '+lastLive+'. Showing the last received view; check the connection or server.';live.className='warning';}
+finally{clearTimeout(timeout);setTimeout(refresh,INTERVAL)}}refresh();
+</script>'''.replace('INTERVAL',str(interval*1000))
+    return page.replace('</html>',script+'</html>')
+
+
+def kanban_server(root, port=8765, interval=5, milestones=None, assignments=None):
+    root = physical(root)
+    require(root.is_dir(), 'commitment root does not exist')
+    require(type(port) is int and 0 <= port <= 65535, 'invalid port')
+    require(type(interval) is int and 1 <= interval <= 60, 'poll-seconds must be 1..60')
+    cache, guard = {}, threading.Lock()
+    def render():
+        if cache and wall_time.monotonic()-cache['at'] < interval:
+            return cache['page']
+        require(guard.acquire(blocking=False), 'view refresh is in progress; try again')
+        try:
+            report = kanban_view(root, now(), load(milestones) if milestones else None,
+                                 load(assignments) if assignments else None, live_assignments=True)
+            page = render_kanban(report)
+            cache.update(page=page,at=wall_time.monotonic())
+            return page
+        finally: guard.release()
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            authority = '127.0.0.1:'+str(self.server.server_port)
+            allowed = (authority,'localhost:'+str(self.server.server_port))
+            host = self.headers.get('Host','')
+            origin = self.headers.get('Origin')
+            if host not in allowed or (origin and origin != 'http://'+host) or self.headers.get('Sec-Fetch-Site') == 'cross-site':
+                self.send_error(403,'Only same-origin local viewing is supported'); return
+            if self.path not in ('/','/view'):
+                self.send_error(404); return
+            try:
+                page = render()
+                if self.path == '/': page = live_kanban_page(page,interval)
+                raw = page.encode()
+            except (ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError):
+                self.send_error(503,'View unavailable; previous client view remains unchanged'); return
+            self.send_response(200)
+            self.send_header('Content-Type','text/html; charset=utf-8')
+            self.send_header('Content-Length',str(len(raw)))
+            self.send_header('Cache-Control','no-store')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.send_header('Referrer-Policy','no-referrer')
+            self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
+            self.end_headers()
+            try: self.wfile.write(raw)
+            except (BrokenPipeError,ConnectionResetError): pass
+        def do_POST(self): self.send_error(405,'This view is read-only')
+        def log_message(self, pattern, *args): pass
+    server = ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server.daemon_threads = True
+    return server
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version=VERSION)
@@ -1317,6 +1702,12 @@ def main():
     p = commands.add_parser('reconcile'); p.add_argument('root'); p.add_argument('--milestones')
     p = commands.add_parser('calendar'); p.add_argument('root'); p.add_argument('--as-of', required=True)
     p.add_argument('--milestones'); p.add_argument('--format', choices=('json','html','ics'), default='json')
+    p = commands.add_parser('record-activity'); p.add_argument('root'); p.add_argument('request')
+    p = commands.add_parser('kanban'); p.add_argument('root'); p.add_argument('--as-of', required=True)
+    p.add_argument('--milestones'); p.add_argument('--assignments'); p.add_argument('--format', choices=('json','html'), default='json')
+    p.add_argument('--live-assignments',action='store_true')
+    p = commands.add_parser('serve'); p.add_argument('root'); p.add_argument('--port',type=int,default=8765)
+    p.add_argument('--poll-seconds',type=int,default=5); p.add_argument('--milestones'); p.add_argument('--assignments')
     args = parser.parse_args()
     if args.command == 'validate':
         definition = process(load(args.process))
@@ -1334,6 +1725,20 @@ def main():
         result = register_calendar(args.export, load(args.registration), args.root)
     elif args.command == 'record-disposition':
         result = record_disposition(args.root, load(args.request))
+    elif args.command == 'record-activity':
+        result = record_activity(args.root, load(args.request))
+    elif args.command == 'kanban':
+        result = kanban_view(args.root, args.as_of, load(args.milestones) if args.milestones else None,
+                             load(args.assignments) if args.assignments else None,args.live_assignments)
+        if args.format == 'html':
+            sys.stdout.buffer.write(render_kanban(result).encode())
+            return 0
+    elif args.command == 'serve':
+        with kanban_server(args.root,args.port,args.poll_seconds,args.milestones,args.assignments) as server:
+            print('Live read-only board: http://127.0.0.1:'+str(server.server_port)+'/',file=sys.stderr,flush=True)
+            try: server.serve_forever()
+            except KeyboardInterrupt: pass
+        return 0
     elif args.command == 'reconcile':
         result = reconcile(args.root, load(args.milestones) if args.milestones else None)
     elif args.command == 'calendar':

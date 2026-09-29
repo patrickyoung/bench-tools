@@ -8,6 +8,10 @@ tool or an interpreter for team stages. Read DESIGN.md before editing.
   its database, retry jobs, signal waits, or resolve unknown outcomes here.
 - Team entry commands own their internal workflow and acceptance. A roster,
   milestone report, model claim or passing structural check is not acceptance.
+- Kanban projects existing records. Human activity completion is an attributed
+  report with retained evidence; it never accepts or unblocks agent work. Read
+  assignments only through bound existing controller observations, not invented
+  stage tasks. Optional live serving is loopback-only and read-only.
 - The application owns immutable commitments and their source/input bindings.
   Runtime data stays in explicitly selected directories outside source.
 - Calendar expansion and inspection are finite, read-only and use explicit

@@ -15,6 +15,8 @@ comparison export reusable `process.json` and `PROCESS.md` contracts. Execution,
 acceptance and timeliness remain separate; no new workflow runtime is required.
 Registered calendars expose missing obligations, explicit exceptions, expired
 horizons and stale monitoring through JSON, HTML and ICS views.
+Kanban projects the same work, with attributed human follow-ups and an optional
+live read-only board; supported assignments come from existing controller records.
 
 Use `make check-workers` for worker and team evaluation suites. The
 [evaluation runbook](../docs/WORKER-EVALUATIONS.md) maps coverage, explains

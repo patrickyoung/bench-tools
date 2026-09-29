@@ -165,6 +165,77 @@ and artifact observations are read on each invocation. The digest does not make
 execution static between checks. The host must invoke reconciliation and publish
 views periodically; a separate external observer must detect a stopped host.
 
+## Human activities and Kanban
+
+`record-activity ROOT REQUEST` accepts `bench.human-activity/v1` with required
+`schema`, `namespace`, `id`, `parent`, `title`, `description`, `assignee`, `due_at`,
+`timezone`, `state`, `by`, `reason`, `evidence`; optional `previous` selects the
+last activity revision. Identity is namespace/activity ID; parent is an existing
+commitment or calendar occurrence ID in the same namespace and cannot change.
+States are planned, ready, in-progress, needs-attention, done and cancelled.
+Each update is a full attributed record with a reason, not a partial patch.
+
+Activity histories use `bench.activity-revision/v1` and the existing serialized,
+immutable revision-chain protocol under `ROOT/activities/IDENTITY/`. Selected
+evidence contains up to 16 unique absolute `path`/`sha256` pairs (64 MiB total
+per write). `done` requires evidence. Bytes are atomically retained in
+`evidence/SHA256`; views verify all evidence referenced by historical revisions,
+deduplicating reads. External originals are no longer required after retention.
+The first transition into the current uninterrupted done state establishes
+completion time; edits while done preserve it, while reopening resets it.
+Attribution is a caller report, not authenticated identity or task acceptance.
+There are at most 1,000 activities per root and 100 revisions per activity.
+
+Calendar obligations now include `kind` (`commitment` or `human-activity`). Key
+consumers by kind, namespace and ID; the two kinds can use the same textual ID.
+Human activity deadlines also appear in HTML/ICS, with separate stable event
+identities. Human completion, cancellation and evidence never modify the parent,
+agent execution, Tend dependencies or team acceptance. Missing/cancelled parents
+and invalid history remain visible; corrupt evidence prevents fresh reconciliation.
+Activity revisions participate in the tracking digest and invalidate an old check.
+
+`kanban ROOT --as-of TIME [--milestones FILE] [--assignments FILE]
+[--live-assignments] [--format json|html]` returns `bench.kanban/v1`: columns,
+cards, history, monitor, attention, errors, as_of, observed_at and
+notifications_sent (false). Columns are Planned, Ready, In progress, Needs
+attention and Done. Date warnings do not move otherwise sound work out of its
+current column. Uncertain/invalid outcomes cannot appear Done. Skipped/cancelled
+work remains in history unless conflicting execution/evidence needs attention.
+Human Done is explicitly `reported-done`; commitment Done requires `accepted`.
+`editable` means the human activity can be revised through `record-activity`;
+HTML and live viewing endpoints themselves are read-only. Existing `board`
+output remains an admitted-commitment status list.
+
+The Page Team assignment adapter accepts an explicitly selected public
+`bench.manage.snapshot/v1` status export or `manage-status`, which invokes the
+admitted pinned `BENCH_MANAGE status -json RUN`. Bind `run_sha256` to
+`"sha256:" + sha256(exact RUN/manifest.json bytes)`; the manifest must be
+`bench.manage.run/v1`. Validate original brief, roster, unique task IDs and
+dependencies. Retain source numeric Unix `as_of`, age, hash and coverage.
+Saved exports are marked retained; current public-command output older than
+30 seconds is stale. Planner envelopes are not status exports. Assignments
+remain controller-reported observations inside parent cards, not editable tasks
+or parent acceptance evidence. The adapter is based on Manage's public contract
+at commit `347f38dd550aadcba5c8b8890cda6c73f1a5c8a5`. Unsupported sources fail visibly.
+
+`serve ROOT [--port 8765] [--poll-seconds 5] [--milestones FILE]
+[--assignments FILE]` starts an optional loopback-only HTTP viewer. Refresh
+interval is 1–60 seconds. GET `/` serves the live page; GET `/view` returns a
+fresh/cached HTML projection. The cache is shared across viewers for one
+interval. Live mode automatically inspects Page Team runs whose admitted
+manifest exists; explicitly selected saved exports override that default.
+The browser preserves filters and expanded details, retains its last view on
+failure and displays last refresh time. All data continues through the same
+read-only projection and public status checks; no models/checkers/worker jobs
+are run. Controller inspection may open its ordinary database/lock files.
+
+The HTTP viewer accepts only local Host values and same-origin requests, emits
+no-store/CSP headers and exposes no file browser or mutation API. Remote access
+requires separately selected authenticated hosting; no network-wide binding,
+daemon installation or authorization system is implicit. Viewing freshness
+does not replace the separately recorded reconciliation heartbeat. Public status
+runtime may delay refresh; this is polling, not an event-stream guarantee.
+
 ## Authority and recorded evidence
 
 One standing-team root owns immutable admissions. Its `tend/` directory belongs

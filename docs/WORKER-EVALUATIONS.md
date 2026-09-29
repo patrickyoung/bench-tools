@@ -8,7 +8,8 @@ It makes no paid model calls and installs no dependencies.
 
 `make check-team-process` separately builds Tend and checks the standing-team
 application: registered calendar history, missing obligations, monitor freshness,
-HTML/ICS views, commitments, exact admission, unknown fencing, and
+HTML/ICS/Kanban views, human activity history, read-only live polling,
+commitments, exact admission, unknown fencing, and
 page/comparison delivery adapters. It uses real Tend with explicitly labeled
 deterministic team collaborators. The existing catalog suites still establish
 the teams' underlying handoff contracts. See the
