@@ -1,7 +1,10 @@
 # Standing team commitments
 
-This is an experimental, independently runnable application, not a new Bench
-tool or an interpreter for team stages. Read DESIGN.md before editing.
+This directory contains independently runnable team and human-wait adapters
+and the frozen legacy process.py application. Read DESIGN.md before editing.
+New business records belong to the selected Agenda executable. Calendar, board
+rendering and MCP belong to interfaces/agenda. Never import their implementation.
+Preserve process.py bytes for legacy admitted pins; do not silently re-pin runs.
 
 - Invoke existing team entry commands and Tend using literal argv.
 - Tend owns attempts, waits, serialization and uncertain effects. Never open
@@ -14,7 +17,8 @@ tool or an interpreter for team stages. Read DESIGN.md before editing.
   report with retained evidence; it never accepts or unblocks agent work. Read
   assignments only through bound existing controller observations, not invented
   stage tasks. Optional live serving is loopback-only and read-only.
-- The application owns immutable commitments and their source/input bindings.
+- The runner owns immutable execution commitments and source/input bindings;
+  Agenda owns new business records through its public command contract.
   Runtime data stays in explicitly selected directories outside source.
 - Calendar expansion and inspection are finite, read-only and use explicit
   evaluation time. Recurrence proposes occurrences; it never submits them.

@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **24 components and 28 public commands**. MCP supplies
+This guide covers all **25 components and 29 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -19,6 +19,7 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Run a reusable expert in a workspace | **Agent** |
 | Build the expert's instructions, skills, and check | **Hire** |
 | Give a temporary team a memorable name | **[Moniker](../tools/moniker/README.md)** |
+| Track accountable work, expand calendars or project a board | **[Agenda](../tools/agenda/README.md)** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
 | Render pages or execute a supplied browser plan | **[Web](../tools/web/README.md)**; caller selects URLs and actions |
@@ -39,6 +40,19 @@ The [improvement example](../tools/weigh/examples/improve-checks/README.md)
 composes optional diagnosis, offline calibration and exact proposal review.
 Teacher and runner are caller-selected model roles; Weigh can judge supplied
 criteria or suggest an investigation, while independent tests establish gains.
+
+## Agenda: accountable work and calendar projections
+
+**[Agenda](../tools/agenda/README.md)** keeps explicitly selected work records
+and revision history and provides calendar and Kanban projections through its
+public command. Calendar expansion and projections use supplied input and time;
+they need no worker, model, browser or running service.
+
+Execution remains with the team's command and Tend; approval remains with May.
+An observed waiting job or reported human completion does not grant approval or
+establish accepted team delivery. The optional [Agenda UI](../interfaces/agenda/README.md)
+renders these command outputs and supplies an MCP adapter. MCP is one caller
+interface; shell scripts and other applications use the same command contract.
 
 ## Web: browser observations and explicit actions
 

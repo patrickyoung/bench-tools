@@ -6,6 +6,7 @@ module, executable, version, assets, documentation and checks. The programs in
 
 | Application | Purpose | Build and run |
 | --- | --- | --- |
+| [Agenda UI](agenda/README.md) | Calendar and Kanban views over Agenda's public output, with optional MCP command adapters | `cd interfaces/agenda && make build` |
 | [Hire UI](hire/README.md) | Browse reusable workers and teams, export pinned source, and author expert folders | `cd interfaces/hire && make build` |
 
 An interface composes public commands and documented files. It does not import

@@ -54,13 +54,14 @@ public read-only replay commands and never re-executes archived work.
 
 ## Current inventory and evidence boundaries
 
-The inventory contains 24 components and 28 executables. Wrap the selected
+The inventory contains 25 components and 29 executables. Wrap the selected
 command with `record run -f FILE -- COMMAND ...`. Select relevant files with
 `-input`, `-output`, and `-session`; process streams alone do not retain files
 or discover nested conversations. This table identifies those boundaries.
 
 | Component / executables | Meaningful boundary to record and replay |
 | --- | --- |
+| Agenda | Exact work revisions, selected state root, calendar inputs and explicit projection time; retained state changes require selected file evidence |
 | Ask | Exact model input, normalized request, response, sourced messages, sealed notes; model-free initialization |
 | Weigh | Explicit state/questions on stdin, requested/reported model, validated judgments/distributions and process outcome; private authorization stays outside streams |
 | Ply | Selected script/interpreter, action streams and outcome, verifier input/result, approval/confinement receipts, compaction/child-session links |

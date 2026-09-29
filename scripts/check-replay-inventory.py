@@ -24,6 +24,7 @@ BOUNDARIES = {
     "a2a": "protocol requests and returned task/artifact objects",
     "a2aserve": "finite listener lifecycle and separate diagnostics",
     "action": "exact request, parked/accepted result and existing effect receipts",
+    "agenda": "exact calendar/work records, explicit projection time and resulting accountable-work view",
     "agent": "definition selection and checked worker execution",
     "ask": "model requests, response and existing conversation replay",
     "brief": "selected procedure bytes",
@@ -55,6 +56,23 @@ BOUNDARIES = {
 def require(value, message):
     if not value:
         raise RuntimeError(message)
+
+
+def agenda_contract(bins, run):
+    """Record deterministic calendar expansion, with no worker or writable root."""
+    schedule = {"id": "review", "title": "Daily review", "owner": "fixture",
+                "timezone": "UTC", "start_date": "2026-09-28", "end_date": "2026-09-29",
+                "effective_from": "2026-09-28", "weekdays": [0, 1], "excluded_dates": [],
+                "start_time": "09:00", "due_time": "17:00", "due_day_offset": 0,
+                "missed": "all", "check_every_seconds": 300}
+    result = run([bins / "agenda", "expand", "--as-of", "2026-09-29T12:00:00Z"],
+                 (json.dumps(schedule) + "\n").encode())
+    rows = [json.loads(line) for line in result.stdout.splitlines()]
+    require([row["date"] for row in rows] == ["2026-09-28", "2026-09-29"],
+            "Agenda lost expected calendar occurrences")
+    require(rows[0]["overdue"] and not rows[1]["overdue"]
+            and all(row["schedule_id"] == "review" for row in rows),
+            "Agenda changed calendar identity or explicit-time deadline calculation")
 
 
 def main():
@@ -117,6 +135,7 @@ def main():
             require(b"reduction fixtures passed (offline)" in web.stdout,
                     "Web did not verify its offline reduction fixtures")
             moniker_contract(bins, work, run)
+            agenda_contract(bins, run)
             run([bins / "cage", "status"])
             confined, receipt = support["recorded_argv"](
                 [bins / "cage", "-ro", "--", "/usr/bin/printf", "confined fixture\\n"], env)

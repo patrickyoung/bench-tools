@@ -1,9 +1,102 @@
-# Give a standing team a process and commitments
+# Team processes built on independent commands
 
-**Architecture under revision:** this is a working prototype, not the final
-reusable tool boundary. The [Unix architecture review](UNIX-REVIEW.md) identifies
-the core capabilities to extract, the application responsibilities to retain,
-and how to preserve existing behavior and records during migration.
+New work uses [Agenda](../../tools/agenda/README.md) for durable promises,
+finite schedules, assignments, human reports and business dispositions.
+[Agenda UI](../../interfaces/agenda/README.md) independently renders Calendar
+and Kanban from the public projection and exposes an optional MCP adapter.
+Neither requires a team, an AI model, Hire, or a running web server.
+
+This directory supplies the application-specific team bridge. `runner.py`
+retains pinned team execution and receipt verification. `team.py` calls that
+runner and the explicitly selected Agenda executable; it imports no tool code.
+`human.py` connects selected human items to May decisions or Tend input waits.
+See [HUMAN.md](HUMAN.md) for that separate, explicit interaction.
+
+The boundaries follow the CLI/MCP pattern reviewed in
+[Plonk at 9e864989](https://github.com/patrickyoung/plonk/tree/9e86498914ec4165c447d29090d373196987f594):
+both interfaces use the same operations, controller-selected scope, request
+identity and revision checks. Plonk itself supplies finished-work publication,
+not Calendar or Kanban. Here MCP wraps commands rather than making a hosted
+service mandatory. Calendar and Kanban are independent views of one authority;
+they do not maintain competing copies of assignments and deadlines.
+
+## New-root usage
+
+Build or install Agenda and Tend independently. Export a pinned team using the
+existing worker library procedure. Use the commitment JSON described below.
+All runtime paths must be outside reusable source.
+
+```sh
+python3 scripts/build agenda tend
+python3 /absolute/team-process/team.py admit \
+  /absolute/exported-team /absolute/current/commitment.json /absolute/team-runs \
+  --tend /absolute/bin/tend --agenda /absolute/bin/agenda \
+  --agenda-root /absolute/work-records
+python3 /absolute/team-process/team.py submit /absolute/team-runs/INSTANCE
+TEND_ROOT=/absolute/team-runs/tend /absolute/bin/tend work
+```
+
+Admission is resumable if the Agenda write fails: repeating the same inputs
+reuses the admitted execution and typed Agenda request identity. Nothing is
+submitted until the explicit `submit`. A changed Agenda item blocks submission
+and acceptance observations until reviewed. To bind a planned occurrence,
+register its schedule with Agenda first and select `--item SCHEDULE/YYYY-MM-DD`;
+its dates and revision must agree. Team inputs remain explicitly selected.
+
+An observer and any renderer compose through ordinary files and streams:
+
+```sh
+python3 /absolute/team-process/team.py observe /absolute/team-runs \
+  --agenda /absolute/bin/agenda --agenda-root /absolute/work-records \
+  --as-of "$EVALUATION_TIME" > /absolute/observations.next.jsonl
+mv /absolute/observations.next.jsonl /absolute/observations.jsonl
+/absolute/bin/agenda export /absolute/work-records > /absolute/snapshot.json
+/absolute/bin/agenda project /absolute/snapshot.json --as-of "$LATER_TIME" \
+  < /absolute/observations.jsonl > /absolute/projection.json
+/absolute/bin/agenda-ui render --view kanban < /absolute/projection.json > /absolute/board.html
+```
+
+Use actual timestamps including seconds (RFC 3339); projection time must follow
+observation time. The host chooses invocation cadence and handles failed refreshes.
+Team observations expire after 60 seconds so a running viewer cannot hide a
+stopped observer. They retain the verified status in `extensions.bench_status`
+with a content-hash reference and, when available, the sealed team receipt.
+Agenda treats observations as supplied controller evidence, not authenticated
+business truth. Missing, changed or out-of-scope instances emit unverified rows.
+
+`agenda-ui serve` offers separate `/calendar` and `/kanban` routes with five-second
+refresh; its selected observation file still needs the external observer above.
+See its README for exact startup flags and `mcpserve` setup. Typed writes through
+MCP require explicit startup scope and `--allow-write`. Recording a card as done
+cannot accept a team delivery, approve an action, or wake a job.
+
+## Existing roots and compatibility
+
+`process.py` remains byte-for-byte intact for existing pinned commitments and
+legacy tracking roots. Keep the original admitted application and paths available.
+To make an existing verified admission visible to new consumers, use:
+
+```sh
+python3 /absolute/team-process/team.py adopt /absolute/legacy-root/INSTANCE \
+  --agenda /absolute/bin/agenda --agenda-root /absolute/work-records
+```
+
+Adoption adds a business index and binding; it neither re-pins execution nor
+resubmits it. Execution receipts and accepted artifacts remain at their original
+paths. Existing legacy calendar/activity/human-link histories continue to use
+the legacy application below. They are not silently rewritten or dual-written
+into Agenda. There is no bulk historical schedule migration in this release;
+create new schedules for future work deliberately. The separate bench-hire
+application has not been rewired by this change.
+
+Run `make check-team-process` for runner/bridge/HIL integration, and
+`make check-agenda` for the independent core, views and actual MCP transport.
+
+## Legacy application reference (v0.4.0)
+
+The rest of this document describes the retained `process.py` commands and
+legacy root layout. New applications should use the public Agenda contracts
+above. The [Unix review](UNIX-REVIEW.md) records why this boundary changed.
 
 This experimental application models the work a team owes without replacing
 its existing execution. A reusable process describes roles, standard stages,

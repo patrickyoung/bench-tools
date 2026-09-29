@@ -1,8 +1,31 @@
-# Team process application
+# Team adapters and accountable work
 
-This document describes the current prototype. Read the
-[Unix architecture review](UNIX-REVIEW.md) for the proposed extraction and
-migration; its tool boundaries have not yet been implemented.
+New roots use the independent Agenda tool and Agenda UI interface. Read their
+own DESIGN.md files for record, projection, view and MCP contracts. The
+[Unix architecture review](UNIX-REVIEW.md) explains the extraction.
+
+`runner.py` owns only the pinned admission/execution/receipt contract of this
+application. Its source contains no web rendering or HTTP server. Existing team
+commands and Tend retain all execution authority. `team.py` invokes the runner
+and Agenda as public subprocesses; admission binds one external Agenda item to
+an immutable execution, and status becomes an expiring supplied observation.
+Changing the business item cannot silently reuse acceptance for a new promise.
+
+`human.py` is a separate application adapter connecting human Agenda items to
+existing Tend waits and exact May requests. These links and responses do not
+change human business reports or external acceptance. Agenda never reads May,
+Tend, team directories or model state. Calendar and Kanban never execute a team.
+
+New admission pins the runner, not the viewer. A partial Agenda admission is
+recoverable through stable IDs before any submit. Existing admissions can be
+indexed without re-pinning or resubmission. Legacy roots, calendar histories and
+the original `process.py` remain available; no unverified history translation or
+dual-write migration is performed. This is an explicit compatibility boundary,
+not a claim that all legacy app features migrated into the first core release.
+
+## Retained v0.4.0 design
+
+The remainder documents the original `process.py` application and legacy roots.
 
 ## Outcome
 

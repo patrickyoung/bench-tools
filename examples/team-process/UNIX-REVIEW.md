@@ -1,8 +1,11 @@
 # Accountable work as reusable Unix capabilities
 
-Status: architecture recommendation, 2026-09-29. The implementation in this
-directory is still the experimental application. This document does not claim
-that the extracted tools or Hire UI integration exist.
+Status: architecture review, 2026-09-29; first extraction now implemented in
+`tools/agenda`, `interfaces/agenda`, and this directory's runner/team/human
+adapters. The recommendation below is retained as the review record; proposed
+command spellings are superseded by each component's manual. Existing admission
+adoption is supported without re-pinning. Bulk legacy calendar/history migration
+and integration into the separate bench-hire application remain future work.
 
 ## Conclusion
 
