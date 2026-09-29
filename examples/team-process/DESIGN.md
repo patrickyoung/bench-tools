@@ -1,5 +1,9 @@
 # Team process application
 
+This document describes the current prototype. Read the
+[Unix architecture review](UNIX-REVIEW.md) for the proposed extraction and
+migration; its tool boundaries have not yet been implemented.
+
 ## Outcome
 
 A standing team can publish its standard process and working agreement, bind

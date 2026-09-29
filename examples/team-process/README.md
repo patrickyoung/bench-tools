@@ -1,5 +1,10 @@
 # Give a standing team a process and commitments
 
+**Architecture under revision:** this is a working prototype, not the final
+reusable tool boundary. The [Unix architecture review](UNIX-REVIEW.md) identifies
+the core capabilities to extract, the application responsibilities to retain,
+and how to preserve existing behavior and records during migration.
+
 This experimental application models the work a team owes without replacing
 its existing execution. A reusable process describes roles, standard stages,
 handoffs, working agreements and definition of done. A commitment supplies the
