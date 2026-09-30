@@ -30,10 +30,13 @@
     "teams/page-team/expert/AGENTS.md",
     "teams/page-team/expert/GOAL.md",
     "teams/page-team/expert/LICENSE",
+    "teams/page-team/expert/PROCESS.md",
     "teams/page-team/expert/README.md",
     "teams/page-team/expert/bin/browser-check.mjs",
     "teams/page-team/expert/bin/check",
+    "teams/page-team/expert/bin/check-process",
     "teams/page-team/expert/bin/generate-image",
+    "teams/page-team/expert/bin/inspect-process",
     "teams/page-team/expert/bin/make-handoff",
     "teams/page-team/expert/bin/manager-adapter",
     "teams/page-team/expert/bin/manager-input",
@@ -52,7 +55,8 @@
     "teams/page-team/expert/interfaces/mcp/dispatch",
     "teams/page-team/expert/interfaces/mcp/manifest.json",
     "teams/page-team/expert/package-lock.json",
-    "teams/page-team/expert/package.json"
+    "teams/page-team/expert/package.json",
+    "teams/page-team/expert/process.json"
   ],
   "members": {
     "blender": {

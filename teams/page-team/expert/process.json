@@ -1,0 +1,127 @@
+{
+  "schema": "bench.team-process/v1",
+  "owner_role": "manager",
+  "verification": [
+    "bin/check-process",
+    "{run}"
+  ],
+  "escalation": "Report unmet milestones, overdue work, missing input, rejected review and unknown execution to the named commitment owner. Preserve evidence and the original promise. The owner selects continuation, revised scope or an explicitly superseding commitment; no automatic retry, waiver or external message.",
+  "agreements": [
+    {
+      "requirement": "Use the existing entry command and its checked handoffs; accepted work must satisfy its original completion gate.",
+      "enforcement": "entry"
+    },
+    {
+      "requirement": "Deliver the exact artifacts accepted by the team, with a successful final delivery check.",
+      "enforcement": "verification"
+    },
+    {
+      "requirement": "A named commitment owner reviews blockers and due dates each working day; dates do not weaken acceptance.",
+      "enforcement": "guidance"
+    },
+    {
+      "requirement": "Use fresh, explicitly selected inputs for each occurrence. Preserve prior commitments and unknown outcomes.",
+      "enforcement": "guidance"
+    }
+  ],
+  "id": "page-delivery",
+  "team": "page-team",
+  "purpose": "Plan, create, integrate and independently review one self-contained page.",
+  "inputs": [
+    "brief"
+  ],
+  "entry": {
+    "argv": [
+      "bin/page-team"
+    ],
+    "stdin": "brief",
+    "environment": {
+      "PAGE_TEAM_RUN": "{run}"
+    },
+    "continuation": "resume"
+  },
+  "stages": [
+    {
+      "id": "plan",
+      "role": "manager",
+      "needs": [],
+      "outcome": "Admitted bounded assignments for the supplied brief.",
+      "evidence": [
+        "Manage decisions and admissions"
+      ]
+    },
+    {
+      "id": "integrate",
+      "role": "frontend",
+      "needs": [
+        "plan"
+      ],
+      "outcome": "One integrated HTML artifact using accepted specialist contributions.",
+      "evidence": [
+        "Accepted frontend handoff manifest"
+      ]
+    },
+    {
+      "id": "review",
+      "role": "review",
+      "needs": [
+        "integrate"
+      ],
+      "outcome": "Original-brief browser journeys and visual review accept the exact delivery bytes.",
+      "evidence": [
+        "Manage accepted root result",
+        "Controller review receipts"
+      ]
+    },
+    {
+      "id": "deliver",
+      "role": "frontend",
+      "needs": [
+        "review"
+      ],
+      "outcome": "Return the exact independently reviewed artifact through the original Manage root gate. Any changed page requires another review.",
+      "evidence": [
+        "accepted-manifest.json",
+        "result.html",
+        "Manage accepted root result"
+      ]
+    }
+  ],
+  "artifacts": [
+    "result.html",
+    "accepted-manifest.json"
+  ],
+  "configuration": {
+    "AGENT": "program",
+    "AGENT_ASK": "program",
+    "BENCH_MANAGE": "program",
+    "PAGE_TEAM_IMAGEGEN": "program",
+    "BLENDER": "program",
+    "GIMP_CONSOLE": "program",
+    "ASK_MODEL": "text",
+    "PAGE_TEAM_MODEL": "text",
+    "PAGE_TEAM_EFFORT": "text",
+    "PAGE_TEAM_JOBS": "text",
+    "PAGE_TEAM_ATTEMPTS": "text",
+    "PAGE_TEAM_DECISIONS": "text",
+    "PAGE_TEAM_TURNS": "text",
+    "PAGE_TEAM_TASK_SECONDS": "text",
+    "PAGE_TEAM_MANAGER_SECONDS": "text",
+    "PAGE_TEAM_CHECK_SECONDS": "text",
+    "PAGE_TEAM_DEADLINE": "text",
+    "PAGE_TEAM_BROWSER": "program",
+    "PAGE_TEAM_BROWSER_CHECK": "file",
+    "PRESENT_ASK": "program",
+    "PRESENT_IMAGE_CODEX_MODEL": "text",
+    "ASK": "program",
+    "PLY": "program",
+    "MAY": "program",
+    "CAGE": "program",
+    "BRIEF": "program",
+    "RECORD": "program"
+  },
+  "inspection": [
+    "bin/inspect-process",
+    "{run}"
+  ]
+}

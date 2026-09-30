@@ -18,6 +18,7 @@ python3 scripts/check --native-cage     # full tool gate plus native confinement
 make check-docs                        # entry-guide links and heading anchors
 make check-examples                    # runnable starters against local fixtures
 make check-harnesses                   # portable skill packaging and MCP compatibility
+make check-agenda                      # independent Agenda command and interface composition
 ```
 
 `make test` uses independent source exports, uncached ordinary Go tests and
@@ -30,6 +31,9 @@ directories, checking success and failure behavior without provider credentials.
 
 The documentation check covers root guides, every tool README (including
 nested example READMEs), field guides, portable skill references, and the current integration guides.
+`make check-agenda` builds Agenda from an independent source export, then supplies
+its executable to Agenda UI's offline public-command tests. Both components
+also have their own standalone Go checks; the interface imports no tool code.
 The example check includes one unchanged support expert used in two workspaces,
 an uncited draft rejected and repaired, and replayable verifier records. Use
 `python3 scripts/check-examples.py --native-cage` after building to exercise

@@ -7,7 +7,7 @@ workers run through Agent; the build harness is not their runtime.
 From the repository root:
 
 ```sh
-scripts/build                              # all 28 commands under .build/bin
+scripts/build                              # all 29 commands under .build/bin
 scripts/build ask ply                      # only selected components
 python3 scripts/setup                      # builder tools + checks + persistent harness handoff
 scripts/install                           # build and install into ~/.local
@@ -29,6 +29,7 @@ python3 scripts/check-harnesses.py --bin-dir .build/bin # portable skill + real 
 python3 scripts/check-harnesses.py --host-clis          # optional installed Codex/Claude/Pi discovery
 python3 scripts/check-worker-portability.py --bin-dir .build/bin # pinned workers, relocation and original checks
 python3 scripts/check-worker-portability.py --host-clis # optional generated worker skill discovery
+make check-agenda                          # actual Agenda/interface/MCP command composition
 ```
 
 `check-improve.py --bin-dir DIR` exercises actual Improve/Record/Ask acceptance,

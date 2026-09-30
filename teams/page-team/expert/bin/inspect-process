@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Read nested execution uncertainty without retrying or checking candidates."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+try:
+    if len(sys.argv) != 2:
+        raise ValueError('usage: inspect-process RUN')
+    run = Path(sys.argv[1]).resolve()
+    if not (run / 'manifest.json').exists():
+        # No reliable inner admission evidence: preserve uncertainty.
+        outcome = 'unknown'
+    else:
+        result = subprocess.run([os.environ['BENCH_MANAGE'], 'status', '-json', str(run)],
+                                capture_output=True, timeout=60)
+        if result.returncode or len(result.stdout) > 16 * 1024 * 1024:
+            raise ValueError('Manage inspection unavailable')
+        view = json.loads(result.stdout)
+        outcome = 'unknown' if view['outcome'] == 'unknown' else 'unfinished'
+    print(json.dumps({'outcome': outcome}))
+except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    sys.exit('page process inspection: ' + str(error))

@@ -36,6 +36,14 @@ outside the checkout/
 ```
 
 Workers are reusable roles. Teams select and connect them. Runs contain work.
+
+A team may additionally export `expert/process.json` and `expert/PROCESS.md`
+describing its existing standard process, operating agreement, configuration
+and delivery checks. The [standing-team application](../examples/team-process/README.md)
+binds that versioned contract to external commitments and calendar occurrences.
+These are ordinary explicitly inventoried source files, not new roster fields
+or an alternate stage interpreter. Concrete owners, dates, inputs and evidence
+remain outside the source library.
 A worker belongs to no single team: another roster can reuse the same source.
 The page team is an actual runnable assembly after export; its source template
 alone is incomplete. Human recipe documents describe useful ways to use it.

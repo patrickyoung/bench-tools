@@ -2,6 +2,17 @@
   "schema": 1,
   "interfaces": [
     {
+      "name": "agenda",
+      "path": "interfaces/agenda",
+      "module": "github.com/patrickyoung/bench-agenda-ui",
+      "commands": [
+        {
+          "name": "agenda-ui",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "hire",
       "path": "interfaces/hire",
       "module": "github.com/patrickyoung/bench-hire-ui",

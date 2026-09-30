@@ -1,5 +1,9 @@
 # Vendor comparison team
 
+For standing-team use, [PROCESS.md](PROCESS.md) and `process.json` describe this
+same workflow, its working agreement and delivery check. Concrete commitments
+and calendars stay outside the exported definition.
+
 A reusable team for technical product, service and vendor decisions, led by a
 SAFe-informed Product Manager acting as Evaluation Lead. Supply a
 candidate list, business need, presentations, transcripts, website URLs and

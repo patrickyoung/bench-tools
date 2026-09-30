@@ -90,6 +90,10 @@ jobs:
           fi
       - name: Compose independently built public commands with local fixtures
         run: python3 scripts/check --integration-only
+      - name: Verify standing-team processes through real Tend and offline team fixtures
+        run: make check-team-process
+      - name: Verify independent Agenda views through the public command
+        run: make check-agenda
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

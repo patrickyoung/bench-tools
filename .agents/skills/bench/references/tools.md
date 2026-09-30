@@ -29,6 +29,7 @@ the chosen tools' READMEs and manuals. `components.json` is the command inventor
 | Capture full process streams and selected files for offline replay | record | tools/record/README.md |
 | Inspect retained Ask archives | trail | tools/trail/README.md |
 | Durable local jobs, waits, attempts, and output | tend | tools/tend/README.md |
+| Account for promises, finite schedules, human reports and deadlines | agenda | tools/agenda/README.md |
 | Select ready tasks from a finite dependency graph | weave | tools/weave/README.md |
 | Call services; admit wrappers; expose a program | mcp, mcp-legacy, mcpbox, mcpserve | tools/mcp/README.md |
 | Resource-bound login, refresh, and credential handoff | oauth | tools/oauth/README.md |
@@ -38,6 +39,11 @@ Common compositions: Brief → Ask for a repeatable text job; Context → Ask �
 Cite for a cited draft; Hire → expert folder → Agent for reusable work; Tend →
 Agent for retained attempts; mcpserve → dispatcher → ordinary program for a
 host tool; a2aserve → Tend → Agent for a remote expert.
+
+Calendar and Kanban use `interfaces/agenda` as independent views over Agenda's
+public projection. Its optional MCP dispatcher uses MCPserve and the same CLI
+operations. Team/HIL adapters live in `examples/team-process`; they preserve
+Tend execution and May approval authority.
 
 For worker teaching, use [the learning procedure](learn.md): Hire amends supplied
 knowledge; Hone prepares a lesson from a checked recovery; Brief and a fresh

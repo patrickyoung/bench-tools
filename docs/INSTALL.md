@@ -138,6 +138,23 @@ continue to use Ask or deterministic programs. The [Weigh guide](../tools/weigh/
 and [checker example](../tools/weigh/examples/semantic-check/README.md) document
 backend selection; missing access never means that a check passed.
 
+## Optional calendars and Kanban
+
+Agenda is an independent command for accountable work records, calendar
+expansion and board projections. Install it from source when an application
+needs those operations:
+
+```sh
+python3 scripts/install agenda
+```
+
+It needs no model, browser, MCP server or worker runtime. The optional
+[Agenda UI](../interfaces/agenda/README.md) has its own build and version and
+calls the selected Agenda executable. It also supplies an optional MCP adapter
+for callers that use that protocol. Neither component is added to the default
+builder setup or an unrelated worker's runtime dependencies. See
+[Agenda's contract](../tools/agenda/README.md) for explicit state and input selection.
+
 ## Deploy only the runtime
 
 An already built worker needs no Hire, Draft or Hone to run. Install Agent's

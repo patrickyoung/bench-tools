@@ -6,6 +6,15 @@ and three teams have mapped tests and separate quality cases in
 The runner uses **current working-tree bytes**, including uncommitted edits.
 It makes no paid model calls and installs no dependencies.
 
+`make check-team-process` separately builds Tend and checks the standing-team
+application: registered calendar history, missing obligations, monitor freshness,
+HTML/ICS/Kanban views, human activity history, read-only live polling,
+commitments, exact admission, unknown fencing, and
+page/comparison delivery adapters. It uses real Tend with explicitly labeled
+deterministic team collaborators. The existing catalog suites still establish
+the teams' underlying handoff contracts. See the
+[process application](../examples/team-process/README.md#verify) for its scope.
+
 The library already had substantial regression coverage, but much of it was
 not in CI or a common command. The current catalog brings it together, tests
 each publication worker's own shipped checker, expands planner/request and

@@ -1,0 +1,56 @@
+.TH AGENDA 1 "September 2026" "Agenda 0.1.0" "User Commands"
+.SH NAME
+agenda \- retain accountable work and project finite obligations
+.SH SYNOPSIS
+.B agenda apply
+ROOT < change.json
+.br
+.B agenda export
+ROOT
+.br
+.B agenda expand --as-of
+TIME < schedule.json
+.br
+.B agenda project
+SNAPSHOT
+.B --as-of
+TIME < observations.jsonl
+.br
+.B agenda version
+.SH DESCRIPTION
+Agenda records promises, schedule revisions, human reports and business
+decisions. It does not execute work, approve actions, schedule jobs or notify
+anybody. Only apply writes an explicitly selected physical absolute local root.
+Export emits the complete self-contained account. Expand and project are pure
+finite operations requiring explicit RFC3339 evaluation time.
+.SH DATA
+Apply reads one agenda.change/v1 object with request_id, kind, id, previous,
+by, reason, value and optional selected evidence. Kinds are item, schedule,
+report and disposition. Expected revisions serialize changes; repeating the
+same request ID and bytes returns the original commitment. Evidence files are
+retained and verified by SHA-256. Extensions remain opaque data.
+.PP
+Project reads a complete agenda.snapshot/v1 file and an observation JSONL
+stream on stdin. It prints one agenda.projection/v1 object. Missing, stale and
+unknown evidence remains visible. Caller observations are not authenticated
+acceptance. Human completion is reported-done, distinct from accepted work.
+.PP
+Expand reads one finite schedule and emits all occurrence records as JSONL.
+Weekdays use Monday=0. Local times require an IANA timezone; ambiguous or
+nonexistent times fail. Catch-up policy changes eligibility, never accountability.
+.SH FILES
+ROOT/snapshot.json is an atomically replaced complete hash-chained logical
+history with retained evidence. ROOT/.lock serializes local writers. Export and
+pure commands neither lock nor write. No network-filesystem or distributed
+transaction guarantee is made.
+.SH EXIT STATUS
+0 means successful operation, even when work is overdue or incomplete.
+1 means rejected, conflicting or inconsistent input.
+2 means usage or operating failure. Diagnostics go to stderr.
+A failed apply reply may follow commitment: repeat the identical request ID.
+.SH LIMITS
+Inputs use strict bounded UTF-8 JSON. Account limits are 2000 records, 64 MiB
+retained evidence and a 128 MiB snapshot. Schedule ranges cover at most 366
+dates. No pruning or history deletion is provided.
+.SH SEE ALSO
+README.md and DESIGN.md describe the complete schemas and trust boundaries.

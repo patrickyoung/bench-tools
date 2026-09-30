@@ -67,8 +67,9 @@ cover setup for Codex, Claude Code, Cowork, Pi and OpenClaw.
 
 Optional [human interfaces](interfaces/README.md) have their own source,
 builds and versions. [Hire UI](interfaces/hire/README.md) serves a local Go web
-application that calls the existing public commands. The headless tools remain
-independently usable.
+application that calls the existing public commands. [Agenda UI](interfaces/agenda/README.md)
+provides calendar and Kanban views over the independently usable
+[Agenda command](tools/agenda/README.md), with an optional MCP adapter.
 
 ## What is a worker? What is a team?
 
@@ -152,7 +153,7 @@ authentication. Local use needs neither. See [A2A](tools/a2a/README.md).
 | [Runnable starters](examples/README.md) | Explicit practice inputs and executable examples |
 | [Recipes](docs/RECIPES.md) | Small compositions of existing tools |
 | [How it works](docs/HOW-IT-WORKS.md) | Model, loop, check and durable job responsibilities |
-| [Tool reference](docs/TOOLS.md) | All 24 components and 28 public commands |
+| [Tool reference](docs/TOOLS.md) | All 25 components and 29 public commands |
 | [Installation](docs/INSTALL.md) | Selected tools, updates and removal |
 | [Source and releases](docs/RELEASES.md) | Pinning a reproducible toolset |
 
