@@ -4,7 +4,7 @@
 
 **Use [patrickyoung/bench-tools](https://github.com/patrickyoung/bench-tools)
 for the shared toolkit source and installer.** This repository maintains the
-25 components together, so documentation, command compatibility fixes, and
+27 components together, so documentation, command compatibility fixes, and
 integration checks can change in one commit.
 
 ## Choose an installation

@@ -75,7 +75,7 @@ For browser work, install `web` and separately install Chrome/Chromium.
 Web is native Go and needs no Python/Node browser runtime. See
 [Web setup and commands](../tools/web/README.md).
 
-Without names, the source installer builds and installs all 28 commands:
+Without names, the source installer builds and installs all 31 commands:
 
 ```sh
 python3 scripts/install
@@ -102,11 +102,26 @@ tools from the same intended installation together on PATH.
 The equivalent Make commands are `make install`, or
 `make install TOOLS="ask brief ply" PREFIX="$HOME/bench-local"`.
 
+### Ship Trait as one executable
+
+Build its core and packaging command, then supply a verified installed runtime
+containing Hire, Agent, Ask, Brief, Ply, Cage, Record and Hone:
+
+```sh
+scripts/build trait bundle
+scripts/package-trait --runtime /path/to/bench/runtime --output ./trait
+./trait help
+```
+
+The recipient needs no Bench installation or compiler. Credentials, the native
+Cage backend, and worker-specific system dependencies remain external. Build
+separately on each platform. See the [Trait input format](../tools/trait/README.md).
+
 ### Install published Linux packages without Go
 
 The pinned release includes 20 components and their 24 public commands,
-including OAuth, MCP, A2A and Draft. Newer tools such as Moniker require a source
-build (`python3 scripts/install moniker`). For release installation, select
+including OAuth, MCP, A2A and Draft. Newer tools such as Moniker, Bundle,
+and Trait require a source build. For release installation, select
 components whose source still matches that release:
 
 ```sh

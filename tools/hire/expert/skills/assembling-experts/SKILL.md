@@ -11,6 +11,16 @@ Do not perform the requested business job in place of building its worker.
 
 ## Choose the team from the deliverable
 
+Start with an explicit capability assessment and include it in the result's
+README. Map the desired output to the methods, knowledge, checks, deterministic
+tools, native programs, application connections and distinct expertise needed
+to produce and verify it. Mark each capability as reused, newly authored, or
+unavailable. Explain the role of each new part and choose the smallest complete
+assembly. A supplied outcome is enough to begin this assessment; infer routine
+implementation choices and prepare the wiring and cases instead of asking the
+user to design the team. Missing authority, domain facts or unavailable access
+must remain explicit rather than being invented.
+
 Inspect available experts, skills, programs, and examples before adding code.
 Keep useful deterministic renderers, parsers, and checks. A specialty should
 usually add instructions, selected tools, and a deliverable check. Do not
@@ -38,6 +48,16 @@ belong to that definition. Agent gives children separate model contexts; they
 receive an explicit assignment and dependencies, not the parent's conversation.
 Different writers get different workspaces. Context separation is not host-read
 isolation.
+
+Supply the concrete tools the assignment needs. Keep deterministic helpers
+independent of model calls, with literal command arguments and documented stdin,
+stdout, stderr and exit statuses. Include readable source and a reproducible
+build recipe for native helpers, identify the target platform and dependencies,
+and exercise the actual executable. Do not describe a shell stand-in as a
+compiled capability. An app integration uses its selected existing public
+interface and credentials supplied at runtime; the definition must not contain
+secrets or a replacement client/service. Report any unavailable capability and
+its effect on the deliverable.
 
 Match the stream to the work. A planner or judge can return a checked JSON
 candidate on stdout, with `bin/check` judging that candidate on stdin. Do not
@@ -85,6 +105,15 @@ existing external controller for confined child execution, or document an
 operator-selected host boundary. Never silently disable confinement to make a
 team run. Scheduling and network listeners remain operator-managed processes.
 
+Deliver a working entry command when composition needs one. Reuse an existing
+team controller first; a small adapter may translate input paths and call fixed
+public commands with literal arguments. Give every child explicit work, state
+and evidence locations and preserve its outcome. Keep reusable source and the
+controller's authoritative records outside child-writable work. Do not flatten
+child conversations into one manager context or add a provider loop, registry,
+shared runtime or mandatory service. Document controller permissions separately
+from child action confinement.
+
 ## Offer the requested interfaces over the same definition
 
 - **Unix:** use `agent run -C WORKSPACE EXPERT` with a supplied goal/input and
@@ -110,13 +139,27 @@ catches invented flags, packet shapes, and workspace boundaries early. Extend
 that working path while retaining its checks; a partial path is not the whole
 requested result.
 
-Build positive and negative cases for each contribution and the combined
-deliverable. Inspect generated checks before executing them. Verify that a
+Prepare positive and negative cases for each contribution and the combined
+deliverable without requiring the user to supply the test harness. Preserve
+supplied acceptance criteria and cases unchanged. Derive expected results from
+the requested contract and selected evidence; where they need unknown domain
+facts or human judgment, state that limitation. Freeze cases before execution
+and retain them outside the reusable definition. Label authored cases as visible
+regression examples, not independent or hidden evaluation. Inspect generated
+checks before executing them. Verify that a
 specialist works independently, that required dependencies are actually passed,
 and that a failed contribution cannot yield a successful manager result.
 Use the `checking-deliverables` skill when those checks need semantic or visual
 judgment. Team integration needs its own evidence; accepted parts alone do not
 prove coherent writing, faithful claims or a usable final layout.
+
+Exercise the documented team entry, including its input conversion, actual
+helper programs, child Agent calls, artifact handoffs and final integration.
+Checking the manager as a lone expert or accepting structurally valid child
+definitions does not test this path. Include a missing or failed dependency and
+a plausible wrong final result; both must produce the documented failure rather
+than a success message. Retain separate original conversations and command
+records, and use only observed executions as evidence of a contribution.
 
 Run representative model-backed cases when the user requests a working solution
 and its configured capabilities are available. Keep offline fixture results

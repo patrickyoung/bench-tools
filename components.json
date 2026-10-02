@@ -104,6 +104,23 @@
       ]
     },
     {
+      "name": "bundle",
+      "path": "tools/bundle",
+      "module": "github.com/patrickyoung/bundle",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "bundle",
+          "package": "."
+        }
+      ]
+    },
+    {
       "name": "cage",
       "path": "tools/cage",
       "module": "github.com/patrickyoung/cage",
@@ -371,6 +388,23 @@
       "commands": [
         {
           "name": "trail",
+          "package": "."
+        }
+      ]
+    },
+    {
+      "name": "trait",
+      "path": "tools/trait",
+      "module": "github.com/patrickyoung/trait",
+      "source": {
+        "repository": null,
+        "commit": null,
+        "tree": null,
+        "origin": "monorepo"
+      },
+      "commands": [
+        {
+          "name": "trait",
           "package": "."
         }
       ]

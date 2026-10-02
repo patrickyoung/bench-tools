@@ -1,0 +1,221 @@
+.TH BUNDLE 1 "2026-10-02" "bundle" "General Commands Manual"
+.SH NAME
+bundle \- package a Bench application as one native executable
+.SH SYNOPSIS
+.B bundle build
+.BI \-o " APP"
+.BI \-runtime " PREFIX"
+.RI [ \-tool " NAME ..."]
+.I APP_DIR
+.br
+.B APP
+.RI [ \-w " WORKSPACE"]
+.RI [ \-\- ]
+.I GOAL
+.br
+.B APP
+.RI [ \-w " WORKSPACE"]
+.B <
+.I GOAL_FILE
+.br
+.B APP \-c
+.I WORKSPACE
+.RI [ \-\- ]
+.I GOAL
+.br
+.B APP \-resume
+.I WORKSPACE
+.br
+.B APP
+.BR \-info " | " \-help " | " \-version
+.SH DESCRIPTION
+Bundle embeds an application adapter, its explicitly selected reusable files,
+and independently built Bench component packages in one native executable.
+The generated command extracts those files and invokes the adapter through an
+ordinary foreground process boundary. Existing Bench programs retain worker
+execution, provider access, conversations, checks, and team coordination.
+.PP
+The builder requires Go on the build host. The generated executable requires
+neither Go nor a Bench checkout on its recipient. Build separately for each
+operating system and architecture. Builds perform no dependency downloads.
+Credentials and application-specific system dependencies remain external.
+.SH BUILD OPTIONS
+.TP
+.BI \-o " APP"
+Write a new native application executable at APP.
+.TP
+.BI \-runtime " PREFIX"
+Use installed independent packages beneath
+.IR PREFIX/lib/bench-tools .
+Each component has its own package.json receipt and program assets.
+.TP
+.BI \-tool " NAME"
+Include the named component package. Repeat to select several packages.
+The default includes all installed component packages in PREFIX.
+.SH APPLICATION SOURCE
+APP_DIR contains app.json with schema 1, name, description, entry, files,
+requires, optional interface, followup, and resume fields. Entry is a required
+relative path to
+an executable regular file included in the explicit files inventory.
+No directory glob or implicit team entry is used. Application payloads must
+not contain symlinks or special files.
+.PP
+Requires lists executable names checked through the final runtime PATH.
+Followup and resume declare the adapter's supported continuation modes.
+Source should be a clean pinned worker or assembled team export with its
+original lock and member definitions. Current goals, credentials, outputs,
+transcripts, and runtime memory do not belong in a package.
+.SH APPLICATION ARGUMENT INTERFACE
+The optional interface field is goal by default. The generated command options
+and goal adapter contract below describe that interface.
+.PP
+Setting interface to argv preserves the entry application's own command syntax.
+Every argument, stdin, and the caller's working directory pass through
+unchanged.
+Bundle uses the same verified extraction, executable lookup, dependency checks,
+stream/status preservation, and signal forwarding. It supplies no synthetic
+mode argument, goal file, workspace, mutable state, run binding, or active
+marker.
+The application owns help, directory selection, concurrency, evidence,
+continuation, and crash recovery. Followup and resume must be absent or false.
+.PP
+The entry receives BUNDLE_ROOT, the extracted application directory, and
+BUNDLE_ID, the package identity. Inherited BUNDLE_WORKSPACE, BUNDLE_INPUT,
+BUNDLE_WORK, BUNDLE_OUTPUT, BUNDLE_STATE, BUNDLE_CONTROL, and BUNDLE_GOAL_FILE
+are removed.
+.PP
+Only sole --bundle-info and --bundle-version arguments are reserved for package
+metadata without extraction or entry execution. Alongside other arguments these
+strings pass through literally. All other flags belong to the application.
+.SH GENERATED COMMAND OPTIONS
+Flags precede one quoted goal argument. Use
+.B \-\-
+for a goal beginning with a hyphen.
+.TP
+.BI \-w " WORKSPACE"
+Select a workspace for a new run. Accept a new directory, an empty directory,
+or a directory containing only staged input/. Create input/, working/, and
+output/ automatically. Existing working/ or output/ directories, even empty,
+prevent fresh admission. If omitted, create and retain ./NAME-RANDOM and print
+its location on stderr. The adapter runs in working/.
+.TP
+.BI \-o " WORKSPACE"
+Compatibility alias for -w, with the same three-folder layout. Do not supply
+both selectors. The builder's -o still selects its executable destination.
+.TP
+.BI \-c " WORKSPACE"
+Explicitly select a prior run and admit a new goal message. Requires the
+application's followup capability. This is not inferred from an existing
+directory or the most recent invocation.
+.TP
+.BI \-resume " WORKSPACE"
+Explicitly resume the last immutable goal for the selected run. Accepts no
+new goal and requires the application's resume capability.
+.TP
+.B \-info
+Print the embedded package manifest as JSON without running the application.
+.TP
+.B \-help
+Print generated command usage.
+.TP
+.B \-version
+Print generated command version information.
+.SH STREAMS
+With a positional goal, nonterminal stdin is evidence passed to the adapter.
+Without a positional goal, nonterminal stdin supplies the goal. The launcher
+does not read goals from a terminal or enter interactive chat.
+.PP
+Adapter stdout and stderr remain separate ordinary streams. Launcher paths
+and diagnostics go to stderr. The application defines its useful stdout
+format and file deliverables. Selecting a workspace does not change
+stdout into a status envelope.
+.SH ADAPTER CONTRACT
+Entry receives exactly one argument: run, follow, or resume. Its working
+directory is the workspace working/ folder. Goals are supplied through a private file,
+not through adapter argv. The adapter maps this contract to its existing team
+entry command and must preserve that team's handoff and acceptance rules.
+.TP
+.B BUNDLE_ROOT
+Extracted application definition directory.
+.TP
+.B BUNDLE_WORKSPACE
+Selected workspace root, also used by -c and -resume.
+.TP
+.B BUNDLE_INPUT
+Workspace input/ directory for supplied source material.
+.TP
+.B BUNDLE_WORK
+Workspace working/ directory for drafts and intermediate work; also cwd.
+.TP
+.B BUNDLE_OUTPUT
+Workspace output/ directory for deliverables published after adapter checks.
+.TP
+.B BUNDLE_STATE
+Separate mutable application state directory.
+.TP
+.B BUNDLE_CONTROL
+Controller records outside writable work and state.
+.TP
+.B BUNDLE_GOAL_FILE
+Private file containing the invocation goal.
+.PP
+Runtime PATH searches the extracted runtime bin before the absolute entries
+of the caller's PATH. Empty and relative entries are dropped before both
+dependency checks and execution, avoiding changed lookup after entering the
+working directory. Use absolute paths for explicit executable selectors.
+Caller-selected provider and tool settings retain their existing meaning.
+Bundle grants no networking, filesystem, or effect authority to the adapter.
+.SH FILES
+Private package data and run state live beneath
+.IR ${XDG_STATE_HOME:-$HOME/.local/state}/bundle/PACKAGE_ID/ .
+Run directories beneath runs are identified by the physical workspace path hash.
+Extracted definitions/runtime, mutable state, controller evidence, and the
+external workspace remain separate.
+.PP
+Keep private state and the workspace for continuation. Moving a workspace or rebuilding a changed package does not implicitly migrate a run.
+There is no separate run-directory option or implicit latest-session selector.
+Continuation requires all three layout directories and never recreates a missing
+one. Symlinks in place of the selected root or its layout directories are refused.
+.PP
+Input selection and preservation, task tracking, checks, and publication remain
+adapter responsibilities. Bundle does not copy stdin into input/, make inputs
+read-only, freeze their contents, or certify files placed in output/.
+Scope worker write grants to working/ and appropriate state, and publish only
+accepted artifacts through the adapter.
+.PP
+Existing binaries retain their original layout. Rebuilt goal adapters must
+publish accepted files through BUNDLE_OUTPUT; BUNDLE_WORK now selects working/.
+Changed package identities do not migrate old run state.
+.SH EXIT STATUS
+The generated command returns the adapter's numeric status unchanged.
+Common Agent/Ply statuses are 0 accepted, 1 broken, 2 unfinished, 3 declined,
+75 waiting, 125 uncertain or boundary failure, and 130 interrupted.
+Other applications retain their documented status meanings.
+.PP
+Bundle never retries automatically. Diagnose uncertain effects before an
+explicit resume. A checkpoint preserves conversation context, not exactly-once
+execution or proof that repeating an effect is safe.
+.SH CRASH RECOVERY
+For the goal interface, before execution, Bundle writes active.json beside the
+selected run's control
+directory. It removes this marker after observing the adapter's termination.
+If the launcher stops without confirming the end, a retained marker blocks
+subsequent continuation with status 125. The diagnostic names the marker.
+The adapter or its children may still be running.
+.PP
+Inspect retained records, live processes, and external effects. Establish that
+the prior invocation has stopped and determine whether repetition is safe.
+Only then remove the exact marker named in the diagnostic and explicitly
+select a follow-up or resume. Removing the marker does not establish task
+completion or resolve an uncertain external effect.
+.SH NOTES
+A follow-up must be checked against its current request. For an Agent adapter,
+a named checkpoint retains conversation context and -B starts work despite
+an old passing pre-check; acceptance must still bind output to current inputs.
+Existing teams with immutable briefs or structured intake require their own
+adapters. Packaging alone does not make them conversational.
+.SH SEE ALSO
+.BR agent (1),
+.BR ask (1),
+.BR ply (1),
+.BR record (1)

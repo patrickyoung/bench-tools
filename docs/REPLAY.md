@@ -54,7 +54,7 @@ public read-only replay commands and never re-executes archived work.
 
 ## Current inventory and evidence boundaries
 
-The inventory contains 25 components and 29 executables. Wrap the selected
+The inventory contains 27 components and 31 executables. Wrap the selected
 command with `record run -f FILE -- COMMAND ...`. Select relevant files with
 `-input`, `-output`, and `-session`; process streams alone do not retain files
 or discover nested conversations. This table identifies those boundaries.

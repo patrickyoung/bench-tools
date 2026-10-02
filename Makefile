@@ -7,7 +7,7 @@ PREFIX ?= $(HOME)/.local
 EVAL_PYTHON ?= $(PYTHON)
 EVAL_ARGS ?=
 
-.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers check-team-process check-agenda build-interfaces check-interfaces install uninstall list
+.PHONY: help build test check check-docs check-examples check-harnesses check-worker-portability check-workers check-team-process check-agenda build-interfaces check-interfaces install uninstall list check-bundle check-trait
 
 help:
 	@echo 'make build                 Build all public commands into .build/bin'
@@ -15,6 +15,8 @@ help:
 	@echo 'make check                 Run the full verification gate'
 	@echo 'make check-docs            Check guide links and heading anchors'
 	@echo 'make check-examples        Build starter tools and run offline examples'
+	@echo 'make check-bundle          Verify a single-file team with real tools and native Cage'
+	@echo 'make check-trait           Verify worker authoring/training as one executable'
 	@echo 'make check-harnesses       Verify portable skills and MCP host compatibility'
 	@echo 'make check-worker-portability Verify worker skill exports and original checks'
 	@echo 'make check-workers         Run worker/team offline evaluations (see docs/WORKER-EVALUATIONS.md)'
@@ -47,6 +49,14 @@ check-docs:
 check-examples:
 	@$(PYTHON) scripts/build ask brief context cite tend agent hire ply cage
 	@$(PYTHON) scripts/check-examples.py --bin-dir .build/bin
+
+check-bundle:
+	@$(PYTHON) scripts/build bundle agent ask brief ply cage record
+	@$(PYTHON) scripts/check-bundle.py --bin-dir .build/bin
+
+check-trait:
+	@$(PYTHON) scripts/build trait bundle hire agent ask brief ply cage record hone
+	@$(PYTHON) scripts/check-trait.py --bin-dir .build/bin
 
 check-harnesses:
 	@$(PYTHON) scripts/build brief mcp
