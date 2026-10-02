@@ -53,6 +53,8 @@ Running workers later needs an [Ask model connection](docs/GETTING-STARTED.md#2-
 | Test and retain improvements from fresh evaluations | [Improve command](tools/improve/README.md) and [review workflow](.agents/skills/bench/references/improve.md) |
 | Turn selected event logs into an experiment | [Experiment researcher](workers/experiment-researcher/expert/README.md), using Trail and Improve |
 | Call or expose a worker on another machine | [Optional A2A](tools/a2a/README.md) |
+| Ship a team and its Bench programs as one executable | [Bundle](tools/bundle/README.md) |
+| Create, edit, teach, or evaluate a worker from a directory | [Trait](tools/trait/README.md) |
 
 For a harness, start with a request like:
 
@@ -153,7 +155,7 @@ authentication. Local use needs neither. See [A2A](tools/a2a/README.md).
 | [Runnable starters](examples/README.md) | Explicit practice inputs and executable examples |
 | [Recipes](docs/RECIPES.md) | Small compositions of existing tools |
 | [How it works](docs/HOW-IT-WORKS.md) | Model, loop, check and durable job responsibilities |
-| [Tool reference](docs/TOOLS.md) | All 25 components and 29 public commands |
+| [Tool reference](docs/TOOLS.md) | All 27 components and 31 public commands |
 | [Installation](docs/INSTALL.md) | Selected tools, updates and removal |
 | [Source and releases](docs/RELEASES.md) | Pinning a reproducible toolset |
 
@@ -170,7 +172,7 @@ content outside source. Review changes with GitHub pull requests.
 For toolkit development, from the checkout:
 
 ```sh
-make build                    # all 28 commands in .build/bin
+make build                    # all 31 commands in .build/bin
 make test                     # ordinary checks, no paid model calls
 make check                    # standalone and process integration checks
 ```

@@ -7,7 +7,7 @@ This reference explains the lower-level commands used by those definitions.
 Bench tools separate asking a model, doing work, checking results, and keeping
 evidence. Start with the part your task needs and add others as the task grows.
 
-This guide covers all **25 components and 29 public commands**. MCP supplies
+This guide covers all **27 components and 31 public commands**. MCP supplies
 four commands; A2A supplies two; each other component supplies one. [Get started](GETTING-STARTED.md)
 or [install selected tools](INSTALL.md). Examples assume commands are on `PATH`;
 model calls also need [Ask setup](../tools/ask/README.md#install).
@@ -20,6 +20,8 @@ model calls also need [Ask setup](../tools/ask/README.md#install).
 | Build the expert's instructions, skills, and check | **Hire** |
 | Give a temporary team a memorable name | **[Moniker](../tools/moniker/README.md)** |
 | Track accountable work, expand calendars or project a board | **[Agenda](../tools/agenda/README.md)** |
+| Package a team and its independent programs into one executable | **[Bundle](../tools/bundle/README.md)** |
+| Create, edit, teach, or evaluate a worker from explicit files | **[Trait](../tools/trait/README.md)** |
 | Work out what to build and how to test it | **Draft** |
 | Sort, copy, calculate, or fetch by a fixed rule | An ordinary program; add a model where judgment helps |
 | Render pages or execute a supplied browser plan | **[Web](../tools/web/README.md)**; caller selects URLs and actions |
@@ -143,6 +145,53 @@ and controller evidence under `.agent/` separate. Portable experts bind those
 roles to separately selected directories. Cage confines worker writes and disables
 worker networking by default; host reads remain unrestricted. `agent tick`
 runs a wake probe once. An external scheduler decides when to invoke it.
+
+## Bundle: distribute a team as one executable
+
+**[Bundle](../tools/bundle/README.md)** embeds an explicitly selected application
+and verified independent Bench packages into a native executable:
+
+```sh
+bundle build -o ./researcher -runtime /path/to/runtime ./research-app
+./researcher -w ./job 'Compare the supplied options'
+./researcher -c ./job 'Include ongoing costs'
+```
+
+The application declares its exact files and an entry adapter. The adapter
+calls the team's existing command; it must explicitly support follow-up before
+`-c` can be used. `-resume ./job` instead continues the last unchanged goal.
+The workspace contains `input/` for supplied material, `working/` for drafts
+and task files, and `output/` for checked deliverables published by the adapter.
+These folders are created automatically; callers can also stage `input/` before
+the first run. The adapter works in `working/` and owns the checks and publication.
+An argument goal leaves stdin available for evidence; without an argument,
+stdin supplies the goal. Output streams and exit status retain the team's contract.
+The recipient needs no Bench installation, but credentials, system interpreters
+and team-specific dependencies remain external. Build once per target platform.
+
+## Trait: author and evaluate a worker
+
+**[Trait](../tools/trait/README.md)** composes Hire's embedded creator, Agent,
+and Hone behind four actions with explicit input and new output directories:
+
+```sh
+trait create -request 'Build a worker for this outcome' ./inputs ./worker-v1
+trait edit -request 'Add the requested capability' ./worker-v1 ./worker-v2
+trait train -request 'Apply this lesson' ./worker-v2 ./worker-v3
+trait eval ./worker-v3 ./results
+```
+
+The creator assesses the complete capability: instructions, checks, executable
+programs, specialists, dependencies, and actual entry/handoff contracts. Trait
+prepares missing cases and evaluates all four actions automatically; supplied
+cases and entry metadata remain optional overrides. Training teaches Markdown
+instructions and skills while preserving executable contracts, with cases frozen
+before teaching. Acceptance is limited to the selected checks; generated cases
+do not establish independent domain truth. Team controllers use the host by
+default, with optional `-entry-boundary cage`; child Agent actions retain their
+usual Cage. Stdout is result JSON; progress and private evidence locations go to stderr. Workers
+retain their existing format. Bundle can ship Trait and its independent
+companions as one executable; see [packaging Trait](../tools/trait/README.md#install-and-package).
 
 ## Brief, Rules, Context, and Cite: four different inputs and checks
 

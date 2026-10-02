@@ -28,6 +28,7 @@ BOUNDARIES = {
     "agent": "definition selection and checked worker execution",
     "ask": "model requests, response and existing conversation replay",
     "brief": "selected procedure bytes",
+    "bundle": "explicit application packaging and build diagnostics; generated app streams remain ordinary process boundaries",
     "cage": "selected read-only execution boundary and observed success or refusal",
     "cite": "exact acceptance, rejection and invalid evidence",
     "context": "structured records, exact query and retrieval outcome",
@@ -47,6 +48,7 @@ BOUNDARIES = {
     "rules": "ordered discovered instruction bytes",
     "tend": "durable job input, work and observed transitions",
     "trail": "read-only archive verification",
+    "trait": "admitted authoring/evaluation request, controller result and selected companion process records",
     "weave": "deterministic task/observation projection",
     "web": "offline HTML and link reduction fixtures and exact process outcome",
     "weigh": "explicit typed questions, native probabilities and inference outcome",
@@ -120,6 +122,12 @@ def main():
         # Meaningful offline boundaries absent from the existing composition
         # suite. These never grant an approval or fetch a credential.
         try:
+            bundle_fixture(bins, work, run)
+            trait_packet = work / "trait-invalid-packet"
+            trait_packet.mkdir()
+            (trait_packet / "REQUEST.md").write_text("Explicitly invalid: no source worker or fresh cases.\n")
+            declined = run([bins / "trait", "train", trait_packet, work / "trait-output"], code=2)
+            require(not (work / "trait-output").exists() and not declined.stdout, "invalid Trait packet started a run")
             run(["git", "init", "-q", work])
             (work / "AGENTS.md").write_text("Fixture instruction: preserve exact bytes.\n")
             run([bins / "rules", work])
@@ -355,6 +363,35 @@ def credential_handoff(bins, work, env, receipts, run):
                 require(secret not in base64.b64decode(note["body"]["data"]), "credential entered a recorded stream")
             elif note.get("kind") == "record.intent/v1":
                 require(all(secret not in base64.b64decode(arg) for arg in note["body"]["argv"]), "credential entered argv")
+
+
+def bundle_fixture(bins, work, run):
+    """Package a real independently built companion, then run the artifact."""
+    app = work / "bundle-app"
+    app.mkdir()
+    entry = app / "entry"
+    entry.write_text('#!/bin/sh\nexec cat "$BUNDLE_GOAL_FILE"\n')
+    entry.chmod(0o755)
+    (app / "app.json").write_text(json.dumps({"schema": 1, "name": "replay-app",
+        "description": "Offline packaging fixture", "entry": "entry", "files": ["entry"]}))
+    prefix = work / "bundle-prefix"
+    package = prefix / "lib/bench-tools/brief"
+    (package / "bin").mkdir(parents=True)
+    shutil.copy2(bins / "brief", package / "bin/brief")
+    shutil.copy2(ROOT / "tools/brief/LICENSE", package / "LICENSE")
+    files = [{"path": str(p.relative_to(package)), "mode": p.stat().st_mode & 0o777,
+              "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+             for p in (package / "bin/brief", package / "LICENSE")]
+    (package / "package.json").write_text(json.dumps({"schema": 1, "name": "brief",
+        "commands": ["brief"], "files": files}))
+    executable = work / "replay-app"
+    # Record observes the builder process, not unselected artifact bytes.
+    # The separate bundle contract suite verifies embedding and child records.
+    run([bins / "bundle", "build", "-o", executable, "-runtime", prefix, app])
+    shutil.rmtree(app)
+    shutil.rmtree(prefix)
+    result = run([executable, "-w", work / "bundle-workspace", "literal $(not-executed)"])
+    require(result.stdout == b"literal $(not-executed)", "bundle changed its adapter's output")
 
 
 def compacted_archive(bins, work, env, receipts, support, run):

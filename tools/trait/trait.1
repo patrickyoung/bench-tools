@@ -1,0 +1,201 @@
+.TH TRAIT 1 "2026-10-01" "trait 0.2" "General Commands Manual"
+.SH NAME
+trait \- author, teach, and evaluate Bench workers and teams
+.SH SYNOPSIS
+.B trait
+.BR create " | " edit " | " train " | " eval
+.RI [ \-request " TEXT"]
+.RI [ \-m " MODEL"]
+.RI [ \-turns " N"]
+.RI [ \-timeout " D"]
+.RI [ \-entry-boundary " host|cage"]
+.I INPUT_DIR NEW_OUTPUT_DIR
+.br
+.B trait
+.BR help " | " version
+.SH DESCRIPTION
+Trait uses Hire's existing creator to assemble the instructions, checks,
+programs, and specialists needed for an outcome. It prepares missing evaluation
+material, reviews the exact selection, and runs fresh cases automatically.
+Workers and Brief skills retain their existing formats.
+.PP
+Flags follow the action and precede both directories. Input is untouched;
+output must be new and disjoint from input and private controller storage.
+There is no interactive prompt, stdin request, implicit resume, in-place edit,
+automatic retry, or library publication.
+.SH ACTIONS
+.TP
+.B create
+Author a new capability from REQUEST.md or -request and selected sources.
+Structurally verify, prepare evaluation, review, and run fresh cases.
+.TP
+.B edit
+Revise expert/ for the selected request, including code and team wiring when
+needed. Continue through automatic evaluation.
+.TP
+.B train
+Teach expert/ from supplied knowledge or a checked recovery. Freeze at least
+one transfer and one regression case before the amendment; generate missing
+cases first. Without train.json, use knowledge/private. Explicit settings
+must specify valid kind and scope.
+.PP
+Training changes only nonexecutable Markdown. Preserve all other paths, modes,
+and bytes, including all executables and executable Markdown. Refuse new
+executable Markdown. Use edit for code, data, checker, or runtime changes.
+Only accepted fresh cases justify retained_on_cases. This neither trains
+model weights nor proves improvement over the original or causal skill use.
+.TP
+.B eval
+Evaluate expert/ without amending it. Use selected cases or generate them
+from the documented capability. Emit no replacement expert.
+.SH OPTIONS
+.TP
+.BI \-request " TEXT"
+Override REQUEST.md in the admitted input without changing the input directory.
+.TP
+.BI \-m " MODEL"
+Select a configured model; otherwise use ASK_MODEL or the provider default.
+.TP
+.BI \-turns " N"
+Worker turn limit; default 12.
+.TP
+.BI \-timeout " D"
+Timeout per subprocess; default 5m. Includes each authoring, review, complete
+controller entry, worker, and check invocation. Not a monetary budget or total
+case-suite deadline.
+.TP
+.BI \-entry-boundary " host|cage"
+Controller execution boundary. Default host preserves existing team and child
+Agent compatibility with ordinary host authority. Cage requests an additional
+write boundary; unavailable or unsupported nested confinement fails with 125,
+without fallback to host. Ordinary worker execution remains through Agent.
+.SH INPUT
+Create needs REQUEST.md or -request. Edit and train also need expert/.
+Eval needs expert/. Optional sources/ contains selected supporting material.
+Optional cases/ or evaluation/cases/ provides caller criteria; do not supply
+both. Optional evaluation/run.json selects an entry. CAPABILITIES.md records
+an existing capability assessment. Original worker.lock.json and team.lock.json
+remain starting-source provenance; edited bytes do not inherit unchanged locks.
+.PP
+An authored Trait output can be selected directly for edit/train with a new
+-request, or for fresh eval. Reuse its expert and evaluation recipe; exclude
+its old cases/ work results from current case inputs.
+Training from a prior result preserves its cases and adds a new transfer case
+for the teaching request before amending the definition.
+.PP
+A separate Hire evaluation preparation supplies missing cases or assessment.
+Its copied expert and supplied evaluation files must remain unchanged.
+CAPABILITIES.md covers instructions, checks, programs/apps, specialists,
+dependencies, entry, and handoffs, including unnecessary categories.
+.PP
+For explicit knowledge training, train.json selects kind knowledge and scope
+general or private. General scope excludes private organizational facts.
+Private scope grants no filesystem confidentiality or publication authority.
+Recovery additionally names an absolute original session and destination skill.
+Hone checks eligibility, prepares an exact proposal, and admits it only after
+bounded Ask model review approves those bytes. No useful lesson is a no-change
+outcome; no other route is substituted.
+.SH REVIEW
+Before execution, Ask reviews the exact definition, capability assessment,
+entry, and frozen cases. Require approval and a reason. REVIEW.md records
+automated model review, not human approval or proof of safety or quality.
+A negative, invalid, or stale decision stops evaluation.
+.SH CASES
+Each cases/ID has goal.md, optional input/, executable check, case.json, and
+optional expected data. case.json selects purpose transfer, regression, or
+general and outputs, an array of relative artifact paths.
+Generated suites and training require both transfer and regression cases.
+Generated labels are model-authored judgments, not independent domain truth.
+.PP
+After execution, Trait snapshots work in separate storage, outside write grants
+when controller Cage is selected. Host controllers can still alter snapshots.
+The independent check runs with no argv from this snapshot. TRAIT_CASE_DIR
+names the frozen case. Record binds every case file and declared output.
+Check Cage denies networking and workspace writes while allowing private
+temporary files. Exit 0 accepts, 1 rejects, and another status means broken.
+Publish the captured bytes, not a later reread of mutable execution work.
+Separate storage does not isolate authority from a host controller.
+.PP
+The expert's own verifier retains Agent/Ply's existing contract; ordinary
+Agent checks run outside its action Cage. The independent case check is
+separate. Host reads remain available, so expectations are visible regression
+material, not hidden tests. Acceptance establishes only what the checks cover.
+.SH ENTRIES
+Without evaluation/run.json, use Agent with fresh work and -B.
+A controller recipe supplies entry, args, and optional requires. The entry is
+a regular executable relative to expert/. Arguments are literal, with only
+whole-token substitutions:
+{goal}, {work}, {state}, {evidence}, and {expert}.
+These expand to selected paths; {goal} is a goal-file path.
+Goal bytes also arrive on stdin. Requires lists external command names.
+There is no shell interpolation or permission field.
+.PP
+Run the entry through Record. Default host mode has ordinary host write, read,
+and network authority. Separate directories, snapshots, and hash postchecks do
+not prevent deliberate evidence alteration or change-and-restore races.
+Automated source review supplies no security boundary.
+.PP
+Optional -entry-boundary cage runs the entry through Cage -net. Fixed grants
+cover fresh work, state, child evidence, and private temporary storage.
+Trait source, criteria, outer records, and snapshots are outside those grants.
+Full networking and unrestricted host reads, including readable credentials,
+remain available. A controller can bypass its children's normal Agent Cage;
+only the optional outer Cage enforces its write boundary. Child records are
+controller-writable in either mode, not independently trusted Trait evidence.
+.PP
+Entries receive TRAIT_AGENT, TRAIT_EXPERT, TRAIT_WORK, TRAIT_STATE,
+TRAIT_EVIDENCE, TRAIT_GOAL, TRAIT_TURNS, and TRAIT_TIMEOUT.
+A selected model is supplied as ASK_MODEL. Thin adapters preserve existing
+team contracts; no provider client, model loop, or scheduler is added.
+.SH OUTPUT
+As stages complete, authoring produces expert/; eval emits no replacement.
+Other outputs include the selected REQUEST.md, CAPABILITIES.md, REVIEW.md,
+reusable evaluation/, checked cases/ID/work/ snapshots, result.json, and
+EVALUATION.md. Candidate availability alone is not case acceptance.
+The result identifies supplied/generated case origin and observed outcomes.
+.PP
+Stdout contains the same final JSON as result.json; progress goes to stderr.
+Early failures may return only diagnostics. Private work, source, state,
+proposals, streams, and model evidence remain under
+.IR ${XDG_STATE_HOME:-$HOME/.local/state}/trait/runs/RANDOM .
+Retain referenced records. evaluated_sha256 identifies the selected definition.
+Trait rechecks definition, source, and evaluation identities after execution
+and checking; drift returns 125. Hashes identify bytes and modes, not quality.
+.SH EXIT STATUS
+Preserve child outcomes including 2 unfinished, 3 declined, 75 waiting,
+125 uncertain/boundary failure, and 130 interrupted. Independent case rejection
+and review rejection return 2; broken checks retain their status.
+Invalid usage is 2, local failure 1, local subprocess timeout 124, and missing
+commands 127. Hone's no-lesson outcome remains distinguishable.
+Inspect the recorded phase; a number alone does not identify its meaning.
+.SH DISTRIBUTION
+The standalone core builds with Go 1.26+ and uses installed public commands.
+From the repository root, scripts/build trait bundle creates independent
+packages. With Go 1.26+ and Python 3.9+, scripts/package-trait --runtime PREFIX
+--output FILE packages Trait and selected Bench programs through Bundle.
+Select packages through .build/bin or --bin-dir. A bare executable lacks the
+required package receipt and assets. The output executable must be new.
+.PP
+Recipients need no Go compiler or source checkout to launch Trait. Provider
+access, credentials, Cage backend, and authored-capability dependencies remain
+external; native authoring may require a compiler. Missing dependencies are
+reported, never automatically installed. All actions may call configured
+models. Offline fixtures prove process contracts, not real capability quality.
+.SH SEE ALSO
+.BR bundle (1),
+.BR hire (1),
+.BR agent (1),
+.BR hone (1),
+.BR brief (1),
+.BR record (1),
+.BR cage (1)
+
+.SH EXPECTED REFUSAL
+Case metadata may set expected_exit to 2 and outputs to an empty array.
+Omission expects exit 0 and one or more regular-file outputs.
+A separate check must verify the concrete refusal reason and no false completion;
+status alone does not accept. Other expected statuses are invalid.
+The check receives TRAIT_EXECUTION_EXIT, TRAIT_EXECUTION_STATUS (recorded JSON),
+TRAIT_EXECUTION_STATE and TRAIT_EXECUTION_EVIDENCE.
+Controller state and child records retain the selected boundary trust limits.
+Unknown, interrupted and infrastructure outcomes cannot be expected successes.

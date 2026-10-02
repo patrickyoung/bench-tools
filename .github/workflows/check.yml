@@ -139,6 +139,10 @@ jobs:
           fi
       - name: Prove native confinement, failing if the host cannot supply it
         run: python3 scripts/check --component cage --native-cage
+      - name: Run a relocated single-file team through the native Bench tools
+        run: make check-bundle
+      - name: Run the relocated single-file worker creator and evaluator
+        run: make check-trait
       - name: Install the builder setup and verify the persistent handoff
         run: |
           python3 scripts/setup --from-source --prefix "$RUNNER_TEMP/bench-runtime" --state-dir "$RUNNER_TEMP/bench-setup"
