@@ -17,6 +17,8 @@ make check                             # harness tests + full component/integrat
 python3 scripts/check --native-cage     # full tool gate plus native confinement proof
 make check-docs                        # entry-guide links and heading anchors
 make check-examples                    # runnable starters against local fixtures
+make check-bundle                      # packaged two-worker app, real tools and native Cage
+make check-trait                       # packaged worker authoring/training with the actual tools
 make check-harnesses                   # portable skill packaging and MCP compatibility
 make check-agenda                      # independent Agenda command and interface composition
 ```
@@ -57,6 +59,22 @@ python3 scripts/check-examples.py --bin-dir .build/bin
 CI runs isolated component checks, process integration, native Cage proof,
 installation checks, and starters on both Linux and macOS. Its results are
 attached to the exact source commit in the [public workflow](https://github.com/patrickyoung/bench-tools/actions/workflows/check.yml).
+
+The native-Cage CI job also runs `make check-bundle`: a single executable
+embeds a two-worker fixture and actual Agent/Ask/Brief/Ply/Cage/Record packages.
+The check removes its build inputs, tests conversation continuation and retained
+receipts, and uses only a local model transport. It requires native confinement;
+this check does not establish a team's quality on a real model.
+
+`make check-trait` also packages the actual Hire creator, Trait, and all eight
+selected companions, removes the source packages, and runs create/edit/train/eval
+against a loopback model. It checks automatic capability assessment and case
+preparation, exact-source review, fresh case execution, unchanged checks,
+rejected teaching, stream/exit contracts, and Hone no-recovery outcomes. A team
+fixture runs two real child Agents and a helper compiled during creation, with
+literal argv, handoffs, failure propagation, and separate native Cage probes. This
+is process evidence; it does not establish semantic quality or real-model retention.
+The helper fixture requires a system `cc`; a missing compiler fails explicitly.
 
 The Linux native-Cage job installs system Bubblewrap and grants that executable
 user-namespace access through AppArmor on its disposable Ubuntu runner. The
